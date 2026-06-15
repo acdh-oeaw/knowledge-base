@@ -1,0 +1,45 @@
+{
+	"name": "@acdh-knowledge-base/migrate",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"scripts": {
+		"data:migrate:get-unr-schema": "drizzle-kit introspect --config=./config/unr-db.config.ts",
+		"data:migrate:unr": "tsx ./scripts/migrate-unr.ts",
+		"data:migrate:wordpress": "tsx ./scripts/migrate-wordpress.ts",
+		"data:migrate:wordpress-news-item": "tsx ./scripts/migrate-wordpress-news-item.ts",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/database": "workspace:^",
+		"@acdh-knowledge-base/env": "workspace:^",
+		"@acdh-knowledge-base/storage": "workspace:^",
+		"@sindresorhus/slugify": "catalog:",
+		"@tiptap/core": "catalog:",
+		"@tiptap/extension-image": "catalog:",
+		"@tiptap/html": "catalog:",
+		"@tiptap/starter-kit": "catalog:",
+		"drizzle-orm": "catalog:",
+		"hast-util-to-text": "catalog:",
+		"rehype-parse": "catalog:",
+		"unified": "catalog:",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@types/node": "catalog:",
+		"drizzle-kit": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"wp-types": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

@@ -1,0 +1,76 @@
+{
+	"name": "the knowledge base",
+	"dockerComposeFile": [
+		"docker-compose.postgres.yaml",
+		"docker-compose.apps.yaml",
+		"docker-compose.minio.yaml",
+		"docker-compose.imgproxy.yaml",
+		"docker-compose.mailpit.yaml",
+		"docker-compose.typesense.yaml"
+	],
+	"service": "app",
+	"workspaceFolder": "/workspace",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"bradlc.vscode-tailwindcss",
+				"dbaeumer.vscode-eslint",
+				"editorconfig.editorconfig",
+				"github.vscode-github-actions",
+				"matt-meyers.vscode-dbml",
+				"mikestead.dotenv",
+				"ms-playwright.playwright",
+				"oxc.oxc-vscode",
+				"stylelint.vscode-stylelint",
+				"unifiedjs.vscode-mdx",
+				"vercel.turbo-vsc",
+				"vitest.explorer"
+			]
+		}
+	},
+	"forwardPorts": [
+		3001,
+		3002,
+		"imgproxy:8080",
+		"mailpit:1025",
+		"mailpit:8025",
+		"minio:9000",
+		"minio:9001",
+		"postgres:5432",
+		"typesense:8108",
+		"typesense-dashboard:5050"
+	],
+	"portsAttributes": {
+		"3001": {
+			"label": "The Knowledge Base"
+		},
+		"3002": {
+			"label": "The Knowledge Base API"
+		},
+		"imgproxy:8080": {
+			"label": "Imgproxy"
+		},
+		"mailpit:1025": {
+			"label": "Mailpit SMTP Server"
+		},
+		"mailpit:8025": {
+			"label": "Mailpit API and Web UI"
+		},
+		"minio:9000": {
+			"label": "MinIO"
+		},
+		"minio:9001": {
+			"label": "MinIO Web UI"
+		},
+		"postgres:5432": {
+			"label": "PostgreSQL"
+		},
+		"typesense:8108": {
+			"label": "Typesense"
+		},
+		"typesense-dashboard:5050": {
+			"label": "Typesense Dashboard"
+		}
+	},
+	"remoteUser": "node"
+}

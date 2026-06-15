@@ -1,0 +1,47 @@
+{
+	"creator": "DARIAH",
+	"description": "The Knowledge Base",
+	"title": "The Knowledge Base",
+	"manifest": {
+		"description": "The Knowledge Base",
+		"name": "The Knowledge Base",
+		"short-name": "The Knowledge Base"
+	},
+	"social": [
+		{
+			"kind": "bluesky",
+			"label": "Bluesky",
+			"href": "https://bsky.app/profile/dariaheu.bsky.social"
+		},
+		{
+			"kind": "flickr",
+			"label": "Flickr",
+			"href": "https://www.flickr.com/photos/142235661@N08/albums/with/72157695786965901"
+		},
+		{
+			"kind": "instagram",
+			"label": "Instagram",
+			"href": "https://www.linkedin.com/company/dariah-eric"
+		},
+		{
+			"kind": "mastodon",
+			"label": "Mastodon",
+			"href": "https://mastodon.social/@dariaheu"
+		},
+		{
+			"kind": "twitter",
+			"label": "Twitter",
+			"href": "https://x.com/dariaheu"
+		},
+		{
+			"kind": "website",
+			"label": "Website",
+			"href": "https://www.dariah.eu"
+		},
+		{
+			"kind": "youtube",
+			"label": "YouTube",
+			"href": "https://www.youtube.com/channel/UCeQpM_gUvNZXUWf6qQ226GQ"
+		}
+	]
+}

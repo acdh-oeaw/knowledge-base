@@ -1,0 +1,38 @@
+{
+	"name": "@acdh-knowledge-base/seed",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"scripts": {
+		"data:seed": "tsx ./scripts/seed.ts",
+		"data:seed:db": "tsx ./scripts/seed.ts database",
+		"data:seed:kitchen-sink": "tsx ./scripts/create-kitchen-sink-entities.ts",
+		"data:seed:search": "tsx ./scripts/seed.ts search-index",
+		"data:seed:storage": "tsx ./scripts/seed.ts object-store",
+		"data:seed:users:admin": "tsx ./scripts/create-initial-admin-user.ts",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/auth": "workspace:^",
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-knowledge-base/database": "workspace:^",
+		"@acdh-knowledge-base/env": "workspace:^",
+		"@acdh-knowledge-base/search": "workspace:^",
+		"@acdh-knowledge-base/storage": "workspace:^",
+		"@faker-js/faker": "catalog:",
+		"@sindresorhus/slugify": "catalog:",
+		"@types/node": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"valibot": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

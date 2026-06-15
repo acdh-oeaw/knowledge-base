@@ -1,0 +1,52 @@
+{
+	"name": "@acdh-knowledge-base/ingest",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"imports": {
+		"#/*": "./*"
+	},
+	"exports": {
+		".": "./dist/index.mjs"
+	},
+	"scripts": {
+		"data:ingest:search": "tsx ./scripts/ingest-search-index.ts",
+		"data:ingest:search:entities": "tsx ./scripts/ingest-search-index-entities.ts",
+		"data:ingest:search:resources": "tsx ./scripts/ingest-search-index-resources.ts",
+		"data:ingest:sshoc": "tsx ./scripts/ingest-sshoc-services.ts",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/client-campus": "workspace:^",
+		"@acdh-knowledge-base/client-episciences": "workspace:^",
+		"@acdh-knowledge-base/client-hal": "workspace:^",
+		"@acdh-knowledge-base/client-openaire": "workspace:^",
+		"@acdh-knowledge-base/client-sshoc": "workspace:^",
+		"@acdh-knowledge-base/client-zenodo": "workspace:^",
+		"@acdh-knowledge-base/client-zotero": "workspace:^",
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-knowledge-base/database": "workspace:^",
+		"@acdh-knowledge-base/env": "workspace:^",
+		"@acdh-knowledge-base/request": "workspace:^",
+		"@acdh-knowledge-base/search": "workspace:^",
+		"@acdh-knowledge-base/search-resources": "workspace:^",
+		"@acdh-knowledge-base/search-website": "workspace:^",
+		"@acdh-knowledge-base/sshoc-services": "workspace:^",
+		"@acdh-knowledge-base/storage": "workspace:^",
+		"@types/node": "catalog:",
+		"better-result": "catalog:",
+		"remark-parse": "catalog:",
+		"remark-stringify": "catalog:",
+		"strip-markdown": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"unified": "catalog:",
+		"valibot": "catalog:"
+	}
+}

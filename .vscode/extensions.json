@@ -1,0 +1,16 @@
+{
+	"recommendations": [
+		"bradlc.vscode-tailwindcss",
+		"dbaeumer.vscode-eslint",
+		"editorconfig.editorconfig",
+		"github.vscode-github-actions",
+		"matt-meyers.vscode-dbml",
+		"mikestead.dotenv",
+		"ms-playwright.playwright",
+		"oxc.oxc-vscode",
+		"stylelint.vscode-stylelint",
+		"unifiedjs.vscode-mdx",
+		"vercel.turbo-vsc",
+		"vitest.explorer"
+	]
+}

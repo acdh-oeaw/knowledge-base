@@ -1,0 +1,287 @@
+name: Build and deploy
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}-build-deploy"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  config:
+    name: Detect changed apps
+    runs-on: ubuntu-24.04
+
+    env:
+      TURBO_TEAM: "${{ vars.TURBO_TEAM }}"
+      TURBO_TOKEN: "${{ secrets.TURBO_TOKEN }}"
+
+    outputs:
+      matrix: ${{ steps.changes.outputs.matrix }}
+      has_changes: ${{ steps.changes.outputs.has_changes }}
+      repository: ${{ steps.repository.outputs.repository }}
+      turbo_version: ${{ steps.turbo.outputs.turbo_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          filter: "blob:none"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+
+      - name: Use node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Set lowercase repository name
+        id: repository
+        run: echo "repository=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >>
+          $GITHUB_OUTPUT
+
+      - name: Resolve turbo version
+        id: turbo
+        # Read the turbo version resolved in the lockfile catalog so the Dockerfile's pre-install
+        # `turbo prune` uses the same version as the repo (passed via the TURBO_VERSION build arg).
+        run:
+          echo "turbo_version=$(awk '/^catalogs:/{c=1} c&&/^    turbo:/{t=1} t&&/version:/{print $2; exit}' pnpm-lock.yaml)" >>
+          $GITHUB_OUTPUT
+
+      - name: Detect affected apps
+        id: changes
+        env:
+          # @see {@link https://github.com/vercel/turborepo/issues/9320#issuecomment-2499219314}
+          TURBO_SCM_BASE:
+            ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha ||
+            github.event.before }}
+          ALL_APPS: |
+            [
+              {
+                "name": "knowledge-base",
+                "image": "app",
+                "environment": "production",
+                "public_url": "${{ vars.NEXT_PUBLIC_APP_BASE_URL }}",
+                "service_id": "${{ vars.APP_SERVICE_ID }}"
+              },
+              {
+                "name": "api",
+                "image": "api",
+                "environment": "production",
+                "public_url": "${{ vars.K8S_SECRET_API_BASE_URL }}",
+                "service_id": "${{ vars.API_SERVICE_ID }}"
+              }
+            ]
+        run: |
+          set -eux
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MATRIX=$(echo "$ALL_APPS" | jq -c '.')
+          else
+            AFFECTED=$(
+              pnpm dlx turbo ls --affected --output json \
+              2>/dev/null || echo '{"packages":{"items":[]}}'
+            )
+            NAMES=$(echo "$AFFECTED" | jq -c '[.packages.items[] | select(.path | startswith("apps/")) | .name | sub("^@acdh-knowledge-base/"; "")]')
+            MATRIX=$(echo "$ALL_APPS" | jq -c --argjson names "$NAMES" '[.[] | select(.name as $n | $names | index($n))]')
+          fi
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          if [ "$MATRIX" = "[]" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build and push docker images
+    needs: [config]
+    if: needs.config.outputs.has_changes == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: true
+      matrix:
+        target: ${{ fromJSON(needs.config.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Sign in to the container registry
+        uses: docker/login-action@v4
+        with:
+          registry: "ghcr.io"
+          username: "${{ github.actor }}"
+          password: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Extract metadata (tags, labels) for docker image
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: "ghcr.io/${{ needs.config.outputs.repository }}-${{ matrix.target.image }}"
+          tags: |
+            type=raw,value={{sha}}
+            type=ref,event=branch
+
+      - name: Build and push docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: "${{ matrix.target.image }}"
+          push: true
+          tags: "${{ steps.meta.outputs.tags }}"
+          labels: "${{ steps.meta.outputs.labels }}"
+          build-args: |
+            "TURBO_VERSION=${{ needs.config.outputs.turbo_version }}"
+            "NEXT_PUBLIC_APP_BASE_URL=${{ vars.NEXT_PUBLIC_APP_BASE_URL }}"
+            "NEXT_PUBLIC_APP_BOTS=disabled"
+            "NEXT_PUBLIC_APP_GOOGLE_SITE_VERIFICATION=${{ vars.NEXT_PUBLIC_APP_GOOGLE_SITE_VERIFICATION }}"
+            "NEXT_PUBLIC_APP_IMPRINT_CUSTOM_CONFIG=disabled"
+            "NEXT_PUBLIC_APP_IMPRINT_SERVICE_BASE_URL=${{ vars.NEXT_PUBLIC_IMPRINT_SERVICE_BASE_URL }}"
+            "NEXT_PUBLIC_APP_MATOMO_BASE_URL=${{ vars.NEXT_PUBLIC_MATOMO_BASE_URL }}"
+            "NEXT_PUBLIC_APP_MATOMO_ID=${{ vars.NEXT_PUBLIC_APP_MATOMO_ID }}"
+            "NEXT_PUBLIC_APP_SENTRY_DSN=${{ vars.NEXT_PUBLIC_APP_SENTRY_DSN }}"
+            "NEXT_PUBLIC_APP_SENTRY_ORG=${{ vars.NEXT_PUBLIC_SENTRY_ORG }}"
+            "NEXT_PUBLIC_APP_SENTRY_PII=${{ vars.NEXT_PUBLIC_APP_SENTRY_PII }}"
+            "NEXT_PUBLIC_APP_SENTRY_PROJECT=${{ vars.NEXT_PUBLIC_APP_SENTRY_PROJECT }}"
+            "NEXT_PUBLIC_APP_SERVICE_ID=${{ vars.APP_SERVICE_ID }}"
+            "NEXT_PUBLIC_TYPESENSE_HOST=${{ vars.NEXT_PUBLIC_TYPESENSE_HOST }}"
+            "NEXT_PUBLIC_TYPESENSE_PORT=${{ vars.NEXT_PUBLIC_TYPESENSE_PORT }}"
+            "NEXT_PUBLIC_TYPESENSE_PROTOCOL=${{ vars.NEXT_PUBLIC_TYPESENSE_PROTOCOL }}"
+            "NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME=${{ vars.NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME }}"
+            "NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME=${{ vars.NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME }}"
+            "NEXT_PUBLIC_TYPESENSE_SEARCH_API_KEY=${{ secrets.NEXT_PUBLIC_TYPESENSE_SEARCH_API_KEY }}"
+          secrets: |
+            "API_ACCESS_TOKEN=${{ secrets.K8S_SECRET_API_ACCESS_TOKEN }}"
+            "AUTH_ENCRYPTION_KEY=${{ secrets.TEST_AUTH_ENCRYPTION_KEY }}"
+            "AUTH_SIGN_UP=${{ vars.K8S_SECRET_AUTH_SIGN_UP }}"
+            "CORDIS_API_KEY=${{ secrets.K8S_SECRET_CORDIS_API_KEY }}"
+            "CORDIS_API_BASE_URL=${{ secrets.K8S_SECRET_CORDIS_API_BASE_URL }}"
+            "DATABASE_HOST=${{ secrets.K8S_SECRET_DATABASE_HOST }}"
+            "DATABASE_NAME=${{ secrets.K8S_SECRET_DATABASE_NAME }}"
+            "DATABASE_PASSWORD=${{ secrets.TEST_DATABASE_PASSWORD }}"
+            "DATABASE_PORT=${{ secrets.K8S_SECRET_DATABASE_PORT }}"
+            "DATABASE_USER=${{ secrets.TEST_DATABASE_USER }}"
+            "EMAIL_ADDRESS=${{ secrets.K8S_SECRET_EMAIL_ADDRESS }}"
+            "EMAIL_SMTP_PORT=${{ secrets.K8S_SECRET_EMAIL_SMTP_PORT }}"
+            "EMAIL_SMTP_SERVER=${{ secrets.K8S_SECRET_EMAIL_SMTP_SERVER }}"
+            "IMGPROXY_BASE_URL=${{ vars.K8S_SECRET_IMGPROXY_BASE_URL }}"
+            "IMGPROXY_KEY=${{ secrets.TEST_IMGPROXY_KEY }}"
+            "IMGPROXY_PORT=${{ vars.K8S_SECRET_IMGPROXY_PORT }}"
+            "IMGPROXY_SALT=${{ secrets.TEST_IMGPROXY_SALT }}"
+            "MAILCHIMP_API_BASE_URL=${{ secrets.TEST_MAILCHIMP_API_BASE_URL }}"
+            "MAILCHIMP_API_KEY=${{ secrets.TEST_MAILCHIMP_API_KEY }}"
+            "MAILCHIMP_LIST_ID=${{ secrets.TEST_MAILCHIMP_LIST_ID }}"
+            "OPENAIRE_API_BASE_URL=${{ secrets.TEST_OPENAIRE_API_BASE_URL }}"
+            "REVALIDATION_WEBHOOK_SECRET=${{ secrets.K8S_SECRET_REVALIDATION_WEBHOOK_SECRET }}"
+            "REVALIDATION_WEBHOOK_URL=${{ secrets.K8S_SECRET_REVALIDATION_WEBHOOK_URL }}"
+            "S3_ACCESS_KEY=${{ secrets.TEST_S3_ACCESS_KEY }}"
+            "S3_BUCKET_NAME=${{ vars.K8S_SECRET_S3_BUCKET_NAME }}"
+            "S3_HOST=${{ vars.K8S_SECRET_S3_HOST }}"
+            "S3_PORT=${{ vars.K8S_SECRET_S3_PORT }}"
+            "S3_PROTOCOL=${{ vars.K8S_SECRET_S3_PROTOCOL }}"
+            "S3_SECRET_KEY=${{ secrets.TEST_S3_SECRET_KEY }}"
+            "SEARCH_SYNC_API_SECRET=${{ secrets.K8S_SECRET_SEARCH_SYNC_API_SECRET }}"
+            "SSHOC_MARKETPLACE_API_BASE_URL: ${{ vars.K8S_SECRET_SSHOC_MARKETPLACE_API_BASE_URL }}"
+            "SSHOC_MARKETPLACE_BASE_URL: ${{ vars.K8S_SECRET_SSHOC_MARKETPLACE_BASE_URL }}"
+            "SSHOC_MARKETPLACE_PASSWORD: ${{ secrets.K8S_SECRET_SSHOC_MARKETPLACE_PASSWORD }}"
+            "SSHOC_MARKETPLACE_USER: ${{ secrets.K8S_SECRET_SSHOC_MARKETPLACE_USER }}"
+            "TYPESENSE_ADMIN_API_KEY=${{ secrets.K8S_SECRET_TYPESENSE_ADMIN_API_KEY }}"
+            "TYPESENSE_HOST=${{ vars.K8S_SECRET_TYPESENSE_HOST }}"
+            "TYPESENSE_PORT=${{ vars.K8S_SECRET_TYPESENSE_PORT }}"
+            "TYPESENSE_PROTOCOL=${{ vars.K8S_SECRET_TYPESENSE_PROTOCOL }}"
+            "TYPESENSE_RESOURCE_COLLECTION_NAME=${{ vars.K8S_SECRET_TYPESENSE_RESOURCE_COLLECTION_NAME }}"
+            "TYPESENSE_WEBSITE_COLLECTION_NAME=${{ vars.K8S_SECRET_TYPESENSE_WEBSITE_COLLECTION_NAME }}"
+            "TYPESENSE_SEARCH_API_KEY=${{ secrets.K8S_SECRET_TYPESENSE_SEARCH_API_KEY }}"
+            "TURBO_TEAM=${{ vars.TURBO_TEAM }}"
+            "TURBO_TOKEN=${{ secrets.TURBO_TOKEN }}"
+            "UNR_DATABASE_DIRECT_URL=${{ secrets.K8S_SECRET_UNR_DATABASE_DIRECT_URL }}"
+            "UNR_S3_BUCKET_NAME=${{ vars.K8S_SECRET_UNR_S3_BUCKET_NAME }}"
+            "ZOTERO_API_KEY=${{ secrets.K8S_SECRET_ZOTERO_API_KEY }}"
+            "ZOTERO_API_BASE_URL=${{ secrets.K8S_SECRET_ZOTERO_API_BASE_URL }}"
+          cache-from: type=gha,scope=${{ matrix.target.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target.image }}
+
+  build-migrate:
+    name: Build and push docker images
+    needs: [config]
+    if: needs.config.outputs.has_changes == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Sign in to the container registry
+        uses: docker/login-action@v4
+        with:
+          registry: "ghcr.io"
+          username: "${{ github.actor }}"
+          password: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Extract metadata (tags, labels) for migrate docker image
+        id: meta-migrate
+        uses: docker/metadata-action@v6
+        with:
+          images: "ghcr.io/${{ needs.config.outputs.repository }}-migrate"
+          tags: |
+            type=raw,value={{sha}}
+            type=ref,event=branch
+
+      - name: Build and push migrate docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: migrate
+          push: true
+          tags: "${{ steps.meta-migrate.outputs.tags }}"
+          labels: "${{ steps.meta-migrate.outputs.labels }}"
+          build-args: |
+            "TURBO_VERSION=${{ needs.config.outputs.turbo_version }}"
+          secrets: |
+            "TURBO_TEAM=${{ vars.TURBO_TEAM }}"
+            "TURBO_TOKEN=${{ secrets.TURBO_TOKEN }}"
+          cache-from: type=gha,scope=migrate
+          cache-to: type=gha,mode=max,scope=migrate
+
+  deploy:
+    name: Deploy docker images
+    needs: [config, build, build-migrate]
+    if: needs.config.outputs.has_changes == 'true'
+    uses: acdh-oeaw/gl-autodevops-minimal-port/.github/workflows/deploy.yml@main
+    secrets: inherit
+
+    strategy:
+      fail-fast: true
+      matrix:
+        target: ${{ fromJSON(needs.config.outputs.matrix) }}
+      max-parallel: 1
+
+    with:
+      default_port: "3000"
+      environment: "${{ matrix.target.environment }}"
+      APP_NAME: "${{ matrix.target.image }}"
+      APP_ROOT: "/"
+      DOCKER_TAG: "ghcr.io/${{ needs.config.outputs.repository }}-${{ matrix.target.image }}"
+      PUBLIC_URL: "${{ matrix.target.public_url }}"
+      SERVICE_ID: "${{ matrix.target.service_id }}"

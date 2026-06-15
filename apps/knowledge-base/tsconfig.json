@@ -1,0 +1,22 @@
+{
+	"$schema": "https://www.schemastore.org/tsconfig",
+	"extends": "@acdh-knowledge-base/configs/typescript/app",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"plugins": [{ "name": "next" }],
+		"types": ["node", "nodemailer", "react", "react-dom"]
+	},
+	"include": [
+		"./**/*.js",
+		"./**/*.ts",
+		"./**/*.tsx",
+		"./next-env.d.ts",
+		".next/dev/types/**/*.ts",
+		".next/types/**/*.ts",
+		"./types/**/*.d.ts"
+	],
+	"exclude": ["content", "node_modules", "out", "public"]
+}

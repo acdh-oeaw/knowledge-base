@@ -1,0 +1,42 @@
+{
+	"name": "@acdh-knowledge-base/next-lib",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./actions": "./dist/actions/index.mjs",
+		"./middlewares": "./dist/middlewares/index.mjs",
+		"./rate-limiter": "./dist/rate-limiter/index.mjs"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-knowledge-base/rate-limiter": "workspace:^",
+		"@types/node": "catalog:",
+		"better-result": "catalog:",
+		"next": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"valibot": "catalog:"
+	},
+	"peerDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/rate-limiter": "workspace:^",
+		"better-result": "catalog:",
+		"next": "catalog:",
+		"valibot": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

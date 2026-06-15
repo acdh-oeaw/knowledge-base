@@ -1,0 +1,74 @@
+{
+	"name": "@acdh-knowledge-base/configs",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./oxfmt/base": "./lib/oxfmt/base.ts",
+		"./oxlint/base": "./lib/oxlint/base.ts",
+		"./oxlint/drizzle": "./lib/oxlint/drizzle.ts",
+		"./oxlint/nextjs": "./lib/oxlint/nextjs.ts",
+		"./oxlint/playwright": "./lib/oxlint/playwright.ts",
+		"./oxlint/react": "./lib/oxlint/react.ts",
+		"./oxlint/regexp": "./lib/oxlint/regexp.ts",
+		"./oxlint/storybook": "./lib/oxlint/storybook.ts",
+		"./oxlint/tailwindcss": "./lib/oxlint/tailwindcss.ts",
+		"./oxlint/turbo": "./lib/oxlint/turbo.ts",
+		"./oxlint/vitest": "./lib/oxlint/vitest.ts",
+		"./stylelint/base": "./lib/stylelint/base.json",
+		"./typescript/app": "./lib/typescript/app.json",
+		"./typescript/app-build": "./lib/typescript/app-build.json",
+		"./typescript/base": "./lib/typescript/lib.json",
+		"./typescript/lib": "./lib/typescript/lib.json",
+		"./typescript/lib-build": "./lib/typescript/lib-build.json"
+	},
+	"scripts": {
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@acdh-oeaw/tsconfig": "catalog:",
+		"@acdh-oeaw/tsconfig-lib": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"eslint-plugin-better-tailwindcss": "catalog:",
+		"eslint-plugin-drizzle": "catalog:",
+		"eslint-plugin-playwright": "catalog:",
+		"eslint-plugin-regexp": "catalog:",
+		"eslint-plugin-storybook": "catalog:",
+		"eslint-plugin-turbo": "catalog:",
+		"oxfmt": "catalog:",
+		"oxlint": "catalog:",
+		"oxlint-tsgolint": "catalog:",
+		"stylelint": "catalog:",
+		"stylelint-order": "catalog:",
+		"typescript": "catalog:"
+	},
+	"peerDependencies": {
+		"eslint-plugin-better-tailwindcss": "catalog:",
+		"eslint-plugin-drizzle": "catalog:",
+		"eslint-plugin-playwright": "catalog:",
+		"eslint-plugin-regexp": "catalog:",
+		"eslint-plugin-storybook": "catalog:",
+		"eslint-plugin-turbo": "catalog:",
+		"oxfmt": "catalog:",
+		"oxlint": "catalog:",
+		"oxlint-tsgolint": "catalog:",
+		"stylelint": "catalog:",
+		"stylelint-order": "catalog:",
+		"typescript": "catalog:"
+	},
+	"peerDependenciesMeta": {
+		"stylelint": {
+			"optional": true
+		},
+		"stylelint-order": {
+			"optional": true
+		}
+	}
+}

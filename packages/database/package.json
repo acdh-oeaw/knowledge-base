@@ -1,0 +1,62 @@
+{
+	"name": "@acdh-knowledge-base/database",
+	"private": true,
+	"license": "MIT",
+	"files": [
+		"./config/",
+		"./db/",
+		"./dist/"
+	],
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./dist/index.mjs",
+		"./client": "./dist/client.mjs",
+		"./errors": "./dist/errors.mjs",
+		"./relations": "./dist/relations.mjs",
+		"./schema": "./dist/schema.mjs",
+		"./sql": "./dist/sql.mjs"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"db:migrations:apply": "drizzle-kit migrate --config=./config/drizzle.config.ts",
+		"db:migrations:check": "drizzle-kit check --config=./config/drizzle.config.ts",
+		"db:migrations:generate": "drizzle-kit generate --config=./config/drizzle.config.ts",
+		"db:push": "drizzle-kit push --config=./config/drizzle.config.ts",
+		"db:reset": "tsx ./scripts/reset.ts",
+		"db:studio": "drizzle-kit studio --config=./config/drizzle.config.ts",
+		"dev": "tsdown --watch",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"generate:dbml-schema": "tsx ./scripts/generate-dbml-schema.ts",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/env": "workspace:^",
+		"@tiptap/core": "catalog:",
+		"better-result": "catalog:",
+		"drizzle-orm": "catalog:",
+		"pg": "catalog:",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@faker-js/faker": "catalog:",
+		"@sindresorhus/slugify": "catalog:",
+		"@types/node": "catalog:",
+		"@types/pg": "catalog:",
+		"concurrently": "catalog:",
+		"drizzle-dbml-generator": "catalog:",
+		"drizzle-kit": "catalog:",
+		"drizzle-seed": "catalog:",
+		"tsdown": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

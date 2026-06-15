@@ -1,0 +1,36 @@
+{
+	"name": "@acdh-knowledge-base/sshoc-services",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"imports": {
+		"#/*": "./*"
+	},
+	"exports": {
+		".": "./dist/index.mjs"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/client-sshoc": "workspace:^",
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-knowledge-base/database": "workspace:^",
+		"@types/node": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:"
+	},
+	"peerDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/client-sshoc": "workspace:^",
+		"@acdh-knowledge-base/database": "workspace:^"
+	}
+}

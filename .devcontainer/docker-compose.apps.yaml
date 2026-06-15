@@ -1,0 +1,14 @@
+services:
+  app:
+    image: ghcr.io/acdh-oeaw/devcontainer-frontend:24
+    container_name: the-knowledge-base-devcontainer
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  default:
+    name: the-knowledge-base

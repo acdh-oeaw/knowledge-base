@@ -1,0 +1,6 @@
+{
+	"$schema": "https://www.schemastore.org/tsconfig",
+	"extends": "@acdh-knowledge-base/configs/typescript/lib",
+	"include": ["./**/*.js", "./**/*.ts"],
+	"exclude": ["dist", "node_modules"]
+}

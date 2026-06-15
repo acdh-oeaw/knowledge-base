@@ -1,0 +1,131 @@
+"use client";
+
+import type * as schema from "@acdh-knowledge-base/database/schema";
+import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
+import { Button } from "@acdh-knowledge-base/ui/button";
+import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Form } from "@acdh-knowledge-base/ui/form";
+import { FormStatus } from "@acdh-knowledge-base/ui/form-status";
+import { Input } from "@acdh-knowledge-base/ui/input";
+import { ProgressCircle } from "@acdh-knowledge-base/ui/progress-circle";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@acdh-knowledge-base/ui/select";
+import { TextField } from "@acdh-knowledge-base/ui/text-field";
+import { useExtracted } from "next-intl";
+import { Fragment, type ReactNode, useActionState, useState } from "react";
+
+import type { ServerAction } from "@/lib/server/create-server-action";
+
+interface Contribution {
+	id: string;
+	amountEuros: number;
+	projectDocumentId: string;
+	project: Pick<schema.Project, "name"> | null;
+}
+
+interface CountryReportProjectsFormProps {
+	report: {
+		id: string;
+		projectContributions: Array<Contribution>;
+	};
+	/** `id` is the project document id (entities.id). */
+	allProjects: Array<{ id: string; name: string }>;
+	addAction: ServerAction;
+	deleteAction: (formData: FormData) => Promise<void>;
+}
+
+export function CountryReportProjectsForm(
+	props: Readonly<CountryReportProjectsFormProps>,
+): ReactNode {
+	const { report, allProjects, addAction, deleteAction } = props;
+
+	const t = useExtracted();
+	const [state, action, isPending] = useActionState(addAction, createActionStateInitial());
+	const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+	const existingProjectIds = new Set(report.projectContributions.map((c) => c.projectDocumentId));
+	const availableProjects = allProjects.filter((p) => !existingProjectIds.has(p.id));
+
+	return (
+		<div className="flex flex-col gap-y-8">
+			{report.projectContributions.length > 0 && (
+				<section className="flex flex-col gap-y-3">
+					<h2 className="text-sm font-semibold text-fg">{t("Project contributions")}</h2>
+					<ul className="divide-y divide-border rounded-md border">
+						{report.projectContributions.map((contribution) => (
+							<li
+								key={contribution.id}
+								className="flex items-center justify-between gap-x-4 px-4 py-3"
+							>
+								<div>
+									<p className="text-sm font-medium text-fg">{contribution.project?.name ?? ""}</p>
+									<p className="text-xs text-muted-fg">
+										{t("Amount")}: {contribution.amountEuros.toLocaleString()} {"EUR"}
+									</p>
+								</div>
+								<form action={deleteAction}>
+									<input name="contributionId" type="hidden" value={contribution.id} />
+									<input name="countryReportId" type="hidden" value={report.id} />
+									<Button intent="danger" size="sm" type="submit">
+										{t("Remove")}
+									</Button>
+								</form>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{availableProjects.length > 0 && (
+				<section className="flex flex-col gap-y-3">
+					<h2 className="text-sm font-semibold text-fg">{t("Add project contribution")}</h2>
+					<Form action={action} className="flex flex-col gap-y-4 max-inline-sm" state={state}>
+						<input name="countryReportId" type="hidden" value={report.id} />
+
+						<Select
+							isRequired={true}
+							onChange={(key) => {
+								setSelectedProjectId(String(key));
+							}}
+							value={selectedProjectId || null}
+						>
+							<Label>{t("Project")}</Label>
+							<SelectTrigger />
+							<FieldError />
+							<SelectContent>
+								{availableProjects.map((project) => (
+									<SelectItem key={project.id} id={project.id}>
+										{project.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<input name="projectDocumentId" type="hidden" value={selectedProjectId} />
+
+						<TextField isRequired={true} name="amountEuros" type="number">
+							<Label>{t("Amount (EUR)")}</Label>
+							<Input min={0} step="0.01" />
+							<FieldError />
+						</TextField>
+
+						<Button className="self-start" isPending={isPending} type="submit">
+							{isPending ? (
+								<Fragment>
+									<ProgressCircle aria-label={t("Adding...")} isIndeterminate={true} />
+									<span aria-hidden={true}>{t("Adding...")}</span>
+								</Fragment>
+							) : (
+								t("Add")
+							)}
+						</Button>
+
+						<FormStatus className="self-start" state={state} />
+					</Form>
+				</section>
+			)}
+
+			{report.projectContributions.length === 0 && availableProjects.length === 0 && (
+				<p className="text-sm text-muted-fg">{t("No projects available.")}</p>
+			)}
+		</div>
+	);
+}

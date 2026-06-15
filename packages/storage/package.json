@@ -1,0 +1,45 @@
+{
+	"name": "@acdh-knowledge-base/storage",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./dist/index.mjs",
+		"./admin": "./dist/admin.mjs",
+		"./errors": "./dist/errors.mjs",
+		"./config": "./config/images.config.ts",
+		"./lib": "./lib/utils/index.ts"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"storage:buckets:create": "tsx ./scripts/create-buckets.ts",
+		"storage:buckets:reset": "tsx ./scripts/reset-buckets.ts",
+		"types:check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/env": "workspace:^",
+		"better-result": "catalog:",
+		"minio": "catalog:",
+		"uuid": "catalog:",
+		"valibot": "catalog:"
+	},
+	"devDependencies": {
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@faker-js/faker": "catalog:",
+		"@types/node": "catalog:",
+		"sharp": "catalog:",
+		"tsdown": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

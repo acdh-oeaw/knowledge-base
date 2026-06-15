@@ -1,0 +1,43 @@
+{
+	"name": "@acdh-knowledge-base/search",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"imports": {
+		"#/*": "./*"
+	},
+	"exports": {
+		".": "./dist/index.mjs",
+		"./admin": "./dist/admin.mjs",
+		"./errors": "./dist/errors.mjs"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"search:api-keys:generate": "tsx ./scripts/generate-search-api-keys.ts",
+		"search:collections:create": "tsx ./scripts/create-collections.ts",
+		"search:collections:reset": "tsx ./scripts/reset-collections.ts",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-knowledge-base/env": "workspace:^",
+		"@types/node": "catalog:",
+		"better-result": "catalog:",
+		"tsdown": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"typesense": "catalog:",
+		"valibot": "catalog:"
+	},
+	"peerDependencies": {
+		"better-result": "catalog:",
+		"typesense": "catalog:"
+	}
+}

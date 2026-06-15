@@ -1,0 +1,35 @@
+{
+	"name": "@acdh-knowledge-base/request",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./dist/index.mjs",
+		"./errors": "./dist/errors.mjs"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@types/node": "catalog:",
+		"better-result": "catalog:",
+		"is-network-error": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:"
+	},
+	"peerDependencies": {
+		"better-result": "catalog:",
+		"is-network-error": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

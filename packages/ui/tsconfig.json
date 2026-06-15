@@ -1,0 +1,25 @@
+{
+	"$schema": "https://www.schemastore.org/tsconfig",
+	"extends": "@acdh-knowledge-base/configs/typescript/lib",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"lib": ["dom", "esnext"],
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"types": ["node", "react", "react-dom"]
+	},
+	"include": [
+		"./**/*.js",
+		"./**/*.ts",
+		"./**/*.tsx",
+		"./types/**/*.d.ts",
+		"./.storybook/**/*.ts",
+		"./.storybook/**/*.tsx"
+	],
+	"exclude": ["dist", "node_modules", "storybook-static"],
+	"mdx": {
+		"checkMdx": false,
+		"plugins": []
+	}
+}

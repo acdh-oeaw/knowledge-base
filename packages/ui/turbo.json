@@ -1,0 +1,18 @@
+{
+	"$schema": "../../node_modules/turbo/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"build": {
+			"dependsOn": ["$TURBO_EXTENDS$", "i18n:extract-messages", "i18n:convert-messages"]
+		},
+		"i18n:extract-messages": {
+			"inputs": ["lib/**/*", "scripts/i18n/extract-messages.ts"],
+			"outputs": ["messages/*.po"]
+		},
+		"i18n:convert-messages": {
+			"dependsOn": ["i18n:extract-messages"],
+			"inputs": ["messages/*.po", "scripts/i18n/convert-messages.ts"],
+			"outputs": ["messages/*.json"]
+		}
+	}
+}

@@ -1,0 +1,8 @@
+{
+	"$schema": "https://www.schemastore.org/tsconfig",
+	"extends": "@acdh-oeaw/tsconfig",
+	"compilerOptions": {
+		"lib": ["dom", "esnext"],
+		"types": ["node"]
+	}
+}

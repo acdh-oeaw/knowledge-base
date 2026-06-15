@@ -1,0 +1,183 @@
+{
+	"$schema": "./node_modules/turbo/schema.json",
+	"globalDependencies": [".env.keys"],
+	"globalEnv": [
+		"API_ACCESS_TOKEN",
+		"API_ALLOWED_ORIGINS",
+		"API_BASE_URL",
+		"API_LOG_LEVEL",
+		"API_PORT",
+		"API_SENTRY_AUTH_TOKEN",
+		"API_SENTRY_DSN",
+		"API_SENTRY_ORG",
+		"API_SENTRY_PII",
+		"API_SENTRY_PROJECT",
+		"APP_SENTRY_AUTH_TOKEN",
+		"AUTH_ENCRYPTION_KEY",
+		"AUTH_SIGN_UP",
+		"BUILD_MODE",
+		"CAMPUS_API_BASE_URL",
+		"DATABASE_HOST",
+		"DATABASE_NAME",
+		"DATABASE_PASSWORD",
+		"DATABASE_PORT",
+		"DATABASE_SSL_CONNECTION",
+		"DATABASE_USER",
+		"E2E_FAILURE_INJECTION",
+		"EMAIL_ADDRESS",
+		"EMAIL_SMTP_PASSWORD",
+		"EMAIL_SMTP_PORT",
+		"EMAIL_SMTP_SERVER",
+		"EMAIL_SMTP_USERNAME",
+		"EMAIL_SSL_CONNECTION",
+		"EPISCIENCES_API_BASE_URL",
+		"HAL_API_BASE_URL",
+		"IMGPROXY_BASE_URL",
+		"IMGPROXY_KEY",
+		"IMGPROXY_PORT",
+		"IMGPROXY_SALT",
+		"MAILCHIMP_API_BASE_URL",
+		"MAILCHIMP_API_KEY",
+		"MAILCHIMP_LIST_ID",
+		"MAILPIT_API_BASE_URL",
+		"NEXT_PUBLIC_APP_BASE_URL",
+		"NEXT_PUBLIC_APP_BOTS",
+		"NEXT_PUBLIC_APP_GOOGLE_SITE_VERIFICATION",
+		"NEXT_PUBLIC_APP_IMPRINT_CUSTOM_CONFIG",
+		"NEXT_PUBLIC_APP_IMPRINT_SERVICE_BASE_URL",
+		"NEXT_PUBLIC_APP_MATOMO_BASE_URL",
+		"NEXT_PUBLIC_APP_MATOMO_ID",
+		"NEXT_PUBLIC_APP_SENTRY_DSN",
+		"NEXT_PUBLIC_APP_SENTRY_ORG",
+		"NEXT_PUBLIC_APP_SENTRY_PII",
+		"NEXT_PUBLIC_APP_SENTRY_PROJECT",
+		"NEXT_PUBLIC_APP_SERVICE_ID",
+		"NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME",
+		"NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME",
+		"NEXT_PUBLIC_TYPESENSE_HOST",
+		"NEXT_PUBLIC_TYPESENSE_PORT",
+		"NEXT_PUBLIC_TYPESENSE_PROTOCOL",
+		"NEXT_PUBLIC_TYPESENSE_SEARCH_API_KEY",
+		"NEXT_PUBLIC_WEBSITE_BOTS",
+		"NEXT_PUBLIC_WEBSITE_GOOGLE_SITE_VERIFICATION",
+		"NEXT_PUBLIC_WEBSITE_IMPRINT_CUSTOM_CONFIG",
+		"NEXT_PUBLIC_WEBSITE_IMPRINT_SERVICE_BASE_URL",
+		"NEXT_PUBLIC_WEBSITE_MATOMO_BASE_URL",
+		"NEXT_PUBLIC_WEBSITE_MATOMO_ID",
+		"NEXT_PUBLIC_WEBSITE_SENTRY_DSN",
+		"NEXT_PUBLIC_WEBSITE_SENTRY_ORG",
+		"NEXT_PUBLIC_WEBSITE_SENTRY_PII",
+		"NEXT_PUBLIC_WEBSITE_SENTRY_PROJECT",
+		"NEXT_PUBLIC_WEBSITE_SERVICE_ID",
+		"NEXT_RUNTIME",
+		"NODE_ENV",
+		"OPENAIRE_API_BASE_URL",
+		"REVALIDATION_WEBHOOK_SECRET",
+		"REVALIDATION_WEBHOOK_URL",
+		"S3_ACCESS_KEY",
+		"S3_BUCKET_NAME",
+		"S3_HOST",
+		"S3_PORT",
+		"S3_PROTOCOL",
+		"S3_SECRET_KEY",
+		"SEARCH_SYNC_API_SECRET",
+		"SSHOC_MARKETPLACE_API_BASE_URL",
+		"SSHOC_MARKETPLACE_BASE_URL",
+		"SSHOC_MARKETPLACE_PASSWORD",
+		"SSHOC_MARKETPLACE_USER",
+		"TYPESENSE_ADMIN_API_KEY",
+		"TYPESENSE_HOST",
+		"TYPESENSE_PORT",
+		"TYPESENSE_PROTOCOL",
+		"TYPESENSE_RESOURCE_COLLECTION_NAME",
+		"TYPESENSE_WEBSITE_COLLECTION_NAME",
+		"TYPESENSE_SEARCH_API_KEY",
+		"UNR_DATABASE_DIRECT_URL",
+		"UNR_S3_BUCKET_NAME",
+		"WEBSITE_SENTRY_AUTH_TOKEN",
+		"ZENODO_API_BASE_URL",
+		"ZOTERO_API_BASE_URL",
+		"ZOTERO_API_KEY",
+		"ZOTERO_GROUP_ID"
+	],
+	"globalPassThroughEnv": [
+		"ADMIN_EMAIL",
+		"ADMIN_NAME",
+		"ADMIN_PASSWORD",
+		"CI",
+		"ENV_VALIDATION",
+		"PORT",
+		"pnpm_config_verify_deps_before_run"
+	],
+	"tasks": {
+		"//#format:check": {},
+		"//#format:fix": {
+			"cache": false
+		},
+		"//#lint:root:check": {
+			"inputs": ["oxfmt.config.ts", "oxlint.config.ts", "turbo/generators/config.ts"]
+		},
+		"//#lint:root:fix": {
+			"cache": false,
+			"inputs": ["oxfmt.config.ts", "oxlint.config.ts", "turbo/generators/config.ts"]
+		},
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$", "**/.env.local", "**/.env.*.local"],
+			"outputs": [
+				".next/**",
+				"!.next/cache/**",
+				"!.next/dev/**",
+				"dist/**",
+				"out/**",
+				"storybook-static/**",
+				"*.tsbuildinfo"
+			]
+		},
+		"dev": {
+			"cache": false,
+			"dependsOn": ["^build"],
+			"persistent": true
+		},
+		"dev:watch": {
+			"cache": false,
+			"dependsOn": ["^build"],
+			"persistent": true
+		},
+		"lint:check": {
+			"dependsOn": ["^build"]
+		},
+		"lint:fix": {
+			"cache": false,
+			"dependsOn": ["^build"]
+		},
+		"start": {
+			"cache": false,
+			"dependsOn": ["^build"],
+			"persistent": true
+		},
+		"test": {
+			"cache": false,
+			"dependsOn": ["^build"],
+			"inputs": ["$TURBO_DEFAULT$", "**/.env.local", "**/.env.*.local"],
+			"outputs": ["coverage/**"]
+		},
+		"test:e2e": {
+			"cache": false,
+			"dependsOn": ["^build"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH", "PLAYWRIGHT_TEST_APP_BASE_URL"],
+			"inputs": ["$TURBO_DEFAULT$", "**/.env.local", "**/.env.*.local"]
+		},
+		"test:e2e:update-snapshots": {
+			"cache": false,
+			"dependsOn": ["^build"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH", "PLAYWRIGHT_TEST_APP_BASE_URL"],
+			"inputs": ["$TURBO_DEFAULT$", "**/.env.local", "**/.env.*.local"]
+		},
+		"types:check": {
+			"dependsOn": ["^build"],
+			"outputs": ["*.tsbuildinfo"]
+		}
+	},
+	"ui": "tui"
+}

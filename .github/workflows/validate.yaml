@@ -1,0 +1,440 @@
+name: Validate
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}-validate"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  API_ACCESS_TOKEN: "abcdef"
+  API_ALLOWED_ORIGINS: "http://localhost:3001"
+  API_BASE_URL: "http://localhost:3002"
+  API_LOG_LEVEL: "info"
+  API_PORT: "3002"
+  AUTH_ENCRYPTION_KEY: "${{ secrets.TEST_AUTH_ENCRYPTION_KEY }}"
+  AUTH_SIGN_UP: "enabled"
+  DATABASE_HOST: "localhost"
+  DATABASE_NAME: "the-knowledge-base"
+  DATABASE_PASSWORD: "${{ secrets.TEST_DATABASE_PASSWORD }}"
+  DATABASE_PORT: "5432"
+  DATABASE_USER: "${{ secrets.TEST_DATABASE_USER }}"
+  EMAIL_ADDRESS: "acdh@example.com"
+  EMAIL_SMTP_PORT: "1025"
+  EMAIL_SMTP_SERVER: "localhost"
+  IMGPROXY_BASE_URL: "http://localhost:8080"
+  IMGPROXY_KEY: "${{ secrets.TEST_IMGPROXY_KEY }}"
+  IMGPROXY_PORT: "8080"
+  IMGPROXY_SALT: "${{ secrets.TEST_IMGPROXY_SALT }}"
+  MAILCHIMP_API_BASE_URL: "${{ secrets.TEST_MAILCHIMP_API_BASE_URL }}"
+  MAILCHIMP_API_KEY: "${{ secrets.TEST_MAILCHIMP_API_KEY }}"
+  MAILCHIMP_LIST_ID: "${{ secrets.TEST_MAILCHIMP_LIST_ID }}"
+  MAILPIT_API_BASE_URL: "http://localhost:8025"
+  NEXT_PUBLIC_APP_BASE_URL: "http://localhost:3001"
+  NEXT_PUBLIC_APP_IMPRINT_CUSTOM_CONFIG: "disabled"
+  NEXT_PUBLIC_APP_IMPRINT_SERVICE_BASE_URL: "${{ vars.NEXT_PUBLIC_IMPRINT_SERVICE_BASE_URL }}"
+  NEXT_PUBLIC_APP_MATOMO_BASE_URL: "${{ vars.NEXT_PUBLIC_MATOMO_BASE_URL }}"
+  NEXT_PUBLIC_APP_MATOMO_ID: "${{ vars.NEXT_PUBLIC_APP_MATOMO_ID }}"
+  NEXT_PUBLIC_APP_SERVICE_ID: "${{ vars.APP_SERVICE_ID }}"
+  NEXT_PUBLIC_WEBSITE_IMPRINT_CUSTOM_CONFIG: "disabled"
+  NEXT_PUBLIC_WEBSITE_IMPRINT_SERVICE_BASE_URL: "${{ vars.NEXT_PUBLIC_IMPRINT_SERVICE_BASE_URL }}"
+  NEXT_PUBLIC_WEBSITE_MATOMO_BASE_URL: "${{ vars.NEXT_PUBLIC_MATOMO_BASE_URL }}"
+  NEXT_PUBLIC_WEBSITE_MATOMO_ID: "${{ vars.NEXT_PUBLIC_WEBSITE_MATOMO_ID }}"
+  NEXT_PUBLIC_WEBSITE_SERVICE_ID: "${{ vars.WEBSITE_SERVICE_ID }}"
+  NEXT_PUBLIC_TYPESENSE_HOST: "localhost"
+  NEXT_PUBLIC_TYPESENSE_PORT: "8108"
+  NEXT_PUBLIC_TYPESENSE_PROTOCOL: "http"
+  NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME: "kb-resources"
+  NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME: "kb-website"
+  S3_ACCESS_KEY: "${{ secrets.TEST_S3_ACCESS_KEY }}"
+  S3_BUCKET_NAME: "the-knowledge-base"
+  S3_HOST: "localhost"
+  S3_PORT: "9000"
+  S3_PROTOCOL: "http"
+  S3_SECRET_KEY: "${{ secrets.TEST_S3_SECRET_KEY }}"
+  TYPESENSE_ADMIN_API_KEY: "${{ secrets.TEST_TYPESENSE_ADMIN_API_KEY }}"
+  TYPESENSE_HOST: "localhost"
+  TYPESENSE_PORT: "8108"
+  TYPESENSE_PROTOCOL: "http"
+  TYPESENSE_RESOURCE_COLLECTION_NAME: "kb-resources"
+  TYPESENSE_WEBSITE_COLLECTION_NAME: "kb-website"
+  TURBO_TEAM: "${{ vars.TURBO_TEAM }}"
+  TURBO_TOKEN: "${{ secrets.TURBO_TOKEN }}"
+  UNR_DATABASE_DIRECT_URL: "postgresql://dariah-unr:dariah-unr@localhost:5432/dariah-unr"
+  UNR_S3_BUCKET_NAME: "dariah-unr"
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+
+      - name: Use node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm exec turbo run --filter "./packages/*" build
+
+      - name: Check
+        run: pnpm exec turbo run format:check lint:check types:check
+
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+
+      - name: Use node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm exec turbo run --filter "./packages/*" build
+
+      - name: Start services
+        run: pnpm run dev:services:up
+
+      - name: Prepare dev environment
+        run: pnpm run dev:prepare
+
+      - name: Setup services
+        run: pnpm run dev:services:setup
+
+      - name: Seed kitchen sink data
+        run: pnpm run data:seed:kitchen-sink
+
+      - name: Generate search api key
+        run: |
+          set -euo pipefail
+          SEARCH_API_KEY="$(pnpm --silent run search:api-keys:generate --raw)"
+          if [ -z "$SEARCH_API_KEY" ]; then
+            echo "Failed to generate search api key." >&2
+            exit 1
+          fi
+          {
+            echo "NEXT_PUBLIC_TYPESENSE_SEARCH_API_KEY=$SEARCH_API_KEY"
+            echo "TYPESENSE_SEARCH_API_KEY=$SEARCH_API_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Test
+        run: pnpm exec turbo run test
+
+      - name: Stop services
+        run: pnpm run dev:services:down
+
+  e2e-admin:
+    name: End-to-end tests / Admin
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --user 1001 --ipc=host
+    timeout-minutes: 60
+
+    env:
+      DATABASE_HOST: "postgres"
+      EMAIL_SMTP_SERVER: "mailpit"
+      HOME: "/home/pwuser"
+      IMGPROXY_BASE_URL: "http://imgproxy:8080"
+      MAILPIT_API_BASE_URL: "http://mailpit:8025"
+      NEXT_PUBLIC_TYPESENSE_HOST: "typesense"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+      S3_HOST: "minio"
+      TYPESENSE_HOST: "typesense"
+      UNR_DATABASE_DIRECT_URL: "postgresql://dariah-unr:dariah-unr@postgres:5432/dariah-unr"
+
+    # The e2e jobs run inside the Playwright container, so GitHub service containers
+    # provide stable DNS names on the job network. The test job uses docker
+    # compose instead to exercise the same service setup developers use locally.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: ${{ env.DATABASE_NAME }}
+          POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          POSTGRES_USER: ${{ env.DATABASE_USER }}
+        options: >-
+          --health-cmd "pg_isready -d $POSTGRES_DB -U $POSTGRES_USER"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      typesense:
+        image: typesense/typesense:30.0
+        env:
+          TYPESENSE_API_KEY: ${{ env.TYPESENSE_ADMIN_API_KEY }}
+          TYPESENSE_DATA_DIR: /tmp
+          TYPESENSE_ENABLE_CORS: "true"
+        options: >-
+          --health-cmd "bash -c 'cat < /dev/null > /dev/tcp/localhost/8108'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-start-period 15s
+          --health-retries 10
+      minio:
+        image: quay.io/minio/minio:latest
+        command: server /data --console-address ":9001"
+        env:
+          MINIO_ROOT_USER: ${{ env.S3_ACCESS_KEY }}
+          MINIO_ROOT_PASSWORD: ${{ env.S3_SECRET_KEY }}
+        options: >-
+          --health-cmd "mc ready local"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      imgproxy:
+        image: ghcr.io/imgproxy/imgproxy:latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.S3_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_SECRET_ACCESS_KEY: ${{ env.S3_SECRET_KEY }}
+          IMGPROXY_ALLOWED_SOURCES: "s3://"
+          IMGPROXY_KEY: ${{ env.IMGPROXY_KEY }}
+          IMGPROXY_S3_ENDPOINT: "http://minio:9000"
+          IMGPROXY_SALT: ${{ env.IMGPROXY_SALT }}
+          IMGPROXY_USE_S3: "true"
+      mailpit:
+        image: axllent/mailpit:latest
+        env:
+          MP_ENABLE_CHAOS: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Trust repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+
+      - name: Use node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for services
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in postgres:5432 typesense:8108 minio:9000 mailpit:1025 imgproxy:8080; do
+            host="${service%:*}"
+            port="${service#*:}"
+            for attempt in {1..30}; do
+              if timeout 1 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Timed out waiting for $service." >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
+      - name: Build packages
+        run: pnpm exec turbo run --filter "./packages/*" build
+
+      - name: Prepare dev environment
+        run: pnpm run dev:prepare
+
+      - name: Setup services
+        run: pnpm run dev:services:setup
+
+      - name: Seed kitchen sink data
+        run: pnpm run data:seed:kitchen-sink
+
+      - name: Build app
+        run: pnpm exec turbo run build
+
+      - name: Run e2e tests
+        run: pnpm exec turbo run --filter "@acdh-knowledge-base/knowledge-base" test:e2e -- --project=admin --project=non-admin
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: playwright-report-admin
+          path: apps/knowledge-base/playwright-report/
+          retention-days: 30
+
+  e2e-browsers:
+    name: End-to-end tests / Browsers
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      options: --user 1001 --ipc=host
+    timeout-minutes: 60
+
+    env:
+      DATABASE_HOST: "postgres"
+      EMAIL_SMTP_SERVER: "mailpit"
+      HOME: "/home/pwuser"
+      IMGPROXY_BASE_URL: "http://imgproxy:8080"
+      MAILPIT_API_BASE_URL: "http://mailpit:8025"
+      NEXT_PUBLIC_TYPESENSE_HOST: "typesense"
+      PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
+      S3_HOST: "minio"
+      TYPESENSE_HOST: "typesense"
+      UNR_DATABASE_DIRECT_URL: "postgresql://dariah-unr:dariah-unr@postgres:5432/dariah-unr"
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: ${{ env.DATABASE_NAME }}
+          POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          POSTGRES_USER: ${{ env.DATABASE_USER }}
+        options: >-
+          --health-cmd "pg_isready -d $POSTGRES_DB -U $POSTGRES_USER"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      typesense:
+        image: typesense/typesense:30.0
+        env:
+          TYPESENSE_API_KEY: ${{ env.TYPESENSE_ADMIN_API_KEY }}
+          TYPESENSE_DATA_DIR: /tmp
+          TYPESENSE_ENABLE_CORS: "true"
+        options: >-
+          --health-cmd "bash -c 'cat < /dev/null > /dev/tcp/localhost/8108'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-start-period 15s
+          --health-retries 10
+      minio:
+        image: quay.io/minio/minio:latest
+        command: server /data --console-address ":9001"
+        env:
+          MINIO_ROOT_USER: ${{ env.S3_ACCESS_KEY }}
+          MINIO_ROOT_PASSWORD: ${{ env.S3_SECRET_KEY }}
+        options: >-
+          --health-cmd "mc ready local"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      imgproxy:
+        image: ghcr.io/imgproxy/imgproxy:latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.S3_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_SECRET_ACCESS_KEY: ${{ env.S3_SECRET_KEY }}
+          IMGPROXY_ALLOWED_SOURCES: "s3://"
+          IMGPROXY_KEY: ${{ env.IMGPROXY_KEY }}
+          IMGPROXY_S3_ENDPOINT: "http://minio:9000"
+          IMGPROXY_SALT: ${{ env.IMGPROXY_SALT }}
+          IMGPROXY_USE_S3: "true"
+      mailpit:
+        image: axllent/mailpit:latest
+        env:
+          MP_ENABLE_CHAOS: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Trust repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          cache: true
+
+      - name: Use node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for services
+        shell: bash
+        run: |
+          set -euo pipefail
+          for service in postgres:5432 typesense:8108 minio:9000 mailpit:1025 imgproxy:8080; do
+            host="${service%:*}"
+            port="${service#*:}"
+            for attempt in {1..30}; do
+              if timeout 1 bash -c "cat < /dev/null > /dev/tcp/$host/$port" 2>/dev/null; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "Timed out waiting for $service." >&2
+                exit 1
+              fi
+              sleep 2
+            done
+          done
+
+      - name: Build packages
+        run: pnpm exec turbo run --filter "./packages/*" build
+
+      - name: Prepare dev environment
+        run: pnpm run dev:prepare
+
+      - name: Setup services
+        run: pnpm run dev:services:setup
+
+      - name: Seed kitchen sink data
+        run: pnpm run data:seed:kitchen-sink
+
+      - name: Build app
+        run: pnpm exec turbo run build
+
+      - name: Run e2e tests
+        run: pnpm exec turbo run --filter "@acdh-knowledge-base/knowledge-base" test:e2e -- --project=chromium --project=firefox --project=webkit
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: playwright-report-browsers
+          path: apps/knowledge-base/playwright-report/
+          retention-days: 30
+
+  build-deploy:
+    name: Build and deploy
+    if: ${{ github.event_name == 'push' }}
+    needs: [validate, test, e2e-admin, e2e-browsers]
+    uses: ./.github/workflows/build-deploy.yaml
+    secrets: inherit
+    # https://docs.github.com/en/actions/using-workflows/reusing-workflows#access-and-permissions
+    permissions:
+      contents: read
+      packages: write

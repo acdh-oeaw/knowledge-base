@@ -1,0 +1,21 @@
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: the-knowledge-base-mailpit
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_ENABLE_CHAOS: true
+    ports:
+      - "${MAILPIT_API_PORT:-8025}:8025"
+      - "${EMAIL_SMTP_PORT:-1025}:1025"
+    volumes:
+      - mailpit-data:/data
+
+volumes:
+  mailpit-data:
+    name: the-knowledge-base-mailpit-data
+
+networks:
+  default:
+    name: the-knowledge-base

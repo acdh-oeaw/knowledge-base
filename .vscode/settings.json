@@ -1,0 +1,82 @@
+{
+	"css.validate": false,
+	"debug.toolBarLocation": "docked",
+	"editor.codeActionsOnSave": {
+		"source.fixAll": "explicit"
+	},
+	"editor.defaultFormatter": "oxc.oxc-vscode",
+	"editor.detectIndentation": false,
+	"editor.formatOnSave": true,
+	"editor.inlayHints.enabled": "offUnlessPressed",
+	"editor.linkedEditing": true,
+	"editor.quickSuggestions": {
+		"strings": true
+	},
+	"editor.rulers": [100],
+	"editor.stickyScroll.enabled": true,
+	"emmet.showExpandedAbbreviation": "never",
+	"eslint.enable": true,
+	"eslint.options": {
+		"flags": ["unstable_native_nodejs_ts_config"]
+	},
+	"eslint.validate": ["javascript", "typescript", "typescriptreact"],
+	"eslint.workingDirectories": [
+		{ "pattern": "./apps/*" },
+		{ "pattern": "./lib/*" },
+		{ "pattern": "./packages/*" }
+	],
+	"files.associations": {
+		"*.css": "tailwindcss"
+	},
+	"files.eol": "\n",
+	"files.watcherExclude": {
+		"**/.next/**": true
+	},
+	"js/ts.inlayHints.parameterNames.enabled": "all",
+	"js/ts.preferences.autoImportFileExcludePatterns": [
+		"lucide-react",
+		"next/router.d.ts",
+		"next/dist/client/router.d.ts"
+	],
+	"js/ts.preferences.importModuleSpecifier": "non-relative",
+	"js/ts.preferences.preferTypeOnlyAutoImports": true,
+	"js/ts.tsdk.path": "node_modules/typescript/lib",
+	"js/ts.tsdk.promptToUseWorkspaceVersion": true,
+	"less.validate": false,
+	"mdx.server.enable": true,
+	"oxc.enable.oxfmt": true,
+	"prettier.enable": false,
+	"scss.validate": false,
+	"search.exclude": {
+		"**/.next/**": true,
+		"**/node_modules/**": true
+	},
+	"stylelint.enable": true,
+	"stylelint.snippet": ["css", "postcss", "tailwindcss"],
+	"stylelint.validate": ["css", "postcss", "tailwindcss"],
+	"tailwindCSS.classFunctions": ["cn", "styles"],
+	"tailwindCSS.validate": true,
+	"terminal.integrated.enablePersistentSessions": false,
+	"turbo.useLocalTurbo": true,
+	"vitest.cliArguments": "--passWithNoTests",
+	"vitest.shellType": "terminal",
+	"workbench.editor.customLabels.patterns": {
+		"**/app/**/error.tsx": "${dirname} - error",
+		"**/app/**/forbidden.tsx": "${dirname} - forbidden",
+		"**/app/**/layout.tsx": "${dirname} - layout",
+		"**/app/**/loading.tsx": "${dirname} - loading",
+		"**/app/**/not-found.tsx": "${dirname} - not-found",
+		"**/app/**/page.tsx": "${dirname} - page",
+		"**/app/**/template.tsx": "${dirname} - template",
+		"**/app/**/unauthorized.tsx": "${dirname} - unauthorized"
+	},
+	"workbench.editor.labelFormat": "medium",
+	"workbench.tree.enableStickyScroll": true,
+	"[markdown]": {
+		"editor.wordWrap": "on"
+	},
+	"[mdx]": {
+		"editor.formatOnSave": false,
+		"editor.wordWrap": "on"
+	}
+}

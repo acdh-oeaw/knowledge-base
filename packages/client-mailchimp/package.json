@@ -1,0 +1,36 @@
+{
+	"name": "@acdh-knowledge-base/client-mailchimp",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"imports": {
+		"#/*": "./*"
+	},
+	"exports": {
+		".": "./dist/index.mjs"
+	},
+	"scripts": {
+		"build": "tsdown --sourcemap ./lib/index.ts",
+		"dev": "tsdown --watch ./lib/index.ts",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-knowledge-base/request": "workspace:^",
+		"@types/node": "catalog:",
+		"better-result": "catalog:",
+		"tsdown": "catalog:",
+		"typescript": "catalog:"
+	},
+	"peerDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-knowledge-base/request": "workspace:^",
+		"better-result": "catalog:"
+	}
+}
