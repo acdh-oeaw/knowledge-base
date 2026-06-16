@@ -19,9 +19,9 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/configs": "workspace:^",
 		"@acdh-knowledge-base/rate-limiter": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@types/node": "catalog:",
 		"better-result": "catalog:",
 		"next": "catalog:",
@@ -30,8 +30,8 @@
 		"valibot": "catalog:"
 	},
 	"peerDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/rate-limiter": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"better-result": "catalog:",
 		"next": "catalog:",
 		"valibot": "catalog:"

@@ -1,8 +1,11 @@
-import { assert } from "@acdh-oeaw/lib";
 import { createSshocClient } from "@acdh-knowledge-base/client-sshoc";
 import { createZoteroClient } from "@acdh-knowledge-base/client-zotero";
 import { createSearchService } from "@acdh-knowledge-base/search";
-import { createSearchResourcesService, loadOrgUnitLookups } from "@acdh-knowledge-base/search-resources";
+import {
+	createSearchResourcesService,
+	loadOrgUnitLookups,
+} from "@acdh-knowledge-base/search-resources";
+import { assert } from "@acdh-oeaw/lib";
 
 import { env } from "@/config/env.config";
 import { db } from "@/lib/db";

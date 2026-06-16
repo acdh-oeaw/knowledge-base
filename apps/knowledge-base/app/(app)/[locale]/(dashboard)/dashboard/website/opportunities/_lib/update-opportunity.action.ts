@@ -1,7 +1,7 @@
 "use server";
 
-import { assert, keyBy } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert, keyBy } from "@acdh-oeaw/lib";
 
 import { UpdateOpportunityActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_lib/update-opportunity.schema";
 import { upsertTypedContentBlock } from "@/lib/content-blocks-service";

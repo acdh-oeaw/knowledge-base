@@ -1,5 +1,5 @@
-import { assert } from "@acdh-oeaw/lib";
 import { createSearchAdminService } from "@acdh-knowledge-base/search/admin";
+import { assert } from "@acdh-oeaw/lib";
 
 import { env } from "@/config/env.config";
 

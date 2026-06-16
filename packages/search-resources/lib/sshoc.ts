@@ -1,6 +1,6 @@
-import { createUrl, unreachable } from "@acdh-oeaw/lib";
 import { type SearchItem, isCoreService, isSoftware } from "@acdh-knowledge-base/client-sshoc";
 import type { ResourceDocument } from "@acdh-knowledge-base/search";
+import { createUrl, unreachable } from "@acdh-oeaw/lib";
 
 import { toPlainText } from "./markdown/to-plain-text";
 

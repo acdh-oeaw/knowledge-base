@@ -34,8 +34,8 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/env": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@tiptap/core": "catalog:",
 		"better-result": "catalog:",
 		"drizzle-orm": "catalog:",

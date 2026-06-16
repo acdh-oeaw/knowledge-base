@@ -1,6 +1,6 @@
-import { assert } from "@acdh-oeaw/lib";
 import type { User } from "@acdh-knowledge-base/auth";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import type { WorkingGroupReportSummaryData } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_components/working-group-report-summary";
 import { type Action, can } from "@/lib/auth/permissions";

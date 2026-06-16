@@ -1,9 +1,9 @@
-import { log } from "@acdh-oeaw/lib";
 import type { Database } from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { alias, and, eq, inArray, sql } from "@acdh-knowledge-base/database/sql";
 import type { SearchService, WebsiteDocument } from "@acdh-knowledge-base/search";
 import type { SearchAdminService } from "@acdh-knowledge-base/search/admin";
+import { log } from "@acdh-oeaw/lib";
 
 import { toPlainText } from "./json-content/to-plain-text";
 

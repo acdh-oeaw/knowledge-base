@@ -1,4 +1,7 @@
-import { InternalPageSelectSchema, InternalPageUpdateSchema } from "@acdh-knowledge-base/database/schema";
+import {
+	InternalPageSelectSchema,
+	InternalPageUpdateSchema,
+} from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
 import { ContentBlockInputSchema } from "@/lib/content-block-input";

@@ -22,7 +22,6 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/client-sshoc": "workspace:^",
 		"@acdh-knowledge-base/client-zenodo": "workspace:^",
 		"@acdh-knowledge-base/client-zotero": "workspace:^",
@@ -35,6 +34,7 @@
 		"@acdh-knowledge-base/search-website": "workspace:^",
 		"@acdh-knowledge-base/sshoc-services": "workspace:^",
 		"@acdh-knowledge-base/storage": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@types/node": "catalog:",
 		"better-result": "catalog:",
 		"remark-parse": "catalog:",

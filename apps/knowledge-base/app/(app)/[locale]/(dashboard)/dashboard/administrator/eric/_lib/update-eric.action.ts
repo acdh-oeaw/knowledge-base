@@ -1,7 +1,7 @@
 "use server";
 
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { UpdateEricActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_lib/update-eric.schema";
 import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";

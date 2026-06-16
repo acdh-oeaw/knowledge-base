@@ -19,13 +19,13 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/database": "workspace:^",
 		"@acdh-knowledge-base/env": "workspace:^",
 		"@acdh-knowledge-base/images": "workspace:^",
 		"@acdh-knowledge-base/request": "workspace:^",
 		"@acdh-knowledge-base/search": "workspace:^",
 		"@acdh-knowledge-base/storage": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@hono/node-server": "catalog:",
 		"@hono/standard-validator": "catalog:",
 		"@hono/swagger-ui": "catalog:",
@@ -42,8 +42,8 @@
 		"valibot": "catalog:"
 	},
 	"devDependencies": {
-		"@acdh-oeaw/tsconfig": "catalog:",
 		"@acdh-knowledge-base/configs": "workspace:^",
+		"@acdh-oeaw/tsconfig": "catalog:",
 		"@dotenvx/dotenvx": "catalog:",
 		"@faker-js/faker": "catalog:",
 		"@sindresorhus/slugify": "catalog:",

@@ -18,7 +18,10 @@ import {
 	ModalTitle,
 } from "@acdh-knowledge-base/ui/modal";
 import { NumberField, NumberInput } from "@acdh-knowledge-base/ui/number-field";
-import { RichTextEditor, RichTextEditorToolbarButton } from "@acdh-knowledge-base/ui/rich-text-editor";
+import {
+	RichTextEditor,
+	RichTextEditorToolbarButton,
+} from "@acdh-knowledge-base/ui/rich-text-editor";
 import { SearchField, SearchInput } from "@acdh-knowledge-base/ui/search-field";
 import {
 	Select,

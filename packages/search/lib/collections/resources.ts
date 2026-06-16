@@ -31,11 +31,7 @@ export const resourcesCollection = defineCollection({
 	] as const,
 });
 
-export const resourceSources = [
-	"ssh-open-marketplace",
-	"zenodo",
-	"zotero",
-] as const;
+export const resourceSources = ["ssh-open-marketplace", "zenodo", "zotero"] as const;
 export type ResourceSource = (typeof resourceSources)[number];
 
 export const resourceTypes = [

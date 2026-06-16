@@ -18,13 +18,13 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/auth": "workspace:^",
 		"@acdh-knowledge-base/configs": "workspace:^",
 		"@acdh-knowledge-base/database": "workspace:^",
 		"@acdh-knowledge-base/env": "workspace:^",
 		"@acdh-knowledge-base/search": "workspace:^",
 		"@acdh-knowledge-base/storage": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@faker-js/faker": "catalog:",
 		"@sindresorhus/slugify": "catalog:",
 		"@types/node": "catalog:",

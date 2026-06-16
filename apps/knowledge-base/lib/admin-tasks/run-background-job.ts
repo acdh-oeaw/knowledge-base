@@ -1,5 +1,5 @@
-import { log } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { log } from "@acdh-oeaw/lib";
 import { after } from "next/server";
 
 import { db } from "@/lib/db";

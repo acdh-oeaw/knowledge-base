@@ -2,10 +2,10 @@
 
 import { join } from "node:path";
 
-import { log } from "@acdh-oeaw/lib";
 import type { Database } from "@acdh-knowledge-base/database";
 import type * as SchemaModule from "@acdh-knowledge-base/database/schema";
 import type { sql as SqlFn } from "@acdh-knowledge-base/database/sql";
+import { log } from "@acdh-oeaw/lib";
 import { config as dotenv } from "@dotenvx/dotenvx";
 
 dotenv({

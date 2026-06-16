@@ -1,5 +1,5 @@
-import { createUrl } from "@acdh-oeaw/lib";
 import { ToastRegion } from "@acdh-knowledge-base/ui/toast";
+import { createUrl } from "@acdh-oeaw/lib";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -94,7 +94,6 @@ export default async function LocaleLayout(props: Readonly<LocaleLayoutProps>): 
 					{children}
 
 					<ToastRegion />
-
 				</Providers>
 			</DocumentBody>
 		</HtmlDocument>

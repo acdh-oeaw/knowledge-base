@@ -1,7 +1,7 @@
 "use server";
 
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 import slugify from "@sindresorhus/slugify";
 
 import { CreateGovernanceBodyActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_lib/create-governance-body.schema";

@@ -44,11 +44,7 @@ export function createSearchIndexResourceDocuments(
 	params: CreateSearchIndexResourceDocumentsParams,
 ): Array<ResourceDocument> {
 	const { sourceData, sshocMarketplaceBaseUrl, orgUnits } = params;
-	const {
-		sshocItems,
-		zoteroItems,
-		zoteroCollections,
-	} = sourceData;
+	const { sshocItems, zoteroItems, zoteroCollections } = sourceData;
 
 	const zoteroCollectionLookup = buildZoteroCollectionLookup(zoteroCollections);
 

@@ -1,9 +1,9 @@
 // oxlint-disable oxc/no-map-spread
 
-import { groupBy, keyBy } from "@acdh-oeaw/lib";
 import type { Database, Transaction } from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { eq } from "@acdh-knowledge-base/database/sql";
+import { groupBy, keyBy } from "@acdh-oeaw/lib";
 import { faker as f } from "@faker-js/faker";
 import slugify from "@sindresorhus/slugify";
 

@@ -1,6 +1,9 @@
 "use server";
 
-import { createActionStateError, createActionStateSuccess } from "@acdh-knowledge-base/next-lib/actions";
+import {
+	createActionStateError,
+	createActionStateSuccess,
+} from "@acdh-knowledge-base/next-lib/actions";
 import { globalPostRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
 import { getExtracted } from "next-intl/server";
 

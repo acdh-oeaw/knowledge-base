@@ -1,6 +1,6 @@
-import { createUrl, createUrlSearchParams } from "@acdh-oeaw/lib";
 import { type RequestOptions, type RequestResult, request } from "@acdh-knowledge-base/request";
 import { HttpError, type RequestError } from "@acdh-knowledge-base/request/errors";
+import { createUrl, createUrlSearchParams } from "@acdh-oeaw/lib";
 import { Result } from "better-result";
 
 /**

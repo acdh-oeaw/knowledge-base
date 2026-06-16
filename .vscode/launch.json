@@ -29,6 +29,6 @@
 		{
 			"name": "Apps: Knowledge-Base",
 			"configurations": ["Apps: Knowledge-Base (server-side)", "Apps: Knowledge-Base (client-side)"]
-		},
+		}
 	]
 }

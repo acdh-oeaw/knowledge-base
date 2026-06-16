@@ -1,5 +1,5 @@
-import { log } from "@acdh-oeaw/lib";
 import { request } from "@acdh-knowledge-base/request";
+import { log } from "@acdh-oeaw/lib";
 
 import { env } from "@/config/env.config";
 

@@ -1,5 +1,5 @@
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 import type { JSONContent } from "@tiptap/core";
 import { v7 as uuidv7 } from "uuid";
 

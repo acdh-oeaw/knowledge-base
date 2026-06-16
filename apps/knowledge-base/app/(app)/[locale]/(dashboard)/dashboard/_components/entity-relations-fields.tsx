@@ -2,7 +2,10 @@
 
 import { AsyncMultipleSelect } from "@acdh-knowledge-base/ui/async-multiple-select";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
-import type { AsyncOption, AsyncOptionsFetchPageParams } from "@acdh-knowledge-base/ui/use-async-options";
+import type {
+	AsyncOption,
+	AsyncOptionsFetchPageParams,
+} from "@acdh-knowledge-base/ui/use-async-options";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useState } from "react";
 

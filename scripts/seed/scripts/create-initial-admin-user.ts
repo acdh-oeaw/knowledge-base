@@ -1,8 +1,8 @@
-import { assert, log } from "@acdh-oeaw/lib";
 import { createUserWithPassword } from "@acdh-knowledge-base/auth";
 import { createDatabaseService } from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { and, eq } from "@acdh-knowledge-base/database/sql";
+import { assert, log } from "@acdh-oeaw/lib";
 
 import { env } from "../config/env.config";
 

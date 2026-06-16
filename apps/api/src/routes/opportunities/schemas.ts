@@ -1,5 +1,5 @@
-import { ensureArray } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { ensureArray } from "@acdh-oeaw/lib";
 import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";

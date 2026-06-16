@@ -1,5 +1,5 @@
-import { isNonEmptyString, unique } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { isNonEmptyString, unique } from "@acdh-oeaw/lib";
 
 import type { Database, Transaction } from "@/lib/db";
 

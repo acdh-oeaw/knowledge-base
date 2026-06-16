@@ -3,9 +3,9 @@
 import { Readable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
 
-import { isNonEmptyString } from "@acdh-oeaw/lib";
 import { relationsFilterToSQL } from "@acdh-knowledge-base/database/relations";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { isNonEmptyString } from "@acdh-oeaw/lib";
 
 import { db } from "@/lib/db";
 import { unaccentIlike } from "@/lib/db/search";

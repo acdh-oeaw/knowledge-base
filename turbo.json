@@ -3,7 +3,7 @@
 	"globalDependencies": [".env.keys"],
 	"globalEnv": [
 		"API_ACCESS_TOKEN",
-        "APP_TASKS_SECRET",
+		"APP_TASKS_SECRET",
 		"API_ALLOWED_ORIGINS",
 		"API_BASE_URL",
 		"API_LOG_LEVEL",

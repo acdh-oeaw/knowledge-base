@@ -1,6 +1,6 @@
-import { isNonEmptyArray, isNonEmptyString } from "@acdh-oeaw/lib";
 import type { ZenodoRecord } from "@acdh-knowledge-base/client-zenodo";
 import type { ResourceDocument } from "@acdh-knowledge-base/search";
+import { isNonEmptyArray, isNonEmptyString } from "@acdh-oeaw/lib";
 
 /** @see {@link https://developers.zenodo.org/} */
 /** @see {@link https://zenodo.org/communities/dariah} */

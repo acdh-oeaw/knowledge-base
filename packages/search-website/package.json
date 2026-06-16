@@ -31,8 +31,8 @@
 		"typescript": "catalog:"
 	},
 	"peerDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/database": "workspace:^",
-		"@acdh-knowledge-base/search": "workspace:^"
+		"@acdh-knowledge-base/search": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:"
 	}
 }

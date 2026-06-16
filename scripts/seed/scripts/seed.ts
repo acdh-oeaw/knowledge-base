@@ -1,9 +1,9 @@
 import { parseArgs } from "node:util";
 
-import { log } from "@acdh-oeaw/lib";
 import { createDatabaseService } from "@acdh-knowledge-base/database";
 import { createSearchAdminService } from "@acdh-knowledge-base/search/admin";
 import { createStorageService } from "@acdh-knowledge-base/storage";
+import { log } from "@acdh-oeaw/lib";
 import * as v from "valibot";
 
 import { env } from "../config/env.config";

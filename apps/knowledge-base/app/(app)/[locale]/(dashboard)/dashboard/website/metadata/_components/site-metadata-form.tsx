@@ -1,6 +1,5 @@
 "use client";
 
-import { keyBy } from "@acdh-oeaw/lib";
 import type * as schema from "@acdh-knowledge-base/database/schema";
 import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
 import { Button } from "@acdh-knowledge-base/ui/button";
@@ -14,6 +13,7 @@ import { SearchField, SearchInput } from "@acdh-knowledge-base/ui/search-field";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
 import { TextField } from "@acdh-knowledge-base/ui/text-field";
 import { TextArea } from "@acdh-knowledge-base/ui/textarea";
+import { keyBy } from "@acdh-oeaw/lib";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import { type ReactNode, useActionState, useMemo, useState } from "react";

@@ -1,13 +1,16 @@
 import * as path from "node:path";
 
-import { assert, log } from "@acdh-oeaw/lib";
 import { createSshocClient } from "@acdh-knowledge-base/client-sshoc";
 import { createZoteroClient } from "@acdh-knowledge-base/client-zotero";
 import { createDatabaseService } from "@acdh-knowledge-base/database";
 import { createSearchService } from "@acdh-knowledge-base/search";
-import { createSearchResourcesService, loadOrgUnitLookups } from "@acdh-knowledge-base/search-resources";
+import {
+	createSearchResourcesService,
+	loadOrgUnitLookups,
+} from "@acdh-knowledge-base/search-resources";
 import { createWebsiteSearchIndexService } from "@acdh-knowledge-base/search-website";
 import { createSearchAdminService } from "@acdh-knowledge-base/search/admin";
+import { assert, log } from "@acdh-oeaw/lib";
 
 import { env } from "../config/env.config.ts";
 import { createCacheService } from "../lib/cache/index.ts";

@@ -1,7 +1,7 @@
 "use server";
 
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { documentationPagesLifecycleAdapter } from "@/lib/data/documentation-pages.lifecycle-adapter";
 import { getDocumentVersions } from "@/lib/data/entity-lifecycle";

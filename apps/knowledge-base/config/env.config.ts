@@ -1,5 +1,5 @@
-import { addTrailingSlash, removeTrailingSlash } from "@acdh-oeaw/lib";
 import { define } from "@acdh-knowledge-base/env";
+import { addTrailingSlash, removeTrailingSlash } from "@acdh-oeaw/lib";
 import * as v from "valibot";
 
 const validate = define({
@@ -35,7 +35,7 @@ const validate = define({
 		NEXT_PUBLIC_TYPESENSE_SEARCH_API_KEY: v.optional(v.pipe(v.string(), v.nonEmpty())),
 	}),
 	envVars: v.object({
-        APP_TASKS_SECRET: v.optional(v.pipe(v.string(), v.nonEmpty())),
+		APP_TASKS_SECRET: v.optional(v.pipe(v.string(), v.nonEmpty())),
 		AUTH_ENCRYPTION_KEY: v.pipe(v.string(), v.length(32)),
 		AUTH_SIGN_UP: v.optional(v.picklist(["disabled", "enabled"]), "disabled"),
 		BUILD_MODE: v.optional(v.picklist(["export", "standalone"])),
@@ -76,7 +76,7 @@ const validate = define({
 
 export const env = validate({
 	environment: {
-        APP_TASKS_SECRET: process.env.APP_TASKS_SECRET,
+		APP_TASKS_SECRET: process.env.APP_TASKS_SECRET,
 		AUTH_ENCRYPTION_KEY: process.env.AUTH_ENCRYPTION_KEY,
 		AUTH_SIGN_UP: process.env.AUTH_SIGN_UP,
 		BUILD_MODE: process.env.BUILD_MODE,

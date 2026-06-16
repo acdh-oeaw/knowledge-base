@@ -19,7 +19,10 @@ import {
 import { ProgressCircle } from "@acdh-knowledge-base/ui/progress-circle";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@acdh-knowledge-base/ui/select";
 import { TextField } from "@acdh-knowledge-base/ui/text-field";
-import type { AsyncOption, AsyncOptionsFetchPageParams } from "@acdh-knowledge-base/ui/use-async-options";
+import type {
+	AsyncOption,
+	AsyncOptionsFetchPageParams,
+} from "@acdh-knowledge-base/ui/use-async-options";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useState, useTransition } from "react";

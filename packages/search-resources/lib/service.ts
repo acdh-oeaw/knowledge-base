@@ -1,4 +1,3 @@
-import { log } from "@acdh-oeaw/lib";
 import type { SshocClient } from "@acdh-knowledge-base/client-sshoc";
 import type { ZoteroClient } from "@acdh-knowledge-base/client-zotero";
 import {
@@ -8,6 +7,7 @@ import {
 	resourceSources,
 } from "@acdh-knowledge-base/search";
 import type { SearchAdminService } from "@acdh-knowledge-base/search/admin";
+import { log } from "@acdh-oeaw/lib";
 import { Result } from "better-result";
 
 import {
@@ -62,15 +62,8 @@ function getOrFetch<T, FetchError, CacheError>(
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function createSearchResourcesService(params: CreateSearchResourcesServiceParams) {
-	const {
-		search,
-		searchService,
-		sshoc,
-		sshocMarketplaceBaseUrl,
-		zotero,
-		zoteroGroupId,
-		orgUnits,
-	} = params;
+	const { search, searchService, sshoc, sshocMarketplaceBaseUrl, zotero, zoteroGroupId, orgUnits } =
+		params;
 
 	const externalSourcesFilter = `source:[${resourceSources.join(",")}]`;
 
@@ -80,11 +73,7 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 		const cache = options?.cache;
 
 		const result = await Result.gen(async function* () {
-			const [
-				sshocItemsResult,
-				zoteroItemsResult,
-				zoteroCollectionsResult,
-			] = await Promise.all([
+			const [sshocItemsResult, zoteroItemsResult, zoteroCollectionsResult] = await Promise.all([
 				getOrFetch(cache, "sshoc/items", () =>
 					sshoc.items.searchAll({
 						"f.keyword": ["DARIAH Resource"],

@@ -1,9 +1,9 @@
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { Button } from "@acdh-knowledge-base/ui/button";
 import { Label } from "@acdh-knowledge-base/ui/field";
 import { Input } from "@acdh-knowledge-base/ui/input";
 import { TextField } from "@acdh-knowledge-base/ui/text-field";
+import { assert } from "@acdh-oeaw/lib";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";

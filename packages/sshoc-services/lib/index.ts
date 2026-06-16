@@ -1,4 +1,3 @@
-import { createUrl } from "@acdh-oeaw/lib";
 import {
 	type SearchItem,
 	type SshocClient,
@@ -8,6 +7,7 @@ import {
 import type { Database } from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { and, eq, inArray, isNotNull } from "@acdh-knowledge-base/database/sql";
+import { createUrl } from "@acdh-oeaw/lib";
 
 interface SshocServiceSnapshot {
 	accessibleAt: Array<string>;

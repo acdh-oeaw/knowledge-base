@@ -1,9 +1,9 @@
-import { assert } from "@acdh-oeaw/lib";
 import { createSshocClient } from "@acdh-knowledge-base/client-sshoc";
 import {
 	type IngestSshocServicesResult,
 	ingestSshocServices as ingestSshocServicesWithDependencies,
 } from "@acdh-knowledge-base/sshoc-services";
+import { assert } from "@acdh-oeaw/lib";
 
 import { env } from "@/config/env.config";
 import { db } from "@/lib/db";

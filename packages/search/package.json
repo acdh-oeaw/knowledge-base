@@ -25,9 +25,9 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/configs": "workspace:^",
 		"@acdh-knowledge-base/env": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@types/node": "catalog:",
 		"better-result": "catalog:",
 		"tsdown": "catalog:",

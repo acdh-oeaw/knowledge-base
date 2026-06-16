@@ -38,11 +38,11 @@
 		"valibot": "catalog:"
 	},
 	"peerDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/database": "workspace:^",
 		"@acdh-knowledge-base/email": "workspace:^",
 		"@acdh-knowledge-base/rate-limiter": "workspace:^",
 		"@acdh-knowledge-base/request": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@node-rs/argon2": "catalog:",
 		"@oslojs/binary": "catalog:",
 		"@oslojs/crypto": "catalog:",

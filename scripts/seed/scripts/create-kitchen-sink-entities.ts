@@ -2,13 +2,17 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import { join } from "node:path";
 
-import { log } from "@acdh-oeaw/lib";
-import { type Database, type Transaction, createDatabaseService } from "@acdh-knowledge-base/database";
+import {
+	type Database,
+	type Transaction,
+	createDatabaseService,
+} from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { eq, inArray } from "@acdh-knowledge-base/database/sql";
 import { type ResourceDocument, resourceSources, resourceTypes } from "@acdh-knowledge-base/search";
 import { createSearchAdminService } from "@acdh-knowledge-base/search/admin";
 import { createStorageService } from "@acdh-knowledge-base/storage";
+import { log } from "@acdh-oeaw/lib";
 
 import { env } from "../config/env.config";
 

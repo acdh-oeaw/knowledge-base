@@ -1,6 +1,6 @@
-import { isNonEmptyString, log } from "@acdh-oeaw/lib";
 import type { ZoteroJsonItem } from "@acdh-knowledge-base/client-zotero";
 import type { ResourceDocument } from "@acdh-knowledge-base/search";
+import { isNonEmptyString, log } from "@acdh-oeaw/lib";
 
 export interface ZoteroJsonItemData {
 	title?: string;

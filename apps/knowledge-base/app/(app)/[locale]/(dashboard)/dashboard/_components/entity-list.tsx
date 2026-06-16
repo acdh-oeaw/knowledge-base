@@ -3,7 +3,13 @@
 import { Button } from "@acdh-knowledge-base/ui/button";
 import { buttonStyles } from "@acdh-knowledge-base/ui/button-styles";
 import { Link } from "@acdh-knowledge-base/ui/link";
-import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "@acdh-knowledge-base/ui/menu";
+import {
+	Menu,
+	MenuContent,
+	MenuItem,
+	MenuLabel,
+	MenuSeparator,
+} from "@acdh-knowledge-base/ui/menu";
 import { SearchField, SearchInput } from "@acdh-knowledge-base/ui/search-field";
 import { EllipsisHorizontalIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";

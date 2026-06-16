@@ -1,5 +1,5 @@
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 import { faker as f } from "@faker-js/faker";
 import slugify from "@sindresorhus/slugify";
 import { afterEach, describe, expect, it, vi } from "vitest";

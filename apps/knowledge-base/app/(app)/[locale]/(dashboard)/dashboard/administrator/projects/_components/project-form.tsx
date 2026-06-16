@@ -23,7 +23,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@acdh-knowledg
 import { Separator } from "@acdh-knowledge-base/ui/separator";
 import { TextField } from "@acdh-knowledge-base/ui/text-field";
 import { TextArea } from "@acdh-knowledge-base/ui/textarea";
-import type { AsyncOption, AsyncOptionsFetchPageParams } from "@acdh-knowledge-base/ui/use-async-options";
+import type {
+	AsyncOption,
+	AsyncOptionsFetchPageParams,
+} from "@acdh-knowledge-base/ui/use-async-options";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { CalendarDate } from "@internationalized/date";
 import { useExtracted } from "next-intl";

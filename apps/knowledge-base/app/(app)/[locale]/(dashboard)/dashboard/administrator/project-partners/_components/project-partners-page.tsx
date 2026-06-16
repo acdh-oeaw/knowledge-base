@@ -25,7 +25,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@acdh-knowledge-base/ui/table";
-import type { AsyncOption, AsyncOptionsFetchPageParams } from "@acdh-knowledge-base/ui/use-async-options";
+import type {
+	AsyncOption,
+	AsyncOptionsFetchPageParams,
+} from "@acdh-knowledge-base/ui/use-async-options";
 import { PencilSquareIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { CalendarDate } from "@internationalized/date";
 import { useExtracted, useFormatter } from "next-intl";

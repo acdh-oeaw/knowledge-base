@@ -23,8 +23,8 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/env": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"better-result": "catalog:",
 		"minio": "catalog:",
 		"uuid": "catalog:",

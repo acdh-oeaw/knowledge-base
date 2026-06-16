@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import { assert } from "@acdh-oeaw/lib";
 import type { User } from "@acdh-knowledge-base/auth";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 import { forbidden } from "next/navigation";
 
 import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";

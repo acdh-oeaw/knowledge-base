@@ -20,17 +20,17 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/configs": "workspace:^",
 		"@acdh-knowledge-base/request": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@types/node": "catalog:",
 		"better-result": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:"
 	},
 	"peerDependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/request": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"better-result": "catalog:"
 	}
 }

@@ -14,7 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@acdh-knowledg
 import { Separator } from "@acdh-knowledge-base/ui/separator";
 import { TextField } from "@acdh-knowledge-base/ui/text-field";
 import { TextArea } from "@acdh-knowledge-base/ui/textarea";
-import type { AsyncOption, AsyncOptionsFetchPageParams } from "@acdh-knowledge-base/ui/use-async-options";
+import type {
+	AsyncOption,
+	AsyncOptionsFetchPageParams,
+} from "@acdh-knowledge-base/ui/use-async-options";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useActionState, useState } from "react";
 

@@ -123,9 +123,9 @@
 		"tailwind-variants": "catalog:"
 	},
 	"devDependencies": {
-		"@chromatic-com/storybook": "catalog:",
 		"@acdh-knowledge-base/configs": "workspace:^",
 		"@acdh-knowledge-base/next-lib": "workspace:^",
+		"@chromatic-com/storybook": "catalog:",
 		"@fontsource-variable/fira-code": "catalog:",
 		"@fontsource-variable/inter": "catalog:",
 		"@storybook/addon-a11y": "catalog:",

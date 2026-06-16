@@ -1,4 +1,8 @@
-import { type ResourceDocument, resourceServiceKinds, resourceTypes } from "@acdh-knowledge-base/search";
+import {
+	type ResourceDocument,
+	resourceServiceKinds,
+	resourceTypes,
+} from "@acdh-knowledge-base/search";
 import type { SearchAdminService as Client } from "@acdh-knowledge-base/search/admin";
 import { faker as f } from "@faker-js/faker";
 

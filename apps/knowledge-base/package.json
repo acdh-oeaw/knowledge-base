@@ -31,9 +31,6 @@
 		"types:prepare": "ENV_VALIDATION=\"disabled\" next typegen"
 	},
 	"dependencies": {
-		"@acdh-oeaw/color-schemes": "catalog:",
-		"@acdh-oeaw/lib": "catalog:",
-		"@acdh-oeaw/style-variants": "catalog:",
 		"@acdh-knowledge-base/auth": "workspace:^",
 		"@acdh-knowledge-base/client-sshoc": "workspace:^",
 		"@acdh-knowledge-base/client-zotero": "workspace:^",
@@ -50,6 +47,9 @@
 		"@acdh-knowledge-base/sshoc-services": "workspace:^",
 		"@acdh-knowledge-base/storage": "workspace:^",
 		"@acdh-knowledge-base/ui": "workspace:^",
+		"@acdh-oeaw/color-schemes": "catalog:",
+		"@acdh-oeaw/lib": "catalog:",
+		"@acdh-oeaw/style-variants": "catalog:",
 		"@heroicons/react": "catalog:",
 		"@internationalized/date": "catalog:",
 		"@react-aria/utils": "catalog:",

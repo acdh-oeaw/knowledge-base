@@ -1,5 +1,5 @@
-import { includes, removeTrailingSlash } from "@acdh-oeaw/lib";
 import type { Middleware } from "@acdh-knowledge-base/next-lib/middlewares";
+import { includes, removeTrailingSlash } from "@acdh-oeaw/lib";
 import createI18nMiddleware from "next-intl/middleware";
 
 import { localePrefix, routing } from "@/lib/i18n/routing";

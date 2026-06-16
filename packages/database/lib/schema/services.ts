@@ -28,9 +28,9 @@ export const ServiceTypeUpdateSchema = createUpdateSchema(serviceTypes);
 
 /**
  * When services are ingested from sshoc marketplace, they default to "live". All other statuses are
- * managed in the knowledge base. Upon re-ingest from sshoc marketplace, the status field is
- * not updated. When a service is no longer included in the sshoc marketplace response (e.g. because
- * it has been deprecated there), its status is set to "needs_review" if its current status is still
+ * managed in the knowledge base. Upon re-ingest from sshoc marketplace, the status field is not
+ * updated. When a service is no longer included in the sshoc marketplace response (e.g. because it
+ * has been deprecated there), its status is set to "needs_review" if its current status is still
  * set to "live". In other cases, the status field is not updated.
  */
 export const serviceStatusesEnum = [

@@ -1,7 +1,7 @@
-import { assert, log } from "@acdh-oeaw/lib";
 import { createSshocClient } from "@acdh-knowledge-base/client-sshoc";
 import { createDatabaseService } from "@acdh-knowledge-base/database";
 import { ingestSshocServices } from "@acdh-knowledge-base/sshoc-services";
+import { assert, log } from "@acdh-oeaw/lib";
 
 import { env } from "../config/env.config.ts";
 

@@ -1,6 +1,9 @@
 "use client";
 
-import { RichTextEditor, RichTextEditorToolbarButton } from "@acdh-knowledge-base/ui/rich-text-editor";
+import {
+	RichTextEditor,
+	RichTextEditorToolbarButton,
+} from "@acdh-knowledge-base/ui/rich-text-editor";
 import type { JSONContent } from "@tiptap/core";
 import { ImageIcon } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";

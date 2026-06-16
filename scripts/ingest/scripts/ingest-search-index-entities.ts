@@ -1,6 +1,5 @@
 import { parseArgs } from "node:util";
 
-import { log } from "@acdh-oeaw/lib";
 import { createDatabaseService } from "@acdh-knowledge-base/database";
 import { createSearchService } from "@acdh-knowledge-base/search";
 import {
@@ -9,6 +8,7 @@ import {
 	supportedWebsiteEntityTypes,
 } from "@acdh-knowledge-base/search-website";
 import { createSearchAdminService } from "@acdh-knowledge-base/search/admin";
+import { log } from "@acdh-oeaw/lib";
 
 import { env } from "../config/env.config.ts";
 

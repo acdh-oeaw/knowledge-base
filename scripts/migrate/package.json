@@ -12,10 +12,10 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-knowledge-base/database": "workspace:^",
 		"@acdh-knowledge-base/env": "workspace:^",
 		"@acdh-knowledge-base/storage": "workspace:^",
+		"@acdh-oeaw/lib": "catalog:",
 		"@sindresorhus/slugify": "catalog:",
 		"@tiptap/core": "catalog:",
 		"@tiptap/extension-image": "catalog:",
