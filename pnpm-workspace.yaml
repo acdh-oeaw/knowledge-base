@@ -5,7 +5,6 @@ packages:
 
 allowBuilds:
   '@parcel/watcher': true
-  '@sentry/cli': true
   '@swc/core': true
   esbuild: true
   lefthook: true
@@ -37,8 +36,6 @@ catalog:
   "@playwright/test": ^1.58.2
   "@react-aria/optimize-locales-plugin": ^1.1.5
   "@react-aria/utils": ^3.33.1
-  "@sentry/nextjs": ^10.53.1
-  "@sentry/node": ^10.53.1
   "@sindresorhus/slugify": ^3.0.0
   "@storybook/addon-a11y": ^10.2.19
   "@storybook/addon-docs": ^10.2.19
@@ -149,8 +146,6 @@ catalog:
   vite-tsconfig-paths: ^6.1.1
   vitest: ^4.1.0
   wp-types: ^4.69.0
-  xast-util-feed: ^2.0.0
-  xast-util-to-xml: ^4.0.0
 
 catalogMode: strict
 
@@ -163,9 +158,5 @@ minimumReleaseAge: 1440
 patchedDependencies:
   next: patches/next.patch
 
-# @see {@link https://docs.sentry.io/platforms/javascript/guides/node/troubleshooting/#pnpm-resolving-import-in-the-middle-external-package-errors}
-publicHoistPattern:
-  - '*import-in-the-middle*'
-  - '*require-in-the-middle*'
 
 shellEmulator: true

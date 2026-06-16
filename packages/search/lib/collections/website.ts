@@ -55,10 +55,6 @@ export const websiteEntitySources = ["the-knowledge-base"] as const;
 export type WebsiteEntitySource = (typeof websiteEntitySources)[number];
 
 export const websiteResourceSources = [
-	"dariah-campus",
-	"episciences",
-	"hal",
-	"open-aire",
 	"ssh-open-marketplace",
 	"zenodo",
 	"zotero",

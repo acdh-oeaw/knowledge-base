@@ -59,20 +59,6 @@ if [ ! -f "$ENV_FILE" ]; then
 	set_env_value TYPESENSE_ADMIN_API_KEY "$TYPESENSE_ADMIN_API_KEY" "$ENV_FILE"
 fi
 
-ENV_FILE=./apps/website/.env.local
-
-if [ ! -f "$ENV_FILE" ]; then
-	cp $ENV_FILE.example $ENV_FILE
-
-	set_env_value DATABASE_PASSWORD "$DATABASE_PASSWORD" "$ENV_FILE"
-	set_env_value IMGPROXY_KEY "$IMGPROXY_KEY" "$ENV_FILE"
-	set_env_value IMGPROXY_SALT "$IMGPROXY_SALT" "$ENV_FILE"
-	set_env_value REVALIDATION_WEBHOOK_SECRET "$REVALIDATION_WEBHOOK_SECRET" "$ENV_FILE"
-	set_env_value S3_ACCESS_KEY "$S3_ACCESS_KEY" "$ENV_FILE"
-	set_env_value S3_SECRET_KEY "$S3_SECRET_KEY" "$ENV_FILE"
-	set_env_value TYPESENSE_ADMIN_API_KEY "$TYPESENSE_ADMIN_API_KEY" "$ENV_FILE"
-fi
-
 ENV_FILE=./apps/api/.env.local
 
 if [ ! -f "$ENV_FILE" ]; then

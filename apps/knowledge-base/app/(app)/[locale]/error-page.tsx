@@ -1,7 +1,6 @@
 "use client";
 
 import { log } from "@acdh-oeaw/lib";
-import * as Sentry from "@sentry/nextjs";
 import { useExtracted } from "next-intl";
 import { type ReactNode, useEffect } from "react";
 
@@ -19,7 +18,6 @@ export function ErrorPage(props: Readonly<ErrorPageProps>): ReactNode {
 
 	useEffect(() => {
 		log.error(error);
-		Sentry.captureException(error);
 	}, [error]);
 
 	return (

@@ -1,5 +1,3 @@
-export { createCampusCurriculum, createCampusResource } from "./campus";
-export { createEpisciencesDocument } from "./episciences";
 export {
 	createSearchIndexResourceDocuments,
 	type CreateSearchIndexResourceDocumentsParams,

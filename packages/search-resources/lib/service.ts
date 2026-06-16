@@ -1,6 +1,4 @@
 import { log } from "@acdh-oeaw/lib";
-import type { DariahCampusClient } from "@acdh-knowledge-base/client-campus";
-import type { EpisciencesClient } from "@acdh-knowledge-base/client-episciences";
 import type { SshocClient } from "@acdh-knowledge-base/client-sshoc";
 import type { ZoteroClient } from "@acdh-knowledge-base/client-zotero";
 import {
@@ -27,8 +25,6 @@ export interface SearchResourcesCache<CacheError = unknown> {
 }
 
 export interface CreateSearchResourcesServiceParams {
-	campus: DariahCampusClient;
-	episciences: EpisciencesClient;
 	search: SearchAdminService;
 	searchService: SearchService;
 	sshoc: SshocClient;
@@ -67,8 +63,6 @@ function getOrFetch<T, FetchError, CacheError>(
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function createSearchResourcesService(params: CreateSearchResourcesServiceParams) {
 	const {
-		campus,
-		episciences,
 		search,
 		searchService,
 		sshoc,
@@ -88,9 +82,6 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 		const result = await Result.gen(async function* () {
 			const [
 				sshocItemsResult,
-				campusResourcesResult,
-				campusCurriculaResult,
-				episciencesDocumentsResult,
 				zoteroItemsResult,
 				zoteroCollectionsResult,
 			] = await Promise.all([
@@ -101,9 +92,6 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 						order: ["label"],
 					}),
 				),
-				getOrFetch(cache, "campus/resources", () => campus.resources.listAll()),
-				getOrFetch(cache, "campus/curricula", () => campus.curricula.listAll()),
-				getOrFetch(cache, "episciences/documents", () => episciences.search.listAll()),
 				getOrFetch(cache, "zotero/items", () => zotero.items.listAll({ groupId: zoteroGroupId })),
 				getOrFetch(cache, "zotero/collections", () =>
 					zotero.collections.listAll({ groupId: zoteroGroupId }),
@@ -111,16 +99,10 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 			]);
 
 			const sshocItems = yield* sshocItemsResult;
-			const campusResources = yield* campusResourcesResult;
-			const campusCurricula = yield* campusCurriculaResult;
-			const episciencesDocuments = yield* episciencesDocumentsResult;
 			const zoteroItems = yield* zoteroItemsResult;
 			const zoteroCollections = yield* zoteroCollectionsResult;
 
 			return Result.ok({
-				campusCurricula,
-				campusResources,
-				episciencesDocuments,
 				sshocItems,
 				zoteroItems,
 				zoteroCollections,

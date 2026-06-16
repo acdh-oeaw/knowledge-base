@@ -1,7 +1,6 @@
 import { STATUS_CODES } from "node:http";
 
 import type { StorageService } from "@acdh-knowledge-base/storage";
-import * as Sentry from "@sentry/node";
 import type { TypedResponse } from "hono";
 import { rateLimiter } from "hono-rate-limiter";
 import { cors } from "hono/cors";
@@ -51,8 +50,6 @@ export function createApp() {
 			const logger = c.get("logger");
 
 			logger.error(error);
-
-			Sentry.captureException(error);
 
 			if (error instanceof HTTPException) {
 				return c.json({ message: error.message }, error.status);

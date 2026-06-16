@@ -21,8 +21,6 @@
 	},
 	"devDependencies": {
 		"@acdh-oeaw/lib": "catalog:",
-		"@acdh-knowledge-base/client-campus": "workspace:^",
-		"@acdh-knowledge-base/client-episciences": "workspace:^",
 		"@acdh-knowledge-base/client-sshoc": "workspace:^",
 		"@acdh-knowledge-base/client-zotero": "workspace:^",
 		"@acdh-knowledge-base/configs": "workspace:^",
@@ -39,8 +37,6 @@
 	},
 	"peerDependencies": {
 		"@acdh-oeaw/lib": "catalog:",
-		"@acdh-knowledge-base/client-campus": "workspace:^",
-		"@acdh-knowledge-base/client-episciences": "workspace:^",
 		"@acdh-knowledge-base/client-sshoc": "workspace:^",
 		"@acdh-knowledge-base/client-zotero": "workspace:^",
 		"@acdh-knowledge-base/database": "workspace:^",

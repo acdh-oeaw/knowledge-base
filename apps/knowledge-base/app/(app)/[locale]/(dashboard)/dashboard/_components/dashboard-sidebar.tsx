@@ -88,12 +88,6 @@ export function useSidebarMenu(isAdmin: boolean): Array<SidebarMenuSection> {
 				icon: <ListBulletIcon />,
 			},
 			{
-				href: "/dashboard/administrator/newsletters",
-				tooltip: t("Newsletters"),
-				label: t("Newsletters"),
-				icon: <ListBulletIcon />,
-			},
-			{
 				href: "/dashboard/administrator/persons",
 				tooltip: t("Persons"),
 				label: t("Persons"),

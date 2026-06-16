@@ -11,7 +11,6 @@ import { DocumentBody } from "@/app/_components/document-body";
 import { HtmlDocument } from "@/app/_components/html-document";
 import { Providers } from "@/app/_components/providers";
 import { env } from "@/config/env.config";
-import { AnalyticsScript } from "@/lib/analytics/analytics-script";
 import { isValidLocale } from "@/lib/i18n/locales";
 import { getMetadata } from "@/lib/i18n/metadata";
 import { routing } from "@/lib/i18n/routing";
@@ -55,9 +54,6 @@ export async function generateMetadata(): Promise<Promise<Metadata>> {
 			locale,
 			type: "website",
 		},
-		verification: {
-			google: env.NEXT_PUBLIC_APP_GOOGLE_SITE_VERIFICATION,
-		},
 	};
 
 	return metadata;
@@ -99,10 +95,6 @@ export default async function LocaleLayout(props: Readonly<LocaleLayoutProps>): 
 
 					<ToastRegion />
 
-					<AnalyticsScript
-						baseUrl={env.NEXT_PUBLIC_APP_MATOMO_BASE_URL}
-						id={env.NEXT_PUBLIC_APP_MATOMO_ID}
-					/>
 				</Providers>
 			</DocumentBody>
 		</HtmlDocument>

@@ -33,15 +33,9 @@ env:
   IMGPROXY_KEY: "${{ secrets.TEST_IMGPROXY_KEY }}"
   IMGPROXY_PORT: "8080"
   IMGPROXY_SALT: "${{ secrets.TEST_IMGPROXY_SALT }}"
-  MAILCHIMP_API_BASE_URL: "${{ secrets.TEST_MAILCHIMP_API_BASE_URL }}"
-  MAILCHIMP_API_KEY: "${{ secrets.TEST_MAILCHIMP_API_KEY }}"
-  MAILCHIMP_LIST_ID: "${{ secrets.TEST_MAILCHIMP_LIST_ID }}"
-  MAILPIT_API_BASE_URL: "http://localhost:8025"
   NEXT_PUBLIC_APP_BASE_URL: "http://localhost:3001"
   NEXT_PUBLIC_APP_IMPRINT_CUSTOM_CONFIG: "disabled"
   NEXT_PUBLIC_APP_IMPRINT_SERVICE_BASE_URL: "${{ vars.NEXT_PUBLIC_IMPRINT_SERVICE_BASE_URL }}"
-  NEXT_PUBLIC_APP_MATOMO_BASE_URL: "${{ vars.NEXT_PUBLIC_MATOMO_BASE_URL }}"
-  NEXT_PUBLIC_APP_MATOMO_ID: "${{ vars.NEXT_PUBLIC_APP_MATOMO_ID }}"
   NEXT_PUBLIC_APP_SERVICE_ID: "${{ vars.APP_SERVICE_ID }}"
   NEXT_PUBLIC_WEBSITE_IMPRINT_CUSTOM_CONFIG: "disabled"
   NEXT_PUBLIC_WEBSITE_IMPRINT_SERVICE_BASE_URL: "${{ vars.NEXT_PUBLIC_IMPRINT_SERVICE_BASE_URL }}"
@@ -51,8 +45,8 @@ env:
   NEXT_PUBLIC_TYPESENSE_HOST: "localhost"
   NEXT_PUBLIC_TYPESENSE_PORT: "8108"
   NEXT_PUBLIC_TYPESENSE_PROTOCOL: "http"
-  NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME: "kb-resources"
-  NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME: "kb-website"
+  NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME: "the-knowledge-base-resources"
+  NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME: "the-knowledge-base-website"
   S3_ACCESS_KEY: "${{ secrets.TEST_S3_ACCESS_KEY }}"
   S3_BUCKET_NAME: "the-knowledge-base"
   S3_HOST: "localhost"
@@ -63,12 +57,10 @@ env:
   TYPESENSE_HOST: "localhost"
   TYPESENSE_PORT: "8108"
   TYPESENSE_PROTOCOL: "http"
-  TYPESENSE_RESOURCE_COLLECTION_NAME: "kb-resources"
-  TYPESENSE_WEBSITE_COLLECTION_NAME: "kb-website"
+  TYPESENSE_RESOURCE_COLLECTION_NAME: "the-knowledge-base-resources"
+  TYPESENSE_WEBSITE_COLLECTION_NAME: "the-knowledge-base-website"
   TURBO_TEAM: "${{ vars.TURBO_TEAM }}"
   TURBO_TOKEN: "${{ secrets.TURBO_TOKEN }}"
-  UNR_DATABASE_DIRECT_URL: "postgresql://dariah-unr:dariah-unr@localhost:5432/dariah-unr"
-  UNR_S3_BUCKET_NAME: "dariah-unr"
 
 jobs:
   validate:
@@ -173,7 +165,6 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
       S3_HOST: "minio"
       TYPESENSE_HOST: "typesense"
-      UNR_DATABASE_DIRECT_URL: "postgresql://dariah-unr:dariah-unr@postgres:5432/dariah-unr"
 
     # The e2e jobs run inside the Playwright container, so GitHub service containers
     # provide stable DNS names on the job network. The test job uses docker
@@ -311,7 +302,6 @@ jobs:
       PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright"
       S3_HOST: "minio"
       TYPESENSE_HOST: "typesense"
-      UNR_DATABASE_DIRECT_URL: "postgresql://dariah-unr:dariah-unr@postgres:5432/dariah-unr"
 
     services:
       postgres:

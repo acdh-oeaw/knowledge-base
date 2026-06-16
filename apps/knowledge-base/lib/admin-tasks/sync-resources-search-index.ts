@@ -1,6 +1,4 @@
 import { assert } from "@acdh-oeaw/lib";
-import { createDariahCampusClient } from "@acdh-knowledge-base/client-campus";
-import { createEpisciencesClient } from "@acdh-knowledge-base/client-episciences";
 import { createSshocClient } from "@acdh-knowledge-base/client-sshoc";
 import { createZoteroClient } from "@acdh-knowledge-base/client-zotero";
 import { createSearchService } from "@acdh-knowledge-base/search";
@@ -17,8 +15,6 @@ export interface SyncResourcesSearchIndexResult {
 }
 
 export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchIndexResult> {
-	assert(env.CAMPUS_API_BASE_URL, "Missing environment variable: `CAMPUS_API_BASE_URL`.");
-	assert(env.EPISCIENCES_API_BASE_URL, "Missing environment variable: `EPISCIENCES_API_BASE_URL`.");
 	assert(
 		env.SSHOC_MARKETPLACE_API_BASE_URL,
 		"Missing environment variable: `SSHOC_MARKETPLACE_API_BASE_URL`.",
@@ -32,18 +28,6 @@ export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchInd
 
 	const sshocMarketplaceBaseUrl = env.SSHOC_MARKETPLACE_BASE_URL;
 	const zoteroGroupId = env.ZOTERO_GROUP_ID;
-
-	const campus = createDariahCampusClient({
-		config: {
-			baseUrl: env.CAMPUS_API_BASE_URL,
-		},
-	});
-
-	const episciences = createEpisciencesClient({
-		config: {
-			baseUrl: env.EPISCIENCES_API_BASE_URL,
-		},
-	});
 
 	const sshoc = createSshocClient({
 		config: {
@@ -76,8 +60,6 @@ export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchInd
 	const orgUnits = await loadOrgUnitLookups(db);
 
 	const searchResources = createSearchResourcesService({
-		campus,
-		episciences,
 		search,
 		searchService,
 		sshoc,

@@ -32,10 +32,6 @@ export const resourcesCollection = defineCollection({
 });
 
 export const resourceSources = [
-	"dariah-campus",
-	"episciences",
-	"hal",
-	"open-aire",
 	"ssh-open-marketplace",
 	"zenodo",
 	"zotero",
@@ -62,7 +58,7 @@ interface ResourceDocumentBase extends CollectionDocument<typeof resourcesCollec
 export interface PublicationResourceDocument extends ResourceDocumentBase {
 	type: "publication";
 	kind: string | null;
-	source: "episciences" | "hal" | "open-aire" | "zenodo" | "zotero";
+	source: "zenodo" | "zotero";
 	national_consortia: Array<string>;
 	working_groups: Array<string>;
 	institutions: Array<string>;
@@ -101,7 +97,7 @@ export interface SoftwareResourceDocument extends ResourceDocumentBase {
 export interface TrainingMaterialResourceDocument extends ResourceDocumentBase {
 	type: "training-material";
 	kind: null;
-	source: "dariah-campus" | "ssh-open-marketplace";
+	source: "ssh-open-marketplace";
 	national_consortia: Array<string>;
 	working_groups: Array<string>;
 	institutions: Array<string>;

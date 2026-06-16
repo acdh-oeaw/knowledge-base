@@ -37,7 +37,7 @@ export async function seed(client: Client, config: SeedConfig = {}): Promise<voi
 					return {
 						...document,
 						type,
-						source: f.helpers.arrayElement(["open-aire", "zotero"]),
+						source: f.helpers.arrayElement(["zotero"]),
 						source_id: f.string.alphanumeric(12),
 						national_consortia: [],
 						working_groups: [],

@@ -1,11 +1,7 @@
-import type { DariahCampusCurriculum, DariahCampusResource } from "@acdh-knowledge-base/client-campus";
-import type { EpisciencesSearchDocument } from "@acdh-knowledge-base/client-episciences";
 import type { SearchItem } from "@acdh-knowledge-base/client-sshoc";
 import type { ZoteroCollection, ZoteroJsonItem } from "@acdh-knowledge-base/client-zotero";
 import type { ResourceDocument, WebsiteDocument } from "@acdh-knowledge-base/search";
 
-import { createCampusCurriculum, createCampusResource } from "./campus";
-import { createEpisciencesDocument } from "./episciences";
 import { createSshocItem } from "./sshoc";
 import {
 	type ZoteroCollectionLookup,
@@ -15,9 +11,6 @@ import {
 } from "./zotero";
 
 export interface SearchIndexResourceSourceData {
-	campusCurricula: Array<DariahCampusCurriculum>;
-	campusResources: Array<DariahCampusResource>;
-	episciencesDocuments: Array<EpisciencesSearchDocument>;
 	sshocItems: Array<SearchItem>;
 	zoteroItems: Array<ZoteroJsonItem<ZoteroJsonItemData>>;
 	zoteroCollections: Array<ZoteroCollection>;
@@ -52,9 +45,6 @@ export function createSearchIndexResourceDocuments(
 ): Array<ResourceDocument> {
 	const { sourceData, sshocMarketplaceBaseUrl, orgUnits } = params;
 	const {
-		campusCurricula,
-		campusResources,
-		episciencesDocuments,
 		sshocItems,
 		zoteroItems,
 		zoteroCollections,
@@ -64,9 +54,6 @@ export function createSearchIndexResourceDocuments(
 
 	return [
 		...sshocItems.map((item) => createSshocItem(item, sshocMarketplaceBaseUrl, orgUnits)),
-		...campusResources.map((item) => createCampusResource(item)),
-		...campusCurricula.map((item) => createCampusCurriculum(item)),
-		...episciencesDocuments.map((item) => createEpisciencesDocument(item)),
 		...zoteroItems
 			.filter((item) => isZoteroItemInCollection(item))
 			.map((item) => createZoteroItem(item, zoteroCollectionLookup, orgUnits)),
