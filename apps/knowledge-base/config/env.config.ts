@@ -16,6 +16,12 @@ const validate = define({
 			v.url(),
 			v.transform(removeTrailingSlash),
 		),
+		NEXT_PUBLIC_APP_MATOMO_BASE_URL: v.optional(
+			v.pipe(v.string(), v.url(), v.transform(addTrailingSlash)),
+		),
+		NEXT_PUBLIC_APP_MATOMO_ID: v.optional(
+			v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(1)),
+		),
 		NEXT_PUBLIC_APP_SERVICE_ID: v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(1)),
 		NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME: v.pipe(v.string(), v.nonEmpty()),
 		NEXT_PUBLIC_TYPESENSE_WEBSITE_COLLECTION_NAME: v.pipe(v.string(), v.nonEmpty()),
@@ -95,6 +101,8 @@ export const env = validate({
 		NEXT_PUBLIC_APP_BOTS: process.env.NEXT_PUBLIC_APP_BOTS,
 		NEXT_PUBLIC_APP_IMPRINT_CUSTOM_CONFIG: process.env.NEXT_PUBLIC_APP_IMPRINT_CUSTOM_CONFIG,
 		NEXT_PUBLIC_APP_IMPRINT_SERVICE_BASE_URL: process.env.NEXT_PUBLIC_APP_IMPRINT_SERVICE_BASE_URL,
+		NEXT_PUBLIC_APP_MATOMO_BASE_URL: process.env.NEXT_PUBLIC_APP_MATOMO_BASE_URL,
+		NEXT_PUBLIC_APP_MATOMO_ID: process.env.NEXT_PUBLIC_APP_MATOMO_ID,
 		NEXT_PUBLIC_APP_SERVICE_ID: process.env.NEXT_PUBLIC_APP_SERVICE_ID,
 		NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME:
 			process.env.NEXT_PUBLIC_TYPESENSE_RESOURCE_COLLECTION_NAME,

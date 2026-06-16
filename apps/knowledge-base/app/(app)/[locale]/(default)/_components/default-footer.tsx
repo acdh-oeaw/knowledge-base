@@ -61,7 +61,7 @@ export function DefaultFooter(props: Readonly<DefaultFooterProps>): ReactNode {
 							{Object.values(meta.social).map((social) => {
 								const { href, kind, label } = social;
 
-								if (kind === "email" || kind === "website") {
+								if (kind === "website") {
 									return null;
 								}
 

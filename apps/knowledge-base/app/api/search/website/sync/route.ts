@@ -25,13 +25,13 @@ const SyncWebsiteSearchIndexRequestSchema = v.union([
 ]);
 
 function isAuthorized(request: NextRequest): boolean {
-	if (env.SEARCH_SYNC_API_SECRET == null) {
+	if (env.APP_TASKS_SECRET == null) {
 		return false;
 	}
 
 	const authorization = request.headers.get("authorization");
 
-	return authorization === `Bearer ${env.SEARCH_SYNC_API_SECRET}`;
+	return authorization === `Bearer ${env.APP_TASKS_SECRET}`;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {

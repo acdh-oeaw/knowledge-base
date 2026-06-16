@@ -5,10 +5,6 @@
 	"type": "module",
 	"sideEffects": false,
 	"scripts": {
-		"data:migrate:get-unr-schema": "drizzle-kit introspect --config=./config/unr-db.config.ts",
-		"data:migrate:unr": "tsx ./scripts/migrate-unr.ts",
-		"data:migrate:wordpress": "tsx ./scripts/migrate-wordpress.ts",
-		"data:migrate:wordpress-news-item": "tsx ./scripts/migrate-wordpress-news-item.ts",
 		"format:check": "oxfmt --check",
 		"format:fix": "oxfmt --write",
 		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",

@@ -16,8 +16,6 @@ const validate = define({
 		S3_PORT: v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(1)),
 		S3_PROTOCOL: v.optional(v.picklist(["http", "https"]), "https"),
 		S3_SECRET_KEY: v.pipe(v.string(), v.nonEmpty()),
-		UNR_DATABASE_DIRECT_URL: v.pipe(v.string(), v.nonEmpty()),
-		UNR_S3_BUCKET_NAME: v.pipe(v.string(), v.nonEmpty()),
 	}),
 });
 
@@ -34,7 +32,5 @@ export const env = validate({
 		S3_PORT: process.env.S3_PORT,
 		S3_PROTOCOL: process.env.S3_PROTOCOL,
 		S3_SECRET_KEY: process.env.S3_SECRET_KEY,
-		UNR_DATABASE_DIRECT_URL: process.env.UNR_DATABASE_DIRECT_URL,
-		UNR_S3_BUCKET_NAME: process.env.UNR_S3_BUCKET_NAME,
 	},
 }).unwrap();
