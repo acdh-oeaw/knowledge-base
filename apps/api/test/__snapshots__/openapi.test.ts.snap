@@ -4641,30 +4641,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "type": "object",
       },
-      "GetNewslettersResponse": {
-        "description": "Paginated list of newsletter campaigns",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/NewsletterList",
-          },
-          "limit": {
-            "type": "number",
-          },
-          "offset": {
-            "type": "number",
-          },
-          "total": {
-            "type": "number",
-          },
-        },
-        "required": [
-          "limit",
-          "offset",
-          "total",
-          "data",
-        ],
-        "type": "object",
-      },
       "GetOpportunitiesResponse": {
         "description": "Paginated list of opportunities",
         "properties": {
@@ -7258,21 +7234,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "description": "Filter institutions by their relation to the DARIAH-EU ERIC (repeatable)",
       },
-      "InternalServerErrorResponse": {
-        "description": "Internal server error response",
-        "properties": {
-          "message": {
-            "examples": [
-              "Internal Server Error",
-            ],
-            "type": "string",
-          },
-        },
-        "required": [
-          "message",
-        ],
-        "type": "object",
-      },
       "LimitParam": {
         "default": "10",
         "description": "Maximum number of items in paginated list",
@@ -9239,48 +9200,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "description": "List of news item slugs",
         "items": {
           "$ref": "#/components/schemas/NewsItemSlug",
-        },
-        "type": "array",
-      },
-      "Newsletter": {
-        "description": "Newsletter campaign",
-        "properties": {
-          "archive_url": {
-            "type": "string",
-          },
-          "id": {
-            "type": "string",
-          },
-          "send_time": {
-            "anyOf": [
-              {
-                "type": "string",
-              },
-              {
-                "type": "null",
-              },
-            ],
-          },
-          "status": {
-            "type": "string",
-          },
-          "subject_line": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "id",
-          "subject_line",
-          "send_time",
-          "archive_url",
-          "status",
-        ],
-        "type": "object",
-      },
-      "NewsletterList": {
-        "description": "List of newsletter campaigns",
-        "items": {
-          "$ref": "#/components/schemas/Newsletter",
         },
         "type": "array",
       },
@@ -13263,47 +13182,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "$ref": "#/components/schemas/SpotlightArticleSlug",
         },
         "type": "array",
-      },
-      "SubscribeNewsletterRequest": {
-        "description": "Newsletter subscription request",
-        "properties": {
-          "email": {
-            "format": "email",
-            "type": "string",
-          },
-        },
-        "required": [
-          "email",
-        ],
-        "type": "object",
-      },
-      "SubscribeNewsletterResponse": {
-        "description": "Newsletter subscription response",
-        "properties": {
-          "email": {
-            "format": "email",
-            "type": "string",
-          },
-        },
-        "required": [
-          "email",
-        ],
-        "type": "object",
-      },
-      "UnauthorizedResponse": {
-        "description": "Unauthorized response",
-        "properties": {
-          "message": {
-            "examples": [
-              "Unauthorized",
-            ],
-            "type": "string",
-          },
-        },
-        "required": [
-          "message",
-        ],
-        "type": "object",
       },
       "WorkingGroup": {
         "description": "Working group",
