@@ -39,7 +39,7 @@ readinessProbe:
   probeType: "httpGet"
 initContainers:
   - name: migrate
-    image: "ghcr.io/acdh-oeaw/the-knowledge-base-migrate:$tag"
+    image: "ghcr.io/acdh-oeaw/knowledge-base-migrate:$tag"
     imagePullPolicy: Always
     envFrom:
       - secretRef:
