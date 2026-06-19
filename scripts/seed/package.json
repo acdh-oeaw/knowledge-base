@@ -6,8 +6,10 @@
 	"sideEffects": false,
 	"scripts": {
 		"data:seed": "tsx ./scripts/seed.ts",
+		"data:seed:cms": "tsx ./scripts/seed-cms.ts",
 		"data:seed:db": "tsx ./scripts/seed.ts database",
 		"data:seed:kitchen-sink": "tsx ./scripts/create-kitchen-sink-entities.ts",
+		"data:seed:reference": "tsx ./scripts/seed-reference.ts",
 		"data:seed:search": "tsx ./scripts/seed.ts search-index",
 		"data:seed:storage": "tsx ./scripts/seed.ts object-store",
 		"data:seed:users:admin": "tsx ./scripts/create-initial-admin-user.ts",

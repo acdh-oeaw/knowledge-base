@@ -5,8 +5,8 @@ set -eu
 pnpm storage:buckets:create
 echo "✓ Created storage buckets."
 
-pnpm db:push && pnpm run db:migrations:apply
-echo "✓ Applied database migrations."
+pnpm run db:setup
+echo "✓ Applied database migrations and seeded CMS data."
 
 pnpm search:collections:create
 echo "✓ Created search collections."
