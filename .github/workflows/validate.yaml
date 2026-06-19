@@ -125,6 +125,9 @@ jobs:
       - name: Setup services
         run: pnpm run dev:services:setup
 
+      - name: Seed cms data
+        run: pnpm run data:seed:cms
+
       - name: Seed kitchen sink data
         run: pnpm run data:seed:kitchen-sink
 
