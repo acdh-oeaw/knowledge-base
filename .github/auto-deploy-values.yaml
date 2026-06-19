@@ -44,3 +44,10 @@ initContainers:
     envFrom:
       - secretRef:
           name: "$app_name"
+  - name: seed
+    image: "ghcr.io/acdh-oeaw/knowledge-base-seed:$tag"
+    imagePullPolicy: Always
+    command: ["pnpm", "run", "data:seed:cms"]
+    envFrom:
+      - secretRef:
+          name: "$app_name"

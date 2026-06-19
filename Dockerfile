@@ -65,7 +65,38 @@ FROM base AS migrate
 USER node
 WORKDIR /app
 COPY --chown=node:node --from=migrate-build /out/ .
-CMD ["pnpm", "run", "db:setup"]
+CMD ["pnpm", "run", "db:migrations:apply"]
+
+# prune
+# -------------------------------------------------------------------------------------------------
+FROM source AS seed-prune
+RUN turbo prune @acdh-knowledge-base/seed --docker
+
+# install
+# -------------------------------------------------------------------------------------------------
+FROM base AS seed-install
+WORKDIR /app
+COPY --from=seed-prune /app/out/json/ .
+COPY --from=seed-prune /app/patches/ ./patches/
+COPY --from=seed-prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
+
+# build
+# -------------------------------------------------------------------------------------------------
+FROM seed-install AS seed-build
+COPY --from=seed-prune /app/out/full/ .
+RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
+    --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
+    pnpm exec turbo run build --filter=@acdh-knowledge-base/seed^...
+RUN pnpm deploy --filter @acdh-knowledge-base/seed --config.inject-workspace-packages=true /out
+
+# serve
+# -------------------------------------------------------------------------------------------------
+FROM base AS seed
+USER node
+WORKDIR /app
+COPY --chown=node:node --from=seed-build /out/ .
+CMD ["pnpm", "run", "data:seed:cms"]
 
 # =================================================================================================
 # api
