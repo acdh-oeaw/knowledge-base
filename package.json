@@ -9,6 +9,7 @@
 		"data:ingest:search:entities": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"ingest\" run data:ingest:search:entities",
 		"data:ingest:search:resources": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"ingest\" run data:ingest:search:resources",
 		"data:ingest:sshoc": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"ingest\" run data:ingest:sshoc",
+		"data:migrate:clariah-at": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:migrate:clariah-at",
 		"data:seed": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"seed\" run data:seed",
 		"data:seed:cms": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"seed\" run data:seed:cms",
 		"data:seed:db": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"seed\" run data:seed:db",

@@ -5,6 +5,7 @@
 	"type": "module",
 	"sideEffects": false,
 	"scripts": {
+		"data:migrate:clariah-at": "tsx ./scripts/migrate-clariah-at-website.ts",
 		"format:check": "oxfmt --check",
 		"format:fix": "oxfmt --write",
 		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
