@@ -14,6 +14,7 @@ import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_co
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
 import { ProjectForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form";
 import { ProjectPartnersSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section";
+import { ProjectPersonsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-persons-section";
 import { discardProjectDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/discard-project-draft.action";
 import { publishProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/publish-project.action";
 import { updateProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/update-project.action";
@@ -48,6 +49,15 @@ interface ProjectEditFormProps {
 		durationStart: Date | null;
 		durationEnd: Date | null;
 	}>;
+	initialPersons: Array<{
+		id: string;
+		personDocumentId: string;
+		personName: string;
+		roleId: string;
+		roleName: string;
+		durationStart: Date | null;
+		durationEnd: Date | null;
+	}>;
 	initialSocialMediaIds: Array<string>;
 }
 
@@ -65,6 +75,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		selectedSocialMediaItems,
 		roles,
 		initialPartners,
+		initialPersons,
 	} = props;
 
 	const t = useExtracted();
@@ -109,6 +120,13 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 				<TabPanel id="project-partners" shouldPreserveState={true}>
 					<ProjectPartnersSection
 						partners={initialPartners}
+						projectDocumentId={documentId}
+						roles={roles}
+					/>
+				</TabPanel>
+				<TabPanel id="project-persons" shouldPreserveState={true}>
+					<ProjectPersonsSection
+						persons={initialPersons}
 						projectDocumentId={documentId}
 						roles={roles}
 					/>

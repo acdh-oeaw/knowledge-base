@@ -266,6 +266,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.dariahProjects.id,
 				to: r.projectsToOrganisationalUnits.projectDocumentId,
 			}),
+			projectsToPersons: r.many.projectsToPersons({
+				from: r.dariahProjects.id,
+				to: r.projectsToPersons.projectDocumentId,
+			}),
 			scope: r.one.projectScopes({
 				from: r.dariahProjects.scopeId,
 				to: r.projectScopes.id,
@@ -385,6 +389,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.projects.id.through(r.projectsToOrganisationalUnits.projectDocumentId),
 				to: r.organisationalUnits.id.through(r.projectsToOrganisationalUnits.unitDocumentId),
 			}),
+			persons: r.many.persons({
+				from: r.projects.id.through(r.projectsToPersons.projectDocumentId),
+				to: r.persons.id.through(r.projectsToPersons.personDocumentId),
+			}),
 			scope: r.one.projectScopes({
 				from: r.projects.scopeId,
 				to: r.projectScopes.id,
@@ -397,6 +405,10 @@ export const relations = defineRelations(schema, (r) => {
 			projectsToOrganisationalUnits: r.many.projectsToOrganisationalUnits({
 				from: r.projects.id,
 				to: r.projectsToOrganisationalUnits.projectDocumentId,
+			}),
+			projectsToPersons: r.many.projectsToPersons({
+				from: r.projects.id,
+				to: r.projectsToPersons.projectDocumentId,
 			}),
 		},
 		projectsToOrganisationalUnits: {
@@ -412,6 +424,23 @@ export const relations = defineRelations(schema, (r) => {
 			}),
 			role: r.one.projectRoles({
 				from: r.projectsToOrganisationalUnits.roleId,
+				to: r.projectRoles.id,
+				optional: false,
+			}),
+		},
+		projectsToPersons: {
+			projectEntity: r.one.entities({
+				from: r.projectsToPersons.projectDocumentId,
+				to: r.entities.id,
+				optional: false,
+			}),
+			personEntity: r.one.entities({
+				from: r.projectsToPersons.personDocumentId,
+				to: r.entities.id,
+				optional: false,
+			}),
+			role: r.one.projectRoles({
+				from: r.projectsToPersons.roleId,
 				to: r.projectRoles.id,
 				optional: false,
 			}),

@@ -128,6 +128,36 @@ export const ProjectToOrganisationalUnitUpdateSchema = createUpdateSchema(
 	},
 );
 
+/**
+ * Document-level relation: a person related to a project in a given role. Both endpoints reference
+ * `entities.id` (document IDs), not version IDs, so the relation is stable across the draft/publish
+ * lifecycle of either side and is never cloned by the lifecycle adapters. Public reads resolve each
+ * endpoint through its published version; admin reads through draft-or-published.
+ */
+export const projectsToPersons = p.snakeCase.table("projects_to_persons", {
+	id: p.uuid("id").primaryKey().default(uuidv7()),
+	projectDocumentId: p
+		.uuid("project_document_id")
+		.notNull()
+		.references(() => entities.id),
+	personDocumentId: p
+		.uuid("unit_document_id")
+		.notNull()
+		.references(() => entities.id),
+	roleId: p
+		.uuid("role_id")
+		.notNull()
+		.references(() => projectRoles.id),
+	duration: f.timestampRange("duration"),
+});
+
+export type ProjectToPerson = typeof projectsToPersons.$inferSelect;
+export type ProjectToPersonInput = typeof projectsToPersons.$inferInsert;
+
+export const ProjectToPersonSelectSchema = createSelectSchema(projectsToPersons);
+export const ProjectToPersonInsertSchema = createInsertSchema(projectsToPersons);
+export const ProjectToPersonUpdateSchema = createUpdateSchema(projectsToPersons);
+
 export const projectsToSocialMedia = p.snakeCase.table("projects_to_social_media", {
 	id: p.uuid("id").primaryKey().default(uuidv7()),
 	projectId: p

@@ -112,6 +112,12 @@ export function useSidebarMenu(isAdmin: boolean): Array<SidebarMenuSection> {
 				icon: <ListBulletIcon />,
 			},
 			{
+				href: "/dashboard/administrator/project-persons",
+				tooltip: t("Project persons"),
+				label: t("Project persons"),
+				icon: <ListBulletIcon />,
+			},
+			{
 				href: "/dashboard/administrator/internal-services",
 				tooltip: t("Internal Services"),
 				label: t("Internal Services"),

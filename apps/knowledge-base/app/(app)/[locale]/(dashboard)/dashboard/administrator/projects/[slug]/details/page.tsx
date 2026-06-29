@@ -114,7 +114,7 @@ export default async function DashboardAdministratorProjectDetailsPage(
 		notFound();
 	}
 
-	const [descriptionContentBlocks, partners, socialMediaLinks] = await Promise.all([
+	const [descriptionContentBlocks, partners, persons, socialMediaLinks] = await Promise.all([
 		getEntityContentBlocks(versionId, "description"),
 		(() => {
 			const unitDocumentLifecycle = alias(schema.documentLifecycle, "unit_document_lifecycle");
@@ -149,6 +149,32 @@ export default async function DashboardAdministratorProjectDetailsPage(
 					eq(schema.projectRoles.id, schema.projectsToOrganisationalUnits.roleId),
 				)
 				.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, documentId));
+		})(),
+		(() => {
+			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
+			return db
+				.select({
+					id: schema.projectsToPersons.id,
+					duration: schema.projectsToPersons.duration,
+					personName: schema.persons.name,
+					personSlug: schema.entities.slug,
+					roleName: schema.projectRoles.role,
+				})
+				.from(schema.projectsToPersons)
+				.innerJoin(
+					schema.entities,
+					eq(schema.entities.id, schema.projectsToPersons.personDocumentId),
+				)
+				.innerJoin(
+					personDocumentLifecycle,
+					eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+				)
+				.innerJoin(
+					schema.persons,
+					sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.publishedId}, ${personDocumentLifecycle.draftId})`,
+				)
+				.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
+				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
 		})(),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
@@ -191,6 +217,15 @@ export default async function DashboardAdministratorProjectDetailsPage(
 						unitType: partner.unitType,
 						roleName: partner.roleName,
 						duration: partner.duration ?? null,
+					};
+				}),
+				persons: persons.map((person) => {
+					return {
+						id: person.id,
+						personName: person.personName,
+						personSlug: person.personSlug,
+						roleName: person.roleName,
+						duration: person.duration ?? null,
 					};
 				}),
 				socialMedia: socialMediaLinks.map((link) => link.socialMedia),

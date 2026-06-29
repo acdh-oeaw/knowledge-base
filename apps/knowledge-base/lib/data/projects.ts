@@ -257,6 +257,33 @@ function getProjectPartnerRowsForAdmin(projectDocumentId: string) {
 		.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, projectDocumentId));
 }
 
+/**
+ * Project partner rows (project↔org-unit relations) for a single project, for the admin surfaces.
+ * Each partner's unit is resolved to its published version: a partner is only ever created against
+ * a published unit and that published version is never removed without deleting the whole document
+ * (which also removes the partner row), so `publishedId` is always present here.
+ */
+function getProjectPersonRowsForAdmin(projectDocumentId: string) {
+	const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
+	return db
+		.select({
+			id: schema.projectsToPersons.id,
+			personDocumentId: schema.projectsToPersons.personDocumentId,
+			personName: schema.persons.name,
+			roleId: schema.projectsToPersons.roleId,
+			roleName: schema.projectRoles.role,
+			duration: schema.projectsToPersons.duration,
+		})
+		.from(schema.projectsToPersons)
+		.innerJoin(
+			personDocumentLifecycle,
+			eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+		)
+		.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
+		.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
+		.where(eq(schema.projectsToPersons.projectDocumentId, projectDocumentId));
+}
+
 export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">, slug: string) {
 	assertAdminUser(currentUser);
 
@@ -266,7 +293,7 @@ export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">,
 		return null;
 	}
 
-	const [descriptionRows, partners, socialMediaLinks] = await Promise.all([
+	const [descriptionRows, partners, persons, socialMediaLinks] = await Promise.all([
 		db
 			.select({ content: schema.richTextContentBlocks.content })
 			.from(schema.richTextContentBlocks)
@@ -284,6 +311,7 @@ export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">,
 			)
 			.limit(1),
 		getProjectPartnerRowsForAdmin(project.entityVersion.entity.id),
+		getProjectPersonRowsForAdmin(project.entityVersion.entity.id),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
 			columns: {},
@@ -306,6 +334,14 @@ export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">,
 				duration: partner.duration ?? null,
 			};
 		}),
+		persons: persons.map((person) => {
+			return {
+				id: person.id,
+				personName: person.personName,
+				roleName: person.roleName,
+				duration: person.duration ?? null,
+			};
+		}),
 		project,
 		socialMedia: socialMediaLinks.map((link) => link.socialMedia),
 	};
@@ -326,6 +362,7 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		roles,
 		initialSocialMedia,
 		existingPartners,
+		existingPersons,
 		existingSocialMedia,
 	] = await Promise.all([
 		db
@@ -354,6 +391,7 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		}),
 		getSocialMediaOptions(),
 		getProjectPartnerRowsForAdmin(project.entityVersion.entity.id),
+		getProjectPersonRowsForAdmin(project.entityVersion.entity.id),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
 			columns: { socialMediaId: true },
@@ -374,6 +412,20 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		};
 	});
 
+	const initialPersons = existingPersons.map((person) => {
+		return {
+			id: person.id,
+			personDocumentId: person.personDocumentId,
+			personName: person.personName,
+			roleId: person.roleId,
+			roleName: person.roleName,
+			durationStart:
+				person.duration?.start != null ? person.duration.start.toISOString().slice(0, 10) : null,
+			durationEnd:
+				person.duration?.end != null ? person.duration.end.toISOString().slice(0, 10) : null,
+		};
+	});
+
 	const initialSocialMediaIds = existingSocialMedia.map((row) => row.socialMediaId);
 
 	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
@@ -381,6 +433,7 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 	return {
 		description: descriptionRows.at(0)?.content,
 		initialPartners,
+		initialPersons,
 		initialSocialMedia,
 		initialSocialMediaIds,
 		project,

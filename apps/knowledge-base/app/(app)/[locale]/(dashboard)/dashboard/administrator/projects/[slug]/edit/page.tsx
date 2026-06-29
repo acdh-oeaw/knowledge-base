@@ -122,6 +122,7 @@ export default async function DashboardAdministratorEditProjectPage(
 		roles,
 		initialSocialMedia,
 		existingPartners,
+		existingPersons,
 		existingSocialMedia,
 	] = await Promise.all([
 		getEntityContentBlocks(project.id, "description"),
@@ -160,6 +161,26 @@ export default async function DashboardAdministratorEditProjectPage(
 				)
 				.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, documentId));
 		})(),
+		(() => {
+			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
+			return db
+				.select({
+					id: schema.projectsToPersons.id,
+					personDocumentId: schema.projectsToPersons.personDocumentId,
+					personName: schema.persons.name,
+					roleId: schema.projectsToPersons.roleId,
+					roleName: schema.projectRoles.role,
+					duration: schema.projectsToPersons.duration,
+				})
+				.from(schema.projectsToPersons)
+				.innerJoin(
+					personDocumentLifecycle,
+					eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+				)
+				.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
+				.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
+				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
+		})(),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
 			columns: { socialMediaId: true },
@@ -175,6 +196,18 @@ export default async function DashboardAdministratorEditProjectPage(
 			roleName: partner.roleName,
 			durationStart: partner.duration?.start ?? null,
 			durationEnd: partner.duration?.end ?? null,
+		};
+	});
+
+	const initialPersons = existingPersons.map((person) => {
+		return {
+			id: person.id,
+			personDocumentId: person.personDocumentId,
+			personName: person.personName,
+			roleId: person.roleId,
+			roleName: person.roleName,
+			durationStart: person.duration?.start ?? null,
+			durationEnd: person.duration?.end ?? null,
 		};
 	});
 
@@ -199,6 +232,7 @@ export default async function DashboardAdministratorEditProjectPage(
 			hasDraftChanges={hasDraftChanges}
 			initialAssets={initialAssets}
 			initialPartners={initialPartners}
+			initialPersons={initialPersons}
 			initialSocialMediaIds={initialSocialMediaIds}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}

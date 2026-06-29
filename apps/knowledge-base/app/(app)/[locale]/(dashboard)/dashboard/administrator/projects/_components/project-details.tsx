@@ -14,7 +14,7 @@ import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_c
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
-import { getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
+import { getEntityDetailHref, getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
 import { formatRoleType } from "@/lib/format-role-type";
 
 interface ProjectDetailsProps {
@@ -37,6 +37,13 @@ interface ProjectDetailsProps {
 			unitName: string;
 			unitSlug: string;
 			unitType: string;
+			roleName: string;
+			duration: { start: Date; end?: Date | null | undefined } | null;
+		}>;
+		persons: Array<{
+			id: string;
+			personName: string;
+			personSlug: string;
 			roleName: string;
 			duration: { start: Date; end?: Date | null | undefined } | null;
 		}>;
@@ -176,6 +183,27 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 									target={partner.unitName}
 									targetHref={getOrganisationalUnitDetailHref(partner.unitType, partner.unitSlug)}
 									targetType={formatRoleType(partner.unitType)}
+								/>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
+				<DescriptionTerm>{t("Persons")}</DescriptionTerm>
+				<DescriptionDetails>
+					{project.persons.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{project.persons.map((person) => (
+								<RelationStatement
+									key={person.id}
+									duration={person.duration ?? undefined}
+									relation={person.roleName}
+									showSource={false}
+									source={project.name}
+									target={person.personName}
+									targetHref={getEntityDetailHref({
+										entityType: "persons",
+										slug: person.personSlug,
+									})}
 								/>
 							))}
 						</ul>
