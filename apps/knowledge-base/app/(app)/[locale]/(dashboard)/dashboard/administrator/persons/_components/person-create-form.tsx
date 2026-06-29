@@ -9,10 +9,12 @@ import { createPersonAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/a
 
 interface PersonCreateFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaTotal: number;
 }
 
 export function PersonCreateForm(props: Readonly<PersonCreateFormProps>): ReactNode {
-	const { initialAssets } = props;
+	const { initialAssets, initialSocialMediaItems, initialSocialMediaTotal } = props;
 
 	const t = useExtracted();
 
@@ -20,7 +22,12 @@ export function PersonCreateForm(props: Readonly<PersonCreateFormProps>): ReactN
 		<Fragment>
 			<EntityFormHeader title={t("New person")} />
 
-			<PersonForm formAction={createPersonAction} initialAssets={initialAssets} />
+			<PersonForm
+				formAction={createPersonAction}
+				initialAssets={initialAssets}
+				initialSocialMediaItems={initialSocialMediaItems}
+				initialSocialMediaTotal={initialSocialMediaTotal}
+			/>
 		</Fragment>
 	);
 }

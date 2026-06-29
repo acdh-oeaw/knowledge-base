@@ -26,6 +26,12 @@ interface PersonDetailsProps {
 	person: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
 		biographyContentBlocks: Array<ContentBlock>;
 		entityVersion: { entity: { id: string; slug: string } };
+		socialMedia: Array<{
+			id: string;
+			name: string;
+			url: string;
+			type: { type: string };
+		}>;
 	} & { image: { key: string; label: string; url: string } | null };
 	contributions: Array<PersonContribution>;
 	publishAction: (documentId: string) => Promise<unknown>;
@@ -121,6 +127,24 @@ export function PersonDetails(props: Readonly<PersonDetailsProps>): ReactNode {
 							key={selectedVersion}
 							contentBlocks={person.biographyContentBlocks}
 						/>
+					) : null}
+				</DescriptionDetails>
+				<DescriptionTerm>{t("Social media")}</DescriptionTerm>
+				<DescriptionDetails>
+					{person.socialMedia.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{person.socialMedia.map((item) => (
+								<li key={item.id} className="text-sm">
+									<span className="font-medium">{item.name}</span>
+									{" · "}
+									<span className="text-muted-fg">{item.type.type}</span>
+									{" · "}
+									<a className="underline" href={item.url} rel="noreferrer" target="_blank">
+										{item.url}
+									</a>
+								</li>
+							))}
+						</ul>
 					) : null}
 				</DescriptionDetails>
 			</DescriptionList>

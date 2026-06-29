@@ -437,6 +437,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.persons.imageId,
 				to: r.assets.id,
 			}),
+			socialMedia: r.many.socialMedia({
+				from: r.persons.id.through(r.personsToSocialMedia.personId),
+				to: r.socialMedia.id.through(r.personsToSocialMedia.socialMediaId),
+			}),
 		},
 		personsToOrganisationalUnits: {
 			personEntity: r.one.entities({
@@ -555,6 +559,18 @@ export const relations = defineRelations(schema, (r) => {
 			services: r.many.services({
 				from: r.socialMedia.id.through(r.servicesToSocialMedia.socialMediaId),
 				to: r.services.id.through(r.servicesToSocialMedia.serviceId),
+			}),
+		},
+		personsToSocialMedia: {
+			person: r.one.persons({
+				from: r.personsToSocialMedia.personId,
+				to: r.persons.id,
+				optional: false,
+			}),
+			socialMedia: r.one.socialMedia({
+				from: r.personsToSocialMedia.socialMediaId,
+				to: r.socialMedia.id,
+				optional: false,
 			}),
 		},
 		projectsToSocialMedia: {

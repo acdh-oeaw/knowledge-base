@@ -7,6 +7,7 @@ import { uuidv7 } from "../functions";
 import { assets } from "./assets";
 import { entities, entityVersions } from "./entities";
 import { organisationalUnitTypes } from "./organisational-units";
+import { socialMedia } from "./social-media";
 
 export const personRoleTypesEnum = [
 	"is_affiliated_with",
@@ -110,3 +111,23 @@ export const personRoleTypesToOrganisationalUnitTypesAllowedRelations = p.snakeC
 	},
 	(t) => [p.unique().on(t.roleTypeId, t.unitTypeId)],
 );
+
+export const personsToSocialMedia = p.snakeCase.table("persons_to_social_media", {
+	id: p.uuid("id").primaryKey().default(uuidv7()),
+	personId: p
+		.uuid("person_id")
+		.notNull()
+		.references(() => persons.id),
+	socialMediaId: p
+		.uuid("social_media_id")
+		.notNull()
+		.references(() => socialMedia.id),
+	...f.timestamps(),
+});
+
+export type PersonToSocialMedia = typeof personsToSocialMedia.$inferSelect;
+export type PersonToSocialMediaInput = typeof personsToSocialMedia.$inferInsert;
+
+export const PersonToSocialMediaSelectSchema = createSelectSchema(personsToSocialMedia);
+export const PersonToSocialMediaInsertSchema = createInsertSchema(personsToSocialMedia);
+export const PersonToSocialMediaUpdateSchema = createUpdateSchema(personsToSocialMedia);

@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import type { User } from "@acdh-knowledge-base/auth";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { forbidden } from "next/navigation";
 
+import { getSocialMediaOptions } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
 import { unaccentIlike } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
@@ -122,4 +125,12 @@ export async function getPersonsForAdmin(
 	assertAdminUser(currentUser);
 
 	return getPersons(params);
+}
+
+export async function getPersonCreateDataForAdmin(currentUser: Pick<User, "role">) {
+	assertAdminUser(currentUser);
+
+	const initialSocialMedia = await getSocialMediaOptions();
+
+	return { initialSocialMedia };
 }

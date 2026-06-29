@@ -11,6 +11,7 @@ import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getContributionRoleOptions, getPersonContributions } from "@/lib/data/contributions";
 import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
 import { personsLifecycleAdapter } from "@/lib/data/persons.lifecycle-adapter";
+import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
 import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -99,11 +100,26 @@ export default async function DashboardAdministratorEditPersonPage(
 		notFound();
 	}
 
-	const [contributions, contributionRoleOptions, biographyContentBlocks] = await Promise.all([
+	const [
+		contributions,
+		contributionRoleOptions,
+		biographyContentBlocks,
+		initialSocialMedia,
+		existingSocialMedia,
+	] = await Promise.all([
 		getPersonContributions(documentId),
 		getContributionRoleOptions(),
 		getEntityContentBlocks(person.id, "biography"),
+		getSocialMediaOptions(),
+		db.query.personsToSocialMedia.findMany({
+			where: { personId: person.id },
+			columns: { socialMediaId: true },
+		}),
 	]);
+
+	const initialSocialMediaIds = existingSocialMedia.map((row) => row.socialMediaId);
+
+	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
 
 	const image =
 		person.image != null
@@ -123,8 +139,12 @@ export default async function DashboardAdministratorEditPersonPage(
 			documentId={documentId}
 			hasDraftChanges={hasDraftChanges}
 			initialAssets={initialAssets}
+			initialSocialMediaIds={initialSocialMediaIds}
+			initialSocialMediaItems={initialSocialMedia.items}
+			initialSocialMediaTotal={initialSocialMedia.total}
 			isPublished={publishedId != null}
 			person={{ ...person, biographyContentBlocks, image }}
+			selectedSocialMediaItems={selectedSocialMediaItems}
 		/>
 	);
 }

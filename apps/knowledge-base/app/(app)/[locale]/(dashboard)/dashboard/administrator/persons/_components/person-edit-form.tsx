@@ -30,6 +30,10 @@ interface PersonEditFormProps {
 	} & { image: { key: string; label: string; url: string } | null };
 	contributions: Array<PersonContribution>;
 	contributionRoleOptions: Array<ContributionRoleOption>;
+	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaTotal: number;
+	selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaIds: Array<string>;
 }
 
 export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode {
@@ -41,6 +45,9 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 		person,
 		contributions,
 		contributionRoleOptions,
+		initialSocialMediaIds,
+		initialSocialMediaItems,
+		initialSocialMediaTotal,
 	} = props;
 
 	const t = useExtracted();
@@ -73,6 +80,9 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 					<PersonForm
 						formAction={updatePersonAction}
 						initialAssets={initialAssets}
+						initialSocialMediaIds={initialSocialMediaIds}
+						initialSocialMediaItems={initialSocialMediaItems}
+						initialSocialMediaTotal={initialSocialMediaTotal}
 						person={person}
 					/>
 				</TabPanel>

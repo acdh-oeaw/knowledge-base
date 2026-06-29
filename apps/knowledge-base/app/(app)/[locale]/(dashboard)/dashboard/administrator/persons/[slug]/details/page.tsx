@@ -104,9 +104,19 @@ export default async function DashboardAdministratorPersonDetailsPage(
 		notFound();
 	}
 
-	const [contributions, biographyContentBlocks] = await Promise.all([
+	const [contributions, biographyContentBlocks, socialMediaLinks] = await Promise.all([
 		getPersonContributions(documentId),
 		getEntityContentBlocks(versionId, "biography"),
+		db.query.personsToSocialMedia.findMany({
+			where: { personId: person.id },
+			columns: {},
+			with: {
+				socialMedia: {
+					columns: { id: true, name: true, url: true },
+					with: { type: { columns: { type: true } } },
+				},
+			},
+		}),
 	]);
 
 	const image =
@@ -127,7 +137,12 @@ export default async function DashboardAdministratorPersonDetailsPage(
 			documentId={documentId}
 			hasDraft={hasDraftChanges}
 			isPublished={publishedId != null}
-			person={{ ...person, biographyContentBlocks, image }}
+			person={{
+				...person,
+				biographyContentBlocks,
+				image,
+				socialMedia: socialMediaLinks.map((link) => link.socialMedia),
+			}}
 			publishAction={publishPersonAction}
 			selectedVersion={selectedVersion}
 		/>
