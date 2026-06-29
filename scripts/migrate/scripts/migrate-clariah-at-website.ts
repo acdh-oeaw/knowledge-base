@@ -888,23 +888,31 @@ async function main() {
 				if (size > assetSizeLimit) {
 					logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
 				} else {
-					const input = await buffer.fromUrl(imageUrl);
-					const metadata = await buffer.getMetadata(input);
-					const prefix = "images" as AssetPrefix;
-					const label = projectEN.title!;
-					const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
+					try {
+						const input = await buffer.fromUrl(imageUrl);
+						const metadata = await buffer.getMetadata(input);
+						const prefix = "images" as AssetPrefix;
+						const label = projectEN.title!;
+						const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
 
-					[asset] = await db
-						.insert(schema.assets)
-						.values({
-							key,
-							label,
-							mimeType: metadata["content-type"],
-							caption: "",
-							alt: "",
-							size,
-						})
-						.returning({ id: schema.assets.id });
+						[asset] = await db
+							.insert(schema.assets)
+							.values({
+								key,
+								label,
+								mimeType: metadata["content-type"],
+								caption: "",
+								alt: "",
+								size,
+							})
+							.returning({ id: schema.assets.id });
+					} catch (error: unknown) {
+						if (Error.isError(error)) {
+							logToFile(`${error.message} ${String(imageUrl)}`);
+						} else {
+							logToFile(`unknown error for:  ${String(imageUrl)}`);
+						}
+					}
 				}
 			}
 			assert(placeholderAsset);
@@ -940,7 +948,7 @@ async function main() {
 
 			await tx.insert(schema.projects).values({
 				id: projectVersionId,
-				acronym: "",
+				acronym: null,
 				name: projectEN.title!,
 				scopeId: projectScopesByScope.national.id,
 				summary: projectEN.summary ?? "",
