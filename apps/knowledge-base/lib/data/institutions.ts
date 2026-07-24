@@ -30,7 +30,7 @@ export interface InstitutionsResult {
 		> & {
 			countryName: string | null;
 			ericRelationStatuses: Array<InstitutionEricRelationStatus>;
-			entity: Pick<schema.Entity, "slug">;
+			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
 		}
@@ -107,7 +107,7 @@ async function getInstitutionRelationData(ids: ReadonlyArray<string>) {
 	}
 
 	const erics = await db.query.organisationalUnits.findMany({
-		where: { entityVersion: { entity: { slug: dariahEuSlug } }, type: { type: "eric" } },
+		where: { entityVersion: { slug: { value: dariahEuSlug } }, type: { type: "eric" } },
 		columns: { id: true },
 	});
 	const ericIds = erics.map((eric) => eric.id);
@@ -220,7 +220,7 @@ const itemSelect = {
 	name: schema.organisationalUnits.name,
 	ror: schema.organisationalUnits.ror,
 	sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
-	slug: schema.entities.slug,
+	slug: schema.slugs.value,
 	hasDraft: schema.documentLifecycle.hasDraftChanges,
 	isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 } as const;
@@ -248,10 +248,10 @@ export async function getInstitutions(
 					schema.entityVersions,
 					eq(schema.organisationalUnits.id, schema.entityVersions.id),
 				)
-				.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+				.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 				.innerJoin(
 					schema.documentLifecycle,
-					eq(schema.documentLifecycle.documentId, schema.entities.id),
+					eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 				)
 				.where(and(versionPick, where))
 				.orderBy(nameOrderBy)
@@ -323,10 +323,10 @@ export async function getInstitutions(
 				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
 			)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(versionPick, where))
 			.orderBy(nameOrderBy);
@@ -440,10 +440,10 @@ export async function getInstitutions(
 				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
 			)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(
 				and(

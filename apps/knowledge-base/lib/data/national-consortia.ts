@@ -20,7 +20,7 @@ export interface NationalConsortiaResult {
 	data: Array<
 		Pick<schema.OrganisationalUnit, "id" | "name" | "sshocMarketplaceActorId"> & {
 			countryName: string | null;
-			entity: Pick<schema.Entity, "slug">;
+			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
 		}
@@ -138,7 +138,7 @@ const itemSelect = {
 	id: schema.organisationalUnits.id,
 	name: schema.organisationalUnits.name,
 	sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
-	slug: schema.entities.slug,
+	slug: schema.slugs.value,
 	hasDraft: schema.documentLifecycle.hasDraftChanges,
 	isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 } as const;
@@ -163,10 +163,10 @@ export async function getNationalConsortia(
 				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
 			)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(versionPick, where))
 			.orderBy(nameOrderBy);
@@ -312,10 +312,10 @@ export async function getNationalConsortia(
 			eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
 		)
 		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-		.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 		)
 		.where(
 			and(

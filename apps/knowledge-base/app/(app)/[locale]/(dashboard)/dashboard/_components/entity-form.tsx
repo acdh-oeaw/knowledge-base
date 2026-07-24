@@ -22,10 +22,15 @@ interface EntityFormHeaderProps {
 		publishAction?: LifecycleAction;
 		discardDraftAction?: LifecycleAction;
 	};
+	/**
+	 * Rendered next to the lifecycle bar, e.g. a `LocaleSelector`. Ignored when `lifecycle` is
+	 * omitted.
+	 */
+	localeSelector?: ReactNode;
 }
 
 export function EntityFormHeader(props: Readonly<EntityFormHeaderProps>): ReactNode {
-	const { title, lifecycle } = props;
+	const { title, lifecycle, localeSelector } = props;
 
 	if (lifecycle == null) {
 		return <Heading>{title}</Heading>;
@@ -34,14 +39,17 @@ export function EntityFormHeader(props: Readonly<EntityFormHeaderProps>): ReactN
 	return (
 		<div className="flex items-center justify-between">
 			<Heading>{title}</Heading>
-			<EntityLifecycleBar
-				discardDraftAction={lifecycle.discardDraftAction}
-				documentId={lifecycle.documentId}
-				editHref={lifecycle.editHref}
-				hasDraft={lifecycle.hasDraft}
-				isPublished={lifecycle.isPublished}
-				publishAction={lifecycle.publishAction}
-			/>
+			<div className="flex items-center gap-x-4">
+				{localeSelector}
+				<EntityLifecycleBar
+					discardDraftAction={lifecycle.discardDraftAction}
+					documentId={lifecycle.documentId}
+					editHref={lifecycle.editHref}
+					hasDraft={lifecycle.hasDraft}
+					isPublished={lifecycle.isPublished}
+					publishAction={lifecycle.publishAction}
+				/>
+			</div>
 		</div>
 	);
 }

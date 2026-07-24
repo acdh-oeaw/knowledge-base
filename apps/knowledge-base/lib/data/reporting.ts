@@ -62,22 +62,22 @@ export async function getUserReportingScope(user: User): Promise<{
 				orgUnitId: schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
 				orgUnitName: schema.organisationalUnits.name,
 				orgUnitType: schema.organisationalUnitTypes.type,
-				orgUnitSlug: schema.entities.slug,
+				orgUnitSlug: schema.slugs.value,
 				roleType: schema.personRoleTypes.type,
 			})
 			.from(schema.personsToOrganisationalUnits)
 			.innerJoin(
-				schema.entities,
-				eq(schema.entities.id, schema.personsToOrganisationalUnits.organisationalUnitDocumentId),
-			)
-			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(
+					schema.documentLifecycle.documentId,
+					schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+				),
 			)
 			.innerJoin(
 				schema.organisationalUnits,
 				sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 			)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 			.innerJoin(
 				schema.organisationalUnitTypes,
 				eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
@@ -187,13 +187,13 @@ export async function getUserReportingScope(user: User): Promise<{
 			if (!alreadyIncluded) {
 				// resolve the country document → published version for its name/slug.
 				const country = await db
-					.select({ name: schema.organisationalUnits.name, slug: schema.entities.slug })
+					.select({ name: schema.organisationalUnits.name, slug: schema.slugs.value })
 					.from(schema.documentLifecycle)
-					.innerJoin(schema.entities, eq(schema.entities.id, schema.documentLifecycle.documentId))
 					.innerJoin(
 						schema.organisationalUnits,
 						eq(schema.organisationalUnits.id, schema.documentLifecycle.publishedId),
 					)
+					.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 					.where(eq(schema.documentLifecycle.documentId, user.organisationalUnitDocumentId))
 					.then((rows) => rows[0] ?? null);
 				countryReportItems.push({
@@ -277,7 +277,7 @@ export async function getUserAllCountryReports(
 	const rows = await db
 		.select({
 			id: schema.countryReports.id,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			reportStatus: schema.countryReports.status,
 			countryName: schema.organisationalUnits.name,
 			campaignYear: schema.reportingCampaigns.year,
@@ -289,15 +289,15 @@ export async function getUserAllCountryReports(
 			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
 		)
 		// the report's country is a document; resolve it to its latest editable version for the name.
-		.innerJoin(schema.entities, eq(schema.entities.id, schema.countryReports.countryDocumentId))
 		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.where(inArray(schema.countryReports.countryDocumentId, uniqueIds))
 		.orderBy(desc(schema.reportingCampaigns.year));
 
@@ -369,7 +369,7 @@ export async function getUserAllWorkingGroupReports(
 	const rows = await db
 		.select({
 			id: schema.workingGroupReports.id,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			reportStatus: schema.workingGroupReports.status,
 			workingGroupName: schema.organisationalUnits.name,
 			campaignYear: schema.reportingCampaigns.year,
@@ -382,17 +382,14 @@ export async function getUserAllWorkingGroupReports(
 		)
 		// the report's working group is a document; resolve to its latest editable version for the name.
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.workingGroupReports.workingGroupDocumentId),
-		)
-		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.where(inArray(schema.workingGroupReports.workingGroupDocumentId, wgOrgUnitIds))
 		.orderBy(desc(schema.reportingCampaigns.year));
 

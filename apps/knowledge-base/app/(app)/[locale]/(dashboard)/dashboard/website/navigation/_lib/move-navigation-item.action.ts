@@ -4,6 +4,7 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
+import { navigationItemLocaleWhere } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/navigation/_lib/navigation-locale";
 import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -19,7 +20,7 @@ export async function moveNavigationItemAction(
 	await db.transaction(async (tx) => {
 		const item = await tx.query.navigationItems.findFirst({
 			where: { id },
-			columns: { id: true, position: true, menuId: true, parentId: true },
+			columns: { id: true, position: true, menuId: true, parentId: true, localeId: true },
 		});
 
 		if (item == null) {
@@ -30,12 +31,15 @@ export async function moveNavigationItemAction(
 			.select({ id: schema.navigationItems.id, position: schema.navigationItems.position })
 			.from(schema.navigationItems)
 			.where(
-				item.parentId != null
-					? eq(schema.navigationItems.parentId, item.parentId)
-					: and(
-							eq(schema.navigationItems.menuId, item.menuId),
-							isNull(schema.navigationItems.parentId),
-						),
+				and(
+					item.parentId != null
+						? eq(schema.navigationItems.parentId, item.parentId)
+						: and(
+								eq(schema.navigationItems.menuId, item.menuId),
+								isNull(schema.navigationItems.parentId),
+							),
+					navigationItemLocaleWhere(item.localeId),
+				),
 			)
 			.orderBy(schema.navigationItems.position);
 

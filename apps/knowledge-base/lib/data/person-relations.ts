@@ -22,17 +22,13 @@ export async function getPersonRelations(organisationalUnitDocumentId: string) {
 			personDocumentId: schema.personsToOrganisationalUnits.personDocumentId,
 			personName: schema.persons.name,
 			personSortName: schema.persons.sortName,
-			personSlug: schema.entities.slug,
+			personSlug: schema.slugs.value,
 			roleTypeId: schema.personsToOrganisationalUnits.roleTypeId,
 			roleType: schema.personRoleTypes.type,
 			duration: schema.personsToOrganisationalUnits.duration,
 			targetUnitType: schema.organisationalUnitTypes.type,
 		})
 		.from(schema.personsToOrganisationalUnits)
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.personsToOrganisationalUnits.personDocumentId),
-		)
 		.innerJoin(
 			personDocumentLifecycle,
 			eq(personDocumentLifecycle.documentId, schema.personsToOrganisationalUnits.personDocumentId),
@@ -41,6 +37,7 @@ export async function getPersonRelations(organisationalUnitDocumentId: string) {
 			schema.persons,
 			sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.draftId}, ${personDocumentLifecycle.publishedId})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.persons.id))
 		.innerJoin(
 			schema.personRoleTypes,
 			eq(schema.personRoleTypes.id, schema.personsToOrganisationalUnits.roleTypeId),

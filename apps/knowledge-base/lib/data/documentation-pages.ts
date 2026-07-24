@@ -38,7 +38,7 @@ export async function getDocumentationPages(params: GetDocumentationPagesParams)
 		db
 			.select({
 				id: schema.documentationPages.id,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				title: schema.documentationPages.title,
@@ -46,10 +46,10 @@ export async function getDocumentationPages(params: GetDocumentationPagesParams)
 			})
 			.from(schema.documentationPages)
 			.innerJoin(schema.entityVersions, eq(schema.documentationPages.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(sql`${schema.entityVersions.id} = ${pickedVersion}`, searchWhere))
 			.orderBy(orderBy)
@@ -101,7 +101,11 @@ export async function getDocumentationPageById(params: GetDocumentationPageByIdP
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -114,5 +118,5 @@ export async function getDocumentationPageById(params: GetDocumentationPageByIdP
 	}
 
 	const { entityVersion, ...rest } = item;
-	return { ...rest, entity: entityVersion.entity };
+	return { ...rest, entity: { slug: entityVersion.slug?.value ?? "" } };
 }

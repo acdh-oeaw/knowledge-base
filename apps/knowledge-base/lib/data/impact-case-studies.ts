@@ -42,8 +42,8 @@ export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
 		db
 			.select({
 				id: schema.impactCaseStudies.id,
-				documentId: schema.entities.id,
-				slug: schema.entities.slug,
+				documentId: schema.entityVersions.entityId,
+				slug: schema.slugs.value,
 				summary: schema.impactCaseStudies.summary,
 				title: schema.impactCaseStudies.title,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
@@ -53,11 +53,11 @@ export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
 			})
 			.from(schema.impactCaseStudies)
 			.innerJoin(schema.entityVersions, eq(schema.impactCaseStudies.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(sql`${schema.entityVersions.id} = ${pickedVersion}`, where))
 			.orderBy(orderBy)
@@ -108,9 +108,9 @@ export async function getImpactCaseStudyById(params: GetImpactCaseStudyByIdParam
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -133,7 +133,7 @@ export async function getImpactCaseStudyById(params: GetImpactCaseStudyByIdParam
 	});
 
 	const { entityVersion, ...rest } = item;
-	const data = { ...rest, entity: entityVersion.entity, image };
+	const data = { ...rest, entity: { slug: entityVersion.slug?.value ?? "" }, image };
 
 	return data;
 }

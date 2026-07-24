@@ -55,24 +55,21 @@ async function getCountryNationalConsortiumSlugs(
 	year: number,
 ): Promise<Array<string>> {
 	const rows = await db
-		.select({ slug: schema.entities.slug })
+		.select({ slug: schema.slugs.value })
 		.from(schema.organisationalUnitsRelations)
 		.innerJoin(
 			schema.organisationalUnitStatus,
 			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
 		)
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.organisationalUnitsRelations.unitDocumentId),
-		)
-		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.organisationalUnitsRelations.unitDocumentId),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
@@ -100,9 +97,13 @@ async function getCountryNationalConsortiumSlugs(
 
 async function getWorkingGroupSlug(workingGroupDocumentId: string): Promise<string | null> {
 	const rows = await db
-		.select({ slug: schema.entities.slug })
-		.from(schema.entities)
-		.where(eq(schema.entities.id, workingGroupDocumentId))
+		.select({ slug: schema.slugs.value })
+		.from(schema.documentLifecycle)
+		.innerJoin(
+			schema.slugs,
+			sql`${schema.slugs.entityVersionId} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+		)
+		.where(eq(schema.documentLifecycle.documentId, workingGroupDocumentId))
 		.limit(1);
 
 	return rows[0]?.slug ?? null;

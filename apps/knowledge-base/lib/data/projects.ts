@@ -23,7 +23,7 @@ export interface ProjectsResult {
 	data: Array<
 		Pick<schema.Project, "acronym" | "duration" | "funding" | "id" | "name"> & {
 			documentId: string;
-			entity: Pick<schema.Entity, "slug">;
+			slug: string;
 			hasDraft: boolean;
 			isPublished: boolean;
 			scope: Pick<schema.ProjectScope, "id" | "scope">;
@@ -83,7 +83,7 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 				name: schema.projects.name,
 				scope: schema.projectScopes.scope,
 				scopeId: schema.projectScopes.id,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
 				status: schema.entityStatus.type,
@@ -97,6 +97,7 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.documentId, schema.entities.id),
 			)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(and(versionPick, where))
 			.orderBy(orderBy)
 			.limit(limit)
@@ -118,7 +119,7 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 				acronym: item.acronym,
 				documentId: item.documentId,
 				duration: item.duration,
-				entity: { slug: item.slug },
+				slug: item.slug,
 				funding: item.funding,
 				hasDraft: item.hasDraft,
 				id: item.id,
@@ -175,8 +176,8 @@ export async function getProjectBySlugForAdmin(currentUser: Pick<User, "role">, 
 	return db.query.projects.findFirst({
 		where: {
 			entityVersion: {
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -197,9 +198,9 @@ export async function getProjectBySlugForAdmin(currentUser: Pick<User, "role">, 
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
 						},
 					},
+					slug: true,
 					status: {
 						columns: {
 							id: true,

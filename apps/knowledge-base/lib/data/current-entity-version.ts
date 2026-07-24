@@ -38,6 +38,36 @@ export function publishedEntityVersionWhere(): SQL | undefined {
 }
 
 /**
+ * Scope a query joining `entityVersions` to the default locale's row only. `entity_versions` now
+ * allows one row per locale, so pickers and other admin-facing lookups that expect exactly one
+ * canonical row per document need this — matching how `document_lifecycle` is pinned to the default
+ * locale.
+ */
+export function defaultLocaleEntityVersionWhere(): SQL {
+	return sql`
+		${schema.entityVersions.localeId} = (
+			SELECT ${schema.locales.id} FROM ${schema.locales} WHERE ${schema.locales.isDefault} = true
+		)
+	`;
+}
+
+/**
+ * Locale filter for an aliased `entity_versions` row: the given locale, or the default when
+ * omitted. Generic + `sql`-only (no `eq()`) because Drizzle's column types bake in the literal
+ * table name, which an aliased column doesn't structurally match.
+ */
+export function localeMatch(localeColumn: unknown, localeId: string | undefined): SQL {
+	return localeId != null
+		? sql`${localeColumn} = ${localeId}`
+		: sql`${localeColumn} = (SELECT ${schema.locales.id} FROM ${schema.locales} WHERE ${schema.locales.isDefault} = true)`;
+}
+
+/** Status filter for an aliased `entity_versions` row, by status type. */
+export function statusMatch(statusColumn: unknown, type: "draft" | "published"): SQL {
+	return sql`${statusColumn} = (SELECT ${schema.entityStatus.id} FROM ${schema.entityStatus} WHERE ${schema.entityStatus.type} = ${type})`;
+}
+
+/**
  * True when every `entityVersionIds` entry is a published version row. Use in server actions to
  * reject insertions that would link to a draft.
  */

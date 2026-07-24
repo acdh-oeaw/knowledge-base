@@ -4,6 +4,7 @@ import { createInsertSchema, createSelectSchema, createUpdateSchema } from "driz
 
 import * as f from "../fields";
 import { uuidv7 } from "../functions";
+import { locales } from "./locales";
 
 export const entityTypesEnum = [
 	"documentation_pages",
@@ -59,22 +60,17 @@ export const EntityStatusInsertSchema = createInsertSchema(entityStatus);
 export const EntityStatusUpdateSchema = createUpdateSchema(entityStatus);
 
 /**
- * A document is the stable identity of a piece of content across draft/published versions. Slug,
- * type, and cross-type relations live here so they survive republishes.
+ * A document is the stable identity of a piece of content across draft/published versions and
+ * across locales.
  */
-export const entities = p.snakeCase.table(
-	"entities",
-	{
-		id: p.uuid("id").primaryKey().default(uuidv7()),
-		typeId: p
-			.uuid("type_id")
-			.notNull()
-			.references(() => entityTypes.id),
-		slug: p.text("slug").notNull(),
-		...f.timestamps(),
-	},
-	(t) => [p.unique("entities_type_id_slug_unique").on(t.typeId, t.slug)],
-);
+export const entities = p.snakeCase.table("entities", {
+	id: p.uuid("id").primaryKey().default(uuidv7()),
+	typeId: p
+		.uuid("type_id")
+		.notNull()
+		.references(() => entityTypes.id),
+	...f.timestamps(),
+});
 
 export type Entity = typeof entities.$inferSelect;
 export type EntityInput = typeof entities.$inferInsert;
@@ -100,8 +96,16 @@ export const entityVersions = p.snakeCase.table(
 			.notNull()
 			.references(() => entityStatus.id),
 		...f.timestamps(),
+		localeId: p
+			.uuid("locale_id")
+			.notNull()
+			.references(() => locales.id),
 	},
-	(t) => [p.unique("entity_versions_entity_id_status_id_unique").on(t.entityId, t.statusId)],
+	(t) => [
+		p
+			.unique("entity_versions_entity_id_status_id_locale_id_unique")
+			.on(t.entityId, t.statusId, t.localeId),
+	],
 );
 
 export type EntityVersion = typeof entityVersions.$inferSelect;

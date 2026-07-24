@@ -23,7 +23,7 @@ export interface PersonsResult {
 	data: Array<
 		Pick<schema.Person, "email" | "id" | "name" | "orcid"> & {
 			documentId: string;
-			entity: Pick<schema.Entity, "slug">;
+			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
 			updatedAt: Date;
@@ -64,12 +64,12 @@ export async function getPersons(params: Readonly<GetPersonsParams>): Promise<Pe
 	const [data, aggregate] = await Promise.all([
 		db
 			.select({
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				email: schema.persons.email,
 				id: schema.persons.id,
 				name: schema.persons.name,
 				orcid: schema.persons.orcid,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				updatedAt: schema.entityVersions.updatedAt,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
@@ -77,11 +77,11 @@ export async function getPersons(params: Readonly<GetPersonsParams>): Promise<Pe
 			})
 			.from(schema.persons)
 			.innerJoin(schema.entityVersions, eq(schema.persons.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(versionPick, where))
 			.orderBy(orderBy)

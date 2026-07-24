@@ -66,6 +66,7 @@ export async function deleteDocumentOrPolicyAction(documentId: string): Promise<
 			);
 
 		if (versionIds.length > 0) {
+			await tx.delete(schema.slugs).where(inArray(schema.slugs.entityVersionId, versionIds));
 			await tx.delete(schema.entityVersions).where(inArray(schema.entityVersions.id, versionIds));
 		}
 

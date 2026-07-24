@@ -183,9 +183,58 @@ export const relations = defineRelations(schema, (r) => {
 				to: r.entityStatus.id,
 				optional: false,
 			}),
+			locale: r.one.locales({
+				from: r.entityVersions.localeId,
+				to: r.locales.id,
+				optional: false,
+			}),
 			fields: r.many.fields({
 				from: r.entityVersions.id,
 				to: r.fields.entityVersionId,
+			}),
+			slug: r.one.slugs({
+				from: r.entityVersions.id,
+				to: r.slugs.entityVersionId,
+				optional: true,
+			}),
+		},
+		slugs: {
+			entityVersion: r.one.entityVersions({
+				from: r.slugs.entityVersionId,
+				to: r.entityVersions.id,
+				optional: false,
+			}),
+			entity: r.one.entities({
+				from: r.slugs.entityId,
+				to: r.entities.id,
+				optional: false,
+			}),
+			type: r.one.entityTypes({
+				from: r.slugs.typeId,
+				to: r.entityTypes.id,
+				optional: false,
+			}),
+			locale: r.one.locales({
+				from: r.slugs.localeId,
+				to: r.locales.id,
+				optional: false,
+			}),
+		},
+		slugRedirects: {
+			entity: r.one.entities({
+				from: r.slugRedirects.entityId,
+				to: r.entities.id,
+				optional: false,
+			}),
+			type: r.one.entityTypes({
+				from: r.slugRedirects.typeId,
+				to: r.entityTypes.id,
+				optional: false,
+			}),
+			locale: r.one.locales({
+				from: r.slugRedirects.localeId,
+				to: r.locales.id,
+				optional: false,
 			}),
 		},
 		events: {

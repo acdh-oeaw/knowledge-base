@@ -43,12 +43,12 @@ export async function getOpportunities(params: GetOpportunitiesParams) {
 	const [items, aggregate] = await Promise.all([
 		db
 			.select({
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				duration: schema.opportunities.duration,
 				id: schema.opportunities.id,
 				source: schema.opportunitySources.source,
 				sourceId: schema.opportunities.sourceId,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				summary: schema.opportunities.summary,
 				title: schema.opportunities.title,
 				updatedAt: schema.entityVersions.updatedAt,
@@ -59,15 +59,15 @@ export async function getOpportunities(params: GetOpportunitiesParams) {
 			})
 			.from(schema.opportunities)
 			.innerJoin(schema.entityVersions, eq(schema.opportunities.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(
 				schema.opportunitySources,
 				eq(schema.opportunities.sourceId, schema.opportunitySources.id),
 			)
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(sql`${schema.entityVersions.id} = ${pickedVersion}`, where))
 			.orderBy(orderBy)
@@ -124,9 +124,9 @@ export async function getOpportunityById(params: GetOpportunityByIdParams) {
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -139,7 +139,7 @@ export async function getOpportunityById(params: GetOpportunityByIdParams) {
 	}
 
 	const { entityVersion, ...rest } = item;
-	const data = { ...rest, entity: entityVersion.entity };
+	const data = { ...rest, entity: { slug: entityVersion.slug?.value ?? "" } };
 
 	return data;
 }

@@ -25,7 +25,7 @@ export async function loadOrgUnitLookups(db: Database): Promise<OrgUnitResourceL
 		.select({
 			acronym: schema.organisationalUnits.acronym,
 			id: schema.entities.id,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			type: schema.organisationalUnitTypes.type,
 			sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
 		})
@@ -36,6 +36,7 @@ export async function loadOrgUnitLookups(db: Database): Promise<OrgUnitResourceL
 		)
 		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
 		.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.documentLifecycle,
 			eq(schema.documentLifecycle.documentId, schema.entities.id),

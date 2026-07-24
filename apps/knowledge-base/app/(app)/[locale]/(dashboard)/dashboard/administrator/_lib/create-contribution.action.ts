@@ -14,7 +14,7 @@ import { CreateContributionActionInputSchema } from "@/app/(app)/[locale]/(dashb
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
 import { db } from "@/lib/db";
 import { isExclusionViolation } from "@/lib/db/errors";
-import { and, eq, sql } from "@/lib/db/sql";
+import { alias, and, eq, sql } from "@/lib/db/sql";
 import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
 
@@ -48,7 +48,7 @@ export const createContributionAction = createServerAction(
 				const unit = await tx
 					.select({
 						unitType: schema.organisationalUnitTypes.type,
-						slug: schema.entities.slug,
+						slug: schema.slugs.value,
 						allowedRelationId: schema.personRoleTypesToOrganisationalUnitTypesAllowedRelations.id,
 					})
 					.from(schema.organisationalUnits)
@@ -60,7 +60,7 @@ export const createContributionAction = createServerAction(
 						schema.organisationalUnitTypes,
 						eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
 					)
-					.innerJoin(schema.entities, eq(schema.entities.id, schema.documentLifecycle.documentId))
+					.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 					.leftJoin(
 						schema.personRoleTypesToOrganisationalUnitTypesAllowedRelations,
 						and(
@@ -82,10 +82,20 @@ export const createContributionAction = createServerAction(
 					return { error: "role-not-allowed" as const };
 				}
 
+				const personDocumentLifecycle = alias(
+					schema.documentLifecycle,
+					"person_document_lifecycle",
+				);
+
 				const personEntity = await tx
-					.select({ slug: schema.entities.slug })
-					.from(schema.entities)
-					.where(eq(schema.entities.id, personDocumentId))
+					.select({ slug: schema.slugs.value })
+					.from(personDocumentLifecycle)
+					.innerJoin(
+						schema.persons,
+						sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.publishedId}, ${personDocumentLifecycle.draftId})`,
+					)
+					.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.persons.id))
+					.where(eq(personDocumentLifecycle.documentId, personDocumentId))
 					.limit(1)
 					.then((rows) => rows[0] ?? null);
 

@@ -22,7 +22,7 @@ export interface WorkingGroupsResult {
 			documentId: string;
 			durationFrom: Date | null;
 			durationUntil: Date | null;
-			entity: Pick<schema.Entity, "slug">;
+			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
 			updatedAt: Date;
@@ -77,7 +77,7 @@ export async function getWorkingGroups(
 				id: schema.organisationalUnits.id,
 				name: schema.organisationalUnits.name,
 				sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				updatedAt: schema.entityVersions.updatedAt,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
@@ -91,6 +91,7 @@ export async function getWorkingGroups(
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
 			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.documentId, schema.entities.id),
@@ -113,7 +114,7 @@ export async function getWorkingGroups(
 			)
 			.where(and(versionPick, where)),
 		db.query.organisationalUnits.findMany({
-			where: { entityVersion: { entity: { slug: dariahEuSlug } }, type: { type: "eric" } },
+			where: { entityVersion: { slug: { value: dariahEuSlug } }, type: { type: "eric" } },
 			columns: { id: true },
 		}),
 	]);

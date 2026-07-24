@@ -3,7 +3,10 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 
 import { relationOptionsPageSize } from "@/lib/constants/relations";
-import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
+import {
+	defaultLocaleEntityVersionWhere,
+	publishedEntityVersionWhere,
+} from "@/lib/data/current-entity-version";
 import { type Transaction, db } from "@/lib/db";
 import { unaccentIlike } from "@/lib/db/search";
 import { and, eq, inArray, or, sql } from "@/lib/db/sql";
@@ -29,25 +32,26 @@ export async function getEntityRelationOptions(
 	const searchWhere =
 		query != null && query !== ""
 			? or(
-					unaccentIlike(schema.entities.slug, `%${query}%`),
+					unaccentIlike(schema.slugs.value, `%${query}%`),
 					unaccentIlike(schema.entityTypes.type, `%${query}%`),
 				)
 			: undefined;
-	const where = and(publishedEntityVersionWhere(), searchWhere);
+	const where = and(publishedEntityVersionWhere(), defaultLocaleEntityVersionWhere(), searchWhere);
 
 	const [rows, aggregate] = await Promise.all([
 		db
 			.selectDistinct({
 				entityType: schema.entityTypes.type,
 				id: schema.entities.id,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 			})
 			.from(schema.entities)
 			.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
 			.innerJoin(schema.entityVersions, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(where)
-			.orderBy(schema.entities.slug)
+			.orderBy(schema.slugs.value)
 			.limit(limit)
 			.offset(offset),
 		db
@@ -56,6 +60,7 @@ export async function getEntityRelationOptions(
 			.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
 			.innerJoin(schema.entityVersions, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(where),
 	]);
 
@@ -76,13 +81,14 @@ export async function getEntityRelationOptionsByIds(ids: ReadonlyArray<string>) 
 		.selectDistinct({
 			entityType: schema.entityTypes.type,
 			id: schema.entities.id,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			unitType: schema.organisationalUnitTypes.type,
 		})
 		.from(schema.entities)
 		.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.entityId, schema.entities.id))
 		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.leftJoin(
 			schema.organisationalUnits,
 			eq(schema.organisationalUnits.id, schema.entityVersions.id),
@@ -91,8 +97,14 @@ export async function getEntityRelationOptionsByIds(ids: ReadonlyArray<string>) 
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
 		)
-		.where(and(publishedEntityVersionWhere(), inArray(schema.entities.id, [...ids])))
-		.orderBy(schema.entities.slug);
+		.where(
+			and(
+				publishedEntityVersionWhere(),
+				defaultLocaleEntityVersionWhere(),
+				inArray(schema.entities.id, [...ids]),
+			),
+		)
+		.orderBy(schema.slugs.value);
 
 	const itemById = new Map(
 		rows.map(
@@ -225,7 +237,13 @@ export async function filterToPublishedDocumentIds(
 		.from(schema.entities)
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.entityId, schema.entities.id))
 		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-		.where(and(publishedEntityVersionWhere(), inArray(schema.entities.id, [...documentIds])));
+		.where(
+			and(
+				publishedEntityVersionWhere(),
+				defaultLocaleEntityVersionWhere(),
+				inArray(schema.entities.id, [...documentIds]),
+			),
+		);
 
 	return rows.map((row) => row.id);
 }

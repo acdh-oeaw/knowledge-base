@@ -1,7 +1,7 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 
 import { db } from "@/lib/db";
-import { and, eq } from "@/lib/db/sql";
+import { and, eq, sql } from "@/lib/db/sql";
 
 export interface ReportRouteParams {
 	year: string;
@@ -65,8 +65,16 @@ export async function resolveCountryReportId(params: ReportRouteParams): Promise
 			schema.reportingCampaigns,
 			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
 		)
-		.innerJoin(schema.entities, eq(schema.entities.id, schema.countryReports.countryDocumentId))
-		.where(and(eq(schema.reportingCampaigns.year, year), eq(schema.entities.slug, params.slug)))
+		.innerJoin(
+			schema.documentLifecycle,
+			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
+		)
+		.innerJoin(
+			schema.organisationalUnits,
+			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+		.where(and(eq(schema.reportingCampaigns.year, year), eq(schema.slugs.value, params.slug)))
 		.limit(1);
 
 	return report[0]?.id ?? null;
@@ -89,10 +97,15 @@ export async function resolveWorkingGroupReportId(
 			eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
 		)
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.workingGroupReports.workingGroupDocumentId),
+			schema.documentLifecycle,
+			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
 		)
-		.where(and(eq(schema.reportingCampaigns.year, year), eq(schema.entities.slug, params.slug)))
+		.innerJoin(
+			schema.organisationalUnits,
+			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+		.where(and(eq(schema.reportingCampaigns.year, year), eq(schema.slugs.value, params.slug)))
 		.limit(1);
 
 	return report[0]?.id ?? null;
@@ -102,14 +115,22 @@ export async function getCountryReportEditHrefById(id: string, step?: string): P
 	const report = await db
 		.select({
 			year: schema.reportingCampaigns.year,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 		})
 		.from(schema.countryReports)
 		.innerJoin(
 			schema.reportingCampaigns,
 			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
 		)
-		.innerJoin(schema.entities, eq(schema.entities.id, schema.countryReports.countryDocumentId))
+		.innerJoin(
+			schema.documentLifecycle,
+			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
+		)
+		.innerJoin(
+			schema.organisationalUnits,
+			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.where(eq(schema.countryReports.id, id))
 		.limit(1);
 
@@ -127,7 +148,7 @@ export async function getWorkingGroupReportEditHrefById(
 	const report = await db
 		.select({
 			year: schema.reportingCampaigns.year,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 		})
 		.from(schema.workingGroupReports)
 		.innerJoin(
@@ -135,9 +156,14 @@ export async function getWorkingGroupReportEditHrefById(
 			eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
 		)
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.workingGroupReports.workingGroupDocumentId),
+			schema.documentLifecycle,
+			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
 		)
+		.innerJoin(
+			schema.organisationalUnits,
+			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.where(eq(schema.workingGroupReports.id, id))
 		.limit(1);
 

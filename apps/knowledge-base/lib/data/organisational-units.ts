@@ -83,11 +83,11 @@ export async function getOrganisationalUnitOptions(
 				documentId: schema.entityVersions.entityId,
 				name: schema.organisationalUnits.name,
 				type: schema.organisationalUnitTypes.type,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 			})
 			.from(schema.organisationalUnits)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
 			.innerJoin(
 				schema.organisationalUnitTypes,
@@ -135,11 +135,11 @@ export async function getOrganisationalUnitOptionsByDocumentIds(
 			documentId: schema.entityVersions.entityId,
 			name: schema.organisationalUnits.name,
 			type: schema.organisationalUnitTypes.type,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 		})
 		.from(schema.organisationalUnits)
 		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
@@ -181,9 +181,9 @@ export async function getOrganisationalUnits(params: GetOrganisationalUnitsParam
 				entityVersion: {
 					columns: { id: true, updatedAt: true },
 					with: {
-						entity: {
+						slug: {
 							columns: {
-								slug: true,
+								value: true,
 							},
 						},
 					},
@@ -213,7 +213,7 @@ export async function getOrganisationalUnits(params: GetOrganisationalUnitsParam
 		const { entityVersion, ...rest } = item;
 		const base = {
 			...rest,
-			entity: { slug: entityVersion.entity.slug, updatedAt: entityVersion.updatedAt },
+			entity: { slug: entityVersion.slug?.value ?? "", updatedAt: entityVersion.updatedAt },
 		};
 		if (!item.image) {
 			return base;
@@ -244,9 +244,9 @@ export async function getOrganisationalUnitById(params: GetOrganisationalUnitByI
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -264,7 +264,7 @@ export async function getOrganisationalUnitById(params: GetOrganisationalUnitByI
 	}
 
 	const { entityVersion, ...rest } = item;
-	const base = { ...rest, entity: entityVersion.entity };
+	const base = { ...rest, entity: { slug: entityVersion.slug?.value ?? "" } };
 
 	if (!item.image) {
 		return base;

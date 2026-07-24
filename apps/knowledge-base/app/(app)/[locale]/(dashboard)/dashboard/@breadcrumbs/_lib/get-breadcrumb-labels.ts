@@ -75,16 +75,16 @@ async function getCountryReportLabelByRoute(year: string, slug: string): Promise
 			schema.reportingCampaigns,
 			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
 		)
-		.innerJoin(schema.entities, eq(schema.entities.id, schema.countryReports.countryDocumentId))
 		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 		)
-		.where(and(eq(schema.reportingCampaigns.year, campaignYear), eq(schema.entities.slug, slug)))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+		.where(and(eq(schema.reportingCampaigns.year, campaignYear), eq(schema.slugs.value, slug)))
 		.limit(1);
 
 	return report[0]?.name ?? null;
@@ -108,18 +108,15 @@ async function getWorkingGroupReportLabelByRoute(
 			eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
 		)
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.workingGroupReports.workingGroupDocumentId),
-		)
-		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 		)
-		.where(and(eq(schema.reportingCampaigns.year, campaignYear), eq(schema.entities.slug, slug)))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+		.where(and(eq(schema.reportingCampaigns.year, campaignYear), eq(schema.slugs.value, slug)))
 		.limit(1);
 
 	return report[0]?.name ?? null;
