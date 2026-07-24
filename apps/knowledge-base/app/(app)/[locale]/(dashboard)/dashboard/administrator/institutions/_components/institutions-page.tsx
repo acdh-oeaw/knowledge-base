@@ -35,7 +35,7 @@ interface InstitutionsPageProps {
 				schema.OrganisationalUnit,
 				"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId"
 			> & {
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 			}

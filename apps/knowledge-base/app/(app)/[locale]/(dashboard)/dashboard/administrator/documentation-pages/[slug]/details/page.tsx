@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -30,14 +31,22 @@ export default async function DashboardAdministratorDocumentationPageDetailsPage
 	const { params, searchParams: searchParamsPromise } = props;
 	const { slug } = await params;
 
-	const doc = await db.query.entities.findFirst({
-		where: { slug },
-		columns: { id: true },
+	const anyVersion = await db.query.documentationPages.findFirst({
+		where: { entityVersion: { slug: { value: slug } } },
+		columns: {},
+		with: {
+			entityVersion: {
+				columns: {},
+				with: { entity: { columns: { id: true } } },
+			},
+		},
 	});
 
-	if (doc == null) {
+	if (anyVersion == null) {
 		notFound();
 	}
+
+	const doc = { id: anyVersion.entityVersion.entity.id };
 
 	const { draftId, publishedId, hasDraftChanges } = await db.transaction(async (tx) =>
 		getDocumentLifecycleState(tx, doc.id),
@@ -82,7 +91,11 @@ export default async function DashboardAdministratorDocumentationPageDetailsPage
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -94,13 +107,22 @@ export default async function DashboardAdministratorDocumentationPageDetailsPage
 		notFound();
 	}
 
+	assert(
+		documentationPage.entityVersion.slug,
+		`Slug missing for entity version "${documentationPage.entityVersion.id}".`,
+	);
+	const entityVersionSlug = documentationPage.entityVersion.slug;
+
 	const contentBlocks = await getEntityContentBlocks(documentationPage.id, "content");
 	const hasPublishableDraft = draftId != null && (publishedId == null || hasDraftChanges);
 
 	return (
 		<DocumentationPageDetails
 			contentBlocks={contentBlocks}
-			documentationPage={documentationPage}
+			documentationPage={{
+				...documentationPage,
+				entityVersion: { ...documentationPage.entityVersion, slug: entityVersionSlug },
+			}}
 			discardDraftAction={discardDocumentationPageDraftAction}
 			documentId={doc.id}
 			hasDraft={hasPublishableDraft}

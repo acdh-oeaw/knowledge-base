@@ -7,6 +7,7 @@ import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getPersonCreateDataForAdmin } from "@/lib/data/cached/persons";
+import { getDefaultLocale } from "@/lib/data/locales";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorCreatePersonPageProps extends PageProps<"/[locale]/dashboard/administrator/persons/create"> {}
@@ -33,10 +34,14 @@ export default async function DashboardAdministratorCreatePersonPage(
 	});
 
 	const { user } = await assertAuthenticated();
-	const { initialSocialMedia } = await getPersonCreateDataForAdmin(user);
+	const [{ initialSocialMedia }, defaultLocale] = await Promise.all([
+		getPersonCreateDataForAdmin(user),
+		getDefaultLocale(),
+	]);
 
 	return (
 		<PersonCreateForm
+			defaultLocaleName={defaultLocale.name}
 			initialAssets={initialAssets}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}

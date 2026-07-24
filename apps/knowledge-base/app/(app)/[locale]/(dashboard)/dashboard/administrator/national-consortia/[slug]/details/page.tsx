@@ -1,14 +1,17 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { NationalConsortiumDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortia-details";
 import { publishNationalConsortiumAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_lib/publish-national-consortium.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
-import { resolveSelectedDetailVersion } from "@/lib/data/entity-detail-view";
+import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
+import { getLocales } from "@/lib/data/locales";
 import { db } from "@/lib/db";
 import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -34,10 +37,12 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
+
+	const t = await getExtracted();
 	const { user } = await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -53,19 +58,54 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
-	const { version } = await searchParamsPromise;
+	const { locale: localeParam, version } = await searchParamsPromise;
 
-	const versionState = await resolveSelectedDetailVersion(documentId, version);
-	if (versionState == null) {
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
 		notFound();
 	}
-	const { hasDraftChanges, publishedId, selectedVersion, versionId } = versionState;
+
+	const localizedVersion = await resolveLocalizedDetailVersion(
+		documentId,
+		version,
+		locales,
+		selectedLocale.id,
+	);
+
+	if (localizedVersion == null) {
+		// The document exists (we already resolved `documentId` above) but has no version in the
+		// selected locale, and no fallback to the default locale was possible either. Keep the
+		// selector visible so the admin can switch to another locale rather than 404.
+		return (
+			<Fragment>
+				<div className="flex items-center justify-between">
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+				</div>
+				<p className="text-sm text-muted-fg italic">
+					{t("This document has no content in the selected locale yet.")}
+				</p>
+			</Fragment>
+		);
+	}
+	const {
+		displayLocaleId,
+		hasDraftChanges,
+		isLocaleFallback,
+		publishedId,
+		selectedVersion,
+		versionId,
+	} = localizedVersion;
 
 	const nationalConsortiumData = await getOrganisationalUnitEditDataForAdmin(user, {
 		slug,
 		unitType: "national_consortium",
 		versionId,
 		publishedVersionId: publishedId,
+		localeId: displayLocaleId,
 	});
 
 	if (nationalConsortiumData == null) {
@@ -79,6 +119,12 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 		selectedSocialMediaItems,
 		unit: nationalConsortium,
 	} = nationalConsortiumData;
+
+	assert(
+		nationalConsortium.entityVersion.slug,
+		`Slug missing for entity version "${nationalConsortium.entityVersion.id}".`,
+	);
+	const entityVersionSlug = nationalConsortium.entityVersion.slug;
 
 	const image =
 		nationalConsortium.image != null
@@ -95,8 +141,15 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 		<NationalConsortiumDetails
 			documentId={documentId}
 			hasDraft={hasDraftChanges}
+			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
-			nationalConsortium={{ ...nationalConsortium, image }}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
+			nationalConsortium={{
+				...nationalConsortium,
+				entityVersion: { ...nationalConsortium.entityVersion, slug: entityVersionSlug },
+				image,
+			}}
 			relations={relations}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}

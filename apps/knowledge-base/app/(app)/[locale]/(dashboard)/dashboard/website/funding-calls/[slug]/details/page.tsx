@@ -1,13 +1,16 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { FundingCallDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-details";
 import { discardFundingCallDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_lib/discard-funding-call-draft.action";
 import { publishFundingCallAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_lib/publish-funding-call.action";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
+import { getLocales } from "@/lib/data/locales";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -33,8 +36,10 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 
 	const { slug } = await params;
 
+	const t = await getExtracted();
+
 	const anyVersion = await db.query.fundingCalls.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -50,35 +55,38 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 
 	const doc = { id: anyVersion.entityVersion.entity.id };
 
-	const { draftId, publishedId, hasDraftChanges } = await db.transaction(async (tx) =>
-		getDocumentLifecycleState(tx, doc.id),
-	);
+	const { locale: localeParam, version } = await searchParamsPromise;
 
-	/**
-	 * The version selector and "with draft changes" UX only kick in when the draft actually diverges
-	 * from the published version. Right after publish, a draft row still exists as a clone of the new
-	 * published version but has no real changes — we treat that as published-only.
-	 */
-	const showVersionSelector = hasDraftChanges && publishedId != null && draftId != null;
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
 
-	const { version } = await searchParamsPromise;
-	let selectedVersion: "draft" | "published";
-	let versionId: string | null;
-
-	if (showVersionSelector) {
-		selectedVersion = version === "published" ? "published" : "draft";
-		versionId = selectedVersion === "published" ? publishedId : draftId;
-	} else if (publishedId != null) {
-		selectedVersion = "published";
-		versionId = publishedId;
-	} else {
-		selectedVersion = "draft";
-		versionId = draftId;
-	}
-
-	if (versionId == null) {
+	if (selectedLocale == null) {
 		notFound();
 	}
+
+	const localizedVersion = await resolveLocalizedDetailVersion(
+		doc.id,
+		version,
+		locales,
+		selectedLocale.id,
+	);
+
+	if (localizedVersion == null) {
+		return (
+			<Fragment>
+				<div className="flex items-center justify-between">
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+				</div>
+				<p className="text-sm text-muted-fg italic">
+					{t("This document has no content in the selected locale yet.")}
+				</p>
+			</Fragment>
+		);
+	}
+	const { hasDraftChanges, isLocaleFallback, publishedId, selectedVersion, versionId } =
+		localizedVersion;
 
 	const fundingCall = await db.query.fundingCalls.findFirst({
 		where: { id: versionId },
@@ -95,7 +103,11 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 					status: {
@@ -113,6 +125,12 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 		notFound();
 	}
 
+	assert(
+		fundingCall.entityVersion.slug,
+		`Slug missing for entity version "${fundingCall.entityVersion.id}".`,
+	);
+	const entityVersionSlug = fundingCall.entityVersion.slug;
+
 	const contentBlocks = await getEntityContentBlocks(fundingCall.id, "content");
 
 	return (
@@ -120,9 +138,15 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 			contentBlocks={contentBlocks}
 			discardDraftAction={discardFundingCallDraftAction}
 			documentId={doc.id}
-			fundingCall={{ ...fundingCall }}
+			fundingCall={{
+				...fundingCall,
+				entityVersion: { ...fundingCall.entityVersion, slug: entityVersionSlug },
+			}}
 			hasDraft={hasDraftChanges}
+			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			publishAction={publishFundingCallAction}
 			selectedVersion={selectedVersion}
 		/>

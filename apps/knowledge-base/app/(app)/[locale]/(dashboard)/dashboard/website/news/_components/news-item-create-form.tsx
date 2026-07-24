@@ -1,5 +1,6 @@
 "use client";
 
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import { NewsItemForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website
 import { createNewsItemAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/create-news-item.action";
 
 interface NewsItemCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -17,6 +19,7 @@ interface NewsItemCreateFormProps {
 
 export function NewsItemCreateForm(props: Readonly<NewsItemCreateFormProps>): ReactNode {
 	const {
+		defaultLocaleName,
 		initialAssets,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -29,6 +32,13 @@ export function NewsItemCreateForm(props: Readonly<NewsItemCreateFormProps>): Re
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New news item")} />
+
+			<Note intent="info">
+				{t(
+					"This news item will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<NewsItemForm
 				formAction={createNewsItemAction}

@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { NewsItemForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_components/news-item-form";
 import { discardNewsItemDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/discard-news-item-draft.action";
 import { publishNewsItemAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/publish-news-item.action";
@@ -17,8 +18,14 @@ interface NewsItemEditFormProps {
 	documentId: string;
 	hasDraftChanges: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	newsItem: Pick<schema.NewsItem, "id" | "title" | "summary"> & {
-		entityVersion: { entity: { id: string; slug: string }; status: { type: string } };
+		entityVersion: {
+			entity: { id: string };
+			slug: { value: string };
+			status: { type: string };
+		};
 	} & { image: { key: string; label: string; url: string } };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -37,6 +44,8 @@ export function NewsItemEditForm(props: Readonly<NewsItemEditFormProps>): ReactN
 		documentId,
 		hasDraftChanges,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		newsItem,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -62,9 +71,13 @@ export function NewsItemEditForm(props: Readonly<NewsItemEditFormProps>): ReactN
 					publishAction: publishNewsItemAction,
 					discardDraftAction: discardNewsItemDraftAction,
 				}}
+				localeSelector={
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+				}
 			/>
 
 			<NewsItemForm
+				key={newsItem.id}
 				contentBlocks={contentBlocks}
 				formAction={updateNewsItemAction}
 				formId={formId}

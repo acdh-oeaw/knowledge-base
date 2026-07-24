@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,7 +10,11 @@ import { assertAuthenticated } from "@/lib/auth/session";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getContributionPersonOptions } from "@/lib/data/contributions";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { getPersonRelationRoleOptions, getPersonRelations } from "@/lib/data/person-relations";
 import { getUnitProjectPartnerships } from "@/lib/data/project-partners";
@@ -37,13 +42,13 @@ export async function generateMetadata(
 export default async function DashboardAdministratorEditInstitutionPage(
 	props: Readonly<DashboardAdministratorEditInstitutionPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 	const { user } = await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } }, type: { type: "institution" } },
+		where: { entityVersion: { slug: { value: slug } }, type: { type: "institution" } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -58,13 +63,30 @@ export default async function DashboardAdministratorEditInstitutionPage(
 	}
 
 	const documentId = anyVersion.entityVersion.entity.id;
+
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			documentId,
 			organisationalUnitsLifecycleAdapter,
+			selectedLocale.id,
 		);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -116,6 +138,12 @@ export default async function DashboardAdministratorEditInstitutionPage(
 		unitRelationStatusOptions,
 	} = institutionData;
 
+	assert(
+		institution.entityVersion.slug,
+		`Slug missing for entity version "${institution.entityVersion.id}".`,
+	);
+	const entityVersionSlug = institution.entityVersion.slug;
+
 	const image =
 		institution.image != null
 			? {
@@ -143,8 +171,15 @@ export default async function DashboardAdministratorEditInstitutionPage(
 			initialSocialMediaTotal={initialSocialMedia.total}
 			initialPersonItems={initialPersonItems}
 			initialPersonTotal={initialPersonTotal}
-			institution={{ ...institution, image }}
+			institution={{
+				...institution,
+				entityVersion: { ...institution.entityVersion, slug: entityVersionSlug },
+				image,
+			}}
+			isDefaultLocale={selectedLocale.isDefault}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			personRelationRoleOptions={personRelationRoleOptions}
 			personRelations={personRelations}
 			projectRoles={projectRoles}

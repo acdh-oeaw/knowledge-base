@@ -4,6 +4,7 @@ import type * as schema from "@acdh-knowledge-base/database/schema";
 import { Button } from "@acdh-knowledge-base/ui/button";
 import { Tab, TabList, TabPanel, Tabs } from "@acdh-knowledge-base/ui/tabs";
 import { Tooltip, TooltipContent } from "@acdh-knowledge-base/ui/tooltip";
+import { assert } from "@acdh-oeaw/lib";
 import {
 	ChevronDownIcon,
 	ChevronRightIcon,
@@ -19,6 +20,7 @@ import {
 	EntityDeleteModal,
 	EntityListHeader,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import {
 	type EntityOption,
 	NavigationItemFormDialog,
@@ -40,6 +42,8 @@ export interface NavigationMenuWithItems extends Pick<schema.NavigationMenu, "id
 interface NavigationPageProps {
 	menus: Array<NavigationMenuWithItems>;
 	entities: Array<EntityOption>;
+	locales: Array<{ id: string; code: string; name: string }>;
+	selectedLocaleCode: string;
 }
 
 interface TreeNode extends NavigationItemWithChildren {
@@ -192,10 +196,11 @@ function ItemRow(props: Readonly<ItemRowProps>): ReactNode {
 interface MenuTabPanelProps {
 	menu: NavigationMenuWithItems;
 	entities: Array<EntityOption>;
+	selectedLocaleId: string;
 }
 
 function MenuTabPanel(props: Readonly<MenuTabPanelProps>): ReactNode {
-	const { menu, entities } = props;
+	const { menu, entities, selectedLocaleId } = props;
 
 	const t = useExtracted();
 
@@ -269,6 +274,7 @@ function MenuTabPanel(props: Readonly<MenuTabPanelProps>): ReactNode {
 					});
 				}}
 				parentId={itemDialogState.parentId}
+				selectedLocaleId={selectedLocaleId}
 			/>
 
 			<EntityDeleteModal
@@ -301,7 +307,7 @@ function MenuTabPanel(props: Readonly<MenuTabPanelProps>): ReactNode {
 }
 
 export function NavigationPage(props: Readonly<NavigationPageProps>): ReactNode {
-	const { menus, entities } = props;
+	const { menus, entities, locales, selectedLocaleCode } = props;
 
 	const t = useExtracted();
 
@@ -309,12 +315,20 @@ export function NavigationPage(props: Readonly<NavigationPageProps>): ReactNode 
 	const [deleteMenuError, setDeleteMenuError] = useState<string | null>(null);
 	const [isDeleteMenuPending, startDeleteMenuTransition] = useTransition();
 
+	const selectedLocale = locales.find((locale) => locale.code === selectedLocaleCode);
+	assert(selectedLocale, `Locale "${selectedLocaleCode}" is not in the given locales list.`);
+
 	return (
 		<Fragment>
 			<EntityListHeader
 				title={t("Website navigation")}
 				description={t("Manage website navigation.")}
-				action={<NavigationMenuCreateDialog />}
+				action={
+					<div className="flex items-center gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+						<NavigationMenuCreateDialog />
+					</div>
+				}
 			/>
 
 			<div className="p-(--layout-padding)">
@@ -353,7 +367,11 @@ export function NavigationPage(props: Readonly<NavigationPageProps>): ReactNode 
 									</Button>
 								</div>
 
-								<MenuTabPanel entities={entities} menu={menu} />
+								<MenuTabPanel
+									entities={entities}
+									menu={menu}
+									selectedLocaleId={selectedLocale.id}
+								/>
 							</TabPanel>
 						))}
 					</Tabs>

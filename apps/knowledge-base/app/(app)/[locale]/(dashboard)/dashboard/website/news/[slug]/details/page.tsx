@@ -1,14 +1,17 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { NewsItemDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_components/news-details";
 import { discardNewsItemDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/discard-news-item-draft.action";
 import { publishNewsItemAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/publish-news-item.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
+import { getLocales } from "@/lib/data/locales";
 import {
 	getEntityRelationOptionsByIds,
 	getEntityRelations,
@@ -40,8 +43,10 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 
 	const { slug } = await params;
 
+	const t = await getExtracted();
+
 	const anyVersion = await db.query.news.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -57,35 +62,38 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 
 	const doc = { id: anyVersion.entityVersion.entity.id };
 
-	const { draftId, publishedId, hasDraftChanges } = await db.transaction(async (tx) =>
-		getDocumentLifecycleState(tx, doc.id),
-	);
+	const { locale: localeParam, version } = await searchParamsPromise;
 
-	/**
-	 * The version selector and "with draft changes" UX only kick in when the draft actually diverges
-	 * from the published version. Right after publish, a draft row still exists as a clone of the new
-	 * published version but has no real changes — we treat that as published-only.
-	 */
-	const showVersionSelector = hasDraftChanges && publishedId != null && draftId != null;
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
 
-	const { version } = await searchParamsPromise;
-	let selectedVersion: "draft" | "published";
-	let versionId: string | null;
-
-	if (showVersionSelector) {
-		selectedVersion = version === "published" ? "published" : "draft";
-		versionId = selectedVersion === "published" ? publishedId : draftId;
-	} else if (publishedId != null) {
-		selectedVersion = "published";
-		versionId = publishedId;
-	} else {
-		selectedVersion = "draft";
-		versionId = draftId;
-	}
-
-	if (versionId == null) {
+	if (selectedLocale == null) {
 		notFound();
 	}
+
+	const localizedVersion = await resolveLocalizedDetailVersion(
+		doc.id,
+		version,
+		locales,
+		selectedLocale.id,
+	);
+
+	if (localizedVersion == null) {
+		return (
+			<Fragment>
+				<div className="flex items-center justify-between">
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+				</div>
+				<p className="text-sm text-muted-fg italic">
+					{t("This document has no content in the selected locale yet.")}
+				</p>
+			</Fragment>
+		);
+	}
+	const { hasDraftChanges, isLocaleFallback, publishedId, selectedVersion, versionId } =
+		localizedVersion;
 
 	const newsItem = await db.query.news.findFirst({
 		where: { id: versionId },
@@ -101,7 +109,11 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 					status: {
@@ -125,6 +137,12 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 		notFound();
 	}
 
+	assert(
+		newsItem.entityVersion.slug,
+		`Slug missing for entity version "${newsItem.entityVersion.id}".`,
+	);
+	const entityVersionSlug = newsItem.entityVersion.slug;
+
 	const image = images.generateSignedImageUrl({
 		key: newsItem.image.key,
 		options: imageGridOptions,
@@ -146,8 +164,15 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 			discardDraftAction={discardNewsItemDraftAction}
 			documentId={doc.id}
 			hasDraft={hasDraftChanges}
+			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
-			newsItem={{ ...newsItem, image: { ...newsItem.image, url: image.url } }}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
+			newsItem={{
+				...newsItem,
+				entityVersion: { ...newsItem.entityVersion, slug: entityVersionSlug },
+				image: { ...newsItem.image, url: image.url },
+			}}
 			publishAction={publishNewsItemAction}
 			selectedVersion={selectedVersion}
 		/>

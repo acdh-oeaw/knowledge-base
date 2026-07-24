@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -49,7 +50,7 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 	await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -101,7 +102,11 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 						entity: {
 							columns: {
 								id: true,
-								slug: true,
+							},
+						},
+						slug: {
+							columns: {
+								value: true,
 							},
 						},
 					},
@@ -152,6 +157,12 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 			getSocialMediaOptionsByIds(socialMediaIds),
 		]);
 
+	assert(
+		governanceBody.entityVersion.slug,
+		`Slug missing for entity version "${governanceBody.entityVersion.id}".`,
+	);
+	const entityVersionSlug = governanceBody.entityVersion.slug;
+
 	const image =
 		governanceBody.image != null
 			? {
@@ -166,7 +177,12 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 	return (
 		<GovernanceBodyEditForm
 			documentId={documentId}
-			governanceBody={{ ...governanceBody, descriptionContentBlocks, image }}
+			governanceBody={{
+				...governanceBody,
+				entityVersion: { ...governanceBody.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
+				image,
+			}}
 			hasDraftChanges={hasDraftChanges}
 			initialAssets={initialAssets}
 			initialPersonItems={initialPersonItems}

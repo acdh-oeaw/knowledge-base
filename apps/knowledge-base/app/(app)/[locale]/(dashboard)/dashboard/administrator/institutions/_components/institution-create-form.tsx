@@ -1,5 +1,6 @@
 "use client";
 
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import { InstitutionForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/admi
 import { createInstitutionAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_lib/create-institution.action";
 
 interface InstitutionCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -17,6 +19,7 @@ interface InstitutionCreateFormProps {
 
 export function InstitutionCreateForm(props: Readonly<InstitutionCreateFormProps>): ReactNode {
 	const {
+		defaultLocaleName,
 		initialAssets,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -29,6 +32,13 @@ export function InstitutionCreateForm(props: Readonly<InstitutionCreateFormProps
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New institution")} />
+
+			<Note intent="info">
+				{t(
+					"This institution will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<InstitutionForm
 				formAction={createInstitutionAction}

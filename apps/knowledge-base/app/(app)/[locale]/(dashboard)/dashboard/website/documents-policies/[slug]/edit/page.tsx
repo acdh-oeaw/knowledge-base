@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -37,7 +38,7 @@ export default async function DashboardWebsiteEditDocumentOrPolicyPage(
 	const { slug } = await params;
 
 	const anyVersion = await db.query.documentsPolicies.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -81,7 +82,11 @@ export default async function DashboardWebsiteEditDocumentOrPolicyPage(
 						entity: {
 							columns: {
 								id: true,
-								slug: true,
+							},
+						},
+						slug: {
+							columns: {
+								value: true,
 							},
 						},
 					},
@@ -106,6 +111,12 @@ export default async function DashboardWebsiteEditDocumentOrPolicyPage(
 		notFound();
 	}
 
+	assert(
+		documentOrPolicy.entityVersion.slug,
+		`Slug missing for entity version "${documentOrPolicy.entityVersion.id}".`,
+	);
+	const entityVersionSlug = documentOrPolicy.entityVersion.slug;
+
 	const document = images.generateSignedImageUrl({
 		key: documentOrPolicy.document.key,
 		options: imageGridOptions,
@@ -118,6 +129,7 @@ export default async function DashboardWebsiteEditDocumentOrPolicyPage(
 			documentId={documentId}
 			documentOrPolicy={{
 				...documentOrPolicy,
+				entityVersion: { ...documentOrPolicy.entityVersion, slug: entityVersionSlug },
 				document: { ...documentOrPolicy.document, url: document.url },
 			}}
 			groups={groups}

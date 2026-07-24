@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,7 +10,11 @@ import { assertAuthenticated } from "@/lib/auth/session";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getContributionRoleOptions, getPersonContributions } from "@/lib/data/contributions";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { personsLifecycleAdapter } from "@/lib/data/persons.lifecycle-adapter";
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
@@ -34,26 +39,52 @@ export async function generateMetadata(
 export default async function DashboardAdministratorEditPersonPage(
 	props: Readonly<DashboardAdministratorEditPersonPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
 	await assertAuthenticated();
 
-	const entity = await db.query.entities.findFirst({
-		where: { slug },
-		columns: { id: true },
+	const anyVersion = await db.query.persons.findFirst({
+		where: { entityVersion: { slug: { value: slug } } },
+		columns: {},
+		with: {
+			entityVersion: {
+				columns: {},
+				with: { entity: { columns: { id: true } } },
+			},
+		},
 	});
 
-	if (entity == null) {
+	if (anyVersion == null) {
 		notFound();
 	}
 
-	const documentId = entity.id;
+	const documentId = anyVersion.entityVersion.entity.id;
+
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
 
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, personsLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			documentId,
+			personsLifecycleAdapter,
+			selectedLocale.id,
+		);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -75,7 +106,11 @@ export default async function DashboardAdministratorEditPersonPage(
 						entity: {
 							columns: {
 								id: true,
-								slug: true,
+							},
+						},
+						slug: {
+							columns: {
+								value: true,
 							},
 						},
 						status: {
@@ -99,6 +134,12 @@ export default async function DashboardAdministratorEditPersonPage(
 	if (person == null) {
 		notFound();
 	}
+
+	assert(
+		person.entityVersion.slug,
+		`Slug missing for entity version "${person.entityVersion.id}".`,
+	);
+	const entityVersionSlug = person.entityVersion.slug;
 
 	const [
 		contributions,
@@ -142,8 +183,16 @@ export default async function DashboardAdministratorEditPersonPage(
 			initialSocialMediaIds={initialSocialMediaIds}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}
+			isDefaultLocale={selectedLocale.isDefault}
 			isPublished={publishedId != null}
-			person={{ ...person, biographyContentBlocks, image }}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
+			person={{
+				...person,
+				entityVersion: { ...person.entityVersion, slug: entityVersionSlug },
+				biographyContentBlocks,
+				image,
+			}}
 			selectedSocialMediaItems={selectedSocialMediaItems}
 		/>
 	);

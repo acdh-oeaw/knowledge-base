@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -34,7 +35,7 @@ export default async function DashboardWebsiteOpportunitiesDetailsPage(
 	const { slug } = await params;
 
 	const anyVersion = await db.query.opportunities.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -96,7 +97,11 @@ export default async function DashboardWebsiteOpportunitiesDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 					status: {
@@ -120,6 +125,12 @@ export default async function DashboardWebsiteOpportunitiesDetailsPage(
 		notFound();
 	}
 
+	assert(
+		opportunity.entityVersion.slug,
+		`Slug missing for entity version "${opportunity.entityVersion.id}".`,
+	);
+	const entityVersionSlug = opportunity.entityVersion.slug;
+
 	const contentBlocks = await getEntityContentBlocks(opportunity.id, "content");
 
 	return (
@@ -129,7 +140,10 @@ export default async function DashboardWebsiteOpportunitiesDetailsPage(
 			documentId={doc.id}
 			hasDraft={hasDraftChanges}
 			isPublished={publishedId != null}
-			opportunity={{ ...opportunity }}
+			opportunity={{
+				...opportunity,
+				entityVersion: { ...opportunity.entityVersion, slug: entityVersionSlug },
+			}}
 			publishAction={publishOpportunityAction}
 			selectedVersion={selectedVersion}
 		/>

@@ -13,6 +13,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { PersonForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/person-form";
 import { discardPersonDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_lib/discard-person-draft.action";
 import { publishPersonAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_lib/publish-person.action";
@@ -23,10 +24,13 @@ interface PersonEditFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	documentId: string;
 	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	person: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
 		biographyContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	contributions: Array<PersonContribution>;
 	contributionRoleOptions: Array<ContributionRoleOption>;
@@ -41,7 +45,10 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 		initialAssets,
 		documentId,
 		hasDraftChanges,
+		isDefaultLocale,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		person,
 		contributions,
 		contributionRoleOptions,
@@ -67,7 +74,8 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardPersonDraftAction}
 							documentId={documentId}
@@ -78,11 +86,13 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 					</div>
 
 					<PersonForm
+						key={person.id}
 						formAction={updatePersonAction}
 						initialAssets={initialAssets}
 						initialSocialMediaIds={initialSocialMediaIds}
 						initialSocialMediaItems={initialSocialMediaItems}
 						initialSocialMediaTotal={initialSocialMediaTotal}
+						isDefaultLocale={isDefaultLocale}
 						person={person}
 					/>
 				</TabPanel>

@@ -15,7 +15,10 @@ interface DocumentationPageEditFormProps {
 	contentBlocks: Array<ContentBlock>;
 	documentId: string;
 	documentationPage: Pick<schema.DocumentationPage, "id" | "title"> & {
-		entityVersion: { entity: Pick<schema.Entity, "id" | "slug"> };
+		entityVersion: {
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
+		};
 	};
 	hasDraftChanges: boolean;
 	isPublished: boolean;

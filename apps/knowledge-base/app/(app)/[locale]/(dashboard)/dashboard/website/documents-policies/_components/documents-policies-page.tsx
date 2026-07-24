@@ -35,7 +35,10 @@ type DocumentItem = Pick<
 	schema.DocumentOrPolicy,
 	"id" | "title" | "summary" | "url" | "groupId" | "position"
 > & {
-	entityVersion: { entity: Pick<schema.Entity, "id" | "slug"> };
+	entityVersion: {
+		entity: Pick<schema.Entity, "id">;
+		slug: Pick<schema.Slug, "value">;
+	};
 	hasDraft: boolean;
 	isPublished: boolean;
 	document: Pick<schema.Asset, "key" | "label">;
@@ -121,7 +124,7 @@ function DocumentRow(props: Readonly<DocumentRowProps>): ReactNode {
 					<Link
 						aria-label={t("Content")}
 						className={buttonStyles({ intent: "plain", size: "sq-sm" })}
-						href={`/dashboard/website/documents-policies/${item.entityVersion.entity.slug}/edit`}
+						href={`/dashboard/website/documents-policies/${item.entityVersion.slug.value}/edit`}
 					>
 						<span className="text-xs">{t("Content")}</span>
 					</Link>

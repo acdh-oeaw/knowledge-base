@@ -1,14 +1,17 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { InstitutionDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_components/institution-details";
 import { publishInstitutionAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_lib/publish-institution.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { resolveSelectedDetailVersion } from "@/lib/data/entity-detail-view";
+import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
+import { getLocales } from "@/lib/data/locales";
 import { getPersonRelations } from "@/lib/data/person-relations";
 import { getUnitProjectPartnerships } from "@/lib/data/project-partners";
 import {
@@ -44,10 +47,11 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 
 	const { slug } = await params;
 
+	const t = await getExtracted();
 	await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -63,13 +67,47 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
-	const { version } = await searchParamsPromise;
+	const { locale: localeParam, version } = await searchParamsPromise;
 
-	const versionState = await resolveSelectedDetailVersion(documentId, version);
-	if (versionState == null) {
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
 		notFound();
 	}
-	const { hasDraftChanges, publishedId, selectedVersion, versionId } = versionState;
+
+	const localizedVersion = await resolveLocalizedDetailVersion(
+		documentId,
+		version,
+		locales,
+		selectedLocale.id,
+	);
+
+	if (localizedVersion == null) {
+		// The document exists (we already resolved `documentId` above) but has no version in the
+		// selected locale, and no fallback to the default locale was possible either. Keep the
+		// selector visible so the admin can switch to another locale rather than 404.
+		return (
+			<Fragment>
+				<div className="flex items-center justify-between">
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+				</div>
+				<p className="text-sm text-muted-fg italic">
+					{t("This document has no content in the selected locale yet.")}
+				</p>
+			</Fragment>
+		);
+	}
+	const {
+		displayLocaleId,
+		hasDraftChanges,
+		isLocaleFallback,
+		publishedId,
+		selectedVersion,
+		versionId,
+	} = localizedVersion;
 
 	const institution = await db.query.organisationalUnits.findFirst({
 		where: { id: versionId },
@@ -88,7 +126,11 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -116,8 +158,8 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 	] = await Promise.all([
 		getPersonRelations(documentId),
 		getEntityRelations(documentId),
-		getUnitRelations(documentId),
-		getUnitProjectPartnerships(documentId),
+		getUnitRelations(documentId, displayLocaleId),
+		getUnitProjectPartnerships(documentId, displayLocaleId),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: institution.id },
 			columns: { socialMediaId: true },
@@ -134,6 +176,12 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 			getSocialMediaOptionsByIds(socialMediaIds),
 		]);
 
+	assert(
+		institution.entityVersion.slug,
+		`Slug missing for entity version "${institution.entityVersion.id}".`,
+	);
+	const entityVersionSlug = institution.entityVersion.slug;
+
 	const image =
 		institution.image != null
 			? {
@@ -148,9 +196,17 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 	return (
 		<InstitutionDetails
 			documentId={documentId}
-			institution={{ ...institution, descriptionContentBlocks, image }}
+			institution={{
+				...institution,
+				entityVersion: { ...institution.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
+				image,
+			}}
 			hasDraft={hasDraftChanges}
+			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			personRelations={personRelations}
 			projectPartnerships={projectPartnerships}
 			relations={relations}

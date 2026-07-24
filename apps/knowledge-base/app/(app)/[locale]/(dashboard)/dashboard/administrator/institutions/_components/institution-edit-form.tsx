@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { PersonRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/person-relations-section";
 import {
 	type UnitProject,
@@ -30,13 +31,16 @@ interface InstitutionEditFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	documentId: string;
 	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	institution: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -65,7 +69,10 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 		initialAssets,
 		documentId,
 		hasDraftChanges,
+		isDefaultLocale,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		institution,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -109,7 +116,8 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardInstitutionDraftAction}
 							documentId={documentId}
@@ -120,6 +128,7 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 					</div>
 
 					<InstitutionForm
+						key={institution.id}
 						formAction={updateInstitutionAction}
 						formId={formId}
 						initialAssets={initialAssets}
@@ -133,6 +142,7 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 						initialSocialMediaItems={initialSocialMediaItems}
 						initialSocialMediaTotal={initialSocialMediaTotal}
 						institution={institution}
+						isDefaultLocale={isDefaultLocale}
 						selectedRelatedEntities={selectedRelatedEntities}
 						selectedRelatedResources={selectedRelatedResources}
 						selectedSocialMediaItems={selectedSocialMediaItems}

@@ -36,7 +36,7 @@ interface ProjectsPageProps {
 		data: Array<
 			Pick<schema.Project, "acronym" | "duration" | "funding" | "id" | "name"> & {
 				documentId: string;
-				entity: Pick<schema.Entity, "slug">;
+				slug: string;
 				hasDraft: boolean;
 				isPublished: boolean;
 				scope: Pick<schema.ProjectScope, "id" | "scope">;
@@ -107,7 +107,7 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
-						<TableRow href={`/dashboard/administrator/projects/${item.entity.slug}/details`}>
+						<TableRow href={`/dashboard/administrator/projects/${item.slug}/details`}>
 							<TableCell>
 								<div className="max-inline-64 truncate">{item.name}</div>
 							</TableCell>
@@ -146,13 +146,13 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
-										href={`/dashboard/administrator/projects/${item.entity.slug}/details`}
+										href={`/dashboard/administrator/projects/${item.slug}/details`}
 										icon={<EyeIcon className="me-2 block-4 inline-4" />}
 									>
 										{t("View")}
 									</RowActionsMenu.Link>
 									<RowActionsMenu.Link
-										href={`/dashboard/administrator/projects/${item.entity.slug}/edit`}
+										href={`/dashboard/administrator/projects/${item.slug}/edit`}
 										icon={<PencilSquareIcon className="me-2 block-4 inline-4" />}
 									>
 										{t("Edit")}

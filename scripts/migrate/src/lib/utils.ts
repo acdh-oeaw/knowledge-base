@@ -1,8 +1,16 @@
 import { appendFileSync } from "node:fs";
+import path from "node:path";
 
-import { type Transaction, schema } from "@acdh-knowledge-base/database";
+import { type Database, type Transaction, schema } from "@acdh-knowledge-base/database";
+import type { ContentBlockTypes } from "@acdh-knowledge-base/database/schema";
+import type { StorageService } from "@acdh-knowledge-base/storage";
+import type { AssetPrefix } from "@acdh-knowledge-base/storage/config";
+import { buffer } from "@acdh-knowledge-base/storage/lib";
 import { assert } from "@acdh-oeaw/lib";
+import { generateJSON } from "@tiptap/html";
+import StarterKit from "@tiptap/starter-kit";
 
+import { assetsPath } from "../../config/data-migration.config";
 interface ParsedEvent {
 	duration: {
 		start: Date;
@@ -105,6 +113,7 @@ export async function createVersionRow(
 	tx: Transaction,
 	documentId: string,
 	statusType: "draft" | "published",
+	localeId: string,
 ): Promise<string> {
 	const status = await tx.query.entityStatus.findFirst({
 		where: { type: statusType },
@@ -114,7 +123,7 @@ export async function createVersionRow(
 
 	const [version] = await tx
 		.insert(schema.entityVersions)
-		.values({ entityId: documentId, statusId: status.id })
+		.values({ entityId: documentId, statusId: status.id, localeId })
 		.returning({ id: schema.entityVersions.id });
 	assert(version);
 
@@ -125,16 +134,36 @@ export async function createPublishedDocument(
 	tx: Transaction,
 	typeId: string,
 	slug: string,
+	localeId: string,
 ): Promise<{ documentId: string; versionId: string }> {
 	const [document] = await tx
 		.insert(schema.entities)
-		.values({ slug, typeId })
+		.values({ typeId })
 		.returning({ id: schema.entities.id });
 	assert(document);
 
-	const versionId = await createVersionRow(tx, document.id, "published");
+	const versionId = await createVersion(tx, typeId, slug, document.id, localeId);
 
 	return { documentId: document.id, versionId };
+}
+
+export async function createVersion(
+	tx: Transaction,
+	typeId: string,
+	slug: string,
+	documentId: string,
+	localeId: string,
+): Promise<string> {
+	const versionId = await createVersionRow(tx, documentId, "published", localeId);
+	await tx.insert(schema.slugs).values({
+		entityVersionId: versionId,
+		entityId: documentId,
+		typeId,
+		localeId,
+		isPublished: true,
+		value: slug,
+	});
+	return versionId;
 }
 
 export function logToFile(message: string, filepath = "migration.log"): void {
@@ -154,4 +183,150 @@ export function createSortName(name: string): string {
 	const firstNames = parts.slice(0, -1).join(" ");
 
 	return `${lastName}, ${firstNames}`;
+}
+
+export async function createAsset(
+	db: Database,
+	storage: StorageService,
+	assetPrefix: string,
+	imagePath: string,
+	assetName: string,
+): Promise<string | undefined> {
+	//const imageUrl = new URL(`${assetsGithubPath}${imagePath}`);
+	//const imageResponse = await fetch(imageUrl, { method: "HEAD" });
+	//const size = Number(imageResponse.headers.get("content-length"));
+	/*if (size > assetSizeLimit) {
+		logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
+		return;
+	}*/
+	const prefix = assetPrefix as AssetPrefix;
+	//const input = await buffer.fromUrl(imageUrl);
+
+	const input = await buffer.fromFilePath(
+		path.resolve(import.meta.dirname, assetsPath, imagePath.slice(1)),
+	);
+	const metadata = await buffer.getMetadata(input);
+	const label = assetName;
+	const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
+
+	assert(label);
+
+	const [asset] = await db
+		.insert(schema.assets)
+		.values({
+			key,
+			label,
+			mimeType: metadata["content-type"],
+			caption: "",
+			alt: "",
+			size: metadata.size,
+		})
+		.returning({ id: schema.assets.id });
+
+	return asset?.id;
+}
+
+export async function addSocialMediaRelationForOrganisationalUnit(
+	tx: Transaction,
+	name: string,
+	typeId: string,
+	url: string,
+	organisationalUnitId: string,
+): Promise<void> {
+	const [kbSocialMedia] = await tx
+		.insert(schema.socialMedia)
+		.values({
+			name,
+			typeId,
+			url,
+			duration: {
+				start: new Date(Date.UTC(1900, 0, 1)),
+			},
+		})
+		.returning({ id: schema.socialMedia.id });
+
+	assert(kbSocialMedia);
+
+	await tx.insert(schema.organisationalUnitsToSocialMedia).values({
+		organisationalUnitId,
+		socialMediaId: kbSocialMedia.id,
+	});
+}
+
+export async function addSocialMediaRelationForPerson(
+	tx: Transaction,
+	name: string,
+	typeId: string,
+	url: string,
+	personId: string,
+): Promise<void> {
+	const [kbSocialMedia] = await tx
+		.insert(schema.socialMedia)
+		.values({
+			name,
+			typeId,
+			url,
+			duration: {
+				start: new Date(Date.UTC(1900, 0, 1)),
+			},
+		})
+		.returning({ id: schema.socialMedia.id });
+
+	assert(kbSocialMedia);
+
+	await tx.insert(schema.personsToSocialMedia).values({
+		personId,
+		socialMediaId: kbSocialMedia.id,
+	});
+}
+
+export async function createFieldAndContentBlock(
+	tx: Transaction,
+	content: string | null,
+	entityTypeId: string,
+	fieldName: string,
+	entityVersionId: string,
+	contentBlockType: ContentBlockTypes,
+): Promise<void> {
+	const ct = generateJSON(content ?? "", [StarterKit]);
+	const fN = await tx.query.entityTypesFieldsNames.findFirst({
+		where: {
+			entityTypeId,
+			fieldName,
+		},
+	});
+	assert(fN);
+
+	const [field] = await tx
+		.insert(schema.fields)
+		.values({
+			entityVersionId,
+			fieldNameId: fN.id,
+		})
+		.returning({ id: schema.fields.id });
+
+	assert(field);
+
+	const [contentBlock] = await tx
+		.insert(schema.contentBlocks)
+		.values({
+			position: 0,
+			fieldId: field.id,
+			typeId: contentBlockType.id,
+		})
+		.returning({ id: schema.contentBlocks.id });
+
+	assert(contentBlock);
+
+	// oxlint-disable-next-line typescript/switch-exhaustiveness-check
+	switch (contentBlockType.type) {
+		case "rich_text": {
+			await tx.insert(schema.richTextContentBlocks).values({
+				content: ct,
+				id: contentBlock.id,
+			});
+		}
+	}
+
+	assert(contentBlock);
 }

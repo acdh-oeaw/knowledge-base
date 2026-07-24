@@ -3,7 +3,7 @@
 import type * as schema from "@acdh-knowledge-base/database/schema";
 import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
 import { Button } from "@acdh-knowledge-base/ui/button";
-import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Description, FieldError, Label } from "@acdh-knowledge-base/ui/field";
 import { Form } from "@acdh-knowledge-base/ui/form";
 import { Input } from "@acdh-knowledge-base/ui/input";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
@@ -26,9 +26,18 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface CountryFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/**
+	 * The acronym isn't translatable — the DB keeps it synced from the default locale's version
+	 * regardless, so this locks its input when editing another locale. Defaults to `true` (the create
+	 * form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	country?: Pick<schema.OrganisationalUnit, "acronym" | "id" | "name" | "summary"> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: {
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
+		};
 	} & { image: { key: string; label: string; url: string } | null };
 	formId?: string;
 	formAction: ServerAction;
@@ -53,6 +62,7 @@ export function CountryForm(props: Readonly<CountryFormProps>): ReactNode {
 		initialAssets,
 		formAction,
 		formId,
+		isDefaultLocale = true,
 		country,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -88,11 +98,22 @@ export function CountryForm(props: Readonly<CountryFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 
-					<TextField defaultValue={country?.acronym ?? undefined} name="acronym">
-						<Label>{t("Acronym")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={country?.acronym ?? undefined} name="acronym">
+							<Label>{t("Acronym")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Acronym")}</Label>
+							<p className="text-sm">{country?.acronym ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{country?.acronym != null ? (
+								<input name="acronym" type="hidden" value={country.acronym} />
+							) : null}
+						</div>
+					)}
 
 					<TextField defaultValue={country?.summary ?? undefined} name="summary">
 						<Label>{t("Summary")}</Label>

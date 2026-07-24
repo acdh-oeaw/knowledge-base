@@ -35,7 +35,7 @@ interface PersonsPageProps {
 		data: Array<
 			Pick<schema.Person, "email" | "id" | "name" | "orcid"> & {
 				documentId: string;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 			}

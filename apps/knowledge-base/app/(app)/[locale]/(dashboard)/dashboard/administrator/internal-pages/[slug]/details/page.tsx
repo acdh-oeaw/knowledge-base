@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -30,14 +31,22 @@ export default async function DashboardAdministratorInternalPageDetailsPage(
 	const { params, searchParams: searchParamsPromise } = props;
 	const { slug } = await params;
 
-	const doc = await db.query.entities.findFirst({
-		where: { slug },
-		columns: { id: true },
+	const anyVersion = await db.query.internalPages.findFirst({
+		where: { entityVersion: { slug: { value: slug } } },
+		columns: {},
+		with: {
+			entityVersion: {
+				columns: {},
+				with: { entity: { columns: { id: true } } },
+			},
+		},
 	});
 
-	if (doc == null) {
+	if (anyVersion == null) {
 		notFound();
 	}
+
+	const doc = { id: anyVersion.entityVersion.entity.id };
 
 	const { draftId, publishedId, hasDraftChanges } = await db.transaction(async (tx) =>
 		getDocumentLifecycleState(tx, doc.id),
@@ -82,7 +91,11 @@ export default async function DashboardAdministratorInternalPageDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -94,13 +107,22 @@ export default async function DashboardAdministratorInternalPageDetailsPage(
 		notFound();
 	}
 
+	assert(
+		internalPage.entityVersion.slug,
+		`Slug missing for entity version "${internalPage.entityVersion.id}".`,
+	);
+	const entityVersionSlug = internalPage.entityVersion.slug;
+
 	const contentBlocks = await getEntityContentBlocks(internalPage.id, "content");
 	const hasPublishableDraft = draftId != null && (publishedId == null || hasDraftChanges);
 
 	return (
 		<InternalPageDetails
 			contentBlocks={contentBlocks}
-			internalPage={internalPage}
+			internalPage={{
+				...internalPage,
+				entityVersion: { ...internalPage.entityVersion, slug: entityVersionSlug },
+			}}
 			discardDraftAction={discardInternalPageDraftAction}
 			documentId={doc.id}
 			hasDraft={hasPublishableDraft}

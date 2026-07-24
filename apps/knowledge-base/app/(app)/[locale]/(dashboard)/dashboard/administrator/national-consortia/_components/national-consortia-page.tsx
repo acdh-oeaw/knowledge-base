@@ -33,7 +33,7 @@ interface NationalConsortiaPageProps {
 		data: Array<
 			Pick<schema.OrganisationalUnit, "id" | "name" | "sshocMarketplaceActorId"> & {
 				countryName: string | null;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 			}

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { WorkingGroupCreateForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-group-create-form";
 import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
+import { getDefaultLocale } from "@/lib/data/locales";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -26,15 +27,17 @@ export async function generateMetadata(
 export default async function DashboardAdministratorCreateWorkingGroupPage(
 	_props: Readonly<DashboardAdministratorCreateWorkingGroupPageProps>,
 ): Promise<ReactNode> {
-	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources] =
+	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources, defaultLocale] =
 		await Promise.all([
 			getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
 			getEntityRelationOptions(),
 			getResourceRelationOptions(),
+			getDefaultLocale(),
 		]);
 
 	return (
 		<WorkingGroupCreateForm
+			defaultLocaleName={defaultLocale.name}
 			initialAssets={initialAssets}
 			initialRelatedEntityItems={initialRelatedEntities.items}
 			initialRelatedEntityTotal={initialRelatedEntities.total}

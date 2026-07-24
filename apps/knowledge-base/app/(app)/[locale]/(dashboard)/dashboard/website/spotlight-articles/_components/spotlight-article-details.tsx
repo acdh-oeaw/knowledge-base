@@ -21,7 +21,7 @@ interface SpotlightArticleDetailsProps {
 	isPublished: boolean;
 	selectedVersion: "draft" | "published";
 	spotlightArticle: Pick<schema.SpotlightArticle, "id" | "title" | "summary"> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } };
 	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
 	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
@@ -49,16 +49,16 @@ export function SpotlightArticleDetails(props: Readonly<SpotlightArticleDetailsP
 		<Fragment>
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/website/spotlight-articles/${spotlightArticle.entityVersion.entity.slug}/details`}
+					draftHref={`/dashboard/website/spotlight-articles/${spotlightArticle.entityVersion.slug.value}/details`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/website/spotlight-articles/${spotlightArticle.entityVersion.entity.slug}/details?version=published`}
+					publishedHref={`/dashboard/website/spotlight-articles/${spotlightArticle.entityVersion.slug.value}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<EntityLifecycleBar
 					discardDraftAction={discardDraftAction}
 					documentId={documentId}
-					editHref={`/dashboard/website/spotlight-articles/${spotlightArticle.entityVersion.entity.slug}/edit`}
+					editHref={`/dashboard/website/spotlight-articles/${spotlightArticle.entityVersion.slug.value}/edit`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
 					publishAction={publishAction}
@@ -69,7 +69,7 @@ export function SpotlightArticleDetails(props: Readonly<SpotlightArticleDetailsP
 				<DescriptionDetails>{spotlightArticle.title}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
-				<DescriptionDetails>{spotlightArticle.entityVersion.entity.slug}</DescriptionDetails>
+				<DescriptionDetails>{spotlightArticle.entityVersion.slug.value}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Summary")}</DescriptionTerm>
 				<DescriptionDetails>{spotlightArticle.summary}</DescriptionDetails>

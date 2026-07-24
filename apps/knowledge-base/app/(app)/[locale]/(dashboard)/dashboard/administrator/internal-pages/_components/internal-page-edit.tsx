@@ -16,7 +16,10 @@ interface InternalPageEditFormProps {
 	documentId: string;
 	hasDraftChanges: boolean;
 	internalPage: Pick<schema.InternalPage, "id" | "title"> & {
-		entityVersion: { entity: Pick<schema.Entity, "id" | "slug"> };
+		entityVersion: {
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
+		};
 	};
 	isPublished: boolean;
 }

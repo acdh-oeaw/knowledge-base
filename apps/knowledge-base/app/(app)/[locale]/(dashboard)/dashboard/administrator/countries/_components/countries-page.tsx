@@ -37,7 +37,7 @@ interface CountriesPageProps {
 				memberObserverFrom: Date | null;
 				memberObserverStatus: CountryMemberObserverStatus;
 				memberObserverUntil: Date | null;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 			}

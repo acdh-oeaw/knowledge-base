@@ -34,7 +34,7 @@ interface ImpactCaseStudiesPageProps {
 		data: Array<
 			Pick<schema.ImpactCaseStudy, "id" | "title" | "summary"> & {
 				documentId: string;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 				updatedAt: schema.Entity["updatedAt"];

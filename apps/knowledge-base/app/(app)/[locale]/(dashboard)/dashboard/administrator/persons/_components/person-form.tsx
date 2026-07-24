@@ -6,7 +6,7 @@ import { type ActionState, createActionStateInitial } from "@acdh-knowledge-base
 import { AsyncMultipleSelect } from "@acdh-knowledge-base/ui/async-multiple-select";
 import { Button } from "@acdh-knowledge-base/ui/button";
 import { DatePicker, DatePickerTrigger } from "@acdh-knowledge-base/ui/date-picker";
-import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Description, FieldError, Label } from "@acdh-knowledge-base/ui/field";
 import { Form } from "@acdh-knowledge-base/ui/form";
 import { FormStatus } from "@acdh-knowledge-base/ui/form-status";
 import { Input } from "@acdh-knowledge-base/ui/input";
@@ -68,9 +68,15 @@ async function fetchSocialMediaOptionsPage(
 
 interface PersonFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/**
+	 * Email/ORCID aren't translatable — the DB keeps them synced from the default locale's version
+	 * regardless, so this locks their inputs when editing another locale. Defaults to `true` (the
+	 * create form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	person?: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
 		biographyContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	initialSocialMediaItems: Array<AsyncOption>;
 	initialSocialMediaTotal: number;
@@ -83,6 +89,7 @@ export function PersonForm(props: Readonly<PersonFormProps>): ReactNode {
 	const {
 		initialAssets,
 		formAction,
+		isDefaultLocale = true,
 		person,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
@@ -153,17 +160,39 @@ export function PersonForm(props: Readonly<PersonFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 
-					<TextField defaultValue={person?.email ?? undefined} name="email" type="email">
-						<Label>{t("Email")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={person?.email ?? undefined} name="email" type="email">
+							<Label>{t("Email")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Email")}</Label>
+							<p className="text-sm">{person?.email ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{person?.email != null ? (
+								<input name="email" type="hidden" value={person.email} />
+							) : null}
+						</div>
+					)}
 
-					<TextField defaultValue={person?.orcid ?? undefined} name="orcid">
-						<Label>{t("ORCID")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={person?.orcid ?? undefined} name="orcid">
+							<Label>{t("ORCID")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("ORCID")}</Label>
+							<p className="text-sm">{person?.orcid ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{person?.orcid != null ? (
+								<input name="orcid" type="hidden" value={person.orcid} />
+							) : null}
+						</div>
+					)}
 				</FormSection>
 
 				<Separator className="my-6" />

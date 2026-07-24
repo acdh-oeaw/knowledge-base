@@ -3,7 +3,7 @@
 import type * as schema from "@acdh-knowledge-base/database/schema";
 import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
 import { Button } from "@acdh-knowledge-base/ui/button";
-import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Description, FieldError, Label } from "@acdh-knowledge-base/ui/field";
 import { Form } from "@acdh-knowledge-base/ui/form";
 import { Input } from "@acdh-knowledge-base/ui/input";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
@@ -26,12 +26,18 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface EricFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/**
+	 * Acronym/ROR/SSHOC actor ID aren't translatable — the DB keeps them synced from the default
+	 * locale's version regardless, so this locks their inputs when editing another locale. Defaults
+	 * to `true` (the create form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	eric: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	formId?: string;
 	formAction: ServerAction;
@@ -55,6 +61,7 @@ export function EricForm(props: Readonly<EricFormProps>): ReactNode {
 		initialAssets,
 		formAction,
 		formId,
+		isDefaultLocale = true,
 		eric,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -89,31 +96,70 @@ export function EricForm(props: Readonly<EricFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 
-					<TextField defaultValue={eric.acronym ?? undefined} name="acronym">
-						<Label>{t("Acronym")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={eric.acronym ?? undefined} name="acronym">
+							<Label>{t("Acronym")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Acronym")}</Label>
+							<p className="text-sm">{eric.acronym ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{eric.acronym != null ? (
+								<input name="acronym" type="hidden" value={eric.acronym} />
+							) : null}
+						</div>
+					)}
 
-					<TextField defaultValue={eric.ror ?? undefined} name="ror">
-						<Label>{t("ROR")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={eric.ror ?? undefined} name="ror">
+							<Label>{t("ROR")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("ROR")}</Label>
+							<p className="text-sm">{eric.ror ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{eric.ror != null ? <input name="ror" type="hidden" value={eric.ror} /> : null}
+						</div>
+					)}
 
-					<TextField
-						defaultValue={
-							eric.sshocMarketplaceActorId != null
-								? String(eric.sshocMarketplaceActorId)
-								: undefined
-						}
-						name="sshocMarketplaceActorId"
-						type="number"
-					>
-						<Label>{t("SSHOC actor ID")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField
+							defaultValue={
+								eric.sshocMarketplaceActorId != null
+									? String(eric.sshocMarketplaceActorId)
+									: undefined
+							}
+							name="sshocMarketplaceActorId"
+							type="number"
+						>
+							<Label>{t("SSHOC actor ID")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("SSHOC actor ID")}</Label>
+							<p className="text-sm">
+								{eric.sshocMarketplaceActorId != null
+									? String(eric.sshocMarketplaceActorId)
+									: t("Not set")}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{eric.sshocMarketplaceActorId != null ? (
+								<input
+									name="sshocMarketplaceActorId"
+									type="hidden"
+									value={eric.sshocMarketplaceActorId}
+								/>
+							) : null}
+						</div>
+					)}
 
 					<TextField defaultValue={eric.summary ?? undefined} name="summary">
 						<Label>{t("Summary")}</Label>

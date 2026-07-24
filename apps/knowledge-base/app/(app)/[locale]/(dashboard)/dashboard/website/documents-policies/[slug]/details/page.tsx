@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -35,14 +36,22 @@ export default async function DashboardWebsiteDocumentOrPolicyDetailsPage(
 
 	const { slug } = await params;
 
-	const doc = await db.query.entities.findFirst({
-		where: { slug },
-		columns: { id: true },
+	const anyVersion = await db.query.documentsPolicies.findFirst({
+		where: { entityVersion: { slug: { value: slug } } },
+		columns: {},
+		with: {
+			entityVersion: {
+				columns: {},
+				with: { entity: { columns: { id: true } } },
+			},
+		},
 	});
 
-	if (doc == null) {
+	if (anyVersion == null) {
 		notFound();
 	}
+
+	const doc = { id: anyVersion.entityVersion.entity.id };
 
 	const { draftId, publishedId, hasDraftChanges } = await db.transaction(async (tx) =>
 		getDocumentLifecycleState(tx, doc.id),
@@ -89,7 +98,11 @@ export default async function DashboardWebsiteDocumentOrPolicyDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -106,6 +119,12 @@ export default async function DashboardWebsiteDocumentOrPolicyDetailsPage(
 	if (documentOrPolicy == null) {
 		notFound();
 	}
+
+	assert(
+		documentOrPolicy.entityVersion.slug,
+		`Slug missing for entity version "${documentOrPolicy.entityVersion.id}".`,
+	);
+	const entityVersionSlug = documentOrPolicy.entityVersion.slug;
 
 	const document = images.generateSignedImageUrl({
 		key: documentOrPolicy.document.key,
@@ -124,6 +143,7 @@ export default async function DashboardWebsiteDocumentOrPolicyDetailsPage(
 			documentId={doc.id}
 			documentOrPolicy={{
 				...documentOrPolicy,
+				entityVersion: { ...documentOrPolicy.entityVersion, slug: entityVersionSlug },
 				document: { ...documentOrPolicy.document, url: document.url, downloadUrl },
 			}}
 			hasDraft={hasPublishableDraft}

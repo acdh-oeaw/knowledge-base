@@ -28,7 +28,7 @@ interface SpotlightArticleEditFormProps {
 	hasDraftChanges: boolean;
 	isPublished: boolean;
 	spotlightArticle: Pick<schema.SpotlightArticle, "id" | "title" | "summary"> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;

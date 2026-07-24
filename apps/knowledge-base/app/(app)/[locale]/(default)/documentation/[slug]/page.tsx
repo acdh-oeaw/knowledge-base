@@ -12,8 +12,8 @@ async function getDocumentationPage(slug: string) {
 	const page = await db.query.documentationPages.findFirst({
 		where: {
 			entityVersion: {
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 				status: {
 					type: "published",

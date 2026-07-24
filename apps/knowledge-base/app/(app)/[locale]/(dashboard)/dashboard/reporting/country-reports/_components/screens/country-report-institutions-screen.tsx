@@ -9,7 +9,7 @@ import { refreshCountryReportInstitutionsAction } from "@/app/(app)/[locale]/(da
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getCurrentPartnerInstitutions } from "@/lib/data/unit-relations";
 import { db } from "@/lib/db";
-import { inArray } from "@/lib/db/sql";
+import { inArray, sql } from "@/lib/db/sql";
 
 interface CountryReportInstitutionsScreenProps {
 	reportId: string;
@@ -73,9 +73,13 @@ export async function CountryReportInstitutionsScreen(
 	const slugRows =
 		snapshotDocumentIds.length > 0
 			? await db
-					.select({ id: schema.entities.id, slug: schema.entities.slug })
-					.from(schema.entities)
-					.where(inArray(schema.entities.id, snapshotDocumentIds))
+					.select({ id: schema.documentLifecycle.documentId, slug: schema.slugs.value })
+					.from(schema.documentLifecycle)
+					.innerJoin(
+						schema.slugs,
+						sql`${schema.slugs.entityVersionId} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+					)
+					.where(inArray(schema.documentLifecycle.documentId, snapshotDocumentIds))
 			: [];
 	const slugByDocumentId = new Map(slugRows.map((row) => [row.id, row.slug] as const));
 

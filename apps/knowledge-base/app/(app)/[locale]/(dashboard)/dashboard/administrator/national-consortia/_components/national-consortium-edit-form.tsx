@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ReverseUnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/reverse-unit-relations-section";
 import { UnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/unit-relations-section";
 import { NationalConsortiumForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortium-form";
@@ -28,13 +29,16 @@ interface NationalConsortiumEditFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	documentId: string;
 	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	nationalConsortium: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -61,7 +65,10 @@ export function NationalConsortiumEditForm(
 		initialAssets,
 		documentId,
 		hasDraftChanges,
+		isDefaultLocale,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		nationalConsortium,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -100,7 +107,8 @@ export function NationalConsortiumEditForm(
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardNationalConsortiumDraftAction}
 							documentId={documentId}
@@ -111,8 +119,10 @@ export function NationalConsortiumEditForm(
 					</div>
 
 					<NationalConsortiumForm
+						key={nationalConsortium.id}
 						formAction={updateNationalConsortiumAction}
 						formId={formId}
+						isDefaultLocale={isDefaultLocale}
 						initialAssets={initialAssets}
 						initialRelatedEntityIds={initialRelatedEntityIds}
 						initialRelatedEntityItems={initialRelatedEntityItems}
