@@ -40,7 +40,7 @@ async function getOrganisationalUnitBySlugForAdmin(
 				? { id: versionId, type: { type: unitType } }
 				: {
 						type: { type: unitType },
-						entityVersion: { entity: { slug } },
+						entityVersion: { slug: { value: slug } },
 					},
 		columns: {
 			acronym: true,
@@ -57,7 +57,11 @@ async function getOrganisationalUnitBySlugForAdmin(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -79,9 +83,11 @@ export async function getOrganisationalUnitEditDataForAdmin(
 		unitType: ManagedOrganisationalUnitType;
 		versionId?: string;
 		publishedVersionId?: string | null;
+		/** Resolves related-unit names/slugs in this locale; defaults to the default locale. */
+		localeId?: string;
 	},
 ) {
-	const { slug, unitType, versionId } = params;
+	const { slug, unitType, versionId, localeId } = params;
 
 	const unit = await getOrganisationalUnitBySlugForAdmin(currentUser, unitType, slug, versionId);
 
@@ -99,7 +105,7 @@ export async function getOrganisationalUnitEditDataForAdmin(
 	] = await Promise.all([
 		getEntityContentBlocks(unit.id, "description"),
 		getEntityRelations(documentId),
-		getUnitRelations(documentId),
+		getUnitRelations(documentId, localeId),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: unit.id },
 			columns: { socialMediaId: true },

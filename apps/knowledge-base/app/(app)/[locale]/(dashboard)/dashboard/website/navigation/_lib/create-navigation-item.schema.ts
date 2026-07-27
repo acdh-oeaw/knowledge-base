@@ -5,6 +5,7 @@ export const CreateNavigationItemActionInputSchema = v.pipe(
 	v.object({
 		...v.pick(NavigationItemInsertSchema, ["menuId", "label"]).entries,
 		parentId: v.optional(v.pipe(v.string(), v.uuid())),
+		localeId: v.pipe(v.string(), v.uuid()),
 		href: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 		entityId: v.nullish(v.pipe(v.string(), v.uuid()), null),
 		isExternal: v.optional(

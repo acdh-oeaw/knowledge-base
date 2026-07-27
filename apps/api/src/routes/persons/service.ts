@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -40,8 +41,8 @@ export async function getPersons(db: Database | Transaction, params: GetPersonsP
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -126,8 +127,8 @@ export async function getPersonById(db: Database | Transaction, params: GetPerso
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -195,8 +196,8 @@ export async function getPersonSlugs(db: Database | Transaction, params: GetPers
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -220,7 +221,8 @@ export async function getPersonSlugs(db: Database | Transaction, params: GetPers
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -229,7 +231,7 @@ export async function getPersonSlugs(db: Database | Transaction, params: GetPers
 //
 
 interface GetPersonBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getPersonBySlug(db: Database | Transaction, params: GetPersonBySlugParams) {
@@ -241,8 +243,8 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -257,8 +259,8 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

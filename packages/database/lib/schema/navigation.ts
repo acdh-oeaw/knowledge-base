@@ -6,6 +6,7 @@ import { createInsertSchema, createSelectSchema, createUpdateSchema } from "driz
 import * as f from "../fields";
 import { uuidv7 } from "../functions";
 import { entities } from "./entities";
+import { locales } from "./locales";
 
 export const navigationMenus = p.snakeCase.table("navigation_menus", {
 	id: p.uuid("id").primaryKey().default(uuidv7()),
@@ -32,6 +33,7 @@ export const navigationItems = p.snakeCase.table(
 			.uuid("parent_id")
 			.references((): AnyPgColumn => navigationItems.id, { onDelete: "cascade" }),
 		label: p.text("label").notNull(),
+		localeId: p.uuid("locale_id").references(() => locales.id),
 		href: p.text("href"),
 		entityId: p.uuid("entity_id").references(() => entities.id, { onDelete: "set null" }),
 		isExternal: p.boolean("is_external").notNull().default(false),

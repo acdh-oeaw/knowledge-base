@@ -18,7 +18,7 @@ const eventBaseObject = v.object({
 		start: CalendarDateSchema,
 		end: v.optional(CalendarDateSchema),
 	}),
-	entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+	entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
@@ -56,7 +56,7 @@ export const EventSchema = v.pipe(
 			start: v.pipe(v.string(), v.isoTimestamp()),
 			end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 		}),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		content: v.optional(v.array(ContentBlockSchema), []),
 		links: v.object({
@@ -75,7 +75,7 @@ export type Event = v.InferOutput<typeof EventSchema>;
 export const EventSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.EventSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Event slug"),
 	v.metadata({ ref: "EventSlug" }),

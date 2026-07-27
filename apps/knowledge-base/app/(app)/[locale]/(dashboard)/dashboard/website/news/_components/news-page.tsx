@@ -34,7 +34,7 @@ interface NewsPageProps {
 		data: Array<
 			Pick<schema.NewsItem, "id" | "title" | "summary"> & {
 				documentId: string;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 				updatedAt: schema.Entity["updatedAt"];

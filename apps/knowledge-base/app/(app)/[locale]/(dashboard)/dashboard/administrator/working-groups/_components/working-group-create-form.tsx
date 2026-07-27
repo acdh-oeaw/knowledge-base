@@ -1,5 +1,6 @@
 "use client";
 
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import { WorkingGroupForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/adm
 import { createWorkingGroupAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_lib/create-working-group.action";
 
 interface WorkingGroupCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -17,6 +19,7 @@ interface WorkingGroupCreateFormProps {
 
 export function WorkingGroupCreateForm(props: Readonly<WorkingGroupCreateFormProps>): ReactNode {
 	const {
+		defaultLocaleName,
 		initialAssets,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -29,6 +32,13 @@ export function WorkingGroupCreateForm(props: Readonly<WorkingGroupCreateFormPro
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New working group")} />
+
+			<Note intent="info">
+				{t(
+					"This working group will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<WorkingGroupForm
 				formAction={createWorkingGroupAction}

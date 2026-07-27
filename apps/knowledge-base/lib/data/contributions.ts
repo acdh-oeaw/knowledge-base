@@ -3,7 +3,11 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import { forbidden } from "next/navigation";
 
 import { contributionOptionsPageSize } from "@/lib/constants/contributions";
-import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
+import {
+	localeMatch,
+	publishedEntityVersionWhere,
+	statusMatch,
+} from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
 import { unaccentIlike } from "@/lib/db/search";
 import { alias, and, count, desc, eq, inArray, or, sql } from "@/lib/db/sql";
@@ -56,11 +60,13 @@ export async function getContributions(
 	const { limit, offset, q, sort = "personName", dir = "asc" } = params;
 	const personEntities = alias(schema.entities, "person_entities");
 	const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
+	const personSlugs = alias(schema.slugs, "person_slugs");
 	const organisationalUnitEntities = alias(schema.entities, "organisational_unit_entities");
 	const organisationalUnitDocumentLifecycle = alias(
 		schema.documentLifecycle,
 		"organisational_unit_document_lifecycle",
 	);
+	const organisationalUnitSlugs = alias(schema.slugs, "organisational_unit_slugs");
 	const query = q?.trim();
 	// personDocumentId / organisationalUnitDocumentId are document ids; resolve each to its latest
 	// editable version (draft when present, else published) for display.
@@ -108,13 +114,13 @@ export async function getContributions(
 				id: schema.personsToOrganisationalUnits.id,
 				personDocumentId: schema.personsToOrganisationalUnits.personDocumentId,
 				personName: schema.persons.name,
-				personSlug: personEntities.slug,
+				personSlug: personSlugs.value,
 				roleTypeId: schema.personsToOrganisationalUnits.roleTypeId,
 				roleType: schema.personRoleTypes.type,
 				organisationalUnitDocumentId:
 					schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
 				organisationalUnitName: schema.organisationalUnits.name,
-				organisationalUnitSlug: organisationalUnitEntities.slug,
+				organisationalUnitSlug: organisationalUnitSlugs.value,
 				organisationalUnitType: schema.organisationalUnitTypes.type,
 				duration: schema.personsToOrganisationalUnits.duration,
 			})
@@ -125,6 +131,7 @@ export async function getContributions(
 			)
 			.innerJoin(personDocumentLifecycle, eq(personDocumentLifecycle.documentId, personEntities.id))
 			.innerJoin(schema.persons, sql`${schema.persons.id} = ${personPickedVersion}`)
+			.innerJoin(personSlugs, eq(personSlugs.entityVersionId, schema.persons.id))
 			.innerJoin(
 				schema.personRoleTypes,
 				eq(schema.personRoleTypes.id, schema.personsToOrganisationalUnits.roleTypeId),
@@ -143,6 +150,10 @@ export async function getContributions(
 			.innerJoin(
 				schema.organisationalUnits,
 				sql`${schema.organisationalUnits.id} = ${organisationalUnitPickedVersion}`,
+			)
+			.innerJoin(
+				organisationalUnitSlugs,
+				eq(organisationalUnitSlugs.entityVersionId, schema.organisationalUnits.id),
 			)
 			.innerJoin(
 				schema.organisationalUnitTypes,
@@ -220,15 +231,20 @@ export async function getContributionsForAdmin(
 }
 
 /**
- * `personDocumentId` is the person's `entities.id`. The org endpoint is resolved to its latest
- * editable version for display.
+ * `personDocumentId` is the person's `entities.id`. Resolves each related organisational unit to
+ * its latest editable version in `localeId` (or the default locale when omitted), falling back to
+ * the default locale per-unit when a unit has no version in `localeId` — the unit's name/slug are
+ * translatable, unlike the person's own name.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getPersonContributions(personDocumentId: string) {
-	const organisationalUnitDocumentLifecycle = alias(
-		schema.documentLifecycle,
-		"organisational_unit_document_lifecycle",
+export async function getPersonContributions(personDocumentId: string, localeId?: string) {
+	const unitSelectedDraft = alias(schema.entityVersions, "contribution_unit_selected_draft");
+	const unitSelectedPublished = alias(
+		schema.entityVersions,
+		"contribution_unit_selected_published",
 	);
+	const unitDefaultDraft = alias(schema.entityVersions, "contribution_unit_default_draft");
+	const unitDefaultPublished = alias(schema.entityVersions, "contribution_unit_default_published");
 
 	return db
 		.select({
@@ -239,29 +255,64 @@ export async function getPersonContributions(personDocumentId: string) {
 			organisationalUnitDocumentId:
 				schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
 			organisationalUnitName: schema.organisationalUnits.name,
-			organisationalUnitSlug: schema.entities.slug,
+			organisationalUnitSlug: schema.slugs.value,
 			organisationalUnitType: schema.organisationalUnitTypes.type,
+			organisationalUnitIsLocaleFallback: sql<boolean>`(${unitSelectedDraft.id} IS NULL AND ${unitSelectedPublished.id} IS NULL)`,
 		})
 		.from(schema.personsToOrganisationalUnits)
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.personsToOrganisationalUnits.organisationalUnitDocumentId),
-		)
 		.innerJoin(
 			schema.personRoleTypes,
 			eq(schema.personRoleTypes.id, schema.personsToOrganisationalUnits.roleTypeId),
 		)
-		.innerJoin(
-			organisationalUnitDocumentLifecycle,
-			eq(
-				organisationalUnitDocumentLifecycle.documentId,
-				schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+		.leftJoin(
+			unitSelectedDraft,
+			and(
+				eq(
+					unitSelectedDraft.entityId,
+					schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+				),
+				localeMatch(unitSelectedDraft.localeId, localeId),
+				statusMatch(unitSelectedDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			unitSelectedPublished,
+			and(
+				eq(
+					unitSelectedPublished.entityId,
+					schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+				),
+				localeMatch(unitSelectedPublished.localeId, localeId),
+				statusMatch(unitSelectedPublished.statusId, "published"),
+			),
+		)
+		.leftJoin(
+			unitDefaultDraft,
+			and(
+				eq(
+					unitDefaultDraft.entityId,
+					schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+				),
+				localeMatch(unitDefaultDraft.localeId, undefined),
+				statusMatch(unitDefaultDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			unitDefaultPublished,
+			and(
+				eq(
+					unitDefaultPublished.entityId,
+					schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+				),
+				localeMatch(unitDefaultPublished.localeId, undefined),
+				statusMatch(unitDefaultPublished.statusId, "published"),
 			),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${organisationalUnitDocumentLifecycle.draftId}, ${organisationalUnitDocumentLifecycle.publishedId})`,
+			sql`${schema.organisationalUnits.id} = COALESCE(${unitSelectedDraft.id}, ${unitSelectedPublished.id}, ${unitDefaultDraft.id}, ${unitDefaultPublished.id})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),

@@ -1,0 +1,2 @@
+ALTER TABLE "navigation_items" ADD COLUMN "locale_id" uuid;--> statement-breakpoint
+ALTER TABLE "navigation_items" ADD CONSTRAINT "navigation_items_locale_id_locales_id_fkey" FOREIGN KEY ("locale_id") REFERENCES "locales"("id");

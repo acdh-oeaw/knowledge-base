@@ -28,7 +28,8 @@ interface FundingCallFormProps {
 	contentBlocks?: Array<ContentBlock>;
 	fundingCall?: Pick<schema.FundingCall, "id" | "duration" | "title" | "summary"> & {
 		entityVersion: {
-			entity: Pick<schema.Entity, "id" | "slug">;
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 	};

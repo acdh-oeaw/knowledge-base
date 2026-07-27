@@ -39,7 +39,7 @@ interface WorkingGroupsPageProps {
 				documentId: string;
 				durationFrom: Date | null;
 				durationUntil: Date | null;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 			}

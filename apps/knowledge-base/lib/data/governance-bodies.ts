@@ -20,7 +20,7 @@ export interface GovernanceBodiesResult {
 	data: Array<
 		Pick<schema.OrganisationalUnit, "acronym" | "id" | "name"> & {
 			documentId: string;
-			entity: Pick<schema.Entity, "slug">;
+			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
 			updatedAt: Date;
@@ -71,10 +71,10 @@ export async function getGovernanceBodies(
 		db
 			.select({
 				acronym: schema.organisationalUnits.acronym,
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				id: schema.organisationalUnits.id,
 				name: schema.organisationalUnits.name,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				updatedAt: schema.entityVersions.updatedAt,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
@@ -86,11 +86,11 @@ export async function getGovernanceBodies(
 				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
 			)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(versionPick, where))
 			.orderBy(orderBy)

@@ -35,27 +35,30 @@ function createItems(count: number, typeId: string) {
 }
 
 async function seed(db: Database, items: ReturnType<typeof createItems>) {
-	const [entityStatus, entityType, unitType] = await Promise.all([
+	const [entityStatus, entityType, unitType, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({
 			columns: { id: true },
 			where: { type: "organisational_units" },
 		}),
 		db.query.organisationalUnitTypes.findFirst({ columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(entityStatus, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(unitType, "No organisational unit type in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.socialMedia).values(items.map((item) => item.socialMedia));
 
 	const unitVersionId = uuidv7();
 	const unitEntityId = uuidv7();
+	const unitSlug = `unit-${unitVersionId}`;
 
 	await db.insert(schema.entities).values({
 		id: unitEntityId,
-		slug: `unit-${unitVersionId}`,
 		typeId: entityType.id,
 	});
 
@@ -63,6 +66,16 @@ async function seed(db: Database, items: ReturnType<typeof createItems>) {
 		id: unitVersionId,
 		entityId: unitEntityId,
 		statusId: entityStatus.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: unitVersionId,
+		entityId: unitEntityId,
+		typeId: entityType.id,
+		localeId,
+		isPublished: true,
+		value: unitSlug,
 	});
 
 	await db.insert(schema.organisationalUnits).values({

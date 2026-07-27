@@ -6,12 +6,15 @@ import {
 	DescriptionList,
 	DescriptionTerm,
 } from "@acdh-knowledge-base/ui/description-list";
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-mark";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
@@ -26,14 +29,17 @@ import { formatRoleType } from "@/lib/format-role-type";
 interface EricDetailsProps {
 	documentId: string;
 	hasDraft: boolean;
+	isLocaleFallback: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	selectedVersion: "draft" | "published";
 	eric: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	selectedRelatedEntities: Array<{
 		id: string;
@@ -60,11 +66,14 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 	const {
 		documentId,
 		hasDraft,
+		isLocaleFallback,
 		isPublished,
 		eric,
+		locales,
 		reverseRelationGroups,
 		publishAction,
 		discardDraftAction,
+		selectedLocaleCode,
 		selectedRelatedEntities,
 		selectedRelatedResources,
 		selectedSocialMediaItems,
@@ -73,7 +82,7 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 
 	const t = useExtracted();
 
-	const slug = eric.entityVersion.entity.slug;
+	const slug = eric.entityVersion.slug.value;
 
 	const groupLabels: Record<EricReverseRelationSourceType, string> = {
 		country: t("Countries"),
@@ -85,6 +94,11 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 
 	return (
 		<Fragment>
+			{isLocaleFallback ? (
+				<Note intent="info">
+					{t("Not yet translated in the selected language — showing the default language.")}
+				</Note>
+			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
 					draftHref={`/dashboard/administrator/eric/${slug}/details`}
@@ -93,14 +107,17 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 					publishedHref={`/dashboard/administrator/eric/${slug}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
-				<EntityLifecycleBar
-					discardDraftAction={discardDraftAction}
-					documentId={documentId}
-					editHref={`/dashboard/administrator/eric/${slug}/edit`}
-					hasDraft={hasDraft}
-					isPublished={isPublished}
-					publishAction={publishAction}
-				/>
+				<div className="flex items-center gap-x-4">
+					<EntityLifecycleBar
+						discardDraftAction={discardDraftAction}
+						documentId={documentId}
+						editHref={`/dashboard/administrator/eric/${slug}/edit`}
+						hasDraft={hasDraft}
+						isPublished={isPublished}
+						publishAction={publishAction}
+					/>
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+				</div>
 			</div>
 			<DescriptionList>
 				<DescriptionTerm>{t("Name")}</DescriptionTerm>
@@ -221,7 +238,12 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 										{relations.map((relation) => (
 											<RelationStatement
 												key={relation.id}
-												source={relation.unitName}
+												source={
+													<Fragment>
+														{relation.unitName}
+														{relation.unitIsLocaleFallback ? <LocaleFallbackMark /> : null}
+													</Fragment>
+												}
 												sourceHref={getOrganisationalUnitDetailHref(
 													relation.unitType,
 													relation.unitSlug,

@@ -21,7 +21,7 @@ export const MemberOrPartnerBaseSchema = v.pipe(
 			"sshocMarketplaceActorId",
 		]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		type: v.literal(schema.membersAndPartnersUnitType),
 		status: v.picklist(schema.membersAndPartnersUnitStatusEnum),
@@ -115,7 +115,7 @@ const memberOrPartnerSharedEntries = {
 		"sshocMarketplaceActorId",
 	]).entries,
 	image: v.nullable(ImageSchema),
-	entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+	entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	type: v.literal(schema.membersAndPartnersUnitType),
 	socialMedia: v.array(
@@ -170,7 +170,7 @@ export type MemberOrPartner = v.InferOutput<typeof MemberOrPartnerSchema>;
 export const MemberOrPartnerSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.OrganisationalUnitSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Member or partner slug"),
 	v.metadata({ ref: "MemberOrPartnerSlug" }),

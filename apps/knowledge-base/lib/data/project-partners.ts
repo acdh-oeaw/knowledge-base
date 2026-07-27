@@ -2,9 +2,10 @@ import type { User } from "@acdh-knowledge-base/auth";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { forbidden } from "next/navigation";
 
+import { localeMatch, statusMatch } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
 import { unaccentIlike } from "@/lib/db/search";
-import { alias, count, desc, eq, or, sql } from "@/lib/db/sql";
+import { alias, and, count, desc, eq, or, sql } from "@/lib/db/sql";
 
 export type ProjectPartnersSort =
 	| "projectName"
@@ -102,7 +103,7 @@ export async function getProjectPartners(
 				projectId: schema.projectsToOrganisationalUnits.projectDocumentId,
 				projectAcronym: schema.projects.acronym,
 				projectName: schema.projects.name,
-				projectSlug: projectEntities.slug,
+				projectSlug: schema.slugs.value,
 				roleId: schema.projectsToOrganisationalUnits.roleId,
 				roleType: schema.projectRoles.role,
 				unitDocumentId: schema.projectsToOrganisationalUnits.unitDocumentId,
@@ -120,6 +121,7 @@ export async function getProjectPartners(
 				eq(projectDocumentLifecycle.documentId, projectEntities.id),
 			)
 			.innerJoin(schema.projects, sql`${schema.projects.id} = ${projectPickedVersion}`)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.projects.id))
 			.innerJoin(
 				schema.projectRoles,
 				eq(schema.projectRoles.id, schema.projectsToOrganisationalUnits.roleId),
@@ -269,23 +271,26 @@ export interface UnitProjectPartnership {
 	roleId: string;
 	roleType: string;
 	duration: { start: Date; end?: Date | null | undefined } | null;
+	/** True when the project has no version in the selected locale and this fell back to default. */
+	projectIsLocaleFallback: boolean;
 }
 
 /**
  * `unitDocumentId` is the unit's `entities.id`. Returns every project the unit is/was related to
- * (partner / coordinator / funder), resolving each project to its latest editable version. The
+ * (partner / coordinator / funder), resolving each project to its latest editable version in
+ * `localeId` (or the default locale when omitted), falling back to the default locale per-project
+ * when a project has no version in `localeId` — the project's name/acronym are translatable. The
  * `projectsToOrganisationalUnits` rows are document-level, so there is a single set per unit
  * document (no draft/published diff).
  */
 export async function getUnitProjectPartnerships(
 	unitDocumentId: string,
+	localeId?: string,
 ): Promise<Array<UnitProjectPartnership>> {
-	const projectEntities = alias(schema.entities, "unit_project_entities");
-	const projectDocumentLifecycle = alias(
-		schema.documentLifecycle,
-		"unit_project_document_lifecycle",
-	);
-	const projectPickedVersion = sql`COALESCE(${projectDocumentLifecycle.draftId}, ${projectDocumentLifecycle.publishedId})`;
+	const projectSelectedDraft = alias(schema.entityVersions, "unit_project_selected_draft");
+	const projectSelectedPublished = alias(schema.entityVersions, "unit_project_selected_published");
+	const projectDefaultDraft = alias(schema.entityVersions, "unit_project_default_draft");
+	const projectDefaultPublished = alias(schema.entityVersions, "unit_project_default_published");
 
 	const rows = await db
 		.select({
@@ -293,21 +298,56 @@ export async function getUnitProjectPartnerships(
 			projectId: schema.projectsToOrganisationalUnits.projectDocumentId,
 			projectName: schema.projects.name,
 			projectAcronym: schema.projects.acronym,
-			projectSlug: projectEntities.slug,
+			projectSlug: schema.slugs.value,
 			roleId: schema.projectsToOrganisationalUnits.roleId,
 			roleType: schema.projectRoles.role,
 			duration: schema.projectsToOrganisationalUnits.duration,
+			projectIsLocaleFallback: sql<boolean>`(${projectSelectedDraft.id} IS NULL AND ${projectSelectedPublished.id} IS NULL)`,
 		})
 		.from(schema.projectsToOrganisationalUnits)
-		.innerJoin(
-			projectEntities,
-			eq(projectEntities.id, schema.projectsToOrganisationalUnits.projectDocumentId),
+		.leftJoin(
+			projectSelectedDraft,
+			and(
+				eq(projectSelectedDraft.entityId, schema.projectsToOrganisationalUnits.projectDocumentId),
+				localeMatch(projectSelectedDraft.localeId, localeId),
+				statusMatch(projectSelectedDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			projectSelectedPublished,
+			and(
+				eq(
+					projectSelectedPublished.entityId,
+					schema.projectsToOrganisationalUnits.projectDocumentId,
+				),
+				localeMatch(projectSelectedPublished.localeId, localeId),
+				statusMatch(projectSelectedPublished.statusId, "published"),
+			),
+		)
+		.leftJoin(
+			projectDefaultDraft,
+			and(
+				eq(projectDefaultDraft.entityId, schema.projectsToOrganisationalUnits.projectDocumentId),
+				localeMatch(projectDefaultDraft.localeId, undefined),
+				statusMatch(projectDefaultDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			projectDefaultPublished,
+			and(
+				eq(
+					projectDefaultPublished.entityId,
+					schema.projectsToOrganisationalUnits.projectDocumentId,
+				),
+				localeMatch(projectDefaultPublished.localeId, undefined),
+				statusMatch(projectDefaultPublished.statusId, "published"),
+			),
 		)
 		.innerJoin(
-			projectDocumentLifecycle,
-			eq(projectDocumentLifecycle.documentId, projectEntities.id),
+			schema.projects,
+			sql`${schema.projects.id} = COALESCE(${projectSelectedDraft.id}, ${projectSelectedPublished.id}, ${projectDefaultDraft.id}, ${projectDefaultPublished.id})`,
 		)
-		.innerJoin(schema.projects, sql`${schema.projects.id} = ${projectPickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.projects.id))
 		.innerJoin(
 			schema.projectRoles,
 			eq(schema.projectRoles.id, schema.projectsToOrganisationalUnits.roleId),
@@ -329,6 +369,112 @@ export async function getUnitProjectPartnerships(
 			roleId: row.roleId,
 			roleType: row.roleType,
 			duration: row.duration ?? null,
+			projectIsLocaleFallback: row.projectIsLocaleFallback,
+		};
+	});
+}
+
+export interface ProjectPartnerUnit {
+	id: string;
+	unitDocumentId: string;
+	unitName: string;
+	unitSlug: string;
+	unitType: string;
+	roleId: string;
+	roleName: string;
+	duration: { start: Date; end?: Date | null | undefined } | null;
+	/** True when the unit has no version in the selected locale and this fell back to default. */
+	unitIsLocaleFallback: boolean;
+}
+
+/**
+ * `projectDocumentId` is the project's `entities.id`. Returns every organisational unit related to
+ * the project (partner / coordinator / funder), resolving each unit to its latest editable version
+ * in `localeId` (or the default locale when omitted), falling back to the default locale per-unit
+ * when a unit has no version in `localeId` — the unit's name/slug are translatable. The
+ * `projectsToOrganisationalUnits` rows are document-level, so there is a single set per project
+ * document (no draft/published diff).
+ */
+export async function getProjectPartnerUnits(
+	projectDocumentId: string,
+	localeId?: string,
+): Promise<Array<ProjectPartnerUnit>> {
+	const unitSelectedDraft = alias(schema.entityVersions, "project_unit_selected_draft");
+	const unitSelectedPublished = alias(schema.entityVersions, "project_unit_selected_published");
+	const unitDefaultDraft = alias(schema.entityVersions, "project_unit_default_draft");
+	const unitDefaultPublished = alias(schema.entityVersions, "project_unit_default_published");
+
+	const rows = await db
+		.select({
+			id: schema.projectsToOrganisationalUnits.id,
+			unitDocumentId: schema.projectsToOrganisationalUnits.unitDocumentId,
+			unitName: schema.organisationalUnits.name,
+			unitSlug: schema.slugs.value,
+			unitType: schema.organisationalUnitTypes.type,
+			roleId: schema.projectsToOrganisationalUnits.roleId,
+			roleName: schema.projectRoles.role,
+			duration: schema.projectsToOrganisationalUnits.duration,
+			unitIsLocaleFallback: sql<boolean>`(${unitSelectedDraft.id} IS NULL AND ${unitSelectedPublished.id} IS NULL)`,
+		})
+		.from(schema.projectsToOrganisationalUnits)
+		.leftJoin(
+			unitSelectedDraft,
+			and(
+				eq(unitSelectedDraft.entityId, schema.projectsToOrganisationalUnits.unitDocumentId),
+				localeMatch(unitSelectedDraft.localeId, localeId),
+				statusMatch(unitSelectedDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			unitSelectedPublished,
+			and(
+				eq(unitSelectedPublished.entityId, schema.projectsToOrganisationalUnits.unitDocumentId),
+				localeMatch(unitSelectedPublished.localeId, localeId),
+				statusMatch(unitSelectedPublished.statusId, "published"),
+			),
+		)
+		.leftJoin(
+			unitDefaultDraft,
+			and(
+				eq(unitDefaultDraft.entityId, schema.projectsToOrganisationalUnits.unitDocumentId),
+				localeMatch(unitDefaultDraft.localeId, undefined),
+				statusMatch(unitDefaultDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			unitDefaultPublished,
+			and(
+				eq(unitDefaultPublished.entityId, schema.projectsToOrganisationalUnits.unitDocumentId),
+				localeMatch(unitDefaultPublished.localeId, undefined),
+				statusMatch(unitDefaultPublished.statusId, "published"),
+			),
+		)
+		.innerJoin(
+			schema.organisationalUnits,
+			sql`${schema.organisationalUnits.id} = COALESCE(${unitSelectedDraft.id}, ${unitSelectedPublished.id}, ${unitDefaultDraft.id}, ${unitDefaultPublished.id})`,
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+		.innerJoin(
+			schema.organisationalUnitTypes,
+			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
+		)
+		.innerJoin(
+			schema.projectRoles,
+			eq(schema.projectRoles.id, schema.projectsToOrganisationalUnits.roleId),
+		)
+		.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, projectDocumentId));
+
+	return rows.map((row) => {
+		return {
+			id: row.id,
+			unitDocumentId: row.unitDocumentId,
+			unitName: row.unitName,
+			unitSlug: row.unitSlug,
+			unitType: row.unitType,
+			roleId: row.roleId,
+			roleName: row.roleName,
+			duration: row.duration ?? null,
+			unitIsLocaleFallback: row.unitIsLocaleFallback,
 		};
 	});
 }

@@ -21,7 +21,10 @@ interface DocumentationPageDetailsProps {
 	isPublished: boolean;
 	selectedVersion: "draft" | "published";
 	documentationPage: Pick<schema.DocumentationPage, "title"> & {
-		entityVersion: { entity: Pick<schema.Entity, "id" | "slug"> };
+		entityVersion: {
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
+		};
 	};
 	publishAction?: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
@@ -47,16 +50,16 @@ export function DocumentationPageDetails(
 		<Fragment>
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/administrator/documentation-pages/${documentationPage.entityVersion.entity.slug}/details`}
+					draftHref={`/dashboard/administrator/documentation-pages/${documentationPage.entityVersion.slug.value}/details`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/administrator/documentation-pages/${documentationPage.entityVersion.entity.slug}/details?version=published`}
+					publishedHref={`/dashboard/administrator/documentation-pages/${documentationPage.entityVersion.slug.value}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<EntityLifecycleBar
 					discardDraftAction={discardDraftAction}
 					documentId={documentId}
-					editHref={`/dashboard/administrator/documentation-pages/${documentationPage.entityVersion.entity.slug}/edit`}
+					editHref={`/dashboard/administrator/documentation-pages/${documentationPage.entityVersion.slug.value}/edit`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
 					publishAction={publishAction}
@@ -67,7 +70,7 @@ export function DocumentationPageDetails(
 				<DescriptionDetails>{documentationPage.title}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
-				<DescriptionDetails>{documentationPage.entityVersion.entity.slug}</DescriptionDetails>
+				<DescriptionDetails>{documentationPage.entityVersion.slug.value}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Content")}</DescriptionTerm>
 				<DescriptionDetails>

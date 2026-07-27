@@ -14,7 +14,7 @@ export const NewsItemBaseSchema = v.pipe(
 	v.object({
 		...v.pick(schema.NewsItemSelectSchema, ["id", "title", "summary"]).entries,
 		image: ImageSchema,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
 	v.description("News item"),
@@ -35,7 +35,7 @@ export const NewsItemSchema = v.pipe(
 	v.object({
 		...v.pick(schema.NewsItemSelectSchema, ["id", "title", "summary"]).entries,
 		image: ImageSchema,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
@@ -50,7 +50,7 @@ export type NewsItem = v.InferOutput<typeof NewsItemSchema>;
 export const NewsItemSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.NewsItemSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("News item slug"),
 	v.metadata({ ref: "NewsItemSlug" }),

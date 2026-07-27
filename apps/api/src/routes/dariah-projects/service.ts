@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
@@ -23,7 +24,7 @@ function mapItem<
 			url: string;
 			type: { type: string };
 		}>;
-		entityVersion: { updatedAt: Date; entity: { slug: string } };
+		entityVersion: { updatedAt: Date; slug: { value: string } | null };
 		duration: { start: Date; end?: Date };
 	},
 >(item: T, width: number) {
@@ -92,7 +93,10 @@ export async function getDariahProjects(
 					columns: { updatedAt: true },
 					with: {
 						entity: {
-							columns: { slug: true, id: true },
+							columns: { id: true },
+						},
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -212,7 +216,10 @@ export async function getDariahProjectById(
 					columns: { updatedAt: true },
 					with: {
 						entity: {
-							columns: { slug: true, id: true },
+							columns: { id: true },
+						},
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -316,7 +323,10 @@ export async function getDariahProjectSlugs(
 					columns: { updatedAt: true },
 					with: {
 						entity: {
-							columns: { slug: true, id: true },
+							columns: { id: true },
+						},
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -339,7 +349,8 @@ export async function getDariahProjectSlugs(
 
 	const total = aggregate.at(0)?.total ?? 0;
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -348,7 +359,7 @@ export async function getDariahProjectSlugs(
 //
 
 interface GetDariahProjectBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getDariahProjectBySlug(
@@ -363,8 +374,8 @@ export async function getDariahProjectBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -383,7 +394,10 @@ export async function getDariahProjectBySlug(
 				columns: { updatedAt: true },
 				with: {
 					entity: {
-						columns: { slug: true, id: true },
+						columns: { id: true },
+					},
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

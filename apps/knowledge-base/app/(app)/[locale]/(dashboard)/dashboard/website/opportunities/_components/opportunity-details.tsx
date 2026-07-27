@@ -21,7 +21,7 @@ interface OpportunityDetailsProps {
 	isPublished: boolean;
 	selectedVersion: "draft" | "published";
 	opportunity: Pick<schema.Opportunity, "id" | "duration" | "title" | "summary" | "website"> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 		source: { id: string; source: string };
 	};
 	publishAction: (documentId: string) => Promise<unknown>;
@@ -47,16 +47,16 @@ export function OpportunityDetails(props: Readonly<OpportunityDetailsProps>): Re
 		<Fragment>
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/website/opportunities/${opportunity.entityVersion.entity.slug}/details`}
+					draftHref={`/dashboard/website/opportunities/${opportunity.entityVersion.slug.value}/details`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/website/opportunities/${opportunity.entityVersion.entity.slug}/details?version=published`}
+					publishedHref={`/dashboard/website/opportunities/${opportunity.entityVersion.slug.value}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<EntityLifecycleBar
 					discardDraftAction={discardDraftAction}
 					documentId={documentId}
-					editHref={`/dashboard/website/opportunities/${opportunity.entityVersion.entity.slug}/edit`}
+					editHref={`/dashboard/website/opportunities/${opportunity.entityVersion.slug.value}/edit`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
 					publishAction={publishAction}
@@ -67,7 +67,7 @@ export function OpportunityDetails(props: Readonly<OpportunityDetailsProps>): Re
 				<DescriptionDetails>{opportunity.title}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
-				<DescriptionDetails>{opportunity.entityVersion.entity.slug}</DescriptionDetails>
+				<DescriptionDetails>{opportunity.entityVersion.slug.value}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Source")}</DescriptionTerm>
 				<DescriptionDetails>{opportunity.source.source}</DescriptionDetails>

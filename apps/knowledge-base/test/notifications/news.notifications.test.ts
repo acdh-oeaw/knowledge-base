@@ -96,6 +96,7 @@ async function cleanupNewsDocument(documentId: string): Promise<void> {
 
 		for (const version of versions) {
 			await tx.delete(schema.news).where(eq(schema.news.id, version.id));
+			await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 			await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 		}
 

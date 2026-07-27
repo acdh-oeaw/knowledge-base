@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ProjectForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form";
 import { ProjectPartnersSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section";
 import { ProjectPersonsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-persons-section";
@@ -23,14 +24,18 @@ interface ProjectEditFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	documentId: string;
 	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	project: Pick<
 		schema.Project,
 		"acronym" | "call" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: {
-			entity: Pick<schema.Entity, "id" | "slug">;
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
@@ -66,7 +71,10 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		initialAssets,
 		documentId,
 		hasDraftChanges,
+		isDefaultLocale,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		project,
 		scopes,
 		initialSocialMediaIds,
@@ -95,7 +103,8 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardProjectDraftAction}
 							documentId={documentId}
@@ -106,11 +115,13 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 					</div>
 
 					<ProjectForm
+						key={project.id}
 						formAction={updateProjectAction}
 						initialAssets={initialAssets}
 						initialSocialMediaIds={initialSocialMediaIds}
 						initialSocialMediaItems={initialSocialMediaItems}
 						initialSocialMediaTotal={initialSocialMediaTotal}
+						isDefaultLocale={isDefaultLocale}
 						project={project}
 						scopes={scopes}
 						selectedSocialMediaItems={selectedSocialMediaItems}

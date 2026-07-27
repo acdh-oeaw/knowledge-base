@@ -1,4 +1,5 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,7 +10,11 @@ import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { projectsLifecycleAdapter } from "@/lib/data/projects.lifecycle-adapter";
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
@@ -35,14 +40,14 @@ export async function generateMetadata(
 export default async function DashboardAdministratorEditProjectPage(
 	props: Readonly<DashboardAdministratorEditProjectPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
 	await assertAuthenticated();
 
 	const anyVersion = await db.query.projects.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -58,9 +63,29 @@ export default async function DashboardAdministratorEditProjectPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, projectsLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			documentId,
+			projectsLifecycleAdapter,
+			selectedLocale.id,
+		);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -85,7 +110,11 @@ export default async function DashboardAdministratorEditProjectPage(
 						entity: {
 							columns: {
 								id: true,
-								slug: true,
+							},
+						},
+						slug: {
+							columns: {
+								value: true,
 							},
 						},
 						status: {
@@ -115,6 +144,12 @@ export default async function DashboardAdministratorEditProjectPage(
 	if (project == null) {
 		notFound();
 	}
+
+	assert(
+		project.entityVersion.slug,
+		`Slug missing for entity version "${project.entityVersion.id}".`,
+	);
+	const entityVersionSlug = project.entityVersion.slug;
 
 	const [
 		descriptionContentBlocks,
@@ -236,8 +271,16 @@ export default async function DashboardAdministratorEditProjectPage(
 			initialSocialMediaIds={initialSocialMediaIds}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}
+			isDefaultLocale={selectedLocale.isDefault}
 			isPublished={publishedId != null}
-			project={{ ...project, descriptionContentBlocks, image }}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
+			project={{
+				...project,
+				entityVersion: { ...project.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
+				image,
+			}}
 			roles={roles}
 			scopes={scopes}
 			selectedSocialMediaItems={selectedSocialMediaItems}

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
@@ -53,7 +54,10 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 					columns: { updatedAt: true },
 					with: {
 						entity: {
-							columns: { slug: true, id: true },
+							columns: { id: true },
+						},
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -173,7 +177,10 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 					columns: { updatedAt: true },
 					with: {
 						entity: {
-							columns: { slug: true, id: true },
+							columns: { id: true },
+						},
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -284,7 +291,10 @@ export async function getProjectSlugs(db: Database | Transaction, params: GetPro
 					columns: { updatedAt: true },
 					with: {
 						entity: {
-							columns: { slug: true, id: true },
+							columns: { id: true },
+						},
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -308,7 +318,8 @@ export async function getProjectSlugs(db: Database | Transaction, params: GetPro
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -317,7 +328,7 @@ export async function getProjectSlugs(db: Database | Transaction, params: GetPro
 //
 
 interface GetProjectBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getProjectBySlug(db: Database | Transaction, params: GetProjectBySlugParams) {
@@ -329,8 +340,8 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -349,7 +360,10 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 				columns: { updatedAt: true },
 				with: {
 					entity: {
-						columns: { slug: true, id: true },
+						columns: { id: true },
+					},
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

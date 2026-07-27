@@ -1,7 +1,11 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 
 import { relationOptionsPageSize } from "@/lib/constants/relations";
-import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
+import {
+	localeMatch,
+	publishedEntityVersionWhere,
+	statusMatch,
+} from "@/lib/data/current-entity-version";
 import type { OrganisationalUnitType } from "@/lib/data/organisational-units";
 import { db } from "@/lib/db";
 import { unaccentIlike } from "@/lib/db/search";
@@ -10,14 +14,15 @@ import { alias, and, count, eq, inArray, sql } from "@/lib/db/sql";
 /**
  * `unitDocumentId` is the owner unit's `entities.id`. Unit↔unit relations are document-level, so
  * there is a single set per unit document (no draft/published diff); the related unit is resolved
- * to its latest editable version for display.
+ * to its latest editable version for display, in `localeId` (or the default locale when omitted) —
+ * the related unit's name/slug are translatable, unlike e.g. a person's name.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getUnitRelations(unitDocumentId: string) {
-	const relatedUnitDocumentLifecycle = alias(
-		schema.documentLifecycle,
-		"related_unit_document_lifecycle",
-	);
+export async function getUnitRelations(unitDocumentId: string, localeId?: string) {
+	const relatedSelectedDraft = alias(schema.entityVersions, "related_unit_selected_draft");
+	const relatedSelectedPublished = alias(schema.entityVersions, "related_unit_selected_published");
+	const relatedDefaultDraft = alias(schema.entityVersions, "related_unit_default_draft");
+	const relatedDefaultPublished = alias(schema.entityVersions, "related_unit_default_published");
 
 	return db
 		.select({
@@ -27,29 +32,63 @@ export async function getUnitRelations(unitDocumentId: string) {
 			statusType: schema.organisationalUnitStatus.status,
 			relatedUnitDocumentId: schema.organisationalUnitsRelations.relatedUnitDocumentId,
 			relatedUnitName: schema.organisationalUnits.name,
-			relatedUnitSlug: schema.entities.slug,
+			relatedUnitSlug: schema.slugs.value,
 			relatedUnitType: schema.organisationalUnitTypes.type,
+			// True when the related unit has no version in the selected locale and this row fell
+			// back to its default-locale version instead.
+			relatedUnitIsLocaleFallback: sql<boolean>`(${relatedSelectedDraft.id} IS NULL AND ${relatedSelectedPublished.id} IS NULL)`,
 		})
 		.from(schema.organisationalUnitsRelations)
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
-		)
 		.innerJoin(
 			schema.organisationalUnitStatus,
 			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
 		)
-		.innerJoin(
-			relatedUnitDocumentLifecycle,
-			eq(
-				relatedUnitDocumentLifecycle.documentId,
-				schema.organisationalUnitsRelations.relatedUnitDocumentId,
+		.leftJoin(
+			relatedSelectedDraft,
+			and(
+				eq(
+					relatedSelectedDraft.entityId,
+					schema.organisationalUnitsRelations.relatedUnitDocumentId,
+				),
+				localeMatch(relatedSelectedDraft.localeId, localeId),
+				statusMatch(relatedSelectedDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			relatedSelectedPublished,
+			and(
+				eq(
+					relatedSelectedPublished.entityId,
+					schema.organisationalUnitsRelations.relatedUnitDocumentId,
+				),
+				localeMatch(relatedSelectedPublished.localeId, localeId),
+				statusMatch(relatedSelectedPublished.statusId, "published"),
+			),
+		)
+		.leftJoin(
+			relatedDefaultDraft,
+			and(
+				eq(relatedDefaultDraft.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+				localeMatch(relatedDefaultDraft.localeId, undefined),
+				statusMatch(relatedDefaultDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			relatedDefaultPublished,
+			and(
+				eq(
+					relatedDefaultPublished.entityId,
+					schema.organisationalUnitsRelations.relatedUnitDocumentId,
+				),
+				localeMatch(relatedDefaultPublished.localeId, undefined),
+				statusMatch(relatedDefaultPublished.statusId, "published"),
 			),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${relatedUnitDocumentLifecycle.draftId}, ${relatedUnitDocumentLifecycle.publishedId})`,
+			sql`${schema.organisationalUnits.id} = COALESCE(${relatedSelectedDraft.id}, ${relatedSelectedPublished.id}, ${relatedDefaultDraft.id}, ${relatedDefaultPublished.id})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
@@ -281,14 +320,14 @@ export type UnitRelationOption = Awaited<ReturnType<typeof getUnitRelationOption
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getReverseUnitRelations(
 	relatedUnitDocumentId: string,
-	options: { sourceUnitType?: OrganisationalUnitType } = {},
+	options: { sourceUnitType?: OrganisationalUnitType; localeId?: string } = {},
 ) {
-	const { sourceUnitType } = options;
+	const { sourceUnitType, localeId } = options;
 
-	const ownerUnitDocumentLifecycle = alias(
-		schema.documentLifecycle,
-		"owner_unit_document_lifecycle",
-	);
+	const ownerSelectedDraft = alias(schema.entityVersions, "owner_unit_selected_draft");
+	const ownerSelectedPublished = alias(schema.entityVersions, "owner_unit_selected_published");
+	const ownerDefaultDraft = alias(schema.entityVersions, "owner_unit_default_draft");
+	const ownerDefaultPublished = alias(schema.entityVersions, "owner_unit_default_published");
 
 	return db
 		.select({
@@ -298,26 +337,54 @@ export async function getReverseUnitRelations(
 			statusType: schema.organisationalUnitStatus.status,
 			unitDocumentId: schema.organisationalUnitsRelations.unitDocumentId,
 			unitName: schema.organisationalUnits.name,
-			unitSlug: schema.entities.slug,
+			unitSlug: schema.slugs.value,
 			unitType: schema.organisationalUnitTypes.type,
+			// True when the owner unit has no version in the selected locale and this row fell back
+			// to its default-locale version instead.
+			unitIsLocaleFallback: sql<boolean>`(${ownerSelectedDraft.id} IS NULL AND ${ownerSelectedPublished.id} IS NULL)`,
 		})
 		.from(schema.organisationalUnitsRelations)
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.organisationalUnitsRelations.unitDocumentId),
-		)
 		.innerJoin(
 			schema.organisationalUnitStatus,
 			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
 		)
-		.innerJoin(
-			ownerUnitDocumentLifecycle,
-			eq(ownerUnitDocumentLifecycle.documentId, schema.organisationalUnitsRelations.unitDocumentId),
+		.leftJoin(
+			ownerSelectedDraft,
+			and(
+				eq(ownerSelectedDraft.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+				localeMatch(ownerSelectedDraft.localeId, localeId),
+				statusMatch(ownerSelectedDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			ownerSelectedPublished,
+			and(
+				eq(ownerSelectedPublished.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+				localeMatch(ownerSelectedPublished.localeId, localeId),
+				statusMatch(ownerSelectedPublished.statusId, "published"),
+			),
+		)
+		.leftJoin(
+			ownerDefaultDraft,
+			and(
+				eq(ownerDefaultDraft.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+				localeMatch(ownerDefaultDraft.localeId, undefined),
+				statusMatch(ownerDefaultDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			ownerDefaultPublished,
+			and(
+				eq(ownerDefaultPublished.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+				localeMatch(ownerDefaultPublished.localeId, undefined),
+				statusMatch(ownerDefaultPublished.statusId, "published"),
+			),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${ownerUnitDocumentLifecycle.draftId}, ${ownerUnitDocumentLifecycle.publishedId})`,
+			sql`${schema.organisationalUnits.id} = COALESCE(${ownerSelectedDraft.id}, ${ownerSelectedPublished.id}, ${ownerDefaultDraft.id}, ${ownerDefaultPublished.id})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
@@ -400,7 +467,7 @@ const countryEricInstitutionStatuses = [
  * institution itself.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getEricInstitutionsForCountry(countryDocumentId: string) {
+export async function getEricInstitutionsForCountry(countryDocumentId: string, localeId?: string) {
 	const ericRelations = alias(schema.organisationalUnitsRelations, "country_eric_relations");
 	const locatedInRelations = alias(
 		schema.organisationalUnitsRelations,
@@ -408,9 +475,21 @@ export async function getEricInstitutionsForCountry(countryDocumentId: string) {
 	);
 	const ericStatus = alias(schema.organisationalUnitStatus, "country_eric_status");
 	const locatedInStatus = alias(schema.organisationalUnitStatus, "country_located_in_status");
-	const institutionLifecycle = alias(
-		schema.documentLifecycle,
-		"country_eric_institution_lifecycle",
+	const institutionSelectedDraft = alias(
+		schema.entityVersions,
+		"country_eric_institution_selected_draft",
+	);
+	const institutionSelectedPublished = alias(
+		schema.entityVersions,
+		"country_eric_institution_selected_published",
+	);
+	const institutionDefaultDraft = alias(
+		schema.entityVersions,
+		"country_eric_institution_default_draft",
+	);
+	const institutionDefaultPublished = alias(
+		schema.entityVersions,
+		"country_eric_institution_default_published",
 	);
 
 	const rows = await db
@@ -418,11 +497,14 @@ export async function getEricInstitutionsForCountry(countryDocumentId: string) {
 			id: ericRelations.id,
 			institutionId: ericRelations.unitDocumentId,
 			institutionName: schema.organisationalUnits.name,
-			institutionSlug: schema.entities.slug,
+			institutionSlug: schema.slugs.value,
 			institutionType: schema.organisationalUnitTypes.type,
 			statusId: ericStatus.id,
 			statusType: ericStatus.status,
 			duration: ericRelations.duration,
+			// True when the institution has no version in the selected locale and this row fell back
+			// to its default-locale version instead.
+			institutionIsLocaleFallback: sql<boolean>`(${institutionSelectedDraft.id} IS NULL AND ${institutionSelectedPublished.id} IS NULL)`,
 		})
 		.from(ericRelations)
 		.innerJoin(ericStatus, eq(ericStatus.id, ericRelations.status))
@@ -431,19 +513,47 @@ export async function getEricInstitutionsForCountry(countryDocumentId: string) {
 			eq(locatedInRelations.unitDocumentId, ericRelations.unitDocumentId),
 		)
 		.innerJoin(locatedInStatus, eq(locatedInStatus.id, locatedInRelations.status))
-		.innerJoin(
-			institutionLifecycle,
-			eq(institutionLifecycle.documentId, ericRelations.unitDocumentId),
+		.leftJoin(
+			institutionSelectedDraft,
+			and(
+				eq(institutionSelectedDraft.entityId, ericRelations.unitDocumentId),
+				localeMatch(institutionSelectedDraft.localeId, localeId),
+				statusMatch(institutionSelectedDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			institutionSelectedPublished,
+			and(
+				eq(institutionSelectedPublished.entityId, ericRelations.unitDocumentId),
+				localeMatch(institutionSelectedPublished.localeId, localeId),
+				statusMatch(institutionSelectedPublished.statusId, "published"),
+			),
+		)
+		.leftJoin(
+			institutionDefaultDraft,
+			and(
+				eq(institutionDefaultDraft.entityId, ericRelations.unitDocumentId),
+				localeMatch(institutionDefaultDraft.localeId, undefined),
+				statusMatch(institutionDefaultDraft.statusId, "draft"),
+			),
+		)
+		.leftJoin(
+			institutionDefaultPublished,
+			and(
+				eq(institutionDefaultPublished.entityId, ericRelations.unitDocumentId),
+				localeMatch(institutionDefaultPublished.localeId, undefined),
+				statusMatch(institutionDefaultPublished.statusId, "published"),
+			),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${institutionLifecycle.draftId}, ${institutionLifecycle.publishedId})`,
+			sql`${schema.organisationalUnits.id} = COALESCE(${institutionSelectedDraft.id}, ${institutionSelectedPublished.id}, ${institutionDefaultDraft.id}, ${institutionDefaultPublished.id})`,
 		)
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
 		)
-		.innerJoin(schema.entities, eq(schema.entities.id, ericRelations.unitDocumentId))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.where(
 			and(
 				inArray(ericStatus.status, [...countryEricInstitutionStatuses]),
@@ -476,7 +586,7 @@ export type CountryReportInstitutionRepresentation =
  */
 export async function getDariahEricDocumentId(): Promise<string | null> {
 	const unit = await db.query.organisationalUnits.findFirst({
-		where: { type: { type: "eric" }, entityVersion: { entity: { slug: dariahEricSlug } } },
+		where: { type: { type: "eric" }, entityVersion: { slug: { value: dariahEricSlug } } },
 		columns: {},
 		with: { entityVersion: { columns: {}, with: { entity: { columns: { id: true } } } } },
 	});
@@ -530,7 +640,7 @@ export async function getCurrentPartnerInstitutions(
 			representationType: ericStatus.status,
 			name: schema.organisationalUnits.name,
 			acronym: schema.organisationalUnits.acronym,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 		})
 		.from(ericRelations)
 		.innerJoin(ericStatus, eq(ericStatus.id, ericRelations.status))
@@ -547,7 +657,7 @@ export async function getCurrentPartnerInstitutions(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${institutionLifecycle.draftId}, ${institutionLifecycle.publishedId})`,
 		)
-		.innerJoin(schema.entities, eq(schema.entities.id, ericRelations.unitDocumentId))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.where(
 			and(
 				eq(ericRelations.relatedUnitDocumentId, ericDocumentId),

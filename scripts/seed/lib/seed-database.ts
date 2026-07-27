@@ -1,5 +1,3 @@
-// oxlint-disable oxc/no-map-spread
-
 import type { Database, Transaction } from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { eq } from "@acdh-knowledge-base/database/sql";
@@ -34,14 +32,16 @@ interface DocumentVersion {
 }
 
 /**
- * For each input slug: insert one `entities` row (the document) and one `entity_versions` row
- * referencing it. Returns the pair of ids per input, in the same order, so callers can attach
- * subtype data by index.
+ * For each input slug: insert one `entities` row (the document), one `entity_versions` row
+ * referencing it, and one `slugs` row for that version's locale. Returns the pair of ids per input,
+ * in the same order, so callers can attach subtype data by index. Callers always pass the published
+ * status, so the created slug is always marked published.
  */
 async function createDocumentVersions(
 	db: Transaction,
 	typeId: string,
 	statusId: string,
+	localeId: string,
 	slugs: ReadonlyArray<string>,
 ): Promise<Array<DocumentVersion>> {
 	if (slugs.length === 0) {
@@ -51,8 +51,8 @@ async function createDocumentVersions(
 	const documents = await db
 		.insert(schema.entities)
 		.values(
-			slugs.map((slug) => {
-				return { typeId, slug };
+			slugs.map(() => {
+				return { typeId };
 			}),
 		)
 		.returning({ id: schema.entities.id });
@@ -61,10 +61,23 @@ async function createDocumentVersions(
 		.insert(schema.entityVersions)
 		.values(
 			documents.map((document) => {
-				return { entityId: document.id, statusId };
+				return { entityId: document.id, statusId, localeId };
 			}),
 		)
 		.returning({ id: schema.entityVersions.id, entityId: schema.entityVersions.entityId });
+
+	await db.insert(schema.slugs).values(
+		versions.map((version, index) => {
+			return {
+				entityVersionId: version.id,
+				entityId: version.entityId,
+				typeId,
+				localeId,
+				isPublished: true,
+				value: slugs[index]!,
+			};
+		}),
+	);
 
 	return versions.map((version) => {
 		return { documentId: version.entityId, versionId: version.id };
@@ -138,6 +151,16 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 
 		const publishedStatusId = entityStatusByType.published.id;
 
+		const localeIds = await db
+			.select({ id: schema.locales.id, isDefault: schema.locales.isDefault })
+			.from(schema.locales);
+
+		const defaultLocaleId = localeIds.find((locale) => locale.isDefault)?.id;
+
+		if (defaultLocaleId == null) {
+			throw new Error("Missing default locale. Seed locales before running this script.");
+		}
+
 		const fieldNameIds = await db
 			.select({
 				id: schema.entityTypesFieldsNames.id,
@@ -182,6 +205,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.persons.id,
 			publishedStatusId,
+			defaultLocaleId,
 			persons.map((p) => slugify(p.sortName)),
 		);
 		record(entityTypesByType.persons.id, personIds);
@@ -225,6 +249,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.events.id,
 			publishedStatusId,
+			defaultLocaleId,
 			events.map((e) => slugify(e.title)),
 		);
 		record(entityTypesByType.events.id, eventIds);
@@ -252,6 +277,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.impact_case_studies.id,
 			publishedStatusId,
+			defaultLocaleId,
 			impactCaseStudies.map((s) => slugify(s.title)),
 		);
 		record(entityTypesByType.impact_case_studies.id, impactCaseStudyIds);
@@ -291,6 +317,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.news.id,
 			publishedStatusId,
+			defaultLocaleId,
 			news.map((n) => slugify(n.title)),
 		);
 		record(entityTypesByType.news.id, newsItemIds);
@@ -318,6 +345,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.pages.id,
 			publishedStatusId,
+			defaultLocaleId,
 			pages.map((p) => slugify(p.title)),
 		);
 		record(entityTypesByType.pages.id, pageIds);
@@ -341,6 +369,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.documentation_pages.id,
 			publishedStatusId,
+			defaultLocaleId,
 			documentationPages.map((p) => slugify(p.title)),
 		);
 		record(entityTypesByType.documentation_pages.id, documentationPageIds);
@@ -368,6 +397,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.spotlight_articles.id,
 			publishedStatusId,
+			defaultLocaleId,
 			spotlightArticles.map((a) => slugify(a.title)),
 		);
 		record(entityTypesByType.spotlight_articles.id, spotlightArticleIds);
@@ -533,6 +563,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 			db,
 			entityTypesByType.organisational_units.id,
 			publishedStatusId,
+			defaultLocaleId,
 			organisationalUnits.map((u) => slugify(u.name)),
 		);
 

@@ -71,13 +71,20 @@ async function fetchSocialMediaOptionsPage(
 
 interface ProjectFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/**
+	 * Facts (funding/duration/scope) aren't translatable — the DB keeps them synced from the default
+	 * locale's version regardless, so this locks their inputs when editing another locale. Defaults
+	 * to `true` (the create form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	project?: Pick<
 		schema.Project,
 		"acronym" | "call" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: {
-			entity: Pick<schema.Entity, "id" | "slug">;
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
@@ -94,6 +101,7 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 	const {
 		initialAssets,
 		formAction,
+		isDefaultLocale = true,
 		project,
 		scopes,
 		initialSocialMediaItems,
@@ -163,16 +171,29 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 
-					<NumberField
-						defaultValue={project?.funding ?? undefined}
-						formatOptions={{ currency: "EUR", style: "currency" }}
-						name="funding"
-					>
-						<Label>{t("Funding")}</Label>
-						<Input />
-						<Description>{t("Enter the funding amount in euros.")}</Description>
-						<FieldError />
-					</NumberField>
+					{isDefaultLocale ? (
+						<NumberField
+							defaultValue={project?.funding ?? undefined}
+							formatOptions={{ currency: "EUR", style: "currency" }}
+							name="funding"
+						>
+							<Label>{t("Funding")}</Label>
+							<Input />
+							<Description>{t("Enter the funding amount in euros.")}</Description>
+							<FieldError />
+						</NumberField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Funding")}</Label>
+							<p className="text-sm">
+								{project?.funding != null ? String(project.funding) : t("Not set")}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{project?.funding != null ? (
+								<input name="funding" type="hidden" value={project.funding} />
+							) : null}
+						</div>
+					)}
 
 					<TextField defaultValue={project?.topic ?? undefined} name="topic">
 						<Label>{t("Topic")}</Label>
@@ -186,55 +207,100 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 
-					<DatePicker
-						defaultValue={
-							project != null
-								? new CalendarDate(
-										project.duration.start.getUTCFullYear(),
-										project.duration.start.getUTCMonth() + 1,
-										project.duration.start.getUTCDate(),
-									)
-								: undefined
-						}
-						granularity="day"
-						isRequired={true}
-						name="duration.start"
-					>
-						<Label>{t("Start date")}</Label>
-						<DatePickerTrigger />
-						<FieldError />
-					</DatePicker>
+					{isDefaultLocale ? (
+						<Fragment>
+							<DatePicker
+								defaultValue={
+									project != null
+										? new CalendarDate(
+												project.duration.start.getUTCFullYear(),
+												project.duration.start.getUTCMonth() + 1,
+												project.duration.start.getUTCDate(),
+											)
+										: undefined
+								}
+								granularity="day"
+								isRequired={true}
+								name="duration.start"
+							>
+								<Label>{t("Start date")}</Label>
+								<DatePickerTrigger />
+								<FieldError />
+							</DatePicker>
 
-					<DatePicker
-						defaultValue={
-							project?.duration.end != null
-								? new CalendarDate(
-										project.duration.end.getUTCFullYear(),
-										project.duration.end.getUTCMonth() + 1,
-										project.duration.end.getUTCDate(),
-									)
-								: undefined
-						}
-						granularity="day"
-						name="duration.end"
-					>
-						<Label>{t("End date")}</Label>
-						<DatePickerTrigger />
-						<FieldError />
-					</DatePicker>
+							<DatePicker
+								defaultValue={
+									project?.duration.end != null
+										? new CalendarDate(
+												project.duration.end.getUTCFullYear(),
+												project.duration.end.getUTCMonth() + 1,
+												project.duration.end.getUTCDate(),
+											)
+										: undefined
+								}
+								granularity="day"
+								name="duration.end"
+							>
+								<Label>{t("End date")}</Label>
+								<DatePickerTrigger />
+								<FieldError />
+							</DatePicker>
+						</Fragment>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Duration")}</Label>
+							<p className="text-sm">
+								{project != null
+									? `${project.duration.start.toISOString().slice(0, 10)}${
+											project.duration.end != null
+												? ` – ${project.duration.end.toISOString().slice(0, 10)}`
+												: ""
+										}`
+									: null}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{project != null ? (
+								<Fragment>
+									<input
+										name="duration.start"
+										type="hidden"
+										value={project.duration.start.toISOString().slice(0, 10)}
+									/>
+									{project.duration.end != null ? (
+										<input
+											name="duration.end"
+											type="hidden"
+											value={project.duration.end.toISOString().slice(0, 10)}
+										/>
+									) : null}
+								</Fragment>
+							) : null}
+						</div>
+					)}
 
-					<Select defaultValue={project?.scope.id ?? undefined} isRequired={true} name="scopeId">
-						<Label>{t("Scope")}</Label>
-						<SelectTrigger />
-						<FieldError />
-						<SelectContent>
-							{scopes.map((item) => (
-								<SelectItem key={item.id} id={item.id}>
-									{item.scope}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+					{isDefaultLocale ? (
+						<Select defaultValue={project?.scope.id ?? undefined} isRequired={true} name="scopeId">
+							<Label>{t("Scope")}</Label>
+							<SelectTrigger />
+							<FieldError />
+							<SelectContent>
+								{scopes.map((item) => (
+									<SelectItem key={item.id} id={item.id}>
+										{item.scope}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Scope")}</Label>
+							<p className="text-sm">{project?.scope.scope}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{project != null ? (
+								<input name="scopeId" type="hidden" value={project.scope.id} />
+							) : null}
+						</div>
+					)}
 
 					<TextField defaultValue={project?.summary} isRequired={true} name="summary">
 						<Label>{t("Summary")}</Label>

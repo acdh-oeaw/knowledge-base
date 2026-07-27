@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -40,8 +41,8 @@ export async function getDocumentsPolicies(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -110,8 +111,8 @@ export async function getDocumentsPoliciesTree(db: Database | Transaction) {
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -199,8 +200,8 @@ export async function getDocumentOrPolicyById(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -254,8 +255,8 @@ export async function getDocumentOrPolicySlugs(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -279,7 +280,8 @@ export async function getDocumentOrPolicySlugs(
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -327,7 +329,7 @@ export async function getDocumentOrPolicyDocument(
 //
 
 interface GetDocumentOrPolicyBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getDocumentOrPolicyBySlug(
@@ -342,8 +344,8 @@ export async function getDocumentOrPolicyBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -357,8 +359,8 @@ export async function getDocumentOrPolicyBySlug(
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

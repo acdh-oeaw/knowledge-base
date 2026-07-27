@@ -47,7 +47,7 @@ export const createUnitRelationAction = createServerAction(
 				const relatedUnit = await tx
 					.select({
 						unitType: schema.organisationalUnitTypes.type,
-						slug: schema.entities.slug,
+						slug: schema.slugs.value,
 					})
 					.from(schema.organisationalUnits)
 					.innerJoin(
@@ -58,7 +58,7 @@ export const createUnitRelationAction = createServerAction(
 						schema.organisationalUnitTypes,
 						eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
 					)
-					.innerJoin(schema.entities, eq(schema.entities.id, schema.documentLifecycle.documentId))
+					.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 					.where(eq(schema.documentLifecycle.documentId, relatedUnitDocumentId))
 					.limit(1)
 					.then((rows) => rows[0] ?? null);

@@ -2,7 +2,7 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 
 import type { Transaction } from "@/lib/db";
-import { asc, eq, inArray, or } from "@/lib/db/sql";
+import { and, asc, eq, inArray, or } from "@/lib/db/sql";
 
 export interface DocumentVersion {
 	documentId: string;
@@ -55,6 +55,7 @@ async function createVersionRow(
 	tx: Transaction,
 	documentId: string,
 	statusType: "draft" | "published",
+	localeId: string,
 ): Promise<string> {
 	const status = await tx.query.entityStatus.findFirst({
 		where: { type: statusType },
@@ -64,11 +65,69 @@ async function createVersionRow(
 
 	const [version] = await tx
 		.insert(schema.entityVersions)
-		.values({ entityId: documentId, statusId: status.id })
+		.values({ entityId: documentId, statusId: status.id, localeId })
 		.returning({ id: schema.entityVersions.id });
 	assert(version);
 
 	return version.id;
+}
+
+async function getDefaultLocaleId(tx: Transaction): Promise<string> {
+	const locale = await tx.query.locales.findFirst({
+		where: { isDefault: true },
+		columns: { id: true },
+	});
+	assert(locale, "Default locale not found in database.");
+	return locale.id;
+}
+
+/**
+ * Copy the slug row from sourceVersionId to targetVersionId, if one exists. `localeId` defaults to
+ * the source row's own locale — pass it explicitly when cloning across locales (seeding a new
+ * translation), since the new slug row must belong to the target locale, not the source's.
+ */
+async function cloneSlugRow(
+	tx: Transaction,
+	sourceVersionId: string,
+	targetVersionId: string,
+	isPublished: boolean,
+	localeId?: string,
+): Promise<void> {
+	const source = await tx.query.slugs.findFirst({
+		where: { entityVersionId: sourceVersionId },
+	});
+	if (source == null) {
+		return;
+	}
+
+	await tx.insert(schema.slugs).values({
+		entityVersionId: targetVersionId,
+		entityId: source.entityId,
+		typeId: source.typeId,
+		localeId: localeId ?? source.localeId,
+		value: source.value,
+		isPublished,
+	});
+}
+
+/** Sync the published slug's value from the draft's slug, in case it was edited on the draft. */
+async function syncSlugValue(
+	tx: Transaction,
+	draftVersionId: string,
+	publishedVersionId: string,
+): Promise<void> {
+	const draftSlug = await tx.query.slugs.findFirst({
+		where: { entityVersionId: draftVersionId },
+		columns: { value: true },
+	});
+	if (draftSlug == null) {
+		return;
+	}
+
+	await tx
+		.update(schema.slugs)
+		.set({ value: draftSlug.value })
+		.where(eq(schema.slugs.entityVersionId, publishedVersionId));
 }
 
 async function setVersionUpdatedAt(
@@ -300,11 +359,21 @@ export async function createPublishedDocument(
 ): Promise<DocumentVersion> {
 	const [document] = await tx
 		.insert(schema.entities)
-		.values({ slug, typeId })
+		.values({ typeId })
 		.returning({ id: schema.entities.id });
 	assert(document);
 
-	const versionId = await createVersionRow(tx, document.id, "published");
+	const localeId = await getDefaultLocaleId(tx);
+	const versionId = await createVersionRow(tx, document.id, "published", localeId);
+
+	await tx.insert(schema.slugs).values({
+		entityVersionId: versionId,
+		entityId: document.id,
+		typeId,
+		localeId,
+		value: slug,
+		isPublished: true,
+	});
 
 	return { documentId: document.id, versionId };
 }
@@ -320,11 +389,21 @@ export async function createDraftDocument(
 ): Promise<DocumentVersion> {
 	const [document] = await tx
 		.insert(schema.entities)
-		.values({ slug, typeId })
+		.values({ typeId })
 		.returning({ id: schema.entities.id });
 	assert(document);
 
-	const versionId = await createVersionRow(tx, document.id, "draft");
+	const localeId = await getDefaultLocaleId(tx);
+	const versionId = await createVersionRow(tx, document.id, "draft", localeId);
+
+	await tx.insert(schema.slugs).values({
+		entityVersionId: versionId,
+		entityId: document.id,
+		typeId,
+		localeId,
+		value: slug,
+		isPublished: false,
+	});
 
 	return { documentId: document.id, versionId };
 }
@@ -369,6 +448,43 @@ export async function getDocumentLifecycleState(
 }
 
 /**
+ * Same as {@link getDocumentLifecycleState}, but for an arbitrary locale rather than the default
+ * one `document_lifecycle` is pinned to. Queries `entity_versions` directly since the view cannot
+ * help here.
+ */
+export async function getDocumentLifecycleStateForLocale(
+	tx: Transaction,
+	documentId: string,
+	localeId: string,
+): Promise<DocumentLifecycleState> {
+	const rows = await tx
+		.select({
+			id: schema.entityVersions.id,
+			status: schema.entityStatus.type,
+			updatedAt: schema.entityVersions.updatedAt,
+		})
+		.from(schema.entityVersions)
+		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
+		.where(
+			and(
+				eq(schema.entityVersions.entityId, documentId),
+				eq(schema.entityVersions.localeId, localeId),
+			),
+		);
+
+	const draft = rows.find((row) => row.status === "draft") ?? null;
+	const published = rows.find((row) => row.status === "published") ?? null;
+	const hasDraftChanges =
+		draft != null && (published == null || draft.updatedAt > published.updatedAt);
+
+	return {
+		draftId: draft?.id ?? null,
+		publishedId: published?.id ?? null,
+		hasDraftChanges,
+	};
+}
+
+/**
  * Return the draft version ID for `documentId`, creating one if it does not exist yet. When
  * creating, clones fields, content blocks, and subtype data from the published version (if one
  * exists).
@@ -386,21 +502,101 @@ export async function ensureDraftVersion(
 		return draftId;
 	}
 
-	const newDraftId = await createVersionRow(tx, documentId, "draft");
+	let publishedVersion: { updatedAt: Date; localeId: string } | undefined;
+	if (publishedId != null) {
+		publishedVersion = await tx.query.entityVersions.findFirst({
+			where: { id: publishedId },
+			columns: { updatedAt: true, localeId: true },
+		});
+		assert(publishedVersion, `Published version "${publishedId}" not found in database.`);
+	}
+
+	const localeId = publishedVersion?.localeId ?? (await getDefaultLocaleId(tx));
+	const newDraftId = await createVersionRow(tx, documentId, "draft", localeId);
 
 	if (publishedId != null) {
+		assert(publishedVersion);
 		await cloneVersionContent(tx, publishedId, newDraftId);
 		await adapter.cloneSubtype(tx, publishedId, newDraftId);
+		await cloneSlugRow(tx, publishedId, newDraftId, false);
+		await setVersionUpdatedAt(tx, newDraftId, publishedVersion.updatedAt);
+	}
 
+	return newDraftId;
+}
+
+export interface LocalizedDraftVersion {
+	versionId: string;
+	/** True when this locale had no version at all and a first translation draft was just seeded. */
+	isNewTranslation: boolean;
+}
+
+/**
+ * Locale-aware {@link ensureDraftVersion}. Returns the draft version ID for `documentId` in
+ * `localeId`, creating one if it does not exist yet:
+ *
+ * - If `localeId` already has a draft: returns it as-is.
+ * - If `localeId` has a published version but no draft: clones a new draft from it, same as
+ *   `ensureDraftVersion`.
+ * - If `localeId` has no version at all yet: seeds a first-translation draft cloned from the default
+ *   locale's latest editable version (draft, else published) — this is the only case where the
+ *   source and target versions belong to different locales.
+ *
+ * Mirrors `ensureDraftVersion`'s implicit-create-on-visit behavior; there is no separate "start
+ * translation" confirmation step. Asserts the document has a default-locale version to translate
+ * from — callers should not reach the no-version-at-all branch for a document that hasn't been
+ * created in the default locale yet.
+ */
+export async function ensureLocalizedDraftVersion(
+	tx: Transaction,
+	documentId: string,
+	adapter: EntityLifecycleAdapter,
+	localeId: string,
+): Promise<LocalizedDraftVersion> {
+	const { draftId, publishedId } = await getDocumentLifecycleStateForLocale(
+		tx,
+		documentId,
+		localeId,
+	);
+
+	if (draftId != null) {
+		return { versionId: draftId, isNewTranslation: false };
+	}
+
+	if (publishedId != null) {
 		const publishedVersion = await tx.query.entityVersions.findFirst({
 			where: { id: publishedId },
 			columns: { updatedAt: true },
 		});
 		assert(publishedVersion, `Published version "${publishedId}" not found in database.`);
+
+		const newDraftId = await createVersionRow(tx, documentId, "draft", localeId);
+		await cloneVersionContent(tx, publishedId, newDraftId);
+		await adapter.cloneSubtype(tx, publishedId, newDraftId);
+		await cloneSlugRow(tx, publishedId, newDraftId, false);
 		await setVersionUpdatedAt(tx, newDraftId, publishedVersion.updatedAt);
+
+		return { versionId: newDraftId, isNewTranslation: false };
 	}
 
-	return newDraftId;
+	const defaultLocaleId = await getDefaultLocaleId(tx);
+	const defaultLocaleState = await getDocumentLifecycleStateForLocale(
+		tx,
+		documentId,
+		defaultLocaleId,
+	);
+	const sourceVersionId = defaultLocaleState.draftId ?? defaultLocaleState.publishedId;
+	assert(
+		sourceVersionId,
+		`Document "${documentId}" has no version in the default locale to translate from.`,
+	);
+
+	const newDraftId = await createVersionRow(tx, documentId, "draft", localeId);
+	await cloneVersionContent(tx, sourceVersionId, newDraftId);
+	await adapter.cloneSubtype(tx, sourceVersionId, newDraftId);
+	await cloneSlugRow(tx, sourceVersionId, newDraftId, false, localeId);
+
+	return { versionId: newDraftId, isNewTranslation: true };
 }
 
 /**
@@ -423,14 +619,20 @@ export async function publishVersion(
 	assert(draftId, "Cannot publish: no draft version exists for this document.");
 	const draftVersion = await tx.query.entityVersions.findFirst({
 		where: { id: draftId },
-		columns: { updatedAt: true },
+		columns: { updatedAt: true, localeId: true },
 	});
 	assert(draftVersion, `Draft version "${draftId}" not found in database.`);
 
 	if (publishedId == null) {
-		const newPublishedId = await createVersionRow(tx, documentId, "published");
+		const newPublishedId = await createVersionRow(
+			tx,
+			documentId,
+			"published",
+			draftVersion.localeId,
+		);
 		await cloneVersionContent(tx, draftId, newPublishedId);
 		await adapter.cloneSubtype(tx, draftId, newPublishedId);
+		await cloneSlugRow(tx, draftId, newPublishedId, true);
 		await setVersionUpdatedAt(tx, newPublishedId, draftVersion.updatedAt);
 		return newPublishedId;
 	}
@@ -444,6 +646,7 @@ export async function publishVersion(
 		await adapter.wipeSubtype(tx, publishedId);
 		await adapter.cloneSubtype(tx, draftId, publishedId);
 	}
+	await syncSlugValue(tx, draftId, publishedId);
 	await setVersionUpdatedAt(tx, publishedId, draftVersion.updatedAt);
 
 	return publishedId;
@@ -470,6 +673,7 @@ export async function discardDraftVersion(
 
 	await adapter.wipeSubtype(tx, draftId);
 	await wipeVersionContent(tx, draftId);
+	await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, draftId));
 	await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, draftId));
 }
 
@@ -589,6 +793,7 @@ export async function deleteDocumentVersionTail(
 			),
 		);
 
+	await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, versionId));
 	await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, versionId));
 	await tx.delete(schema.entities).where(eq(schema.entities.id, documentId));
 }

@@ -170,6 +170,7 @@ export function ContributionsSection(props: Readonly<ContributionsSectionProps>)
 						organisationalUnitName: unit.name,
 						organisationalUnitSlug: data.organisationalUnitSlug,
 						organisationalUnitType: data.targetUnitType,
+						organisationalUnitIsLocaleFallback: false,
 						duration: {
 							start: new Date(data.durationStart),
 							...(data.durationEnd != null ? { end: new Date(data.durationEnd) } : {}),

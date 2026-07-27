@@ -1,14 +1,17 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { WorkingGroupDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-group-details";
 import { publishWorkingGroupAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_lib/publish-working-group.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
-import { resolveSelectedDetailVersion } from "@/lib/data/entity-detail-view";
+import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
+import { getLocales } from "@/lib/data/locales";
 import { getPersonRelations } from "@/lib/data/person-relations";
 import { db } from "@/lib/db";
 import { images } from "@/lib/images";
@@ -35,10 +38,11 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
+	const t = await getExtracted();
 	const { user } = await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -54,13 +58,44 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
-	const { version } = await searchParamsPromise;
+	const { locale: localeParam, version } = await searchParamsPromise;
 
-	const versionState = await resolveSelectedDetailVersion(documentId, version);
-	if (versionState == null) {
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
 		notFound();
 	}
-	const { hasDraftChanges, publishedId, selectedVersion, versionId } = versionState;
+
+	const localizedVersion = await resolveLocalizedDetailVersion(
+		documentId,
+		version,
+		locales,
+		selectedLocale.id,
+	);
+
+	if (localizedVersion == null) {
+		return (
+			<Fragment>
+				<div className="flex items-center justify-between">
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+				</div>
+				<p className="text-sm text-muted-fg italic">
+					{t("This document has no content in the selected locale yet.")}
+				</p>
+			</Fragment>
+		);
+	}
+	const {
+		displayLocaleId,
+		hasDraftChanges,
+		isLocaleFallback,
+		publishedId,
+		selectedVersion,
+		versionId,
+	} = localizedVersion;
 
 	const [personRelations, workingGroupData] = await Promise.all([
 		getPersonRelations(documentId),
@@ -69,6 +104,7 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 			unitType: "working_group",
 			versionId,
 			publishedVersionId: publishedId,
+			localeId: displayLocaleId,
 		}),
 	]);
 
@@ -83,6 +119,12 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 		selectedSocialMediaItems,
 		unit: workingGroup,
 	} = workingGroupData;
+
+	assert(
+		workingGroup.entityVersion.slug,
+		`Slug missing for entity version "${workingGroup.entityVersion.id}".`,
+	);
+	const entityVersionSlug = workingGroup.entityVersion.slug;
 
 	const image =
 		workingGroup.image != null
@@ -99,13 +141,20 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 		<WorkingGroupDetails
 			documentId={documentId}
 			hasDraft={hasDraftChanges}
+			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			personRelations={personRelations}
 			relations={relations}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 			selectedSocialMediaItems={selectedSocialMediaItems}
-			workingGroup={{ ...workingGroup, image }}
+			workingGroup={{
+				...workingGroup,
+				entityVersion: { ...workingGroup.entityVersion, slug: entityVersionSlug },
+				image,
+			}}
 			publishAction={publishWorkingGroupAction}
 			selectedVersion={selectedVersion}
 		/>

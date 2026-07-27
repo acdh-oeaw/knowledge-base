@@ -45,8 +45,8 @@ export async function getNews(params: GetNewsParams, queryDb: Database | Transac
 		queryDb
 			.select({
 				id: schema.news.id,
-				documentId: schema.entities.id,
-				slug: schema.entities.slug,
+				documentId: schema.entityVersions.entityId,
+				slug: schema.slugs.value,
 				summary: schema.news.summary,
 				title: schema.news.title,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
@@ -56,11 +56,11 @@ export async function getNews(params: GetNewsParams, queryDb: Database | Transac
 			})
 			.from(schema.news)
 			.innerJoin(schema.entityVersions, eq(schema.news.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
+				eq(schema.documentLifecycle.documentId, schema.entityVersions.entityId),
 			)
 			.where(and(sql`${schema.entityVersions.id} = ${pickedVersion}`, where))
 			.orderBy(orderBy)
@@ -111,9 +111,9 @@ export async function getNewsItemById(params: GetNewsItemByIdParams) {
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -136,7 +136,7 @@ export async function getNewsItemById(params: GetNewsItemByIdParams) {
 	});
 
 	const { entityVersion, ...rest } = item;
-	const data = { ...rest, entity: entityVersion.entity, image };
+	const data = { ...rest, entity: { slug: entityVersion.slug?.value ?? "" }, image };
 
 	return data;
 }

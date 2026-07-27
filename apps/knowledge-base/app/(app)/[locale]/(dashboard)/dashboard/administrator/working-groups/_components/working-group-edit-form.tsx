@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { PersonRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/person-relations-section";
 import { UnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/unit-relations-section";
 import { WorkingGroupForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-group-form";
@@ -26,13 +27,16 @@ interface WorkingGroupEditFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	documentId: string;
 	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	workingGroup: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -59,7 +63,10 @@ export function WorkingGroupEditForm(props: Readonly<WorkingGroupEditFormProps>)
 		initialAssets,
 		documentId,
 		hasDraftChanges,
+		isDefaultLocale,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		workingGroup,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -100,7 +107,8 @@ export function WorkingGroupEditForm(props: Readonly<WorkingGroupEditFormProps>)
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardWorkingGroupDraftAction}
 							documentId={documentId}
@@ -111,8 +119,10 @@ export function WorkingGroupEditForm(props: Readonly<WorkingGroupEditFormProps>)
 					</div>
 
 					<WorkingGroupForm
+						key={workingGroup.id}
 						formAction={updateWorkingGroupAction}
 						formId={formId}
+						isDefaultLocale={isDefaultLocale}
 						initialAssets={initialAssets}
 						initialRelatedEntityIds={initialRelatedEntityIds}
 						initialRelatedEntityItems={initialRelatedEntityItems}

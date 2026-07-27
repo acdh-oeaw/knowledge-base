@@ -47,11 +47,12 @@ interface NavigationItemFormProps {
 	item?: Pick<schema.NavigationItem, "id" | "label" | "href" | "entityId" | "isExternal"> | null;
 	menuId?: string;
 	parentId?: string | null;
+	selectedLocaleId: string;
 	entities: Array<EntityOption>;
 }
 
 function NavigationItemForm(props: Readonly<NavigationItemFormProps>): ReactNode {
-	const { onSuccess, item, menuId, parentId, entities } = props;
+	const { onSuccess, item, menuId, parentId, selectedLocaleId, entities } = props;
 
 	const t = useExtracted();
 
@@ -98,6 +99,7 @@ function NavigationItemForm(props: Readonly<NavigationItemFormProps>): ReactNode
 				{!isEditMode && parentId != null && (
 					<input name="parentId" type="hidden" value={parentId} />
 				)}
+				{!isEditMode && <input name="localeId" type="hidden" value={selectedLocaleId} />}
 
 				<TextField defaultValue={item?.label ?? undefined} isRequired={true} name="label">
 					<Label>{t("Label")}</Label>
@@ -233,13 +235,14 @@ interface NavigationItemFormDialogProps {
 	item?: Pick<schema.NavigationItem, "id" | "label" | "href" | "entityId" | "isExternal"> | null;
 	menuId?: string;
 	parentId?: string | null;
+	selectedLocaleId: string;
 	entities: Array<EntityOption>;
 }
 
 export function NavigationItemFormDialog(
 	props: Readonly<NavigationItemFormDialogProps>,
 ): ReactNode {
-	const { isOpen, onOpenChange, item, menuId, parentId, entities } = props;
+	const { isOpen, onOpenChange, item, menuId, parentId, selectedLocaleId, entities } = props;
 
 	const [formKey, setFormKey] = useState(0);
 
@@ -261,6 +264,7 @@ export function NavigationItemFormDialog(
 					onOpenChange(false);
 				}}
 				parentId={parentId}
+				selectedLocaleId={selectedLocaleId}
 			/>
 		</ModalContent>
 	);

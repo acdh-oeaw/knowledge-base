@@ -1,7 +1,10 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 import type { JSONContent } from "@tiptap/core";
 
-import { getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	getDocumentLifecycleState,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
 import { and, eq } from "@/lib/db/sql";
 
@@ -15,14 +18,22 @@ export interface SelectedDetailVersion {
 /**
  * Read-only: resolves which version a detail page renders from the lifecycle state and the
  * `?version=` param. Unlike the edit pages it never calls `ensureDraftVersion`, so viewing a
- * published-only entity does not mint a draft. Returns null -> caller should notFound().
+ * published-only entity does not mint a draft. Returns null -> caller should notFound() (or, for a
+ * non-default `localeId`, show a "not translated yet" state instead — a null result there just
+ * means the document has no version in that locale).
+ *
+ * `localeId` defaults to whatever `document_lifecycle` is pinned to (the default locale). Pass an
+ * explicit locale id to resolve a document's version in another locale instead.
  */
 export async function resolveSelectedDetailVersion(
 	documentId: string,
 	version: string | Array<string> | undefined,
+	localeId?: string,
 ): Promise<SelectedDetailVersion | null> {
 	const { draftId, hasDraftChanges, publishedId } = await db.transaction((tx) =>
-		getDocumentLifecycleState(tx, documentId),
+		localeId != null
+			? getDocumentLifecycleStateForLocale(tx, documentId, localeId)
+			: getDocumentLifecycleState(tx, documentId),
 	);
 
 	// The version selector only kicks in when the draft actually diverges from published. Right after
@@ -47,6 +58,50 @@ export async function resolveSelectedDetailVersion(
 	}
 
 	return { hasDraftChanges, publishedId, selectedVersion, versionId };
+}
+
+export interface LocalizedDetailVersion extends SelectedDetailVersion {
+	/** The locale actually being displayed — equals `selectedLocaleId` unless `isLocaleFallback`. */
+	displayLocaleId: string;
+	/** True when `selectedLocaleId` had no version and this fell back to the default locale. */
+	isLocaleFallback: boolean;
+}
+
+/**
+ * {@link resolveSelectedDetailVersion}, but when the selected locale has no version, falls back to
+ * the default locale instead of returning null — so a detail page can show default-language content
+ * (clearly marked as untranslated) rather than a dead end. Still returns null if neither locale has
+ * a version, which only happens for a genuinely broken/empty document.
+ */
+export async function resolveLocalizedDetailVersion(
+	documentId: string,
+	version: string | Array<string> | undefined,
+	locales: ReadonlyArray<{ id: string; isDefault: boolean }>,
+	selectedLocaleId: string,
+): Promise<LocalizedDetailVersion | null> {
+	const versionState = await resolveSelectedDetailVersion(documentId, version, selectedLocaleId);
+
+	if (versionState != null) {
+		return { ...versionState, displayLocaleId: selectedLocaleId, isLocaleFallback: false };
+	}
+
+	const defaultLocale = locales.find((locale) => locale.isDefault);
+
+	if (defaultLocale == null || defaultLocale.id === selectedLocaleId) {
+		return null;
+	}
+
+	const fallbackVersionState = await resolveSelectedDetailVersion(
+		documentId,
+		version,
+		defaultLocale.id,
+	);
+
+	if (fallbackVersionState == null) {
+		return null;
+	}
+
+	return { ...fallbackVersionState, displayLocaleId: defaultLocale.id, isLocaleFallback: true };
 }
 
 /** Reads a rich-text field's JSON content for one entity version (e.g. "description"/"biography"). */

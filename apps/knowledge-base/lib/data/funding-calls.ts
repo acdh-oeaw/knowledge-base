@@ -42,7 +42,7 @@ export async function getFundingCalls(params: GetFundingCallsParams) {
 				documentId: schema.entities.id,
 				duration: schema.fundingCalls.duration,
 				id: schema.fundingCalls.id,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				summary: schema.fundingCalls.summary,
 				title: schema.fundingCalls.title,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
@@ -54,6 +54,7 @@ export async function getFundingCalls(params: GetFundingCallsParams) {
 			.innerJoin(schema.entityVersions, eq(schema.fundingCalls.id, schema.entityVersions.id))
 			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.documentId, schema.entities.id),
@@ -108,9 +109,9 @@ export async function getFundingCallById(params: GetFundingCallByIdParams) {
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -123,7 +124,7 @@ export async function getFundingCallById(params: GetFundingCallByIdParams) {
 	}
 
 	const { entityVersion, ...rest } = item;
-	const data = { ...rest, entity: entityVersion.entity };
+	const data = { ...rest, entity: { slug: entityVersion.slug?.value ?? "" } };
 
 	return data;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import { CountryForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administ
 import { createCountryAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/countries/_lib/create-country.action";
 
 interface CountryCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -17,6 +19,7 @@ interface CountryCreateFormProps {
 
 export function CountryCreateForm(props: Readonly<CountryCreateFormProps>): ReactNode {
 	const {
+		defaultLocaleName,
 		initialAssets,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -29,6 +32,13 @@ export function CountryCreateForm(props: Readonly<CountryCreateFormProps>): Reac
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New country")} />
+
+			<Note intent="info">
+				{t(
+					"This country will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<CountryForm
 				formAction={createCountryAction}

@@ -41,8 +41,8 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 				url: schema.documentsPolicies.url,
 				groupId: schema.documentsPolicies.groupId,
 				position: schema.documentsPolicies.position,
-				entityId: schema.entities.id,
-				slug: schema.entities.slug,
+				entityId: schema.entityVersions.entityId,
+				slug: schema.slugs.value,
 				hasDraft: sql<boolean>`
 					EXISTS (
 						SELECT
@@ -81,7 +81,7 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 				isPublished: sql<boolean>`EXISTS (
 					SELECT 1 FROM "entity_versions" AS "published_versions"
 					INNER JOIN "entity_status" AS "published_status" ON "published_versions"."status_id" = "published_status"."id"
-					WHERE "published_versions"."entity_id" = ${schema.entities.id}
+					WHERE "published_versions"."entity_id" = ${schema.entityVersions.entityId}
 					AND "published_status"."type" = 'published'
 				)`,
 				document: { key: schema.assets.key, label: schema.assets.label },
@@ -89,7 +89,7 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 			.from(schema.documentsPolicies)
 			.innerJoin(schema.entityVersions, eq(schema.documentsPolicies.id, schema.entityVersions.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(schema.assets, eq(schema.documentsPolicies.documentId, schema.assets.id))
 			.where(latestEditableEntityVersionWhere())
 			.orderBy(asc(schema.documentsPolicies.position)),
@@ -97,7 +97,7 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 	]);
 
 	const documentsShaped = documents.map(({ slug, entityId, ...rest }) => {
-		return { ...rest, entityVersion: { entity: { id: entityId, slug } } };
+		return { ...rest, entityVersion: { entity: { id: entityId }, slug: { value: slug } } };
 	});
 	const groupsWithDocuments = groups.map((group) => {
 		return {

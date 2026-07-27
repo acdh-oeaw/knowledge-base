@@ -54,32 +54,40 @@ export class DatabaseService {
 	 * MultipleSelect. Used as a test relation target.
 	 */
 	async getTestEntity(): Promise<{ id: string; name: string }> {
-		const entity = await this.db.query.entities.findFirst({
-			columns: { id: true, slug: true },
-			with: { type: { columns: { type: true } } },
-			orderBy: { slug: "asc" },
-		});
+		const [row] = await this.db
+			.select({ id: schema.entities.id, slug: schema.slugs.value })
+			.from(schema.entities)
+			.innerJoin(
+				schema.slugs,
+				and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
+			)
+			.orderBy(schema.slugs.value)
+			.limit(1);
 
-		if (entity == null) {
+		if (row == null) {
 			throw new Error("No entities found in database — required for relation tests.");
 		}
 
-		return { id: entity.id, name: entity.slug };
+		return { id: row.id, name: row.slug };
 	}
 
 	async getTestEntities(count: number): Promise<Array<{ id: string; name: string }>> {
-		const entities = await this.db.query.entities.findMany({
-			columns: { id: true, slug: true },
-			orderBy: { slug: "asc" },
-			limit: count,
-		});
+		const rows = await this.db
+			.select({ id: schema.entities.id, slug: schema.slugs.value })
+			.from(schema.entities)
+			.innerJoin(
+				schema.slugs,
+				and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
+			)
+			.orderBy(schema.slugs.value)
+			.limit(count);
 
-		if (entities.length < count) {
+		if (rows.length < count) {
 			throw new Error(`Expected at least ${String(count)} entities for relation tests.`);
 		}
 
-		return entities.map((entity) => {
-			return { id: entity.id, name: entity.slug };
+		return rows.map((row) => {
+			return { id: row.id, name: row.slug };
 		});
 	}
 
@@ -537,15 +545,15 @@ export class DatabaseService {
 	} | null> {
 		const [row] = await this.db
 			.select({
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				id: schema.internalPages.id,
-				slug: schema.entities.slug,
+				slug: schema.slugs.value,
 				title: schema.internalPages.title,
 			})
 			.from(schema.internalPages)
 			.innerJoin(schema.entityVersions, eq(schema.internalPages.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(eq(schema.entityStatus.type, "published"))
 			.orderBy(schema.internalPages.title)
 			.limit(1);
@@ -610,6 +618,7 @@ export class DatabaseService {
 			}
 
 			await tx.delete(schema.internalPages).where(eq(schema.internalPages.id, draftVersionId));
+			await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, draftVersionId));
 			await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, draftVersionId));
 		});
 	}
@@ -1007,6 +1016,14 @@ export class DatabaseService {
 	}
 
 	async createOpenCampaign(year: number): Promise<{ id: string }> {
+		// `year` is unique. A worker's previous run may have crashed before its afterAll ran, leaving a
+		// stale campaign (and reports) behind for this deterministic year — clear it first so this call
+		// doesn't fail on a duplicate-key conflict against orphaned data.
+		const stale = await this.getReportingCampaignByYear(year);
+		if (stale != null) {
+			await this.deleteReportingCampaign(stale.id);
+		}
+
 		const [campaign] = await this.db
 			.insert(schema.reportingCampaigns)
 			.values({ year, status: "open" })
@@ -1507,10 +1524,10 @@ export class DatabaseService {
 	/** Returns the document slug for the spotlight article identified by its exact title. */
 	async getSpotlightArticleSlugByTitle(title: string): Promise<string | null> {
 		const [row] = await this.db
-			.select({ slug: schema.entities.slug })
+			.select({ slug: schema.slugs.value })
 			.from(schema.spotlightArticles)
 			.innerJoin(schema.entityVersions, eq(schema.spotlightArticles.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(eq(schema.spotlightArticles.title, title))
 			.limit(1);
 
@@ -1518,10 +1535,10 @@ export class DatabaseService {
 	}
 
 	/**
-	 * Inserts a published news document that deliberately shares `slug` with another entity type.
-	 * Slugs are unique only per `(type, slug)`, so this is valid data — it reproduces the cross-type
-	 * collision behind the spotlight details 404. The news title is worker-prefixed so the standard
-	 * `cleanupWorkerNewsItems` helper removes it.
+	 * Inserts a published news document that deliberately shares its slug value with another entity
+	 * type. Slugs are unique only per `(type, locale, value)` among published rows, so this is valid
+	 * data — it reproduces the cross-type collision behind the spotlight details 404. The news title
+	 * is worker-prefixed so the standard `cleanupWorkerNewsItems` helper removes it.
 	 */
 	async createCollidingPublishedNewsDocument(params: {
 		slug: string;
@@ -1547,9 +1564,17 @@ export class DatabaseService {
 				throw new Error('Entity status "published" not found.');
 			}
 
+			const locale = await tx.query.locales.findFirst({
+				where: { isDefault: true },
+				columns: { id: true },
+			});
+			if (locale == null) {
+				throw new Error("Default locale not found in database.");
+			}
+
 			const [document] = await tx
 				.insert(schema.entities)
-				.values({ slug, typeId: type.id })
+				.values({ typeId: type.id })
 				.returning({ id: schema.entities.id });
 			if (document == null) {
 				throw new Error("Failed to insert colliding entity document.");
@@ -1557,7 +1582,7 @@ export class DatabaseService {
 
 			const [version] = await tx
 				.insert(schema.entityVersions)
-				.values({ entityId: document.id, statusId: status.id })
+				.values({ entityId: document.id, statusId: status.id, localeId: locale.id })
 				.returning({ id: schema.entityVersions.id });
 			if (version == null) {
 				throw new Error("Failed to insert colliding entity version.");
@@ -1568,6 +1593,15 @@ export class DatabaseService {
 				title,
 				summary: "Colliding slug news item",
 				imageId,
+			});
+
+			await tx.insert(schema.slugs).values({
+				entityVersionId: version.id,
+				entityId: document.id,
+				typeId: type.id,
+				localeId: locale.id,
+				isPublished: true,
+				value: slug,
 			});
 
 			return { documentId: document.id, versionId: version.id };
@@ -1742,6 +1776,7 @@ export class DatabaseService {
 				),
 			);
 
+		await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, versionId));
 		await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, versionId));
 
 		// A published document keeps more than one version (e.g. draft + published), each referencing
@@ -2075,6 +2110,7 @@ export class DatabaseService {
 					.delete(schema.personsToOrganisationalUnits)
 					.where(eq(schema.personsToOrganisationalUnits.personDocumentId, documentId));
 				await tx.delete(schema.persons).where(eq(schema.persons.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2357,6 +2393,7 @@ export class DatabaseService {
 				await tx
 					.delete(schema.organisationalUnits)
 					.where(eq(schema.organisationalUnits.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2571,6 +2608,7 @@ export class DatabaseService {
 				}
 
 				await tx.delete(schema.news).where(eq(schema.news.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2748,6 +2786,7 @@ export class DatabaseService {
 					.delete(schema.projectsToSocialMedia)
 					.where(eq(schema.projectsToSocialMedia.projectId, version.id));
 				await tx.delete(schema.projects).where(eq(schema.projects.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2806,6 +2845,7 @@ export class DatabaseService {
 				}
 
 				await tx.delete(schema.events).where(eq(schema.events.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2870,6 +2910,7 @@ export class DatabaseService {
 				await tx
 					.delete(schema.spotlightArticles)
 					.where(eq(schema.spotlightArticles.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2934,6 +2975,7 @@ export class DatabaseService {
 				await tx
 					.delete(schema.impactCaseStudies)
 					.where(eq(schema.impactCaseStudies.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -2992,6 +3034,7 @@ export class DatabaseService {
 				}
 
 				await tx.delete(schema.pages).where(eq(schema.pages.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -3052,6 +3095,7 @@ export class DatabaseService {
 				await tx
 					.delete(schema.documentationPages)
 					.where(eq(schema.documentationPages.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -3112,6 +3156,7 @@ export class DatabaseService {
 				await tx
 					.delete(schema.documentsPolicies)
 					.where(eq(schema.documentsPolicies.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -3170,6 +3215,7 @@ export class DatabaseService {
 				}
 
 				await tx.delete(schema.fundingCalls).where(eq(schema.fundingCalls.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 
@@ -3228,6 +3274,7 @@ export class DatabaseService {
 				}
 
 				await tx.delete(schema.opportunities).where(eq(schema.opportunities.id, version.id));
+				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
 			}
 

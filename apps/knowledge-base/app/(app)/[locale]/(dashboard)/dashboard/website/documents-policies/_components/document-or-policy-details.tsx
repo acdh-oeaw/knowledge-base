@@ -21,7 +21,10 @@ interface DocumentOrPolicyDetailsProps {
 	isPublished: boolean;
 	selectedVersion: "draft" | "published";
 	documentOrPolicy: Pick<schema.DocumentOrPolicy, "id" | "title" | "summary" | "url"> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: {
+			entity: { id: string };
+			slug: { value: string };
+		};
 	} & { document: { key: string; label: string; url: string; downloadUrl: string } };
 	publishAction: (documentId: string) => Promise<void>;
 	discardDraftAction?: (documentId: string) => Promise<void>;
@@ -45,16 +48,16 @@ export function DocumentOrPolicyDetails(props: Readonly<DocumentOrPolicyDetailsP
 		<Fragment>
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.entity.slug}/details`}
+					draftHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.slug.value}/details`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.entity.slug}/details?version=published`}
+					publishedHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.slug.value}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<EntityLifecycleBar
 					discardDraftAction={discardDraftAction}
 					documentId={documentId}
-					editHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.entity.slug}/edit`}
+					editHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.slug.value}/edit`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
 					publishAction={publishAction}
@@ -65,7 +68,7 @@ export function DocumentOrPolicyDetails(props: Readonly<DocumentOrPolicyDetailsP
 				<DescriptionDetails>{documentOrPolicy.title}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
-				<DescriptionDetails>{documentOrPolicy.entityVersion.entity.slug}</DescriptionDetails>
+				<DescriptionDetails>{documentOrPolicy.entityVersion.slug.value}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Summary")}</DescriptionTerm>
 				<DescriptionDetails>{documentOrPolicy.summary}</DescriptionDetails>

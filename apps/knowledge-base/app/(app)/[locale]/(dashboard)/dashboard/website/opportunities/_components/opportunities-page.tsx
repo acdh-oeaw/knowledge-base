@@ -35,7 +35,7 @@ interface OpportunitiesPageProps {
 		data: Array<
 			Pick<schema.Opportunity, "id" | "duration" | "sourceId" | "title" | "summary" | "website"> & {
 				documentId: string;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 				source: Pick<schema.OpportunitySource, "id" | "source">;

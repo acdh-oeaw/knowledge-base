@@ -3,7 +3,7 @@
 import type * as schema from "@acdh-knowledge-base/database/schema";
 import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
 import { Button } from "@acdh-knowledge-base/ui/button";
-import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Description, FieldError, Label } from "@acdh-knowledge-base/ui/field";
 import { Form } from "@acdh-knowledge-base/ui/form";
 import { Input } from "@acdh-knowledge-base/ui/input";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
@@ -26,12 +26,18 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface NationalConsortiumFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/**
+	 * Acronym/ROR/SSHOC actor ID aren't translatable — the DB keeps them synced from the default
+	 * locale's version regardless, so this locks their inputs when editing another locale. Defaults
+	 * to `true` (the create form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	nationalConsortium?: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	formId?: string;
 	formAction: ServerAction;
@@ -56,6 +62,7 @@ export function NationalConsortiumForm(props: Readonly<NationalConsortiumFormPro
 		initialAssets,
 		formAction,
 		formId,
+		isDefaultLocale = true,
 		nationalConsortium,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -91,31 +98,72 @@ export function NationalConsortiumForm(props: Readonly<NationalConsortiumFormPro
 						<FieldError />
 					</TextField>
 
-					<TextField defaultValue={nationalConsortium?.acronym ?? undefined} name="acronym">
-						<Label>{t("Acronym")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={nationalConsortium?.acronym ?? undefined} name="acronym">
+							<Label>{t("Acronym")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Acronym")}</Label>
+							<p className="text-sm">{nationalConsortium?.acronym ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{nationalConsortium?.acronym != null ? (
+								<input name="acronym" type="hidden" value={nationalConsortium.acronym} />
+							) : null}
+						</div>
+					)}
 
-					<TextField defaultValue={nationalConsortium?.ror ?? undefined} name="ror">
-						<Label>{t("ROR")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={nationalConsortium?.ror ?? undefined} name="ror">
+							<Label>{t("ROR")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("ROR")}</Label>
+							<p className="text-sm">{nationalConsortium?.ror ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{nationalConsortium?.ror != null ? (
+								<input name="ror" type="hidden" value={nationalConsortium.ror} />
+							) : null}
+						</div>
+					)}
 
-					<TextField
-						defaultValue={
-							nationalConsortium?.sshocMarketplaceActorId != null
-								? String(nationalConsortium.sshocMarketplaceActorId)
-								: undefined
-						}
-						name="sshocMarketplaceActorId"
-						type="number"
-					>
-						<Label>{t("SSHOC actor ID")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField
+							defaultValue={
+								nationalConsortium?.sshocMarketplaceActorId != null
+									? String(nationalConsortium.sshocMarketplaceActorId)
+									: undefined
+							}
+							name="sshocMarketplaceActorId"
+							type="number"
+						>
+							<Label>{t("SSHOC actor ID")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("SSHOC actor ID")}</Label>
+							<p className="text-sm">
+								{nationalConsortium?.sshocMarketplaceActorId != null
+									? String(nationalConsortium.sshocMarketplaceActorId)
+									: t("Not set")}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{nationalConsortium?.sshocMarketplaceActorId != null ? (
+								<input
+									name="sshocMarketplaceActorId"
+									type="hidden"
+									value={nationalConsortium.sshocMarketplaceActorId}
+								/>
+							) : null}
+						</div>
+					)}
 
 					<TextField defaultValue={nationalConsortium?.summary ?? undefined} name="summary">
 						<Label>{t("Summary")}</Label>

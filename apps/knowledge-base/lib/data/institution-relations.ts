@@ -116,7 +116,7 @@ export async function getInstitutionRelations(
 				id: schema.organisationalUnitsRelations.id,
 				institutionDocumentId: schema.organisationalUnitsRelations.unitDocumentId,
 				institutionName: schema.organisationalUnits.name,
-				institutionSlug: institutionEntities.slug,
+				institutionSlug: schema.slugs.value,
 				statusId: schema.organisationalUnitsRelations.status,
 				statusType: schema.organisationalUnitStatus.status,
 				relatedUnitDocumentId: schema.organisationalUnitsRelations.relatedUnitDocumentId,
@@ -137,6 +137,7 @@ export async function getInstitutionRelations(
 				schema.organisationalUnits,
 				sql`${schema.organisationalUnits.id} = ${institutionPickedVersion}`,
 			)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 			.innerJoin(
 				schema.organisationalUnitTypes,
 				eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),

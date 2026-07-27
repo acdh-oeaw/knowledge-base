@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -38,8 +39,8 @@ export async function getPages(db: Database | Transaction, params: GetPagesParam
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -114,8 +115,8 @@ export async function getPageById(db: Database | Transaction, params: GetPageByI
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -187,8 +188,8 @@ export async function getPageSlugs(db: Database | Transaction, params: GetPageSl
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -227,7 +228,8 @@ export async function getPageSlugs(db: Database | Transaction, params: GetPageSl
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -236,7 +238,7 @@ export async function getPageSlugs(db: Database | Transaction, params: GetPageSl
 //
 
 interface GetPageBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getPageBySlug(db: Database | Transaction, params: GetPageBySlugParams) {
@@ -248,8 +250,8 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -262,8 +264,8 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -32,9 +33,7 @@ export default async function DashboardAdministratorEditInternalPage(
 	const anyVersion = await db.query.internalPages.findFirst({
 		where: {
 			entityVersion: {
-				entity: {
-					slug,
-				},
+				slug: { value: slug },
 			},
 		},
 		columns: {},
@@ -71,7 +70,11 @@ export default async function DashboardAdministratorEditInternalPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -83,6 +86,12 @@ export default async function DashboardAdministratorEditInternalPage(
 		notFound();
 	}
 
+	assert(
+		internalPage.entityVersion.slug,
+		`Slug missing for entity version "${internalPage.entityVersion.id}".`,
+	);
+	const entityVersionSlug = internalPage.entityVersion.slug;
+
 	const contentBlocks = await getEntityContentBlocks(internalPage.id, "content");
 
 	return (
@@ -90,7 +99,10 @@ export default async function DashboardAdministratorEditInternalPage(
 			contentBlocks={contentBlocks}
 			documentId={documentId}
 			hasDraftChanges={hasDraftChanges}
-			internalPage={internalPage}
+			internalPage={{
+				...internalPage,
+				entityVersion: { ...internalPage.entityVersion, slug: entityVersionSlug },
+			}}
 			isPublished={publishedId != null}
 		/>
 	);

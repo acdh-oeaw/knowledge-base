@@ -1,14 +1,17 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { EventDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_components/event-details";
 import { discardEventDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/discard-event-draft.action";
 import { publishEventAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/publish-event.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
+import { getLocales } from "@/lib/data/locales";
 import {
 	getEntityRelationOptionsByIds,
 	getEntityRelations,
@@ -40,8 +43,10 @@ export default async function DashboardWebsiteEventDetailsPage(
 
 	const { slug } = await params;
 
+	const t = await getExtracted();
+
 	const anyVersion = await db.query.events.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -57,35 +62,38 @@ export default async function DashboardWebsiteEventDetailsPage(
 
 	const doc = { id: anyVersion.entityVersion.entity.id };
 
-	const { draftId, publishedId, hasDraftChanges } = await db.transaction(async (tx) =>
-		getDocumentLifecycleState(tx, doc.id),
-	);
+	const { locale: localeParam, version } = await searchParamsPromise;
 
-	/**
-	 * The version selector and "with draft changes" UX only kick in when the draft actually diverges
-	 * from the published version. Right after publish, a draft row still exists as a clone of the new
-	 * published version but has no real changes — we treat that as published-only.
-	 */
-	const showVersionSelector = hasDraftChanges && publishedId != null && draftId != null;
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
 
-	const { version } = await searchParamsPromise;
-	let selectedVersion: "draft" | "published";
-	let versionId: string | null;
-
-	if (showVersionSelector) {
-		selectedVersion = version === "published" ? "published" : "draft";
-		versionId = selectedVersion === "published" ? publishedId : draftId;
-	} else if (publishedId != null) {
-		selectedVersion = "published";
-		versionId = publishedId;
-	} else {
-		selectedVersion = "draft";
-		versionId = draftId;
-	}
-
-	if (versionId == null) {
+	if (selectedLocale == null) {
 		notFound();
 	}
+
+	const localizedVersion = await resolveLocalizedDetailVersion(
+		doc.id,
+		version,
+		locales,
+		selectedLocale.id,
+	);
+
+	if (localizedVersion == null) {
+		return (
+			<Fragment>
+				<div className="flex items-center justify-between">
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+				</div>
+				<p className="text-sm text-muted-fg italic">
+					{t("This document has no content in the selected locale yet.")}
+				</p>
+			</Fragment>
+		);
+	}
+	const { hasDraftChanges, isLocaleFallback, publishedId, selectedVersion, versionId } =
+		localizedVersion;
 
 	const event = await db.query.events.findFirst({
 		where: { id: versionId },
@@ -104,7 +112,11 @@ export default async function DashboardWebsiteEventDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 					status: {
@@ -128,6 +140,9 @@ export default async function DashboardWebsiteEventDetailsPage(
 		notFound();
 	}
 
+	assert(event.entityVersion.slug, `Slug missing for entity version "${event.entityVersion.id}".`);
+	const entityVersionSlug = event.entityVersion.slug;
+
 	const image = images.generateSignedImageUrl({
 		key: event.image.key,
 		options: imageGridOptions,
@@ -149,9 +164,16 @@ export default async function DashboardWebsiteEventDetailsPage(
 			contentBlocks={contentBlocks}
 			discardDraftAction={discardEventDraftAction}
 			documentId={doc.id}
-			event={{ ...event, image: { ...event.image, url: image.url } }}
+			event={{
+				...event,
+				entityVersion: { ...event.entityVersion, slug: entityVersionSlug },
+				image: { ...event.image, url: image.url },
+			}}
 			hasDraft={hasDraftChanges}
+			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			publishAction={publishEventAction}
 			selectedVersion={selectedVersion}
 		/>

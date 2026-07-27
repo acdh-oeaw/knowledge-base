@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,7 +10,11 @@ import { assertAuthenticated } from "@/lib/auth/session";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getContributionPersonOptions } from "@/lib/data/contributions";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { getPersonRelationRoleOptions, getPersonRelations } from "@/lib/data/person-relations";
 import {
@@ -43,13 +48,13 @@ export async function generateMetadata(
 export default async function DashboardAdministratorEditWorkingGroupPage(
 	props: Readonly<DashboardAdministratorEditWorkingGroupPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 	await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -65,13 +70,29 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			documentId,
 			organisationalUnitsLifecycleAdapter,
+			selectedLocale.id,
 		);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -104,7 +125,11 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 						entity: {
 							columns: {
 								id: true,
-								slug: true,
+							},
+						},
+						slug: {
+							columns: {
+								value: true,
 							},
 						},
 					},
@@ -122,6 +147,12 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 	if (workingGroup == null) {
 		notFound();
 	}
+
+	assert(
+		workingGroup.entityVersion.slug,
+		`Slug missing for entity version "${workingGroup.entityVersion.id}".`,
+	);
+	const entityVersionSlug = workingGroup.entityVersion.slug;
 
 	const [
 		{ relatedEntityIds, relatedResourceIds },
@@ -180,7 +211,10 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 			initialSocialMediaIds={socialMediaIds}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}
+			isDefaultLocale={selectedLocale.isDefault}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			personRelationRoleOptions={personRelationRoleOptions}
 			personRelations={personRelations}
 			relations={relations}
@@ -188,7 +222,12 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 			selectedRelatedResources={selectedRelatedResources}
 			selectedSocialMediaItems={selectedSocialMediaItems}
 			unitRelationStatusOptions={unitRelationStatusOptions}
-			workingGroup={{ ...workingGroup, descriptionContentBlocks, image }}
+			workingGroup={{
+				...workingGroup,
+				entityVersion: { ...workingGroup.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
+				image,
+			}}
 		/>
 	);
 }

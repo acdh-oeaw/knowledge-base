@@ -1,6 +1,7 @@
 "use client";
 
 import type * as schema from "@acdh-knowledge-base/database/schema";
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -9,6 +10,7 @@ import { ProjectForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administ
 import { createProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/create-project.action";
 
 interface ProjectCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
@@ -16,13 +18,26 @@ interface ProjectCreateFormProps {
 }
 
 export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): ReactNode {
-	const { initialAssets, scopes, initialSocialMediaItems, initialSocialMediaTotal } = props;
+	const {
+		defaultLocaleName,
+		initialAssets,
+		scopes,
+		initialSocialMediaItems,
+		initialSocialMediaTotal,
+	} = props;
 
 	const t = useExtracted();
 
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New project")} />
+
+			<Note intent="info">
+				{t(
+					"This project will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<ProjectForm
 				formAction={createProjectAction}

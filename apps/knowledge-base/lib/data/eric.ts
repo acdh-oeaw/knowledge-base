@@ -1,5 +1,6 @@
 import type { User } from "@acdh-knowledge-base/auth";
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 import { forbidden } from "next/navigation";
 
 import {
@@ -51,7 +52,10 @@ export async function getEricForAdmin(
 		with: {
 			entityVersion: {
 				columns: {},
-				with: { entity: { columns: { id: true, slug: true } } },
+				with: {
+					entity: { columns: { id: true } },
+					slug: { columns: { value: true } },
+				},
 			},
 		},
 	});
@@ -59,6 +63,9 @@ export async function getEricForAdmin(
 	if (unit == null) {
 		return null;
 	}
+
+	assert(unit.entityVersion.slug, `Slug missing for entity version of ERIC unit document.`);
+	const slug = unit.entityVersion.slug.value;
 
 	const documentId = unit.entityVersion.entity.id;
 
@@ -73,7 +80,7 @@ export async function getEricForAdmin(
 
 	return {
 		documentId,
-		slug: unit.entityVersion.entity.slug,
+		slug,
 		name: unit.name,
 		hasDraft: lifecycle?.hasDraftChanges ?? false,
 		isPublished: lifecycle?.publishedId != null,
@@ -86,11 +93,12 @@ export async function getEricForAdmin(
  */
 export async function getEricReverseRelationGroups(
 	documentId: string,
+	localeId?: string,
 ): Promise<EricReverseRelationGroups> {
 	const entries = await Promise.all(
 		ericReverseRelationSourceTypes.map(async (sourceUnitType) => {
 			const [relations, statusOptions] = await Promise.all([
-				getReverseUnitRelations(documentId, { sourceUnitType }),
+				getReverseUnitRelations(documentId, { sourceUnitType, localeId }),
 				getReverseUnitRelationStatusOptions("eric", sourceUnitType),
 			]);
 

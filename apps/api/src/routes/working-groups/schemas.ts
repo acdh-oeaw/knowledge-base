@@ -21,7 +21,7 @@ export const WorkingGroupBaseSchema = v.pipe(
 			"sshocMarketplaceActorId",
 		]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		socialMedia: v.array(
 			v.object({
@@ -59,7 +59,7 @@ export const WorkingGroupSchema = v.pipe(
 			"sshocMarketplaceActorId",
 		]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		socialMedia: v.array(
 			v.object({
@@ -101,7 +101,7 @@ export type WorkingGroup = v.InferOutput<typeof WorkingGroupSchema>;
 export const WorkingGroupSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.OrganisationalUnitSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Working group slug"),
 	v.metadata({ ref: "WorkingGroupSlug" }),

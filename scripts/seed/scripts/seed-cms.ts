@@ -1,7 +1,7 @@
 import { type Transaction, createDatabaseService } from "@acdh-knowledge-base/database";
 import * as schema from "@acdh-knowledge-base/database/schema";
 import { and, eq } from "@acdh-knowledge-base/database/sql";
-import { log } from "@acdh-oeaw/lib";
+import { assert, keyBy, log } from "@acdh-oeaw/lib";
 
 import { env } from "../config/env.config";
 
@@ -119,52 +119,100 @@ const internalPageTitles: Record<(typeof internalPageSlugs)[number], string> = {
 	"terms-of-use": "Terms of use",
 };
 
-async function insertEntity(tx: Transaction, typeId: string, slug: string): Promise<string> {
-	const inserted = await tx
-		.insert(schema.entities)
-		.values({ typeId, slug })
-		.onConflictDoNothing()
-		.returning({ id: schema.entities.id });
+async function getOrCreateEntityBySlug(
+	tx: Transaction,
+	typeId: string,
+	localeId: string,
+	slug: string,
+): Promise<string> {
+	const [existingSlug] = await tx
+		.select({ entityId: schema.slugs.entityId })
+		.from(schema.slugs)
+		.where(
+			and(
+				eq(schema.slugs.typeId, typeId),
+				eq(schema.slugs.localeId, localeId),
+				eq(schema.slugs.value, slug),
+			),
+		)
+		.limit(1);
 
-	if (inserted[0]) {
-		return inserted[0].id;
+	if (existingSlug) {
+		return existingSlug.entityId;
 	}
 
-	const existing = await tx
-		.select({ id: schema.entities.id })
-		.from(schema.entities)
-		.where(and(eq(schema.entities.typeId, typeId), eq(schema.entities.slug, slug)));
-	return existing[0]!.id;
+	const [entity] = await tx
+		.insert(schema.entities)
+		.values({ typeId })
+		.returning({ id: schema.entities.id });
+
+	return entity!.id;
 }
 
 async function insertEntityVersion(
 	tx: Transaction,
 	entityId: string,
+	typeId: string,
 	statusId: string,
+	localeId: string,
+	slug: string,
+	isPublished: boolean,
 ): Promise<string> {
-	const inserted = await tx
+	const [inserted] = await tx
 		.insert(schema.entityVersions)
-		.values({ entityId, statusId })
+		.values({ entityId, statusId, localeId })
 		.onConflictDoNothing()
 		.returning({ id: schema.entityVersions.id });
 
-	if (inserted[0]) {
-		return inserted[0].id;
+	if (inserted) {
+		await tx.insert(schema.slugs).values({
+			entityVersionId: inserted.id,
+			entityId,
+			typeId,
+			localeId,
+			isPublished,
+			value: slug,
+		});
+		return inserted.id;
 	}
 
-	const existing = await tx
+	const [existing] = await tx
 		.select({ id: schema.entityVersions.id })
 		.from(schema.entityVersions)
 		.where(
 			and(
 				eq(schema.entityVersions.entityId, entityId),
 				eq(schema.entityVersions.statusId, statusId),
+				eq(schema.entityVersions.localeId, localeId),
 			),
 		);
-	return existing[0]!.id;
+	return existing!.id;
 }
 
 async function seedCms(tx: Transaction) {
+	await tx
+		.insert(schema.locales)
+		.values([
+			{
+				languageCode: "en",
+				regionCode: "GB",
+				name: "British English",
+				isDefault: true,
+			},
+			{
+				languageCode: "de",
+				regionCode: "AT",
+				name: "German (Austria)",
+			},
+		])
+		.onConflictDoNothing();
+
+	const locales = await tx.query.locales.findMany();
+	const defaultLocaleId = locales.find((l) => l.isDefault)?.id;
+	const localesByLanguageCode = keyBy(locales, (item) => item.languageCode);
+
+	assert(defaultLocaleId);
+
 	// ---- Enum vocabulary tables ----
 
 	await tx
@@ -418,8 +466,22 @@ async function seedCms(tx: Transaction) {
 
 	// DARIAH-EU
 
-	const dariahEuDocId = await insertEntity(tx, orgUnitTypeId, "dariah-eu");
-	const dariahEuVersionId = await insertEntityVersion(tx, dariahEuDocId, publishedStatusId);
+	const dariahEuDocId = await getOrCreateEntityBySlug(
+		tx,
+		orgUnitTypeId,
+		defaultLocaleId,
+		"dariah-eu",
+	);
+
+	const dariahEuVersionId = await insertEntityVersion(
+		tx,
+		dariahEuDocId,
+		orgUnitTypeId,
+		publishedStatusId,
+		defaultLocaleId,
+		"dariah-eu",
+		true,
+	);
 
 	await tx
 		.insert(schema.organisationalUnits)
@@ -432,11 +494,42 @@ async function seedCms(tx: Transaction) {
 		})
 		.onConflictDoNothing();
 
+	if (localesByLanguageCode.de) {
+		const dariahEuVersionDEId = await insertEntityVersion(
+			tx,
+			dariahEuDocId,
+			orgUnitTypeId,
+			publishedStatusId,
+			localesByLanguageCode.de.id,
+			"dariah-eu",
+			true,
+		);
+
+		await tx
+			.insert(schema.organisationalUnits)
+			.values({
+				id: dariahEuVersionDEId,
+				name: "DARIAH-EU",
+				summary: "",
+				typeId: ericTypeId,
+				ror: "https://ror.org/05n09v162",
+			})
+			.onConflictDoNothing();
+	}
+
 	// Governance bodies
 
 	for (const body of governanceBodies) {
-		const docId = await insertEntity(tx, orgUnitTypeId, body.slug);
-		const versionId = await insertEntityVersion(tx, docId, publishedStatusId);
+		const docId = await getOrCreateEntityBySlug(tx, orgUnitTypeId, defaultLocaleId, body.slug);
+		const versionId = await insertEntityVersion(
+			tx,
+			docId,
+			orgUnitTypeId,
+			publishedStatusId,
+			defaultLocaleId,
+			body.slug,
+			true,
+		);
 
 		await tx
 			.insert(schema.organisationalUnits)
@@ -864,10 +957,19 @@ async function seedCms(tx: Transaction) {
 	)!.id;
 
 	for (const slug of internalPageSlugs) {
-		const docId = await insertEntity(tx, internalPageTypeId, slug);
+		const docId = await getOrCreateEntityBySlug(tx, internalPageTypeId, defaultLocaleId, slug);
 
 		for (const statusId of [publishedStatusId, draftStatusId]) {
-			const versionId = await insertEntityVersion(tx, docId, statusId);
+			const isPublished = statusId === publishedStatusId;
+			const versionId = await insertEntityVersion(
+				tx,
+				docId,
+				internalPageTypeId,
+				statusId,
+				defaultLocaleId,
+				slug,
+				isPublished,
+			);
 
 			await tx
 				.insert(schema.internalPages)

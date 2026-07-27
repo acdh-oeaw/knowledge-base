@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -41,7 +42,7 @@ export default async function DashboardWebsiteSpotlightArticleDetailsPage(
 	const { slug } = await params;
 
 	const anyVersion = await db.query.spotlightArticles.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -101,7 +102,11 @@ export default async function DashboardWebsiteSpotlightArticleDetailsPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 				},
@@ -118,6 +123,12 @@ export default async function DashboardWebsiteSpotlightArticleDetailsPage(
 	if (spotlightArticle == null) {
 		notFound();
 	}
+
+	assert(
+		spotlightArticle.entityVersion.slug,
+		`Slug missing for entity version "${spotlightArticle.entityVersion.id}".`,
+	);
+	const entityVersionSlug = spotlightArticle.entityVersion.slug;
 
 	const image = images.generateSignedImageUrl({
 		key: spotlightArticle.image.key,
@@ -146,6 +157,7 @@ export default async function DashboardWebsiteSpotlightArticleDetailsPage(
 			selectedVersion={selectedVersion}
 			spotlightArticle={{
 				...spotlightArticle,
+				entityVersion: { ...spotlightArticle.entityVersion, slug: entityVersionSlug },
 				image: { ...spotlightArticle.image, url: image.url },
 			}}
 		/>

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { NewsItemCreateForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_components/news-item-create-form";
 import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
+import { getDefaultLocale } from "@/lib/data/locales";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -26,15 +27,17 @@ export async function generateMetadata(
 export default async function DashboardWebsiteCreateNewsItemPage(
 	_props: Readonly<DashboardWebsiteCreateNewsPageProps>,
 ): Promise<ReactNode> {
-	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources] =
+	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources, defaultLocale] =
 		await Promise.all([
 			getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "images" }),
 			getEntityRelationOptions(),
 			getResourceRelationOptions(),
+			getDefaultLocale(),
 		]);
 
 	return (
 		<NewsItemCreateForm
+			defaultLocaleName={defaultLocale.name}
 			initialAssets={initialAssets}
 			initialRelatedEntityItems={initialRelatedEntities.items}
 			initialRelatedEntityTotal={initialRelatedEntities.total}

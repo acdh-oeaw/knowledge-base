@@ -13,8 +13,8 @@ export async function getPublishedInternalPage(
 	const page = await db.query.internalPages.findFirst({
 		where: {
 			entityVersion: {
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 				status: {
 					type: "published",

@@ -16,7 +16,7 @@ export const DocumentOrPolicyBaseSchema = v.pipe(
 		summary: v.nullable(v.string()),
 		url: v.nullable(v.string()),
 		document: v.object({ url: v.string() }),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		group: DocumentPolicyGroupSchema,
 	}),
@@ -61,7 +61,7 @@ export const DocumentOrPolicySchema = v.pipe(
 		summary: v.nullable(v.string()),
 		url: v.nullable(v.string()),
 		document: v.object({ url: v.string() }),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		description: v.optional(v.array(ContentBlockSchema), []),
 		group: DocumentPolicyGroupSchema,
@@ -75,7 +75,7 @@ export type DocumentOrPolicy = v.InferOutput<typeof DocumentOrPolicySchema>;
 export const DocumentOrPolicySlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.DocumentOrPolicySelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Document or policy slug"),
 	v.metadata({ ref: "DocumentOrPolicySlug" }),

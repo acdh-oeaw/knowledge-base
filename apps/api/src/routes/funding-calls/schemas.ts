@@ -16,7 +16,7 @@ const fundingCallBaseObject = v.object({
 		start: v.pipe(v.string(), v.isoTimestamp()),
 		end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 	}),
-	entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+	entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
@@ -52,7 +52,7 @@ export type FundingCall = v.InferOutput<typeof FundingCallSchema>;
 export const FundingCallSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.FundingCallSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Funding call slug"),
 	v.metadata({ ref: "FundingCallSlug" }),

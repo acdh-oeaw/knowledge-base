@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -38,8 +39,8 @@ export async function getNews(db: Database | Transaction, params: GetNewsParams)
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -114,8 +115,8 @@ export async function getNewsItemById(db: Database | Transaction, params: GetNew
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -187,8 +188,8 @@ export async function getNewsItemSlugs(db: Database | Transaction, params: GetNe
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -227,7 +228,8 @@ export async function getNewsItemSlugs(db: Database | Transaction, params: GetNe
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -236,7 +238,7 @@ export async function getNewsItemSlugs(db: Database | Transaction, params: GetNe
 //
 
 interface GetNewsItemBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getNewsItemBySlug(
@@ -251,8 +253,8 @@ export async function getNewsItemBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -265,8 +267,8 @@ export async function getNewsItemBySlug(
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

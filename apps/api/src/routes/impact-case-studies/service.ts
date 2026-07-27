@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -42,8 +43,8 @@ export async function getImpactCaseStudies(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -105,7 +106,7 @@ async function getContributors(db: Database | Transaction, impactCaseStudyId: st
 		.select({
 			id: schema.persons.id,
 			name: schema.persons.name,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
@@ -115,14 +116,11 @@ async function getContributors(db: Database | Transaction, impactCaseStudyId: st
 		})
 		.from(schema.impactCaseStudiesToPersons)
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.impactCaseStudiesToPersons.personDocumentId),
-		)
-		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.impactCaseStudiesToPersons.personDocumentId),
 		)
 		.innerJoin(schema.persons, eq(schema.persons.id, schema.documentLifecycle.publishedId))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
 		.leftJoin(schema.assets, eq(schema.persons.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.where(
@@ -179,8 +177,8 @@ export async function getImpactCaseStudyById(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -257,8 +255,8 @@ export async function getImpactCaseStudySlugs(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -297,7 +295,8 @@ export async function getImpactCaseStudySlugs(
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -306,7 +305,7 @@ export async function getImpactCaseStudySlugs(
 //
 
 interface GetImpactCaseStudyBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getImpactCaseStudyBySlug(
@@ -321,8 +320,8 @@ export async function getImpactCaseStudyBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -335,8 +334,8 @@ export async function getImpactCaseStudyBySlug(
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

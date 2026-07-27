@@ -95,7 +95,7 @@ export async function getProjectPersons(
 				projectId: schema.projectsToPersons.projectDocumentId,
 				projectAcronym: schema.projects.acronym,
 				projectName: schema.projects.name,
-				projectSlug: projectEntities.slug,
+				projectSlug: schema.slugs.value,
 				roleId: schema.projectsToPersons.roleId,
 				roleType: schema.projectRoles.role,
 				personDocumentId: schema.projectsToPersons.personDocumentId,
@@ -112,6 +112,7 @@ export async function getProjectPersons(
 				eq(projectDocumentLifecycle.documentId, projectEntities.id),
 			)
 			.innerJoin(schema.projects, sql`${schema.projects.id} = ${projectPickedVersion}`)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.projects.id))
 			.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
 			.innerJoin(
 				personDocumentLifecycle,
@@ -264,7 +265,7 @@ export async function getPersonProjectPerson(
 			projectId: schema.projectsToPersons.projectDocumentId,
 			projectName: schema.projects.name,
 			projectAcronym: schema.projects.acronym,
-			projectSlug: projectEntities.slug,
+			projectSlug: schema.slugs.value,
 			roleId: schema.projectsToPersons.roleId,
 			roleType: schema.projectRoles.role,
 			duration: schema.projectsToPersons.duration,
@@ -276,6 +277,7 @@ export async function getPersonProjectPerson(
 			eq(projectDocumentLifecycle.documentId, projectEntities.id),
 		)
 		.innerJoin(schema.projects, sql`${schema.projects.id} = ${projectPickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.projects.id))
 		.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
 		.where(eq(schema.projectsToPersons.personDocumentId, personDocumentId))
 		.orderBy(

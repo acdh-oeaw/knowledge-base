@@ -1,4 +1,5 @@
 import { db } from "@acdh-knowledge-base/database/client";
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -33,7 +34,7 @@ export default async function DashboardWebsiteEditOpportunityPage(
 	const { slug } = await params;
 
 	const anyVersion = await db.query.opportunities.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -72,7 +73,11 @@ export default async function DashboardWebsiteEditOpportunityPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 					status: {
@@ -96,6 +101,12 @@ export default async function DashboardWebsiteEditOpportunityPage(
 		notFound();
 	}
 
+	assert(
+		opportunity.entityVersion.slug,
+		`Slug missing for entity version "${opportunity.entityVersion.id}".`,
+	);
+	const entityVersionSlug = opportunity.entityVersion.slug;
+
 	const [contentBlocks, sources] = await Promise.all([
 		getEntityContentBlocks(opportunity.id, "content"),
 		db.query.opportunitySources.findMany({
@@ -110,7 +121,10 @@ export default async function DashboardWebsiteEditOpportunityPage(
 			documentId={documentId}
 			hasDraftChanges={hasDraftChanges}
 			isPublished={publishedId != null}
-			opportunity={{ ...opportunity }}
+			opportunity={{
+				...opportunity,
+				entityVersion: { ...opportunity.entityVersion, slug: entityVersionSlug },
+			}}
 			sources={sources}
 		/>
 	);

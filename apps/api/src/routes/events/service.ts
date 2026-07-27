@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
@@ -76,7 +77,7 @@ export async function getEvents(db: Database | Transaction, params: GetEventsPar
 				duration: schema.events.duration,
 				isFullDay: schema.events.isFullDay,
 				entity: {
-					slug: schema.entities.slug,
+					slug: schema.slugs.value,
 				},
 				entityVersion: {
 					updatedAt: schema.entityVersions.updatedAt,
@@ -91,7 +92,7 @@ export async function getEvents(db: Database | Transaction, params: GetEventsPar
 			})
 			.from(schema.events)
 			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
@@ -160,11 +161,10 @@ async function getAdjacentEvents(db: Database | Transaction, params: GetAdjacent
 		isFullDay: schema.events.isFullDay,
 		duration: schema.events.duration,
 		entity: {
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 		},
 	} as const;
 
-	// oxlint-disable-next-line unicorn/consistent-function-scoping
 	function serializeAdjacentEvent(item: {
 		id: schema.Event["id"];
 		title: schema.Event["title"];
@@ -172,7 +172,7 @@ async function getAdjacentEvents(db: Database | Transaction, params: GetAdjacent
 		isFullDay: schema.Event["isFullDay"];
 		duration: schema.Event["duration"];
 		entity: {
-			slug: schema.Entity["slug"];
+			slug: schema.Slug["value"];
 		};
 	}) {
 		return { ...item, duration: serializeDateRange(item.duration) };
@@ -183,7 +183,7 @@ async function getAdjacentEvents(db: Database | Transaction, params: GetAdjacent
 			.select(adjacentColumns)
 			.from(schema.events)
 			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
@@ -195,7 +195,7 @@ async function getAdjacentEvents(db: Database | Transaction, params: GetAdjacent
 			.select(adjacentColumns)
 			.from(schema.events)
 			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
-			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
@@ -246,8 +246,8 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -323,8 +323,8 @@ export async function getEventSlugs(db: Database | Transaction, params: GetEvent
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -363,7 +363,8 @@ export async function getEventSlugs(db: Database | Transaction, params: GetEvent
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -372,7 +373,7 @@ export async function getEventSlugs(db: Database | Transaction, params: GetEvent
 //
 
 interface GetEventBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getEventBySlug(db: Database | Transaction, params: GetEventBySlugParams) {
@@ -384,8 +385,8 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -402,8 +403,8 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

@@ -4,7 +4,7 @@ import type * as schema from "@acdh-knowledge-base/database/schema";
 import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
 import { Checkbox } from "@acdh-knowledge-base/ui/checkbox";
 import { DatePicker, DatePickerTrigger } from "@acdh-knowledge-base/ui/date-picker";
-import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Description, FieldError, Label } from "@acdh-knowledge-base/ui/field";
 import { Form } from "@acdh-knowledge-base/ui/form";
 import { Input } from "@acdh-knowledge-base/ui/input";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
@@ -30,11 +30,17 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 interface EventFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	contentBlocks?: Array<ContentBlock>;
+	/**
+	 * `duration`/`location` aren't translatable — the DB keeps them synced from the default locale's
+	 * version regardless, so this locks their inputs when editing another locale. Defaults to `true`
+	 * (the create form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	event?: Pick<
 		schema.Event,
 		"id" | "duration" | "isFullDay" | "location" | "title" | "summary" | "website"
 	> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } };
 	formId?: string;
 	formAction: ServerAction;
@@ -55,6 +61,7 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 		contentBlocks,
 		formAction,
 		formId,
+		isDefaultLocale = true,
 		event,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -89,48 +96,108 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 						<TextArea rows={5} />
 						<FieldError />
 					</TextField>
-					<DatePicker
-						defaultValue={
-							event != null
-								? new CalendarDate(
-										event.duration.start.getUTCFullYear(),
-										event.duration.start.getUTCMonth() + 1,
-										event.duration.start.getUTCDate(),
-									)
-								: undefined
-						}
-						granularity="day"
-						isRequired={true}
-						name="duration.start"
-					>
-						<Label>{t("Start date")}</Label>
-						<DatePickerTrigger />
-					</DatePicker>
+					{isDefaultLocale ? (
+						<Fragment>
+							<DatePicker
+								defaultValue={
+									event != null
+										? new CalendarDate(
+												event.duration.start.getUTCFullYear(),
+												event.duration.start.getUTCMonth() + 1,
+												event.duration.start.getUTCDate(),
+											)
+										: undefined
+								}
+								granularity="day"
+								isRequired={true}
+								name="duration.start"
+							>
+								<Label>{t("Start date")}</Label>
+								<DatePickerTrigger />
+								<FieldError />
+							</DatePicker>
 
-					<DatePicker
-						defaultValue={
-							event?.duration.end != null
-								? new CalendarDate(
-										event.duration.end.getUTCFullYear(),
-										event.duration.end.getUTCMonth() + 1,
-										event.duration.end.getUTCDate(),
-									)
-								: undefined
-						}
-						granularity="day"
-						name="duration.end"
-					>
-						<Label>{t("End date")}</Label>
-						<DatePickerTrigger />
-					</DatePicker>
-					<Checkbox defaultSelected={event?.isFullDay ?? false} name="isFullDay" value="true">
-						{t("Full day")}
-					</Checkbox>
-					<TextField defaultValue={event?.location ?? undefined} isRequired={true} name="location">
-						<Label>{t("Location")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+							<DatePicker
+								defaultValue={
+									event?.duration.end != null
+										? new CalendarDate(
+												event.duration.end.getUTCFullYear(),
+												event.duration.end.getUTCMonth() + 1,
+												event.duration.end.getUTCDate(),
+											)
+										: undefined
+								}
+								granularity="day"
+								name="duration.end"
+							>
+								<Label>{t("End date")}</Label>
+								<DatePickerTrigger />
+								<FieldError />
+							</DatePicker>
+						</Fragment>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Duration")}</Label>
+							<p className="text-sm">
+								{event != null
+									? `${event.duration.start.toISOString().slice(0, 10)}${
+											event.duration.end != null
+												? ` – ${event.duration.end.toISOString().slice(0, 10)}`
+												: ""
+										}`
+									: null}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{event != null ? (
+								<Fragment>
+									<input
+										name="duration.start"
+										type="hidden"
+										value={event.duration.start.toISOString().slice(0, 10)}
+									/>
+									{event.duration.end != null ? (
+										<input
+											name="duration.end"
+											type="hidden"
+											value={event.duration.end.toISOString().slice(0, 10)}
+										/>
+									) : null}
+								</Fragment>
+							) : null}
+						</div>
+					)}
+					{isDefaultLocale ? (
+						<Checkbox defaultSelected={event?.isFullDay ?? false} name="isFullDay" value="true">
+							{t("Full day")}
+						</Checkbox>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Full day")}</Label>
+							<p className="text-sm">{event?.isFullDay ? t("Yes") : t("No")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{event?.isFullDay ? <input name="isFullDay" type="hidden" value="true" /> : null}
+						</div>
+					)}
+					{isDefaultLocale ? (
+						<TextField
+							defaultValue={event?.location ?? undefined}
+							isRequired={true}
+							name="location"
+						>
+							<Label>{t("Location")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Location")}</Label>
+							<p className="text-sm">{event?.location ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{event?.location != null ? (
+								<input name="location" type="hidden" value={event.location} />
+							) : null}
+						</div>
+					)}
 					<TextField defaultValue={event?.website ?? undefined} name="website" type="url">
 						<Label>{t("Website")}</Label>
 						<Input placeholder="https://" />

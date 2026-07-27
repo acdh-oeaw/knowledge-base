@@ -24,7 +24,7 @@ export interface CountriesResult {
 			memberObserverFrom: Date | null;
 			memberObserverStatus: CountryMemberObserverStatus;
 			memberObserverUntil: Date | null;
-			entity: Pick<schema.Entity, "slug">;
+			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
 		}
@@ -89,7 +89,7 @@ export async function getCountries(params: Readonly<GetCountriesParams>): Promis
 		.select({
 			id: schema.organisationalUnits.id,
 			name: schema.organisationalUnits.name,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			hasDraft: schema.documentLifecycle.hasDraftChanges,
 			isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 		})
@@ -100,6 +100,7 @@ export async function getCountries(params: Readonly<GetCountriesParams>): Promis
 		)
 		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
 		.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(
 			schema.documentLifecycle,
 			eq(schema.documentLifecycle.documentId, schema.entities.id),
@@ -123,7 +124,7 @@ export async function getCountries(params: Readonly<GetCountriesParams>): Promis
 			)
 			.where(and(versionPick, where)),
 		db.query.organisationalUnits.findMany({
-			where: { entityVersion: { entity: { slug: dariahEuSlug } }, type: { type: "eric" } },
+			where: { entityVersion: { slug: { value: dariahEuSlug } }, type: { type: "eric" } },
 			columns: { id: true },
 		}),
 	]);

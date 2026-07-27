@@ -163,6 +163,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 							relatedUnitName: relatedUnit.name,
 							relatedUnitSlug: data.relatedUnitSlug,
 							relatedUnitType: data.relatedUnitType,
+							relatedUnitIsLocaleFallback: false,
 							duration: {
 								start: new Date(data.durationStart),
 								...(data.durationEnd != null ? { end: new Date(data.durationEnd) } : {}),

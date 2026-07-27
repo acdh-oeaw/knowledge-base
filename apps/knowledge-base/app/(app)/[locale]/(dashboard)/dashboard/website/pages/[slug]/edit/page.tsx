@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -7,7 +8,11 @@ import { PageItemEditForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/web
 import { imageGridOptions } from "@/config/assets.config";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { pagesLifecycleAdapter } from "@/lib/data/pages.lifecycle-adapter";
 import {
 	getEntityRelationOptions,
@@ -38,12 +43,12 @@ export async function generateMetadata(
 export default async function DashboardWebsiteEditPageItemPage(
 	props: Readonly<DashboardWebsiteEditPageItemPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
 	const anyVersion = await db.query.pages.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -59,9 +64,29 @@ export default async function DashboardWebsiteEditPageItemPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, pagesLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			documentId,
+			pagesLifecycleAdapter,
+			selectedLocale.id,
+		);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -82,7 +107,11 @@ export default async function DashboardWebsiteEditPageItemPage(
 							entity: {
 								columns: {
 									id: true,
-									slug: true,
+								},
+							},
+							slug: {
+								columns: {
+									value: true,
 								},
 							},
 							status: {
@@ -108,6 +137,12 @@ export default async function DashboardWebsiteEditPageItemPage(
 	if (pageItem == null) {
 		notFound();
 	}
+
+	assert(
+		pageItem.entityVersion.slug,
+		`Slug missing for entity version "${pageItem.entityVersion.id}".`,
+	);
+	const entityVersionSlug = pageItem.entityVersion.slug;
 
 	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(documentId);
 
@@ -138,8 +173,11 @@ export default async function DashboardWebsiteEditPageItemPage(
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			pageItem={{
 				...pageItem,
+				entityVersion: { ...pageItem.entityVersion, slug: entityVersionSlug },
 				image: pageItem.image ? { ...pageItem.image, url: image!.url } : null,
 			}}
 			selectedRelatedEntities={selectedRelatedEntities}

@@ -17,7 +17,7 @@ export const PersonBaseSchema = v.pipe(
 			),
 		),
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
 	v.description("Person"),
@@ -47,7 +47,7 @@ export const PersonSchema = v.pipe(
 			),
 		),
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		biography: v.optional(v.array(ContentBlockSchema), []),
 	}),
@@ -60,7 +60,7 @@ export type Person = v.InferOutput<typeof PersonSchema>;
 export const PersonSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PersonSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Person slug"),
 	v.metadata({ ref: "PersonSlug" }),

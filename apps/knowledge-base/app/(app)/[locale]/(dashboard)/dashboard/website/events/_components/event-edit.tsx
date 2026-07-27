@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { EventForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_components/event-form";
 import { discardEventDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/discard-event-draft.action";
 import { publishEventAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/publish-event.action";
@@ -16,12 +17,19 @@ interface EventEditFormProps {
 	contentBlocks: Array<ContentBlock>;
 	documentId: string;
 	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	event: Pick<
 		schema.Event,
 		"id" | "duration" | "isFullDay" | "location" | "title" | "summary" | "website"
 	> & {
-		entityVersion: { entity: { id: string; slug: string }; status: { type: string } };
+		entityVersion: {
+			entity: { id: string };
+			slug: { value: string };
+			status: { type: string };
+		};
 	} & { image: { key: string; label: string; url: string } };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -39,7 +47,10 @@ export function EventEditForm(props: Readonly<EventEditFormProps>): ReactNode {
 		contentBlocks,
 		documentId,
 		hasDraftChanges,
+		isDefaultLocale,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		event,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -65,13 +76,18 @@ export function EventEditForm(props: Readonly<EventEditFormProps>): ReactNode {
 					publishAction: publishEventAction,
 					discardDraftAction: discardEventDraftAction,
 				}}
+				localeSelector={
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+				}
 			/>
 
 			<EventForm
+				key={event.id}
 				contentBlocks={contentBlocks}
 				event={event}
 				formAction={updateEventAction}
 				formId={formId}
+				isDefaultLocale={isDefaultLocale}
 				initialAssets={initialAssets}
 				initialRelatedEntityIds={initialRelatedEntityIds}
 				initialRelatedEntityItems={initialRelatedEntityItems}

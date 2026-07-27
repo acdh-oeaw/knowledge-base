@@ -34,7 +34,7 @@ interface FundingCallsPageProps {
 		data: Array<
 			Pick<schema.FundingCall, "id" | "duration" | "title" | "summary"> & {
 				documentId: string;
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 				updatedAt: schema.Entity["updatedAt"];

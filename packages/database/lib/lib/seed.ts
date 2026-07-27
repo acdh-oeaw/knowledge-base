@@ -1,5 +1,3 @@
-// oxlint-disable oxc/no-map-spread
-
 import { groupBy, keyBy } from "@acdh-oeaw/lib";
 import { faker as f } from "@faker-js/faker";
 import slugify from "@sindresorhus/slugify";
@@ -43,6 +41,7 @@ interface DocumentVersion {
  */
 async function createDocumentVersions(
 	db: SeedTx,
+	localeId: string,
 	typeId: string,
 	statusId: string,
 	slugs: ReadonlyArray<string>,
@@ -54,8 +53,8 @@ async function createDocumentVersions(
 	const documents = await db
 		.insert(schema.entities)
 		.values(
-			slugs.map((slug) => {
-				return { typeId, slug };
+			slugs.map(() => {
+				return { typeId };
 			}),
 		)
 		.returning({ id: schema.entities.id });
@@ -64,10 +63,23 @@ async function createDocumentVersions(
 		.insert(schema.entityVersions)
 		.values(
 			documents.map((document) => {
-				return { entityId: document.id, statusId };
+				return { entityId: document.id, statusId, localeId };
 			}),
 		)
 		.returning({ id: schema.entityVersions.id, entityId: schema.entityVersions.entityId });
+
+	await db.insert(schema.slugs).values(
+		versions.map((version, index) => {
+			return {
+				entityVersionId: version.id,
+				entityId: version.entityId,
+				typeId,
+				localeId,
+				value: slugs[index]!,
+				isPublished: true,
+			};
+		}),
+	);
 
 	return versions.map((version) => {
 		return { documentId: version.entityId, versionId: version.id };
@@ -181,8 +193,19 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 			{ count: 25 },
 		);
 
+		const [defaultLocale] = await db
+			.select({ id: schema.locales.id })
+			.from(schema.locales)
+			.where(eq(schema.locales.isDefault, true))
+			.limit(1);
+
+		if (defaultLocale == null) {
+			throw new Error("No default locale found — seed the locales table first.");
+		}
+
 		const personIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.persons.id,
 			publishedStatusId,
 			persons.map((p) => slugify(p.sortName)),
@@ -226,6 +249,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const eventIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.events.id,
 			publishedStatusId,
 			events.map((e) => slugify(e.title)),
@@ -253,6 +277,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const impactCaseStudyIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.impact_case_studies.id,
 			publishedStatusId,
 			impactCaseStudies.map((s) => slugify(s.title)),
@@ -292,6 +317,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const newsItemIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.news.id,
 			publishedStatusId,
 			news.map((n) => slugify(n.title)),
@@ -319,6 +345,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const pageIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.pages.id,
 			publishedStatusId,
 			pages.map((p) => slugify(p.title)),
@@ -342,6 +369,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const documentationPageIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.documentation_pages.id,
 			publishedStatusId,
 			documentationPages.map((p) => slugify(p.title)),
@@ -349,7 +377,6 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 		record(entityTypesByType.documentation_pages.id, documentationPageIds);
 
 		await db.insert(schema.documentationPages).values(
-			// oxlint-disable-next-line oxc/no-map-spread
 			documentationPageIds.map(({ versionId }, index) => {
 				return { ...documentationPages[index]!, id: versionId };
 			}),
@@ -370,6 +397,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const spotlightArticleIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.spotlight_articles.id,
 			publishedStatusId,
 			spotlightArticles.map((a) => slugify(a.title)),
@@ -535,6 +563,7 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 
 		const organisationalUnitIds = await createDocumentVersions(
 			db,
+			defaultLocale.id,
 			entityTypesByType.organisational_units.id,
 			publishedStatusId,
 			organisationalUnits.map((u) => slugify(u.name)),
@@ -543,7 +572,6 @@ export async function seed(db: Client, config: SeedConfig = {}): Promise<void> {
 		const organisationalUnitsIds = await db
 			.insert(schema.organisationalUnits)
 			.values(
-				// oxlint-disable-next-line oxc/no-map-spread
 				organisationalUnitIds.map(({ versionId }, index) => {
 					return { ...organisationalUnits[index]!, id: versionId };
 				}),

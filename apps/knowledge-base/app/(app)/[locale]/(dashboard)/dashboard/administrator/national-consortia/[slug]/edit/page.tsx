@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -8,7 +9,11 @@ import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
 import { getSocialMediaOptions } from "@/lib/data/social-media";
@@ -38,13 +43,13 @@ export async function generateMetadata(
 export default async function DashboardAdministratorEditNationalConsortiumPage(
 	props: Readonly<DashboardAdministratorEditNationalConsortiumPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 	const { user } = await assertAuthenticated();
 
 	const anyVersion = await db.query.organisationalUnits.findFirst({
-		where: { entityVersion: { entity: { slug } }, type: { type: "national_consortium" } },
+		where: { entityVersion: { slug: { value: slug } }, type: { type: "national_consortium" } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -59,13 +64,30 @@ export default async function DashboardAdministratorEditNationalConsortiumPage(
 	}
 
 	const documentId = anyVersion.entityVersion.entity.id;
+
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			documentId,
 			organisationalUnitsLifecycleAdapter,
+			selectedLocale.id,
 		);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -108,6 +130,12 @@ export default async function DashboardAdministratorEditNationalConsortiumPage(
 		unitRelationStatusOptions,
 	} = nationalConsortiumData;
 
+	assert(
+		nationalConsortium.entityVersion.slug,
+		`Slug missing for entity version "${nationalConsortium.entityVersion.id}".`,
+	);
+	const entityVersionSlug = nationalConsortium.entityVersion.slug;
+
 	const image =
 		nationalConsortium.image != null
 			? {
@@ -133,10 +161,17 @@ export default async function DashboardAdministratorEditNationalConsortiumPage(
 			initialSocialMediaIds={socialMediaIds}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}
+			isDefaultLocale={selectedLocale.isDefault}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			memberInstitutions={memberInstitutions}
 			memberInstitutionStatusOptions={memberInstitutionStatusOptions}
-			nationalConsortium={{ ...nationalConsortium, image }}
+			nationalConsortium={{
+				...nationalConsortium,
+				entityVersion: { ...nationalConsortium.entityVersion, slug: entityVersionSlug },
+				image,
+			}}
 			relations={relations}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}

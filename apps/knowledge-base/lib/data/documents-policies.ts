@@ -23,9 +23,9 @@ export async function getDocumentsPolicies(params: GetDocumentsPoliciesParams) {
 				entityVersion: {
 					columns: { id: true, updatedAt: true },
 					with: {
-						entity: {
+						slug: {
 							columns: {
-								slug: true,
+								value: true,
 							},
 						},
 					},
@@ -49,7 +49,7 @@ export async function getDocumentsPolicies(params: GetDocumentsPoliciesParams) {
 	const data = items.map(({ entityVersion, ...rest }) => {
 		return {
 			...rest,
-			entity: { slug: entityVersion.entity.slug, updatedAt: entityVersion.updatedAt },
+			entity: { slug: entityVersion.slug?.value ?? "", updatedAt: entityVersion.updatedAt },
 		};
 	});
 
@@ -71,9 +71,9 @@ export async function getDocumentOrPolicyById(params: GetDocumentOrPolicyByIdPar
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -99,7 +99,7 @@ export async function getDocumentOrPolicyById(params: GetDocumentOrPolicyByIdPar
 	const { entityVersion, ...rest } = item;
 	const data = {
 		...rest,
-		entity: entityVersion.entity,
+		entity: { slug: entityVersion.slug?.value ?? "" },
 		document: { ...item.document, url: document.url },
 	};
 

@@ -28,7 +28,10 @@ interface DocumentOrPolicyFormProps {
 		schema.DocumentOrPolicy,
 		"id" | "title" | "summary" | "url" | "groupId"
 	> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: {
+			entity: { id: string };
+			slug: { value: string };
+		};
 	} & { document: { key: string; label: string; url: string } };
 	groups: Array<Pick<schema.DocumentPolicyGroup, "id" | "label">>;
 	formAction: ServerAction;

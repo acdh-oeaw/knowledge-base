@@ -1,5 +1,6 @@
 "use client";
 
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import { EventForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/ev
 import { createEventAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/create-event.action";
 
 interface EventCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -17,6 +19,7 @@ interface EventCreateFormProps {
 
 export function EventCreateForm(props: Readonly<EventCreateFormProps>): ReactNode {
 	const {
+		defaultLocaleName,
 		initialAssets,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -29,6 +32,13 @@ export function EventCreateForm(props: Readonly<EventCreateFormProps>): ReactNod
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New event")} />
+
+			<Note intent="info">
+				{t(
+					"This event will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<EventForm
 				formAction={createEventAction}

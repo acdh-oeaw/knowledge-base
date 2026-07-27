@@ -6,12 +6,15 @@ import {
 	DescriptionList,
 	DescriptionTerm,
 } from "@acdh-knowledge-base/ui/description-list";
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted, useFormatter } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-mark";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
@@ -24,14 +27,17 @@ import { formatRoleType } from "@/lib/format-role-type";
 interface InstitutionDetailsProps {
 	documentId: string;
 	hasDraft: boolean;
+	isLocaleFallback: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	selectedVersion: "draft" | "published";
 	institution: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	selectedRelatedEntities: Array<{
 		id: string;
@@ -61,13 +67,16 @@ export function InstitutionDetails(props: Readonly<InstitutionDetailsProps>): Re
 	const {
 		documentId,
 		hasDraft,
+		isLocaleFallback,
 		isPublished,
 		institution,
+		locales,
 		personRelations,
 		projectPartnerships,
 		relations,
 		publishAction,
 		discardDraftAction,
+		selectedLocaleCode,
 		selectedRelatedEntities,
 		selectedRelatedResources,
 		selectedSocialMediaItems,
@@ -79,29 +88,37 @@ export function InstitutionDetails(props: Readonly<InstitutionDetailsProps>): Re
 
 	return (
 		<Fragment>
+			{isLocaleFallback ? (
+				<Note intent="info">
+					{t("Not yet translated in the selected language — showing the default language.")}
+				</Note>
+			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/administrator/institutions/${institution.entityVersion.entity.slug}/details`}
+					draftHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/details`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/administrator/institutions/${institution.entityVersion.entity.slug}/details?version=published`}
+					publishedHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
-				<EntityLifecycleBar
-					discardDraftAction={discardDraftAction}
-					documentId={documentId}
-					editHref={`/dashboard/administrator/institutions/${institution.entityVersion.entity.slug}/edit`}
-					hasDraft={hasDraft}
-					isPublished={isPublished}
-					publishAction={publishAction}
-				/>
+				<div className="flex items-center gap-x-4">
+					<EntityLifecycleBar
+						discardDraftAction={discardDraftAction}
+						documentId={documentId}
+						editHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/edit`}
+						hasDraft={hasDraft}
+						isPublished={isPublished}
+						publishAction={publishAction}
+					/>
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+				</div>
 			</div>
 			<DescriptionList>
 				<DescriptionTerm>{t("Name")}</DescriptionTerm>
 				<DescriptionDetails>{institution.name}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
-				<DescriptionDetails>{institution.entityVersion.entity.slug}</DescriptionDetails>
+				<DescriptionDetails>{institution.entityVersion.slug.value}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Acronym")}</DescriptionTerm>
 				<DescriptionDetails>{institution.acronym}</DescriptionDetails>
@@ -234,7 +251,12 @@ export function InstitutionDetails(props: Readonly<InstitutionDetailsProps>): Re
 									key={relation.id}
 									source={institution.name}
 									relation={formatRoleType(relation.statusType)}
-									target={relation.relatedUnitName}
+									target={
+										<Fragment>
+											{relation.relatedUnitName}
+											{relation.relatedUnitIsLocaleFallback ? <LocaleFallbackMark /> : null}
+										</Fragment>
+									}
 									targetHref={getOrganisationalUnitDetailHref(
 										relation.relatedUnitType,
 										relation.relatedUnitSlug,
@@ -262,6 +284,7 @@ export function InstitutionDetails(props: Readonly<InstitutionDetailsProps>): Re
 									>
 										{partnership.projectAcronym ?? partnership.projectName}
 									</RelationLink>
+									{partnership.projectIsLocaleFallback ? <LocaleFallbackMark /> : null}
 									{" · "}
 									<span className="text-muted-fg">{partnership.roleType}</span>
 									{partnership.duration != null ? (

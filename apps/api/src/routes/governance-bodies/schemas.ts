@@ -40,7 +40,7 @@ export const GovernanceBodyBaseSchema = v.pipe(
 			"metadata",
 		]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		socialMedia: v.array(
 			v.object({
@@ -78,7 +78,7 @@ export const GovernanceBodySchema = v.pipe(
 			"metadata",
 		]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		socialMedia: v.array(
 			v.object({
@@ -104,7 +104,7 @@ export type GovernanceBody = v.InferOutput<typeof GovernanceBodySchema>;
 export const GovernanceBodySlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.OrganisationalUnitSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Governance body slug"),
 	v.metadata({ ref: "GovernanceBodySlug" }),

@@ -24,9 +24,9 @@ async function getDocumentationPages() {
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
+					slug: {
 						columns: {
-							slug: true,
+							value: true,
 						},
 					},
 				},
@@ -71,7 +71,9 @@ export default async function DocumentationPage(
 				<ul className="list-disc space-y-2 ps-6">
 					{pages.map((page) => (
 						<li key={page.id}>
-							<Link href={`/documentation/${page.entityVersion.entity.slug}`}>{page.title}</Link>
+							<Link href={`/documentation/${page.entityVersion.slug?.value ?? ""}`}>
+								{page.title}
+							</Link>
 						</li>
 					))}
 				</ul>

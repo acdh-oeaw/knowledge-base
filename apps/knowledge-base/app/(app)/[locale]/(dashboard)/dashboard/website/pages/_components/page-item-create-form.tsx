@@ -1,5 +1,6 @@
 "use client";
 
+import { Note } from "@acdh-knowledge-base/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -8,6 +9,7 @@ import { PageItemForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website
 import { createPageItemAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_lib/create-page-item.action";
 
 interface PageItemCreateFormProps {
+	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -17,6 +19,7 @@ interface PageItemCreateFormProps {
 
 export function PageItemCreateForm(props: Readonly<PageItemCreateFormProps>): ReactNode {
 	const {
+		defaultLocaleName,
 		initialAssets,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -29,6 +32,13 @@ export function PageItemCreateForm(props: Readonly<PageItemCreateFormProps>): Re
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New page")} />
+
+			<Note intent="info">
+				{t(
+					"This page will be created in the default locale ({locale}). You can add translations after saving.",
+					{ locale: defaultLocaleName },
+				)}
+			</Note>
 
 			<PageItemForm
 				formAction={createPageItemAction}

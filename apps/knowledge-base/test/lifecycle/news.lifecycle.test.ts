@@ -39,6 +39,15 @@ async function getTestAsset(tx: Awaited<Parameters<Parameters<typeof db.transact
 	return asset;
 }
 
+async function getDefaultLocale(tx: Awaited<Parameters<Parameters<typeof db.transaction>[0]>[0]>) {
+	const locale = await tx.query.locales.findFirst({
+		where: { isDefault: true },
+		columns: { id: true },
+	});
+	assert(locale, "Default locale not found in database.");
+	return locale;
+}
+
 async function seedDraftNews(
 	tx: Awaited<Parameters<Parameters<typeof db.transaction>[0]>[0]>,
 	title = f.lorem.sentence(),
@@ -297,9 +306,14 @@ describe("news lifecycle", () => {
 				columns: { id: true },
 			});
 			assert(draftStatus);
+			const locale = await getDefaultLocale(tx);
 
 			await expect(
-				tx.insert(schema.entityVersions).values({ entityId: documentId, statusId: draftStatus.id }),
+				tx.insert(schema.entityVersions).values({
+					entityId: documentId,
+					statusId: draftStatus.id,
+					localeId: locale.id,
+				}),
 			).rejects.toThrow();
 		});
 	});

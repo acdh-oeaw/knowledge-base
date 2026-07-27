@@ -49,24 +49,21 @@ export async function CountryReportSoftwareScreen(
 	const consortiumSlugs = new Set<string>();
 
 	const nationalConsortiumSlugs = await db
-		.select({ slug: schema.entities.slug })
+		.select({ slug: schema.slugs.value })
 		.from(schema.organisationalUnitsRelations)
 		.innerJoin(
 			schema.organisationalUnitStatus,
 			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
 		)
 		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.organisationalUnitsRelations.unitDocumentId),
-		)
-		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
+			eq(schema.documentLifecycle.documentId, schema.organisationalUnitsRelations.unitDocumentId),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
 			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
 		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),

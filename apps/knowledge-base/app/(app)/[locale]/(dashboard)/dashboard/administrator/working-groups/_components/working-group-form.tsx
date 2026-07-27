@@ -3,7 +3,7 @@
 import type * as schema from "@acdh-knowledge-base/database/schema";
 import { createActionStateInitial } from "@acdh-knowledge-base/next-lib/actions";
 import { Button } from "@acdh-knowledge-base/ui/button";
-import { FieldError, Label } from "@acdh-knowledge-base/ui/field";
+import { Description, FieldError, Label } from "@acdh-knowledge-base/ui/field";
 import { Form } from "@acdh-knowledge-base/ui/form";
 import { Input } from "@acdh-knowledge-base/ui/input";
 import { Separator } from "@acdh-knowledge-base/ui/separator";
@@ -26,12 +26,18 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface WorkingGroupFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/**
+	 * Acronym/SSHOC actor ID aren't translatable — the DB keeps them synced from the default locale's
+	 * version regardless, so this locks their inputs when editing another locale. Defaults to `true`
+	 * (the create form has no locale concept, and always starts in the default locale).
+	 */
+	isDefaultLocale?: boolean;
 	workingGroup?: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	formId?: string;
 	formAction: ServerAction;
@@ -55,6 +61,7 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 		initialAssets,
 		formAction,
 		formId,
+		isDefaultLocale = true,
 		workingGroup,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -89,25 +96,55 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 						<FieldError />
 					</TextField>
 
-					<TextField defaultValue={workingGroup?.acronym ?? undefined} name="acronym">
-						<Label>{t("Acronym")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField defaultValue={workingGroup?.acronym ?? undefined} name="acronym">
+							<Label>{t("Acronym")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Acronym")}</Label>
+							<p className="text-sm">{workingGroup?.acronym ?? t("Not set")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{workingGroup?.acronym != null ? (
+								<input name="acronym" type="hidden" value={workingGroup.acronym} />
+							) : null}
+						</div>
+					)}
 
-					<TextField
-						defaultValue={
-							workingGroup?.sshocMarketplaceActorId != null
-								? String(workingGroup.sshocMarketplaceActorId)
-								: undefined
-						}
-						name="sshocMarketplaceActorId"
-						type="number"
-					>
-						<Label>{t("SSHOC actor ID")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<TextField
+							defaultValue={
+								workingGroup?.sshocMarketplaceActorId != null
+									? String(workingGroup.sshocMarketplaceActorId)
+									: undefined
+							}
+							name="sshocMarketplaceActorId"
+							type="number"
+						>
+							<Label>{t("SSHOC actor ID")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("SSHOC actor ID")}</Label>
+							<p className="text-sm">
+								{workingGroup?.sshocMarketplaceActorId != null
+									? String(workingGroup.sshocMarketplaceActorId)
+									: t("Not set")}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{workingGroup?.sshocMarketplaceActorId != null ? (
+								<input
+									name="sshocMarketplaceActorId"
+									type="hidden"
+									value={workingGroup.sshocMarketplaceActorId}
+								/>
+							) : null}
+						</div>
+					)}
 
 					<TextField defaultValue={workingGroup?.summary ?? undefined} name="summary">
 						<Label>{t("Summary")}</Label>

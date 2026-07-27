@@ -33,7 +33,7 @@ interface DocumentationPagesPageProps {
 	documentationPages: {
 		data: Array<
 			Pick<schema.DocumentationPage, "id" | "title"> & {
-				entity: Pick<schema.Entity, "slug">;
+				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
 			}

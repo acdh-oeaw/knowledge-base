@@ -21,7 +21,10 @@ interface InternalPageDetailsProps {
 	isPublished: boolean;
 	selectedVersion: "draft" | "published";
 	internalPage: Pick<schema.InternalPage, "title"> & {
-		entityVersion: { entity: Pick<schema.Entity, "id" | "slug"> };
+		entityVersion: {
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
+		};
 	};
 	publishAction?: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
@@ -45,16 +48,16 @@ export function InternalPageDetails(props: Readonly<InternalPageDetailsProps>): 
 		<Fragment>
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/administrator/internal-pages/${internalPage.entityVersion.entity.slug}/details`}
+					draftHref={`/dashboard/administrator/internal-pages/${internalPage.entityVersion.slug.value}/details`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/administrator/internal-pages/${internalPage.entityVersion.entity.slug}/details?version=published`}
+					publishedHref={`/dashboard/administrator/internal-pages/${internalPage.entityVersion.slug.value}/details?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<EntityLifecycleBar
 					discardDraftAction={discardDraftAction}
 					documentId={documentId}
-					editHref={`/dashboard/administrator/internal-pages/${internalPage.entityVersion.entity.slug}/edit`}
+					editHref={`/dashboard/administrator/internal-pages/${internalPage.entityVersion.slug.value}/edit`}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
 					publishAction={publishAction}
@@ -65,7 +68,7 @@ export function InternalPageDetails(props: Readonly<InternalPageDetailsProps>): 
 				<DescriptionDetails>{internalPage.title}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
-				<DescriptionDetails>{internalPage.entityVersion.entity.slug}</DescriptionDetails>
+				<DescriptionDetails>{internalPage.entityVersion.slug.value}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Content")}</DescriptionTerm>
 				<DescriptionDetails>

@@ -2,21 +2,24 @@ import path from "node:path";
 
 import { and, createDatabaseService, eq, schema } from "@acdh-knowledge-base/database";
 import { createStorageService } from "@acdh-knowledge-base/storage";
-import type { AssetPrefix } from "@acdh-knowledge-base/storage/config";
 import { buffer } from "@acdh-knowledge-base/storage/lib";
 import { assert, keyBy, log } from "@acdh-oeaw/lib";
 import slugify from "@sindresorhus/slugify";
-import { generateJSON } from "@tiptap/html";
-import { StarterKit } from "@tiptap/starter-kit";
 
-import { apiBaseUrl, assetSizeLimit, assetsGithubPath } from "../config/data-migration.config";
+import { apiBaseUrl } from "../config/data-migration.config";
 import { env } from "../config/env.config";
 import {
+	addSocialMediaRelationForOrganisationalUnit,
+	addSocialMediaRelationForPerson,
+	createAsset,
+	createFieldAndContentBlock,
 	createPublishedDocument,
 	createSortName,
-	logToFile,
+	createVersion,
 	parseEventSummary,
 } from "../src/lib/utils";
+
+type Locale = "en" | "de";
 
 interface ClariahATWebsiteInstitution {
 	name?: string;
@@ -49,7 +52,7 @@ interface ClariahATWebsiteInstitution {
 	}>;
 }
 
-type Institution = Record<"en" | "de", ClariahATWebsiteInstitution | null>;
+type Institution = Record<Locale, ClariahATWebsiteInstitution | null>;
 
 interface ClariahATEvent {
 	title?: string;
@@ -62,7 +65,7 @@ interface ClariahATEvent {
 	description: string | null;
 }
 
-type Event = Record<"en" | "de", ClariahATEvent | null>;
+type Event = Record<Locale, ClariahATEvent | null>;
 
 interface ClariahATNewsItem {
 	title?: string;
@@ -73,7 +76,7 @@ interface ClariahATNewsItem {
 	description: string | null;
 }
 
-type NewsItem = Record<"en" | "de", ClariahATNewsItem | null>;
+type NewsItem = Record<Locale, ClariahATNewsItem | null>;
 
 interface ClariahATProject {
 	title?: string;
@@ -90,7 +93,7 @@ interface ClariahATProject {
 	tags: Array<{ name: string; tid: number }>;
 }
 
-type Project = Record<"en" | "de", ClariahATProject | null>;
+type Project = Record<Locale, ClariahATProject | null>;
 
 interface ClariahATPage {
 	title?: string;
@@ -100,7 +103,15 @@ interface ClariahATPage {
 	content: string | null;
 }
 
-type Page = Record<"en" | "de", ClariahATPage | null>;
+type Page = Record<Locale, ClariahATPage | null>;
+
+// key for a slug index that's aware of which locale a slug was published
+// under, since the same institution's slug differs per locale (translated
+// names) but its default-locale-only slug isn't enough to recognize a
+// reused institution when a non-default-locale name is what actually matches.
+function localeSlugKey(localeId: string, slug: string): string {
+	return `${localeId}::${slug}`;
+}
 
 const db = createDatabaseService({
 	connection: {
@@ -144,7 +155,15 @@ async function main() {
 	const socialMediaTypesByType = keyBy(socialMediaTypes, (item) => item.type);
 
 	const personSlugDocumentIds = new Map<string, string>();
+	const personLocaleSlugDocumentIds = new Map<string, string>();
 	const organisationalUnitsSlugDocumentIds = new Map<string, string>();
+	const organisationalUnitsLocaleSlugDocumentIds = new Map<string, string>();
+
+	const contentBlockTypes = await db.query.contentBlockTypes.findMany();
+	const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
+
+	const personSlugVersionedLocaleIds = new Map<string, Set<string>>();
+	const organisationalUnitsSlugVersionedLocaleIds = new Map<string, Set<string>>();
 
 	const placeholderInput = await buffer.fromFilePath(
 		path.join(process.cwd(), "scripts", "logo-clariah-at.svg"),
@@ -153,6 +172,22 @@ async function main() {
 
 	const entityTypes = await db.query.entityTypes.findMany();
 	const entityTypesByType = keyBy(entityTypes, (item) => item.type);
+
+	const locales = await db.query.locales.findMany({
+		orderBy: (t, { desc }) => [desc(t.isDefault)],
+	});
+	const localesByLanguageCode = keyBy(locales, (item) => item.languageCode);
+
+	const defaultLocale = locales.find((l) => l.isDefault);
+
+	assert(defaultLocale, "locale not found — run seed-cms first.");
+
+	const localeDE = localesByLanguageCode.de;
+
+	assert(localeDE, "locale not found — run seed-cms first.");
+
+	const defaultLocaleId = defaultLocale.id;
+	const localeDEId = localeDE.id;
 
 	const { key: placeholderImage } = (
 		await storage.upload({
@@ -171,14 +206,35 @@ async function main() {
 		})
 		.returning({ id: schema.assets.id });
 
+	assert(placeholderAsset);
+
 	const orgUnitTypeId = entityTypesByType.organisational_units.id;
 
 	const [dariahEuDoc] = await db
-		.select({ id: schema.entities.id })
-		.from(schema.entities)
-		.where(and(eq(schema.entities.typeId, orgUnitTypeId), eq(schema.entities.slug, "dariah-eu")));
+		.select({ id: schema.slugs.entityId })
+		.from(schema.slugs)
+		.where(
+			and(
+				eq(schema.slugs.typeId, orgUnitTypeId),
+				eq(schema.slugs.localeId, defaultLocaleId),
+				eq(schema.slugs.value, "dariah-eu"),
+			),
+		);
 
 	assert(dariahEuDoc);
+
+	const [dariahEuDocDE] = await db
+		.select({ id: schema.slugs.entityId })
+		.from(schema.slugs)
+		.where(
+			and(
+				eq(schema.slugs.typeId, orgUnitTypeId),
+				eq(schema.slugs.localeId, localeDEId),
+				eq(schema.slugs.value, "dariah-eu"),
+			),
+		);
+
+	assert(dariahEuDocDE);
 
 	const dariahEuDocId = dariahEuDoc.id;
 
@@ -201,6 +257,8 @@ async function main() {
 	let countryDocumentId: string;
 	let countryVersionId: string;
 
+	let countryVersionDEId: string;
+
 	/** Create country Austria * */
 
 	await db.transaction(async (tx) => {
@@ -208,7 +266,25 @@ async function main() {
 			tx,
 			entityTypesByType.organisational_units.id,
 			"austria",
+			defaultLocale.id,
 		));
+
+		countryVersionDEId = await createVersion(
+			tx,
+			entityTypesByType.organisational_units.id,
+			"oesterreich",
+			countryDocumentId,
+			localeDE.id,
+		);
+
+		organisationalUnitsLocaleSlugDocumentIds.set(
+			localeSlugKey(defaultLocale.id, "austria"),
+			countryDocumentId,
+		);
+		organisationalUnitsLocaleSlugDocumentIds.set(
+			localeSlugKey(localeDE.id, "oesterreich"),
+			countryDocumentId,
+		);
 
 		const [countryOrgUnit] = await tx
 			.insert(schema.organisationalUnits)
@@ -221,14 +297,41 @@ async function main() {
 			})
 			.returning({ id: schema.organisationalUnits.id });
 
-		/** Create national consortium CLARIAH-AT * */
+		const [countryOrgUnitDE] = await tx
+			.insert(schema.organisationalUnits)
+			.values({
+				id: countryVersionDEId,
+				acronym: "at",
+				name: "Österreich",
+				summary: "",
+				typeId: organisationalUnitTypesByType.country.id,
+			})
+			.returning({ id: schema.organisationalUnits.id });
 
-		assert(placeholderAsset);
+		/** Create national consortium CLARIAH-AT * */
 
 		const { documentId: ncDocumentId, versionId: ncVersionId } = await createPublishedDocument(
 			tx,
 			entityTypesByType.organisational_units.id,
 			"clariah-at",
+			defaultLocaleId,
+		);
+
+		const versionIdDE = await createVersion(
+			tx,
+			entityTypesByType.organisational_units.id,
+			"clariah-at",
+			ncDocumentId,
+			localeDE.id,
+		);
+
+		organisationalUnitsLocaleSlugDocumentIds.set(
+			localeSlugKey(defaultLocaleId, "clariah-at"),
+			ncDocumentId,
+		);
+		organisationalUnitsLocaleSlugDocumentIds.set(
+			localeSlugKey(localeDE.id, "clariah-at"),
+			ncDocumentId,
 		);
 
 		const [ncOrgUnit] = await tx
@@ -244,8 +347,24 @@ async function main() {
 			})
 			.returning({ id: schema.organisationalUnits.id });
 
+		const [ncOrgUnitDE] = await tx
+			.insert(schema.organisationalUnits)
+			.values({
+				id: versionIdDE,
+				name: "CLARIAH-AT",
+				sshocMarketplaceActorId: 9403,
+				imageId: placeholderAsset.id,
+				summary:
+					"Ein offenes Netzwerk, das die Anwendung digitaler Methoden in den Geisteswissenschaften und die Entwicklung der entsprechenden Forschungsinfrastrukturen fördert und unterstützt.",
+				typeId: organisationalUnitTypesByType.national_consortium.id,
+			})
+			.returning({ id: schema.organisationalUnits.id });
+
 		assert(countryOrgUnit);
 		assert(ncOrgUnit);
+
+		assert(countryOrgUnitDE);
+		assert(ncOrgUnitDE);
 
 		organisationalUnitsSlugDocumentIds.set("clariah-at", ncDocumentId);
 
@@ -273,378 +392,313 @@ async function main() {
 	log.info("Migrating institutions...");
 
 	for (const institution of institutions) {
-		const institutionEN = institution.en;
-		assert(institutionEN?.name);
-		const institutionName = institutionEN.name;
-		const slug = slugify(institutionName);
-		let institutionDocumentId: string;
+		let institutionDocumentId: string | undefined;
+		let institutionVersionId: string | undefined;
 
-		await db.transaction(async (tx) => {
-			const { documentId, versionId } = await createPublishedDocument(
-				tx,
-				entityTypesByType.organisational_units.id,
-				slug,
-			);
+		// hoisted above the locale loop so ids created on the default-locale
+		// pass are still visible on subsequent locale passes.
+		const subInstitutionDocumentIds: Array<string> = [];
+		const institutionPeopleDocumentIds: Array<string> = [];
 
-			institutionDocumentId = documentId;
-			organisationalUnitsSlugDocumentIds.set(slug, documentId);
+		for (const locale of locales) {
+			const l: Locale = locale.languageCode as Locale;
+			const institutionData = institution[l];
+			assert(institutionData);
+			const institutionName = institutionData.name;
+			assert(institutionName);
+			const slug = slugify(institutionName);
 
-			let asset;
+			await db.transaction(async (tx) => {
+				if (locale.isDefault) {
+					const { documentId, versionId } = await createPublishedDocument(
+						tx,
+						entityTypesByType.organisational_units.id,
+						slug,
+						defaultLocaleId,
+					);
+					institutionDocumentId = documentId;
+					institutionVersionId = versionId;
+					organisationalUnitsSlugDocumentIds.set(slug, documentId);
+					organisationalUnitsLocaleSlugDocumentIds.set(
+						localeSlugKey(defaultLocaleId, slug),
+						documentId,
+					);
 
-			if (institutionEN.logo != null) {
-				const imageUrl = new URL(`${assetsGithubPath}${institutionEN.logo}`);
-				const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-				const size = Number(imageResponse.headers.get("content-length"));
-				if (size > assetSizeLimit) {
-					logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
-				} else {
-					const input = await buffer.fromUrl(imageUrl);
-					const metadata = await buffer.getMetadata(input);
-					const prefix = "logos" as AssetPrefix;
-					const label = institutionEN.name;
-					const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
-
-					assert(label);
-
-					[asset] = await db
-						.insert(schema.assets)
-						.values({
-							key,
-							label,
-							mimeType: metadata["content-type"],
-							caption: "",
-							alt: "",
-							size,
-						})
-						.returning({ id: schema.assets.id });
-				}
-			}
-
-			assert(placeholderAsset);
-
-			const [orgUnit] = await tx
-				.insert(schema.organisationalUnits)
-				.values({
-					id: versionId,
-					name: institutionName,
-					summary: "",
-					typeId: organisationalUnitTypesByType.institution.id,
-					imageId: asset?.id ?? placeholderAsset.id,
-				})
-				.returning({ id: schema.organisationalUnits.id });
-
-			assert(orgUnit);
-
-			await tx.insert(schema.organisationalUnitsRelations).values({
-				unitDocumentId: documentId,
-				relatedUnitDocumentId: dariahEuDocId,
-				duration: {
-					start: new Date(Date.UTC(1900, 0, 1)),
-				},
-				status: organisationalUnitStatusByType.is_partner_institution_of.id,
-			});
-
-			assert(countryDocumentId);
-
-			await tx.insert(schema.organisationalUnitsRelations).values({
-				unitDocumentId: documentId,
-				relatedUnitDocumentId: countryDocumentId,
-				duration: { start: new Date(Date.UTC(1900, 0, 1)) },
-				status: organisationalUnitStatusByType.is_located_in.id,
-			});
-
-			const content = generateJSON(institutionEN.description ?? "", [StarterKit]);
-
-			const fieldName = await tx.query.entityTypesFieldsNames.findFirst({
-				where: {
-					entityTypeId: entityTypesByType.organisational_units.id,
-					fieldName: "description",
-				},
-			});
-
-			assert(fieldName);
-
-			const [field] = await tx
-				.insert(schema.fields)
-				.values({
-					entityVersionId: versionId,
-					fieldNameId: fieldName.id,
-				})
-				.returning({ id: schema.fields.id });
-
-			assert(field);
-
-			const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-			const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-			const [contentBlock] = await tx
-				.insert(schema.contentBlocks)
-				.values({
-					position: 0,
-					fieldId: field.id,
-					typeId: contentBlockTypesByType.rich_text.id,
-				})
-				.returning({ id: schema.contentBlocks.id });
-
-			assert(contentBlock);
-
-			await tx.insert(schema.richTextContentBlocks).values({
-				content,
-				id: contentBlock.id,
-			});
-
-			if (institutionEN.href != null) {
-				const [kbSocialMedia] = await tx
-					.insert(schema.socialMedia)
-					.values({
-						name: `${institutionName} Website`,
-						typeId: socialMediaTypesByType.website.id,
-						url: institutionEN.href,
+					await tx.insert(schema.organisationalUnitsRelations).values({
+						unitDocumentId: documentId,
+						relatedUnitDocumentId: dariahEuDocId,
 						duration: {
 							start: new Date(Date.UTC(1900, 0, 1)),
 						},
-					})
-					.returning({ id: schema.socialMedia.id });
+						status: organisationalUnitStatusByType.is_partner_institution_of.id,
+					});
 
-				assert(kbSocialMedia);
-
-				await tx.insert(schema.organisationalUnitsToSocialMedia).values({
-					organisationalUnitId: orgUnit.id,
-					socialMediaId: kbSocialMedia.id,
-				});
-			}
-		});
-
-		for (const subInstitution of institutionEN.institutions) {
-			const slug = slugify(subInstitution.name);
-
-			await db.transaction(async (tx) => {
-				const { documentId, versionId } = await createPublishedDocument(
-					tx,
-					entityTypesByType.organisational_units.id,
-					slug,
-				);
-
-				organisationalUnitsSlugDocumentIds.set(slug, documentId);
-
-				let asset;
-
-				if (subInstitution.logo) {
-					const imageUrl = new URL(`${assetsGithubPath}${subInstitution.logo}`);
-					const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-					const size = Number(imageResponse.headers.get("content-length"));
-					if (size > assetSizeLimit) {
-						logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
-					} else {
-						const input = await buffer.fromUrl(imageUrl);
-						const metadata = await buffer.getMetadata(input);
-						const prefix = "logos" as AssetPrefix;
-						const label = subInstitution.name;
-						const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
-
-						assert(label);
-
-						[asset] = await db
-							.insert(schema.assets)
-							.values({
-								key,
-								label,
-								mimeType: metadata["content-type"],
-								caption: "",
-								alt: "",
-								size,
-							})
-							.returning({ id: schema.assets.id });
-					}
+					await tx.insert(schema.organisationalUnitsRelations).values({
+						unitDocumentId: documentId,
+						relatedUnitDocumentId: countryDocumentId,
+						duration: { start: new Date(Date.UTC(1900, 0, 1)) },
+						status: organisationalUnitStatusByType.is_located_in.id,
+					});
+				} else {
+					assert(institutionDocumentId, "institution document id missing for locale pass");
+					institutionVersionId = await createVersion(
+						tx,
+						entityTypesByType.organisational_units.id,
+						slug,
+						institutionDocumentId,
+						locale.id,
+					);
+					organisationalUnitsLocaleSlugDocumentIds.set(
+						localeSlugKey(locale.id, slug),
+						institutionDocumentId,
+					);
 				}
+				const assetId =
+					institutionData.logo != null
+						? await createAsset(db, storage, "logos", institutionData.logo, institutionName)
+						: undefined;
 
 				const [orgUnit] = await tx
 					.insert(schema.organisationalUnits)
 					.values({
-						id: versionId,
-						name: subInstitution.name,
+						id: institutionVersionId,
+						name: institutionName,
 						summary: "",
 						typeId: organisationalUnitTypesByType.institution.id,
-						imageId: asset?.id,
+						imageId: assetId ?? placeholderAsset.id,
 					})
 					.returning({ id: schema.organisationalUnits.id });
 
-				assert(orgUnit);
-
-				await tx.insert(schema.organisationalUnitsRelations).values({
-					unitDocumentId: documentId,
-					relatedUnitDocumentId: dariahEuDocId,
-					duration: {
-						start: new Date(Date.UTC(1900, 0, 1)),
-					},
-					status: organisationalUnitStatusByType.is_partner_institution_of.id,
-				});
-
-				await tx.insert(schema.organisationalUnitsRelations).values({
-					unitDocumentId: documentId,
-					relatedUnitDocumentId: institutionDocumentId,
-					duration: {
-						start: new Date(Date.UTC(1900, 0, 1)),
-					},
-					status: organisationalUnitStatusByType.is_part_of.id,
-				});
-
-				assert(countryDocumentId);
-
-				await tx.insert(schema.organisationalUnitsRelations).values({
-					unitDocumentId: documentId,
-					relatedUnitDocumentId: countryDocumentId,
-					duration: { start: new Date(Date.UTC(1900, 0, 1)) },
-					status: organisationalUnitStatusByType.is_located_in.id,
-				});
-
-				const [kbSocialMedia] = await tx
-					.insert(schema.socialMedia)
-					.values({
-						name: `${subInstitution.name} Website`,
-						typeId: socialMediaTypesByType.website.id,
-						url: subInstitution.href,
-						duration: {
-							start: new Date(Date.UTC(1900, 0, 1)),
-						},
-					})
-					.returning({ id: schema.socialMedia.id });
-
-				assert(kbSocialMedia);
-
-				await tx.insert(schema.organisationalUnitsToSocialMedia).values({
-					organisationalUnitId: orgUnit.id,
-					socialMediaId: kbSocialMedia.id,
-				});
-			});
-		}
-
-		for (const person of institutionEN.people) {
-			const slug = slugify(person.name);
-
-			await db.transaction(async (tx) => {
-				const { documentId, versionId } = await createPublishedDocument(
+				await createFieldAndContentBlock(
 					tx,
-					entityTypesByType.persons.id,
-					slug,
+					institutionData.description,
+					entityTypesByType.organisational_units.id,
+					"description",
+					institutionVersionId,
+					contentBlockTypesByType.rich_text,
 				);
-				let asset;
-				if (person.image) {
-					const imageUrl = new URL(`${assetsGithubPath}${person.image}`);
-					const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-					const size = Number(imageResponse.headers.get("content-length"));
-					if (size > assetSizeLimit) {
-						logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
-					} else {
-						const input = await buffer.fromUrl(imageUrl);
-						const metadata = await buffer.getMetadata(input);
-						const prefix = "avatars" as AssetPrefix;
-						const label = person.name;
-						const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
 
-						[asset] = await db
-							.insert(schema.assets)
-							.values({
-								key,
-								label,
-								mimeType: metadata["content-type"],
-								caption: "",
-								alt: "",
-								size,
-							})
-							.returning({ id: schema.assets.id });
-					}
+				if (institutionData.href != null) {
+					assert(orgUnit);
+					await addSocialMediaRelationForOrganisationalUnit(
+						tx,
+						`${institutionName} Website`,
+						socialMediaTypesByType.website.id,
+						institutionData.href,
+						orgUnit.id,
+					);
 				}
-				assert(placeholderAsset);
+			});
 
-				const [kbPerson] = await tx
-					.insert(schema.persons)
-					.values({
-						id: versionId,
-						name: person.name,
-						sortName: createSortName(person.name),
-						imageId: asset?.id ?? placeholderAsset.id,
-					})
-					.returning({ id: schema.persons.id });
+			for (const [index, subInstitution] of institutionData.institutions.entries()) {
+				const slug = slugify(subInstitution.name);
+				let subInstitutionVersionId: string;
 
-				assert(kbPerson);
+				await db.transaction(async (tx) => {
+					let subInstitutionDocumentId: string;
 
-				personSlugDocumentIds.set(slug, documentId);
+					if (locale.isDefault) {
+						const { documentId, versionId } = await createPublishedDocument(
+							tx,
+							entityTypesByType.organisational_units.id,
+							slug,
+							defaultLocaleId,
+						);
+						subInstitutionDocumentId = documentId;
+						subInstitutionVersionId = versionId;
+						// remember this document id, keyed by position, for the next locale pass
+						subInstitutionDocumentIds[index] = documentId;
+						organisationalUnitsSlugDocumentIds.set(slug, documentId);
+						organisationalUnitsLocaleSlugDocumentIds.set(
+							localeSlugKey(defaultLocaleId, slug),
+							documentId,
+						);
 
-				await tx.insert(schema.personsToOrganisationalUnits).values({
-					personDocumentId: documentId,
-					organisationalUnitDocumentId: institutionDocumentId,
-					duration: { start: new Date(Date.UTC(1900, 0, 1)) },
-					roleTypeId: personRoleTypesByType.is_affiliated_with.id,
-				});
-
-				if (person.description != null) {
-					const content = generateJSON(person.description, [StarterKit]);
-
-					const fieldName = await tx.query.entityTypesFieldsNames.findFirst({
-						where: {
-							entityTypeId: entityTypesByType.persons.id,
-							fieldName: "biography",
-						},
-					});
-
-					assert(fieldName);
-
-					const [field] = await tx
-						.insert(schema.fields)
-						.values({
-							entityVersionId: versionId,
-							fieldNameId: fieldName.id,
-						})
-						.returning({ id: schema.fields.id });
-
-					assert(field);
-
-					const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-					const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-					const [contentBlock] = await tx
-						.insert(schema.contentBlocks)
-						.values({
-							position: 0,
-							fieldId: field.id,
-							typeId: contentBlockTypesByType.rich_text.id,
-						})
-						.returning({ id: schema.contentBlocks.id });
-
-					assert(contentBlock);
-
-					await tx.insert(schema.richTextContentBlocks).values({
-						content,
-						id: contentBlock.id,
-					});
-				}
-
-				for (const link of person.links) {
-					const socialMediaType =
-						socialMediaTypesByType[link.kind as keyof typeof socialMediaTypesByType] ??
-						socialMediaTypesByType.other;
-
-					const [kbSocialMedia] = await tx
-						.insert(schema.socialMedia)
-						.values({
-							name: `${person.name} ${link.kind}`,
-							typeId: socialMediaType.id,
-							url: link.href,
+						await tx.insert(schema.organisationalUnitsRelations).values({
+							unitDocumentId: subInstitutionDocumentId,
+							relatedUnitDocumentId: dariahEuDocId,
 							duration: {
 								start: new Date(Date.UTC(1900, 0, 1)),
 							},
+							status: organisationalUnitStatusByType.is_partner_institution_of.id,
+						});
+
+						assert(institutionDocumentId);
+
+						await tx.insert(schema.organisationalUnitsRelations).values({
+							unitDocumentId: subInstitutionDocumentId,
+							relatedUnitDocumentId: institutionDocumentId,
+							duration: {
+								start: new Date(Date.UTC(1900, 0, 1)),
+							},
+							status: organisationalUnitStatusByType.is_part_of.id,
+						});
+
+						assert(countryDocumentId);
+
+						await tx.insert(schema.organisationalUnitsRelations).values({
+							unitDocumentId: subInstitutionDocumentId,
+							relatedUnitDocumentId: countryDocumentId,
+							duration: { start: new Date(Date.UTC(1900, 0, 1)) },
+							status: organisationalUnitStatusByType.is_located_in.id,
+						});
+					} else {
+						// read back the id remembered from the default-locale pass
+						subInstitutionDocumentId = subInstitutionDocumentIds[index]!;
+						assert(subInstitutionDocumentId, "sub-institution document id missing for locale pass");
+						subInstitutionVersionId = await createVersion(
+							tx,
+							entityTypesByType.organisational_units.id,
+							slug,
+							subInstitutionDocumentId,
+							locale.id,
+						);
+						organisationalUnitsLocaleSlugDocumentIds.set(
+							localeSlugKey(locale.id, slug),
+							subInstitutionDocumentId,
+						);
+					}
+
+					const assetId = subInstitution.logo
+						? await createAsset(db, storage, "logos", subInstitution.logo, subInstitution.name)
+						: undefined;
+
+					const [orgUnit] = await tx
+						.insert(schema.organisationalUnits)
+						.values({
+							id: subInstitutionVersionId,
+							name: subInstitution.name,
+							summary: "",
+							typeId: organisationalUnitTypesByType.institution.id,
+							imageId: assetId ?? placeholderAsset.id,
 						})
-						.returning({ id: schema.socialMedia.id });
+						.returning({ id: schema.organisationalUnits.id });
 
-					assert(kbSocialMedia);
+					assert(orgUnit);
 
-					await tx.insert(schema.personsToSocialMedia).values({
-						personId: kbPerson.id,
-						socialMediaId: kbSocialMedia.id,
-					});
-				}
-			});
+					await addSocialMediaRelationForOrganisationalUnit(
+						tx,
+						`${institutionName} Website`,
+						socialMediaTypesByType.website.id,
+						subInstitution.href,
+						orgUnit.id,
+					);
+				});
+			}
+
+			for (const [index, person] of institutionData.people.entries()) {
+				const slug = slugify(person.name);
+				let personVersionId: string;
+
+				await db.transaction(async (tx) => {
+					let personDocumentId: string;
+
+					if (locale.isDefault) {
+						const { documentId, versionId } = await createPublishedDocument(
+							tx,
+							entityTypesByType.persons.id,
+							slug,
+							defaultLocaleId,
+						);
+						personDocumentId = documentId;
+						personVersionId = versionId;
+						// remember this document id, keyed by position, for the next locale pass
+						institutionPeopleDocumentIds[index] = documentId;
+						personSlugDocumentIds.set(slug, documentId);
+						personLocaleSlugDocumentIds.set(localeSlugKey(defaultLocaleId, slug), documentId);
+
+						assert(institutionDocumentId);
+
+						await tx.insert(schema.personsToOrganisationalUnits).values({
+							personDocumentId,
+							organisationalUnitDocumentId: institutionDocumentId,
+							duration: { start: new Date(Date.UTC(1900, 0, 1)) },
+							roleTypeId: personRoleTypesByType.is_affiliated_with.id,
+						});
+					} else {
+						// read back the id remembered from the default-locale pass
+						personDocumentId = institutionPeopleDocumentIds[index]!;
+						assert(personDocumentId, "person document id missing for locale pass");
+						personVersionId = await createVersion(
+							tx,
+							entityTypesByType.persons.id,
+							slug,
+							personDocumentId,
+							locale.id,
+						);
+						personLocaleSlugDocumentIds.set(localeSlugKey(locale.id, slug), personDocumentId);
+					}
+
+					const assetId = person.image
+						? await createAsset(db, storage, "avatars", person.image, person.name)
+						: undefined;
+
+					const [kbPerson] = await tx
+						.insert(schema.persons)
+						.values({
+							id: personVersionId,
+							name: person.name,
+							sortName: createSortName(person.name),
+							imageId: assetId ?? placeholderAsset.id,
+						})
+						.returning({ id: schema.persons.id });
+
+					assert(kbPerson);
+
+					if (person.description != null) {
+						await createFieldAndContentBlock(
+							tx,
+							person.description,
+							entityTypesByType.persons.id,
+							"biography",
+							personVersionId,
+							contentBlockTypesByType.rich_text,
+						);
+					}
+
+					for (const link of person.links) {
+						const socialMediaType =
+							socialMediaTypesByType[link.kind as keyof typeof socialMediaTypesByType] ??
+							socialMediaTypesByType.other;
+
+						await addSocialMediaRelationForPerson(
+							tx,
+							`${person.name} ${socialMediaType.type}`,
+							socialMediaType.id,
+							link.href,
+							kbPerson.id,
+						);
+					}
+				});
+			}
+		}
+
+		// After the locale loop, this institution — and every sub-institution and
+		// person created for it above — has a version for every locale. Register
+		// all of them so the projects phase never tries to create another
+		// version/document for something that already exists in every locale.
+		assert(institutionDocumentId, "institution document id missing after locale loop");
+		organisationalUnitsSlugVersionedLocaleIds.set(
+			institutionDocumentId,
+			new Set(locales.map((l) => l.id)),
+		);
+
+		for (const subInstitutionDocumentId of subInstitutionDocumentIds) {
+			if (subInstitutionDocumentId != null) {
+				organisationalUnitsSlugVersionedLocaleIds.set(
+					subInstitutionDocumentId,
+					new Set(locales.map((l) => l.id)),
+				);
+			}
+		}
+
+		for (const institutionPersonDocumentId of institutionPeopleDocumentIds) {
+			if (institutionPersonDocumentId != null) {
+				personSlugVersionedLocaleIds.set(
+					institutionPersonDocumentId,
+					new Set(locales.map((l) => l.id)),
+				);
+			}
 		}
 	}
 	/** Migrate events */
@@ -655,115 +709,73 @@ async function main() {
 	const events = (await eventsResponse.json()) as Array<Event>;
 
 	for (const event of events) {
-		const eventEN = event.en;
-		assert(eventEN?.title);
-		const eventTitle =
-			eventEN.title === "CLARIAH-AT Roadshow"
-				? `CLARIAH-AT Roadshow ${eventEN.date?.slice(0, 4) ?? "duplicated"}`
-				: eventEN.title;
-		const slug = slugify(eventTitle);
-
-		let eventDuration = {
-			start: new Date(Date.UTC(1900, 0, 1)),
-		};
-		let eventLocation = "";
-
-		if (eventEN.summary != null) {
-			({ duration: eventDuration, location: eventLocation } = parseEventSummary(eventEN.summary));
-		}
-		await db.transaction(async (tx) => {
-			const { documentId: _eventDocumentId, versionId: eventVersionId } =
-				await createPublishedDocument(tx, entityTypesByType.events.id, slug);
-
-			let asset;
-			if (eventEN.image != null) {
-				const imageUrl = new URL(`${assetsGithubPath}${eventEN.image}`);
-				const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-				const size = Number(imageResponse.headers.get("content-length"));
-				if (size > assetSizeLimit) {
-					logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
+		let eventDocumentId: string | undefined;
+		for (const locale of locales) {
+			const l: Locale = locale.languageCode as Locale;
+			const eventData = event[l];
+			assert(eventData);
+			const eventTitle =
+				eventData.title === "CLARIAH-AT Roadshow"
+					? `CLARIAH-AT Roadshow ${eventData.date?.slice(0, 4) ?? "duplicated"}`
+					: eventData.title;
+			assert(eventTitle);
+			const slug = slugify(eventTitle);
+			let eventVersionId: string;
+			await db.transaction(async (tx) => {
+				if (locale.isDefault) {
+					const { documentId, versionId } = await createPublishedDocument(
+						tx,
+						entityTypesByType.events.id,
+						slug,
+						defaultLocaleId,
+					);
+					eventDocumentId = documentId;
+					eventVersionId = versionId;
 				} else {
-					try {
-						const input = await buffer.fromUrl(imageUrl);
-						const metadata = await buffer.getMetadata(input);
-						const prefix = "images" as AssetPrefix;
-						const label = eventEN.title!;
-						const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
-
-						[asset] = await db
-							.insert(schema.assets)
-							.values({
-								key,
-								label,
-								mimeType: metadata["content-type"],
-								caption: "",
-								alt: "",
-								size,
-							})
-							.returning({ id: schema.assets.id });
-					} catch (error: unknown) {
-						if (Error.isError(error)) {
-							logToFile(`${error.message} ${String(imageUrl)}`);
-						} else {
-							logToFile(`unknown error for:  ${String(imageUrl)}`);
-						}
-					}
+					assert(eventDocumentId, "event document id missing for locale pass");
+					eventVersionId = await createVersion(
+						tx,
+						entityTypesByType.events.id,
+						slug,
+						eventDocumentId,
+						locale.id,
+					);
 				}
-			}
-			assert(placeholderAsset);
+				const assetId =
+					eventData.image != null
+						? await createAsset(db, storage, "images", eventData.image, eventTitle)
+						: undefined;
 
-			await tx.insert(schema.events).values({
-				id: eventVersionId,
-				title: eventEN.title!,
-				summary: eventEN.summary ?? "",
-				imageId: asset?.id ?? placeholderAsset.id,
-				location: eventLocation,
-				duration: eventDuration,
-				createdAt: eventEN.date != null ? new Date(eventEN.date) : new Date(Date.now()),
+				let eventDuration = {
+					start: new Date(Date.UTC(1900, 0, 1)),
+				};
+				let eventLocation = "";
+
+				if (eventData.summary != null) {
+					({ duration: eventDuration, location: eventLocation } = parseEventSummary(
+						eventData.summary,
+					));
+				}
+				await tx.insert(schema.events).values({
+					id: eventVersionId,
+					title: eventTitle,
+					summary: eventData.summary ?? "",
+					imageId: assetId ?? placeholderAsset.id,
+					location: eventLocation,
+					duration: eventDuration,
+					createdAt: eventData.date != null ? new Date(eventData.date) : new Date(Date.now()),
+				});
+
+				await createFieldAndContentBlock(
+					tx,
+					eventData.description,
+					entityTypesByType.events.id,
+					"content",
+					eventVersionId,
+					contentBlockTypesByType.rich_text,
+				);
 			});
-
-			if (eventEN.description != null) {
-				const content = generateJSON(eventEN.description, [StarterKit]);
-
-				const fieldName = await tx.query.entityTypesFieldsNames.findFirst({
-					where: {
-						entityTypeId: entityTypesByType.events.id,
-						fieldName: "content",
-					},
-				});
-
-				assert(fieldName);
-
-				const [field] = await tx
-					.insert(schema.fields)
-					.values({
-						entityVersionId: eventVersionId,
-						fieldNameId: fieldName.id,
-					})
-					.returning({ id: schema.fields.id });
-
-				assert(field);
-
-				const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-				const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-				const [contentBlock] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						position: 0,
-						fieldId: field.id,
-						typeId: contentBlockTypesByType.rich_text.id,
-					})
-					.returning({ id: schema.contentBlocks.id });
-
-				assert(contentBlock);
-
-				await tx.insert(schema.richTextContentBlocks).values({
-					content,
-					id: contentBlock.id,
-				});
-			}
-		});
+		}
 	}
 	/** Migrate news */
 
@@ -773,94 +785,58 @@ async function main() {
 	const news = (await newsResponse.json()) as Array<NewsItem>;
 
 	for (const newsItem of news) {
-		const newsItemEN = newsItem.en;
-		assert(newsItemEN?.title);
-		const newsItemTitle = newsItemEN.title;
-		const slug = slugify(newsItemTitle);
-
-		await db.transaction(async (tx) => {
-			const { documentId: _newsItemDocumentId, versionId: newsItemVersionId } =
-				await createPublishedDocument(tx, entityTypesByType.news.id, slug);
-
-			let asset;
-			if (newsItemEN.image != null) {
-				const imageUrl = new URL(`${assetsGithubPath}${newsItemEN.image}`);
-				const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-				const size = Number(imageResponse.headers.get("content-length"));
-				if (size > assetSizeLimit) {
-					logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
+		let newsItemDocumentId: string | undefined;
+		for (const locale of locales) {
+			const l: Locale = locale.languageCode as Locale;
+			const newsItemData = newsItem[l];
+			assert(newsItemData);
+			const newsItemTitle = newsItemData.title;
+			assert(newsItemTitle);
+			const slug = slugify(newsItemTitle);
+			let newsItemVersionId: string;
+			await db.transaction(async (tx) => {
+				if (locale.isDefault) {
+					const { documentId, versionId } = await createPublishedDocument(
+						tx,
+						entityTypesByType.news.id,
+						slug,
+						defaultLocaleId,
+					);
+					newsItemDocumentId = documentId;
+					newsItemVersionId = versionId;
 				} else {
-					const input = await buffer.fromUrl(imageUrl);
-					const metadata = await buffer.getMetadata(input);
-					const prefix = "images" as AssetPrefix;
-					const label = newsItemEN.title!;
-					const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
-
-					[asset] = await db
-						.insert(schema.assets)
-						.values({
-							key,
-							label,
-							mimeType: metadata["content-type"],
-							caption: "",
-							alt: "",
-							size,
-						})
-						.returning({ id: schema.assets.id });
+					assert(newsItemDocumentId, "news item document id missing for locale pass");
+					newsItemVersionId = await createVersion(
+						tx,
+						entityTypesByType.news.id,
+						slug,
+						newsItemDocumentId,
+						locale.id,
+					);
 				}
-			}
-			assert(placeholderAsset);
+				const assetId =
+					newsItemData.image != null
+						? await createAsset(db, storage, "images", newsItemData.image, newsItemTitle)
+						: undefined;
 
-			await tx.insert(schema.news).values({
-				id: newsItemVersionId,
-				title: newsItemEN.title!,
-				summary: newsItemEN.summary ?? "",
-				imageId: asset?.id ?? placeholderAsset.id,
-				createdAt: newsItemEN.date != null ? new Date(newsItemEN.date) : new Date(Date.now()),
+				await tx.insert(schema.news).values({
+					id: newsItemVersionId,
+					title: newsItemTitle,
+					summary: newsItemData.summary ?? "",
+					imageId: assetId ?? placeholderAsset.id,
+					createdAt: newsItemData.date != null ? new Date(newsItemData.date) : new Date(Date.now()),
+				});
+
+				await createFieldAndContentBlock(
+					tx,
+					newsItemData.description,
+					entityTypesByType.news.id,
+					"content",
+					newsItemVersionId,
+					contentBlockTypesByType.rich_text,
+				);
 			});
-
-			if (newsItemEN.description != null) {
-				const content = generateJSON(newsItemEN.description, [StarterKit]);
-
-				const fieldName = await tx.query.entityTypesFieldsNames.findFirst({
-					where: {
-						entityTypeId: entityTypesByType.news.id,
-						fieldName: "content",
-					},
-				});
-
-				assert(fieldName);
-
-				const [field] = await tx
-					.insert(schema.fields)
-					.values({
-						entityVersionId: newsItemVersionId,
-						fieldNameId: fieldName.id,
-					})
-					.returning({ id: schema.fields.id });
-
-				assert(field);
-
-				const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-				const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-				const [contentBlock] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						position: 0,
-						fieldId: field.id,
-						typeId: contentBlockTypesByType.rich_text.id,
-					})
-					.returning({ id: schema.contentBlocks.id });
-
-				assert(contentBlock);
-
-				await tx.insert(schema.richTextContentBlocks).values({
-					content,
-					id: contentBlock.id,
-				});
-			}
-		});
+		}
 	}
 
 	/** Migrate projects */
@@ -871,216 +847,329 @@ async function main() {
 	const projects = (await projectsResponse.json()) as Array<Project>;
 
 	for (const project of projects) {
-		const projectEN = project.en;
-		assert(projectEN?.title);
-		const projectTitle = projectEN.title;
-		const slug = slugify(projectTitle);
+		let projectDocumentId: string | undefined;
 
-		await db.transaction(async (tx) => {
-			const { documentId: projectDocumentId, versionId: projectVersionId } =
-				await createPublishedDocument(tx, entityTypesByType.projects.id, slug);
+		// NEW: resolved once (on whichever locale pass resolves it first — normally
+		// the default locale, since locales are ordered default-first), then reused
+		// on every subsequent locale pass for this project, regardless of what name
+		// string that locale's payload uses for the same person/institution.
+		const responsiblePersonDocumentIds: Array<string> = [];
+		const hostingOrganizationDocumentIds: Array<string> = [];
 
-			let asset;
-			if (projectEN.image != null) {
-				const imageUrl = new URL(`${assetsGithubPath}${projectEN.image}`);
-				const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-				const size = Number(imageResponse.headers.get("content-length"));
-				if (size > assetSizeLimit) {
-					logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
+		// Resolve hosting organizations against every locale's name up front,
+		// not just the name in whichever locale pass runs first. A project's
+		// hosting-organization label can differ slightly from the institution's
+		// canonical name in one locale while matching exactly in another (e.g.
+		// the German name is written identically elsewhere but the English one
+		// isn't). Checking only the current locale's slug per pass previously
+		// let the script create a duplicate institution document, which then
+		// hit slugs_published_type_locale_value_unique once its other-locale
+		// slug collided with the original institution's already-published slug.
+		const hostingOrganizationsLength = Math.max(
+			0,
+			...locales.map(
+				(otherLocale) =>
+					project[otherLocale.languageCode as Locale]?.hostingOrganizations.length ?? 0,
+			),
+		);
+		for (let index = 0; index < hostingOrganizationsLength; index++) {
+			for (const otherLocale of locales) {
+				const name = project[otherLocale.languageCode as Locale]?.hostingOrganizations[index];
+				if (name == null) {
+					continue;
+				}
+				const existingId = organisationalUnitsLocaleSlugDocumentIds.get(
+					localeSlugKey(otherLocale.id, slugify(name)),
+				);
+				if (existingId != null) {
+					hostingOrganizationDocumentIds[index] = existingId;
+					break;
+				}
+			}
+		}
+
+		// Same cross-locale pre-resolution as hosting organizations above: a
+		// responsible person's name at a given index isn't guaranteed to line
+		// up, or even to slug-match, across every locale's array for this
+		// project, so check all locales' names for each index before any
+		// locale pass has to decide whether it already knows this person.
+		const responsiblePersonsLength = Math.max(
+			0,
+			...locales.map(
+				(otherLocale) =>
+					project[otherLocale.languageCode as Locale]?.responsiblePersons.length ?? 0,
+			),
+		);
+		for (let index = 0; index < responsiblePersonsLength; index++) {
+			for (const otherLocale of locales) {
+				const name = project[otherLocale.languageCode as Locale]?.responsiblePersons[index];
+				if (name == null) {
+					continue;
+				}
+				const existingId = personLocaleSlugDocumentIds.get(
+					localeSlugKey(otherLocale.id, slugify(name)),
+				);
+				if (existingId != null) {
+					responsiblePersonDocumentIds[index] = existingId;
+					break;
+				}
+			}
+		}
+
+		for (const locale of locales) {
+			const l: Locale = locale.languageCode as Locale;
+			const projectData = project[l];
+			assert(projectData);
+			const projectTitle = projectData.title;
+			assert(projectTitle);
+			const slug = slugify(projectTitle);
+			let projectVersionId: string;
+			await db.transaction(async (tx) => {
+				if (locale.isDefault) {
+					const { documentId, versionId } = await createPublishedDocument(
+						tx,
+						entityTypesByType.projects.id,
+						slug,
+						defaultLocaleId,
+					);
+					projectDocumentId = documentId;
+					projectVersionId = versionId;
 				} else {
-					try {
-						const input = await buffer.fromUrl(imageUrl);
-						const metadata = await buffer.getMetadata(input);
-						const prefix = "images" as AssetPrefix;
-						const label = projectEN.title!;
-						const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
+					assert(projectDocumentId, "project document id missing for locale pass");
+					projectVersionId = await createVersion(
+						tx,
+						entityTypesByType.projects.id,
+						slug,
+						projectDocumentId,
+						locale.id,
+					);
+				}
+				const assetId =
+					projectData.image != null
+						? await createAsset(db, storage, "images", projectData.image, projectTitle)
+						: undefined;
 
-						[asset] = await db
-							.insert(schema.assets)
-							.values({
-								key,
-								label,
-								mimeType: metadata["content-type"],
-								caption: "",
-								alt: "",
-								size,
-							})
-							.returning({ id: schema.assets.id });
-					} catch (error: unknown) {
-						if (Error.isError(error)) {
-							logToFile(`${error.message} ${String(imageUrl)}`);
-						} else {
-							logToFile(`unknown error for:  ${String(imageUrl)}`);
+				const projectStartDate =
+					projectData.startDate != null
+						? new Date(
+								Date.UTC(
+									...(projectData.startDate
+										.split("-")
+										.map((n: string, i) => (i === 1 ? Number(n) - 1 : Number(n))) as [
+										number,
+										number,
+										number,
+									]),
+								),
+							)
+						: new Date(Date.UTC(1900, 0, 1));
+				const projectEndDate =
+					projectData.endDate != null
+						? new Date(
+								Date.UTC(
+									...(projectData.endDate
+										.split("-")
+										.map((n: string, i) => (i === 1 ? Number(n) - 1 : Number(n))) as [
+										number,
+										number,
+										number,
+									]),
+								),
+							)
+						: undefined;
+				await tx.insert(schema.projects).values({
+					id: projectVersionId,
+					acronym: null,
+					name: projectTitle,
+					scopeId: projectScopesByScope.national.id,
+					summary: projectData.summary ?? "",
+					imageId: assetId ?? placeholderAsset.id,
+					duration: {
+						start: projectStartDate,
+						end: projectEndDate,
+					},
+					metadata: { tags: projectData.tags },
+				});
+
+				await createFieldAndContentBlock(
+					tx,
+					projectData.description,
+					entityTypesByType.projects.id,
+					"description",
+					projectVersionId,
+					contentBlockTypesByType.rich_text,
+				);
+
+				for (const [index, person] of projectData.responsiblePersons.entries()) {
+					// FIX: if we already resolved this position on an earlier locale
+					// pass for this project, reuse that id — don't re-derive from name.
+					const previouslyResolvedPersonDocumentId = responsiblePersonDocumentIds[index];
+
+					const slug = slugify(person);
+					const personDocIdBySlug =
+						previouslyResolvedPersonDocumentId ?? personSlugDocumentIds.get(slug);
+
+					let personDocumentId: string;
+					let personVersionId: string | undefined = "";
+					let needsPersonInsert = false;
+
+					if (personDocIdBySlug != null) {
+						personDocumentId = personDocIdBySlug;
+						responsiblePersonDocumentIds[index] = personDocumentId;
+
+						const versionedLocaleIds = personSlugVersionedLocaleIds.get(personDocumentId);
+
+						// only true for persons first created in this loop; persons that predate
+						// it (e.g. from the institutions migration) already have both locale
+						// versions and should be left alone.
+						if (versionedLocaleIds != null && !versionedLocaleIds.has(locale.id)) {
+							personVersionId = await createVersion(
+								tx,
+								entityTypesByType.persons.id,
+								slug,
+								personDocumentId,
+								locale.id,
+							);
+							versionedLocaleIds.add(locale.id);
+							needsPersonInsert = true;
 						}
+					} else {
+						// No fallback match on any locale, and no prior resolution for this
+						// position — either this is the default-locale pass introducing a
+						// new person, or (since responsiblePersons arrays aren't guaranteed
+						// to line up 1:1 across locales) this person simply doesn't appear
+						// in the default-locale data for this project. Either way, create
+						// the document from this locale's own name/slug: `locale.id` equals
+						// `defaultLocaleId` on the default-locale pass anyway.
+						const { documentId, versionId } = await createPublishedDocument(
+							tx,
+							entityTypesByType.persons.id,
+							slug,
+							locale.id,
+						);
+						personDocumentId = documentId;
+						personVersionId = versionId;
+						personSlugDocumentIds.set(slug, documentId);
+						personLocaleSlugDocumentIds.set(localeSlugKey(locale.id, slug), documentId);
+						personSlugVersionedLocaleIds.set(documentId, new Set([locale.id]));
+						responsiblePersonDocumentIds[index] = documentId;
+						needsPersonInsert = true;
 					}
+
+					if (needsPersonInsert) {
+						await tx
+							.insert(schema.persons)
+							.values({
+								id: personVersionId,
+								name: person,
+								sortName: createSortName(person),
+							})
+							.returning({ id: schema.persons.id });
+					}
+
+					await tx
+						.insert(schema.projectsToPersons)
+						.values({
+							projectDocumentId,
+							personDocumentId,
+							duration: {
+								start: projectStartDate,
+								end: projectEndDate,
+							},
+							roleId: projectRolesByRole.affiliated.id,
+						})
+						.onConflictDoNothing();
 				}
-			}
-			assert(placeholderAsset);
 
-			const projectStartDate =
-				projectEN.startDate != null
-					? new Date(
-							Date.UTC(
-								...(projectEN.startDate
-									.split("-")
-									.map((n: string, i) => (i === 1 ? Number(n) - 1 : Number(n))) as [
-									number,
-									number,
-									number,
-								]),
-							),
-						)
-					: new Date(Date.UTC(1900, 0, 1));
-			const projectEndDate =
-				projectEN.endDate != null
-					? new Date(
-							Date.UTC(
-								...(projectEN.endDate
-									.split("-")
-									.map((n: string, i) => (i === 1 ? Number(n) - 1 : Number(n))) as [
-									number,
-									number,
-									number,
-								]),
-							),
-						)
-					: undefined;
+				for (const [index, institution] of projectData.hostingOrganizations.entries()) {
+					// FIX: same pattern — reuse the id resolved on an earlier locale
+					// pass for this exact position, instead of re-deriving from name.
+					const previouslyResolvedInstitutionDocumentId = hostingOrganizationDocumentIds[index];
 
-			await tx.insert(schema.projects).values({
-				id: projectVersionId,
-				acronym: null,
-				name: projectEN.title!,
-				scopeId: projectScopesByScope.national.id,
-				summary: projectEN.summary ?? "",
-				imageId: asset?.id ?? placeholderAsset.id,
-				duration: {
-					start: projectStartDate,
-					end: projectEndDate,
-				},
-				metadata: { tags: projectEN.tags },
+					const slug = slugify(institution);
+					const institutionDocIdBySlug =
+						previouslyResolvedInstitutionDocumentId ?? organisationalUnitsSlugDocumentIds.get(slug);
+
+					let institutionDocumentId: string | undefined = "";
+					let institutionVersionId: string | undefined = "";
+					let needsInstitutionInsert = false;
+
+					if (institutionDocIdBySlug != null) {
+						institutionDocumentId = institutionDocIdBySlug;
+						hostingOrganizationDocumentIds[index] = institutionDocumentId;
+
+						const versionedLocaleIds =
+							organisationalUnitsSlugVersionedLocaleIds.get(institutionDocumentId);
+
+						if (versionedLocaleIds != null && !versionedLocaleIds.has(locale.id)) {
+							institutionVersionId = await createVersion(
+								tx,
+								entityTypesByType.organisational_units.id,
+								slug,
+								institutionDocumentId,
+								locale.id,
+							);
+							versionedLocaleIds.add(locale.id);
+							needsInstitutionInsert = true;
+							organisationalUnitsLocaleSlugDocumentIds.set(
+								localeSlugKey(locale.id, slug),
+								institutionDocumentId,
+							);
+						}
+					} else {
+						if (locale.isDefault) {
+							const { documentId, versionId } = await createPublishedDocument(
+								tx,
+								entityTypesByType.organisational_units.id,
+								slug,
+								defaultLocaleId,
+							);
+							institutionDocumentId = documentId;
+							institutionVersionId = versionId;
+							organisationalUnitsSlugDocumentIds.set(slug, documentId);
+							organisationalUnitsSlugVersionedLocaleIds.set(documentId, new Set([locale.id]));
+							organisationalUnitsLocaleSlugDocumentIds.set(
+								localeSlugKey(defaultLocaleId, slug),
+								documentId,
+							);
+							hostingOrganizationDocumentIds[index] = documentId;
+						} else {
+							assert(
+								false,
+								`hosting organization document id missing for locale pass at index ${String(index)}`,
+							);
+						}
+						needsInstitutionInsert = true;
+					}
+
+					if (needsInstitutionInsert) {
+						await tx
+							.insert(schema.organisationalUnits)
+							.values({
+								id: institutionVersionId,
+								name: institution,
+								summary: "",
+								typeId: organisationalUnitTypesByType.institution.id,
+								imageId: placeholderAsset.id,
+							})
+							.returning({ id: schema.organisationalUnits.id });
+					}
+
+					await tx
+						.insert(schema.projectsToOrganisationalUnits)
+						.values({
+							projectDocumentId,
+							unitDocumentId: institutionDocumentId,
+							duration: {
+								start: projectStartDate,
+								end: projectEndDate,
+							},
+							roleId: projectRolesByRole.affiliated.id,
+						})
+						.onConflictDoNothing();
+				}
 			});
-
-			if (projectEN.description != null) {
-				const content = generateJSON(projectEN.description, [StarterKit]);
-
-				const fieldName = await tx.query.entityTypesFieldsNames.findFirst({
-					where: {
-						entityTypeId: entityTypesByType.projects.id,
-						fieldName: "description",
-					},
-				});
-
-				assert(fieldName);
-
-				const [field] = await tx
-					.insert(schema.fields)
-					.values({
-						entityVersionId: projectVersionId,
-						fieldNameId: fieldName.id,
-					})
-					.returning({ id: schema.fields.id });
-
-				assert(field);
-
-				const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-				const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-				const [contentBlock] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						position: 0,
-						fieldId: field.id,
-						typeId: contentBlockTypesByType.rich_text.id,
-					})
-					.returning({ id: schema.contentBlocks.id });
-
-				assert(contentBlock);
-
-				await tx.insert(schema.richTextContentBlocks).values({
-					content,
-					id: contentBlock.id,
-				});
-			}
-
-			for (const person of projectEN.responsiblePersons) {
-				const slug = slugify(person);
-				const personDocIdBySlug = personSlugDocumentIds.get(slug);
-
-				let personDocumentId: string;
-
-				if (personDocIdBySlug != null) {
-					personDocumentId = personDocIdBySlug;
-				} else {
-					const { documentId, versionId } = await createPublishedDocument(
-						tx,
-						entityTypesByType.persons.id,
-						slug,
-					);
-					personSlugDocumentIds.set(slug, documentId);
-
-					assert(placeholderAsset);
-
-					await tx
-						.insert(schema.persons)
-						.values({
-							id: versionId,
-							name: person,
-							sortName: createSortName(person),
-						})
-						.returning({ id: schema.persons.id });
-					personDocumentId = documentId;
-				}
-
-				await tx.insert(schema.projectsToPersons).values({
-					projectDocumentId,
-					personDocumentId,
-					duration: {
-						start: projectStartDate,
-						end: projectEndDate,
-					},
-					roleId: projectRolesByRole.affiliated.id,
-				});
-			}
-
-			for (const institution of projectEN.hostingOrganizations) {
-				const slug = slugify(institution);
-				const institutionDocIdBySlug = organisationalUnitsSlugDocumentIds.get(slug);
-
-				let institutionDocumentId: string;
-
-				if (institutionDocIdBySlug != null) {
-					institutionDocumentId = institutionDocIdBySlug;
-				} else {
-					const { documentId, versionId } = await createPublishedDocument(
-						tx,
-						entityTypesByType.organisational_units.id,
-						slug,
-					);
-					organisationalUnitsSlugDocumentIds.set(slug, documentId);
-					assert(placeholderAsset);
-
-					await tx
-						.insert(schema.organisationalUnits)
-						.values({
-							id: versionId,
-							name: institution,
-							typeId: organisationalUnitTypesByType.institution.id,
-						})
-						.returning({ id: schema.organisationalUnits.id });
-					institutionDocumentId = documentId;
-				}
-
-				await tx.insert(schema.projectsToOrganisationalUnits).values({
-					projectDocumentId,
-					unitDocumentId: institutionDocumentId,
-					duration: {
-						start: projectStartDate,
-						end: projectEndDate,
-					},
-					roleId: projectRolesByRole.affiliated.id,
-				});
-			}
-		});
+		}
 	}
 
 	/** Migrate pages */
@@ -1091,93 +1180,57 @@ async function main() {
 	const pages = (await pagesResponse.json()) as Array<Page>;
 
 	for (const page of pages) {
-		const pageEN = page.en;
-		assert(pageEN?.title);
-		const pageTitle = pageEN.title;
-		const slug = slugify(pageTitle);
-
-		await db.transaction(async (tx) => {
-			const { documentId: _pageDocumentId, versionId: pageVersionId } =
-				await createPublishedDocument(tx, entityTypesByType.pages.id, slug);
-
-			let asset;
-			if (pageEN.image != null) {
-				const imageUrl = new URL(`${assetsGithubPath}${pageEN.image}`);
-				const imageResponse = await fetch(imageUrl, { method: "HEAD" });
-				const size = Number(imageResponse.headers.get("content-length"));
-				if (size > assetSizeLimit) {
-					logToFile(`image too big. resize and upload manually. ${String(imageUrl)}`);
+		let pageDocumentId: string | undefined;
+		for (const locale of locales) {
+			const l: Locale = locale.languageCode as Locale;
+			const pageData = page[l];
+			assert(pageData);
+			const pageTitle = pageData.title;
+			assert(pageTitle);
+			const slug = slugify(pageTitle);
+			let pageVersionId: string;
+			await db.transaction(async (tx) => {
+				if (locale.isDefault) {
+					const { documentId, versionId } = await createPublishedDocument(
+						tx,
+						entityTypesByType.pages.id,
+						slug,
+						defaultLocaleId,
+					);
+					pageDocumentId = documentId;
+					pageVersionId = versionId;
 				} else {
-					const input = await buffer.fromUrl(imageUrl);
-					const metadata = await buffer.getMetadata(input);
-					const prefix = "images" as AssetPrefix;
-					const label = pageEN.title!;
-					const { key } = (await storage.upload({ prefix, input, metadata })).unwrap();
-
-					[asset] = await db
-						.insert(schema.assets)
-						.values({
-							key,
-							label,
-							mimeType: metadata["content-type"],
-							caption: "",
-							alt: "",
-							size,
-						})
-						.returning({ id: schema.assets.id });
+					assert(pageDocumentId, "page document id missing for locale pass");
+					pageVersionId = await createVersion(
+						tx,
+						entityTypesByType.pages.id,
+						slug,
+						pageDocumentId,
+						locale.id,
+					);
 				}
-			}
-			assert(placeholderAsset);
+				const assetId =
+					pageData.image != null
+						? await createAsset(db, storage, "images", pageData.image, pageTitle)
+						: undefined;
 
-			await tx.insert(schema.pages).values({
-				id: pageVersionId,
-				title: pageEN.title!,
-				summary: pageEN.summary ?? "",
-				imageId: asset?.id ?? placeholderAsset.id,
+				await tx.insert(schema.pages).values({
+					id: pageVersionId,
+					title: pageTitle,
+					summary: pageData.summary ?? "",
+					imageId: assetId ?? placeholderAsset.id,
+				});
+
+				await createFieldAndContentBlock(
+					tx,
+					pageData.content,
+					entityTypesByType.pages.id,
+					"content",
+					pageVersionId,
+					contentBlockTypesByType.rich_text,
+				);
 			});
-
-			if (pageEN.content != null) {
-				const content = generateJSON(pageEN.content, [StarterKit]);
-
-				const fieldName = await tx.query.entityTypesFieldsNames.findFirst({
-					where: {
-						entityTypeId: entityTypesByType.pages.id,
-						fieldName: "content",
-					},
-				});
-
-				assert(fieldName);
-
-				const [field] = await tx
-					.insert(schema.fields)
-					.values({
-						entityVersionId: pageVersionId,
-						fieldNameId: fieldName.id,
-					})
-					.returning({ id: schema.fields.id });
-
-				assert(field);
-
-				const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-				const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-				const [contentBlock] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						position: 0,
-						fieldId: field.id,
-						typeId: contentBlockTypesByType.rich_text.id,
-					})
-					.returning({ id: schema.contentBlocks.id });
-
-				assert(contentBlock);
-
-				await tx.insert(schema.richTextContentBlocks).values({
-					content,
-					id: contentBlock.id,
-				});
-			}
-		});
+		}
 	}
 }
 

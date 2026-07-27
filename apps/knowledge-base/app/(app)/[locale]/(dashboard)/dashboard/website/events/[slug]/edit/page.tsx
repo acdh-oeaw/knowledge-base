@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -7,8 +8,12 @@ import { EventEditForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/websit
 import { imageGridOptions } from "@/config/assets.config";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
 import { eventsLifecycleAdapter } from "@/lib/data/events.lifecycle-adapter";
+import { getLocales } from "@/lib/data/locales";
 import {
 	getEntityRelationOptions,
 	getEntityRelationOptionsByIds,
@@ -38,12 +43,12 @@ export async function generateMetadata(
 export default async function DashboardWebsiteEditEventPage(
 	props: Readonly<DashboardWebsiteEditEventPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
 	const anyVersion = await db.query.events.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -59,9 +64,29 @@ export default async function DashboardWebsiteEditEventPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, eventsLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			documentId,
+			eventsLifecycleAdapter,
+			selectedLocale.id,
+		);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -86,7 +111,11 @@ export default async function DashboardWebsiteEditEventPage(
 							entity: {
 								columns: {
 									id: true,
-									slug: true,
+								},
+							},
+							slug: {
+								columns: {
+									value: true,
 								},
 							},
 							status: {
@@ -113,6 +142,9 @@ export default async function DashboardWebsiteEditEventPage(
 		notFound();
 	}
 
+	assert(event.entityVersion.slug, `Slug missing for entity version "${event.entityVersion.id}".`);
+	const entityVersionSlug = event.entityVersion.slug;
+
 	const image = images.generateSignedImageUrl({
 		key: event.image.key,
 		options: imageGridOptions,
@@ -131,7 +163,11 @@ export default async function DashboardWebsiteEditEventPage(
 		<EventEditForm
 			contentBlocks={contentBlocks}
 			documentId={documentId}
-			event={{ ...event, image: { ...event.image, url: image.url } }}
+			event={{
+				...event,
+				entityVersion: { ...event.entityVersion, slug: entityVersionSlug },
+				image: { ...event.image, url: image.url },
+			}}
 			hasDraftChanges={hasDraftChanges}
 			initialAssets={initialAssets}
 			initialRelatedEntityIds={relatedEntityIds}
@@ -140,7 +176,10 @@ export default async function DashboardWebsiteEditEventPage(
 			initialRelatedResourceIds={relatedResourceIds}
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
+			isDefaultLocale={selectedLocale.isDefault}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 		/>

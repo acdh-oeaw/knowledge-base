@@ -16,7 +16,7 @@ const dariahEuSlug = "dariah-eu";
 async function getDariahEu(db: Database) {
 	const unit = await db.query.organisationalUnits.findFirst({
 		columns: { id: true },
-		where: { entityVersion: { entity: { slug: dariahEuSlug } }, type: { type: "eric" } },
+		where: { entityVersion: { slug: { value: dariahEuSlug } }, type: { type: "eric" } },
 		with: { entityVersion: { columns: { entityId: true } } },
 	});
 
@@ -57,20 +57,22 @@ interface SeedResult {
 }
 
 async function seed(db: Database, count: number): Promise<SeedResult> {
-	const [status, entityType, scope, unitEntityType, otherType, projectRole] = await Promise.all([
-		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
-		db.query.projectScopes.findFirst({ columns: { id: true } }),
-		db.query.entityTypes.findFirst({
-			columns: { id: true },
-			where: { type: "organisational_units" },
-		}),
-		db.query.organisationalUnitTypes.findFirst({
-			columns: { id: true },
-			where: { type: "national_consortium" },
-		}),
-		db.query.projectRoles.findFirst({ where: { role: "participant" }, columns: { id: true } }),
-	]);
+	const [status, entityType, scope, unitEntityType, otherType, projectRole, defaultLocale] =
+		await Promise.all([
+			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+			db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
+			db.query.projectScopes.findFirst({ columns: { id: true } }),
+			db.query.entityTypes.findFirst({
+				columns: { id: true },
+				where: { type: "organisational_units" },
+			}),
+			db.query.organisationalUnitTypes.findFirst({
+				columns: { id: true },
+				where: { type: "national_consortium" },
+			}),
+			db.query.projectRoles.findFirst({ where: { role: "participant" }, columns: { id: true } }),
+			db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+		]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
@@ -78,6 +80,8 @@ async function seed(db: Database, count: number): Promise<SeedResult> {
 	assert(unitEntityType, "No organisational unit entity type in database.");
 	assert(otherType, "No consortium type in database.");
 	assert(projectRole, "No project role in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 	const umbrella = await getDariahEu(db);
 
 	const dariahItems = f.helpers.multiple(() => createProjectData(), { count });
@@ -86,13 +90,26 @@ async function seed(db: Database, count: number): Promise<SeedResult> {
 
 	await db.insert(schema.entities).values(
 		allItems.map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		allItems.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		allItems.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -105,10 +122,10 @@ async function seed(db: Database, count: number): Promise<SeedResult> {
 	// Create non-umbrella unit (linked to the non-DARIAH project)
 	const otherEntityId = uuidv7();
 	const otherUnitId = uuidv7();
+	const otherSlug = `other-${otherUnitId}`;
 
 	await db.insert(schema.entities).values({
 		id: otherEntityId,
-		slug: `other-${otherUnitId}`,
 		typeId: unitEntityType.id,
 	});
 
@@ -116,6 +133,16 @@ async function seed(db: Database, count: number): Promise<SeedResult> {
 		id: otherUnitId,
 		entityId: otherEntityId,
 		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: otherUnitId,
+		entityId: otherEntityId,
+		typeId: unitEntityType.id,
+		localeId,
+		isPublished: true,
+		value: otherSlug,
 	});
 
 	await db.insert(schema.organisationalUnits).values({
@@ -154,17 +181,20 @@ async function seedWithMixedStatuses(db: Database): Promise<{
 	activeItem: ReturnType<typeof createProjectData>;
 	inactiveItem: ReturnType<typeof createProjectData>;
 }> {
-	const [status, entityType, scope, projectRole] = await Promise.all([
+	const [status, entityType, scope, projectRole, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 		db.query.projectScopes.findFirst({ columns: { id: true } }),
 		db.query.projectRoles.findFirst({ where: { role: "participant" }, columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
 	assert(projectRole, "No project role in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 	const umbrella = await getDariahEu(db);
 
 	const activeItem = createProjectData();
@@ -194,13 +224,26 @@ async function seedWithMixedStatuses(db: Database): Promise<{
 
 	await db.insert(schema.entities).values(
 		allItems.map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		allItems.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		allItems.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 

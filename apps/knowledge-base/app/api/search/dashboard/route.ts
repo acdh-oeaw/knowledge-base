@@ -252,13 +252,14 @@ async function searchPersons(query: string, limit: number): Promise<Array<Dashbo
 	const rows = await db
 		.select({
 			documentId: personEntities.id,
-			slug: personEntities.slug,
+			slug: schema.slugs.value,
 			name: schema.persons.name,
 			sortName: schema.persons.sortName,
 		})
 		.from(personEntities)
 		.innerJoin(personLifecycle, eq(personLifecycle.documentId, personEntities.id))
 		.innerJoin(schema.persons, sql`${schema.persons.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.persons.id))
 		.where(unaccentIlike(schema.persons.name, `%${query}%`))
 		.orderBy(schema.persons.sortName)
 		.limit(limit);
@@ -282,12 +283,13 @@ async function searchPages(query: string, limit: number): Promise<Array<Dashboar
 	const rows = await db
 		.select({
 			documentId: pageEntities.id,
-			slug: pageEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.pages.title,
 		})
 		.from(pageEntities)
 		.innerJoin(pageLifecycle, eq(pageLifecycle.documentId, pageEntities.id))
 		.innerJoin(schema.pages, sql`${schema.pages.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.pages.id))
 		.where(unaccentIlike(schema.pages.title, `%${query}%`))
 		.orderBy(schema.pages.title)
 		.limit(limit);
@@ -317,12 +319,13 @@ async function searchSpotlightArticles(
 	const rows = await db
 		.select({
 			documentId: spotlightEntities.id,
-			slug: spotlightEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.spotlightArticles.title,
 		})
 		.from(spotlightEntities)
 		.innerJoin(spotlightLifecycle, eq(spotlightLifecycle.documentId, spotlightEntities.id))
 		.innerJoin(schema.spotlightArticles, sql`${schema.spotlightArticles.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.spotlightArticles.id))
 		.where(unaccentIlike(schema.spotlightArticles.title, `%${query}%`))
 		.orderBy(schema.spotlightArticles.title)
 		.limit(limit);
@@ -349,12 +352,13 @@ async function searchImpactCaseStudies(
 	const rows = await db
 		.select({
 			documentId: impactEntities.id,
-			slug: impactEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.impactCaseStudies.title,
 		})
 		.from(impactEntities)
 		.innerJoin(impactLifecycle, eq(impactLifecycle.documentId, impactEntities.id))
 		.innerJoin(schema.impactCaseStudies, sql`${schema.impactCaseStudies.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.impactCaseStudies.id))
 		.where(unaccentIlike(schema.impactCaseStudies.title, `%${query}%`))
 		.orderBy(schema.impactCaseStudies.title)
 		.limit(limit);
@@ -378,12 +382,13 @@ async function searchNews(query: string, limit: number): Promise<Array<Dashboard
 	const rows = await db
 		.select({
 			documentId: newsEntities.id,
-			slug: newsEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.news.title,
 		})
 		.from(newsEntities)
 		.innerJoin(newsLifecycle, eq(newsLifecycle.documentId, newsEntities.id))
 		.innerJoin(schema.news, sql`${schema.news.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.news.id))
 		.where(unaccentIlike(schema.news.title, `%${query}%`))
 		.orderBy(schema.news.title)
 		.limit(limit);
@@ -407,12 +412,13 @@ async function searchEvents(query: string, limit: number): Promise<Array<Dashboa
 	const rows = await db
 		.select({
 			documentId: eventEntities.id,
-			slug: eventEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.events.title,
 		})
 		.from(eventEntities)
 		.innerJoin(eventLifecycle, eq(eventLifecycle.documentId, eventEntities.id))
 		.innerJoin(schema.events, sql`${schema.events.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.events.id))
 		.where(unaccentIlike(schema.events.title, `%${query}%`))
 		.orderBy(schema.events.title)
 		.limit(limit);
@@ -442,12 +448,13 @@ async function searchOpportunities(
 	const rows = await db
 		.select({
 			documentId: opportunityEntities.id,
-			slug: opportunityEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.opportunities.title,
 		})
 		.from(opportunityEntities)
 		.innerJoin(opportunityLifecycle, eq(opportunityLifecycle.documentId, opportunityEntities.id))
 		.innerJoin(schema.opportunities, sql`${schema.opportunities.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.opportunities.id))
 		.where(unaccentIlike(schema.opportunities.title, `%${query}%`))
 		.orderBy(schema.opportunities.title)
 		.limit(limit);
@@ -477,12 +484,13 @@ async function searchFundingCalls(
 	const rows = await db
 		.select({
 			documentId: fundingCallEntities.id,
-			slug: fundingCallEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.fundingCalls.title,
 		})
 		.from(fundingCallEntities)
 		.innerJoin(fundingCallLifecycle, eq(fundingCallLifecycle.documentId, fundingCallEntities.id))
 		.innerJoin(schema.fundingCalls, sql`${schema.fundingCalls.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.fundingCalls.id))
 		.where(unaccentIlike(schema.fundingCalls.title, `%${query}%`))
 		.orderBy(schema.fundingCalls.title)
 		.limit(limit);
@@ -509,12 +517,13 @@ async function searchDocumentsPolicies(
 	const rows = await db
 		.select({
 			documentId: documentEntities.id,
-			slug: documentEntities.slug,
+			slug: schema.slugs.value,
 			title: schema.documentsPolicies.title,
 		})
 		.from(documentEntities)
 		.innerJoin(documentLifecycle, eq(documentLifecycle.documentId, documentEntities.id))
 		.innerJoin(schema.documentsPolicies, sql`${schema.documentsPolicies.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentsPolicies.id))
 		.where(unaccentIlike(schema.documentsPolicies.title, `%${query}%`))
 		.orderBy(schema.documentsPolicies.title)
 		.limit(limit);
@@ -538,13 +547,14 @@ async function searchProjects(query: string, limit: number): Promise<Array<Dashb
 	const rows = await db
 		.select({
 			documentId: projectEntities.id,
-			slug: projectEntities.slug,
+			slug: schema.slugs.value,
 			name: schema.projects.name,
 			acronym: schema.projects.acronym,
 		})
 		.from(projectEntities)
 		.innerJoin(projectLifecycle, eq(projectLifecycle.documentId, projectEntities.id))
 		.innerJoin(schema.projects, sql`${schema.projects.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.projects.id))
 		.where(
 			or(
 				unaccentIlike(schema.projects.name, `%${query}%`),
@@ -576,7 +586,7 @@ async function searchOrganisationalUnits(
 	const rows = await db
 		.select({
 			documentId: unitEntities.id,
-			slug: unitEntities.slug,
+			slug: schema.slugs.value,
 			name: schema.organisationalUnits.name,
 			acronym: schema.organisationalUnits.acronym,
 			type: schema.organisationalUnitTypes.type,
@@ -584,6 +594,7 @@ async function searchOrganisationalUnits(
 		.from(unitEntities)
 		.innerJoin(unitLifecycle, eq(unitLifecycle.documentId, unitEntities.id))
 		.innerJoin(schema.organisationalUnits, sql`${schema.organisationalUnits.id} = ${pickedVersion}`)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),

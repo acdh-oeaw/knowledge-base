@@ -88,6 +88,7 @@ async function seed(
 		institutionType,
 		affiliatedRoleType,
 		asset,
+		defaultLocale,
 	] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({
@@ -111,6 +112,7 @@ async function seed(
 			where: { type: "is_affiliated_with" },
 		}),
 		db.query.assets.findFirst({ columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
@@ -120,16 +122,31 @@ async function seed(
 	assert(institutionType, "No institution type in database.");
 	assert(affiliatedRoleType, "No affiliated role type in database.");
 	assert(asset, "No assets in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.entities).values(
 		items.map((item) => {
-			return { ...item.entity, typeId: type.id };
+			return { id: item.entity.id, typeId: type.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: type.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -144,25 +161,45 @@ async function seed(
 	await db.insert(schema.assets).values(contributor.asset);
 
 	await db.insert(schema.entities).values({
-		...contributor.entity,
+		id: contributor.entity.id,
 		typeId: personType.id,
 	});
 
 	await db.insert(schema.entityVersions).values({
 		...contributor.version,
 		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: contributor.version.id,
+		entityId: contributor.entity.id,
+		typeId: personType.id,
+		localeId,
+		isPublished: true,
+		value: contributor.entity.slug,
 	});
 
 	await db.insert(schema.persons).values(contributor.person);
 
 	await db.insert(schema.entities).values({
-		...contributor.affiliation.entity,
+		id: contributor.affiliation.entity.id,
 		typeId: organisationalUnitType.id,
 	});
 
 	await db.insert(schema.entityVersions).values({
 		...contributor.affiliation.version,
 		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: contributor.affiliation.version.id,
+		entityId: contributor.affiliation.entity.id,
+		typeId: organisationalUnitType.id,
+		localeId,
+		isPublished: true,
+		value: contributor.affiliation.entity.slug,
 	});
 
 	await db.insert(schema.organisationalUnits).values({

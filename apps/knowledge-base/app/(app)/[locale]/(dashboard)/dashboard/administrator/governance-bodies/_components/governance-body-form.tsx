@@ -28,7 +28,7 @@ interface GovernanceBodyFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	governanceBody?: Pick<schema.OrganisationalUnit, "acronym" | "id" | "name" | "summary"> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } | null };
 	formId?: string;
 	formAction: ServerAction;

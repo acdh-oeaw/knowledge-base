@@ -28,7 +28,7 @@ interface NewsItemFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	contentBlocks?: Array<ContentBlock>;
 	newsItem?: Pick<schema.NewsItem, "id" | "title" | "summary"> & {
-		entityVersion: { entity: { id: string; slug: string } };
+		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & { image: { key: string; label: string; url: string } };
 	formId?: string;
 	formAction: ServerAction;

@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -33,7 +34,7 @@ export default async function DashboardWebsiteEditFundingCallPage(
 	const { slug } = await params;
 
 	const anyVersion = await db.query.fundingCalls.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -70,7 +71,11 @@ export default async function DashboardWebsiteEditFundingCallPage(
 					entity: {
 						columns: {
 							id: true,
-							slug: true,
+						},
+					},
+					slug: {
+						columns: {
+							value: true,
 						},
 					},
 					status: {
@@ -88,13 +93,22 @@ export default async function DashboardWebsiteEditFundingCallPage(
 		notFound();
 	}
 
+	assert(
+		fundingCall.entityVersion.slug,
+		`Slug missing for entity version "${fundingCall.entityVersion.id}".`,
+	);
+	const entityVersionSlug = fundingCall.entityVersion.slug;
+
 	const contentBlocks = await getEntityContentBlocks(fundingCall.id, "content");
 
 	return (
 		<FundingCallEditForm
 			contentBlocks={contentBlocks}
 			documentId={documentId}
-			fundingCall={{ ...fundingCall }}
+			fundingCall={{
+				...fundingCall,
+				entityVersion: { ...fundingCall.entityVersion, slug: entityVersionSlug },
+			}}
 			hasDraftChanges={hasDraftChanges}
 			isPublished={publishedId != null}
 		/>

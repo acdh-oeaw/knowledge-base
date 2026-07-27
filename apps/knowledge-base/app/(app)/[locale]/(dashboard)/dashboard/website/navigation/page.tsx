@@ -1,11 +1,14 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
+import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import type { EntityOption } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/navigation/_components/navigation-item-form-dialog";
 import { NavigationPage } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/navigation/_components/navigation-page";
+import { navigationItemLocaleWhere } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/navigation/_lib/navigation-locale";
 import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
+import { getLocales } from "@/lib/data/locales";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -26,15 +29,40 @@ export async function generateMetadata(
 }
 
 export default async function DashboardWebsiteNavigationPage(
-	_props: Readonly<DashboardWebsiteNavigationPageProps>,
+	props: Readonly<DashboardWebsiteNavigationPageProps>,
 ): Promise<ReactNode> {
-	const [menus, pages, spotlightArticles, impactCaseStudies] = await Promise.all([
+	const { searchParams: searchParamsPromise } = props;
+
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
+	const [menus, items, pages, spotlightArticles, impactCaseStudies] = await Promise.all([
 		db.query.navigationMenus.findMany({
 			orderBy: { name: "asc" },
-			with: {
-				items: true,
-			},
+			columns: { id: true, name: true },
 		}),
+		db
+			.select({
+				id: schema.navigationItems.id,
+				menuId: schema.navigationItems.menuId,
+				parentId: schema.navigationItems.parentId,
+				label: schema.navigationItems.label,
+				href: schema.navigationItems.href,
+				entityId: schema.navigationItems.entityId,
+				isExternal: schema.navigationItems.isExternal,
+				position: schema.navigationItems.position,
+			})
+			.from(schema.navigationItems)
+			.where(navigationItemLocaleWhere(selectedLocale.id))
+			.orderBy(schema.navigationItems.position),
 		db
 			.select({ id: schema.pages.id, title: schema.pages.title })
 			.from(schema.pages)
@@ -77,20 +105,22 @@ export default async function DashboardWebsiteNavigationPage(
 		return {
 			id: menu.id,
 			name: menu.name,
-			items: menu.items.map((item) => {
-				const entityMeta = item.entityId != null ? entityTitleMap.get(item.entityId) : null;
-				return {
-					id: item.id,
-					menuId: item.menuId,
-					parentId: item.parentId,
-					label: item.label,
-					href: item.href,
-					entityId: item.entityId,
-					isExternal: item.isExternal,
-					position: item.position,
-					entityTitle: entityMeta?.title ?? null,
-				};
-			}),
+			items: items
+				.filter((item) => item.menuId === menu.id)
+				.map((item) => {
+					const entityMeta = item.entityId != null ? entityTitleMap.get(item.entityId) : null;
+					return {
+						id: item.id,
+						menuId: item.menuId,
+						parentId: item.parentId,
+						label: item.label,
+						href: item.href,
+						entityId: item.entityId,
+						isExternal: item.isExternal,
+						position: item.position,
+						entityTitle: entityMeta?.title ?? null,
+					};
+				}),
 		};
 	});
 
@@ -106,5 +136,12 @@ export default async function DashboardWebsiteNavigationPage(
 		}),
 	];
 
-	return <NavigationPage entities={entities} menus={menusWithItems} />;
+	return (
+		<NavigationPage
+			entities={entities}
+			locales={locales}
+			menus={menusWithItems}
+			selectedLocaleCode={selectedLocale.code}
+		/>
+	);
 }

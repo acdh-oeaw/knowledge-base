@@ -1,3 +1,4 @@
+import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -45,7 +46,7 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 	const { slug } = await params;
 
 	const anyVersion = await db.query.impactCaseStudies.findFirst({
-		where: { entityVersion: { entity: { slug } } },
+		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
 			entityVersion: {
@@ -93,7 +94,11 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 						entity: {
 							columns: {
 								id: true,
-								slug: true,
+							},
+						},
+						slug: {
+							columns: {
+								value: true,
 							},
 						},
 						status: {
@@ -121,6 +126,12 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 		notFound();
 	}
 
+	assert(
+		impactCaseStudy.entityVersion.slug,
+		`Slug missing for entity version "${impactCaseStudy.entityVersion.id}".`,
+	);
+	const entityVersionSlug = impactCaseStudy.entityVersion.slug;
+
 	const image = images.generateSignedImageUrl({
 		key: impactCaseStudy.image.key,
 		options: imageGridOptions,
@@ -146,6 +157,7 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 			hasDraftChanges={hasDraftChanges}
 			impactCaseStudy={{
 				...impactCaseStudy,
+				entityVersion: { ...impactCaseStudy.entityVersion, slug: entityVersionSlug },
 				image: { ...impactCaseStudy.image, url: image.url },
 			}}
 			initialAssets={initialAssets}
