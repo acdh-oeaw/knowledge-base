@@ -41,28 +41,44 @@ function createItems(count: number) {
 }
 
 async function seed(db: Database, items: ReturnType<typeof createItems>) {
-	const [status, type, asset] = await Promise.all([
+	const [status, type, asset, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({
 			columns: { id: true },
 			where: { type: "documents_policies" },
 		}),
 		db.query.assets.findFirst({ columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(type, "No entity type in database.");
 	assert(asset, "No assets in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.entities).values(
 		items.map((item) => {
-			return { ...item.entity, typeId: type.id };
+			return { id: item.entity.id, typeId: type.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: type.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -367,16 +383,19 @@ describe("documents-policies", () => {
 			filename: string | null = "policy-2024.pdf",
 			mimeType = "application/pdf",
 		) {
-			const [status, type] = await Promise.all([
+			const [status, type, defaultLocale] = await Promise.all([
 				db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 				db.query.entityTypes.findFirst({
 					columns: { id: true },
 					where: { type: "documents_policies" },
 				}),
+				db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 			]);
 
 			assert(status, "No entity status in database.");
 			assert(type, "No entity type in database.");
+			assert(defaultLocale, "No default locale in database.");
+			const localeId = defaultLocale.id;
 
 			const versionId = uuidv7();
 			const entityId = uuidv7();
@@ -384,12 +403,18 @@ describe("documents-policies", () => {
 			const title = "Test Policy";
 			const summary = "Test summary";
 			await db.insert(schema.assets).values({ id: assetId, key, label: title, filename, mimeType });
-			await db
-				.insert(schema.entities)
-				.values({ id: entityId, slug: `doc-${versionId}`, typeId: type.id });
+			await db.insert(schema.entities).values({ id: entityId, typeId: type.id });
 			await db
 				.insert(schema.entityVersions)
-				.values({ id: versionId, entityId, statusId: status.id });
+				.values({ id: versionId, entityId, statusId: status.id, localeId });
+			await db.insert(schema.slugs).values({
+				entityVersionId: versionId,
+				entityId,
+				typeId: type.id,
+				localeId,
+				isPublished: true,
+				value: `doc-${versionId}`,
+			});
 			await db.insert(schema.documentsPolicies).values({
 				id: versionId,
 				title,

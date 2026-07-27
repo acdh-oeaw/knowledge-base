@@ -38,8 +38,8 @@ export async function getFeaturedEntities(db: Database | Transaction) {
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

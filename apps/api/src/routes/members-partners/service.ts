@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { type ContentBlock, getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -47,8 +48,8 @@ export async function getMembersAndPartners(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -226,7 +227,7 @@ function buildActiveRelationExistsFilter(
 	// Unit↔unit relations are document-level; the related unit is resolved from its document id to
 	// any of its versions to check the related type. idRef is a version id of the owning unit.
 	const relatedUnitVersion = alias(schema.entityVersions, "exists_related_unit_version");
-	const relatedEntity = alias(schema.entities, "exists_related_entity");
+	const relatedSlug = alias(schema.slugs, "exists_related_slug");
 
 	return exists(
 		db
@@ -240,7 +241,7 @@ function buildActiveRelationExistsFilter(
 				relatedUnitVersion,
 				eq(relatedUnitVersion.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
 			)
-			.innerJoin(relatedEntity, eq(relatedEntity.id, relatedUnitVersion.entityId))
+			.innerJoin(relatedSlug, eq(relatedSlug.entityVersionId, relatedUnitVersion.id))
 			.innerJoin(
 				schema.organisationalUnits,
 				eq(schema.organisationalUnits.id, relatedUnitVersion.id),
@@ -256,7 +257,7 @@ function buildActiveRelationExistsFilter(
 						? inArray(schema.organisationalUnitStatus.status, status)
 						: eq(schema.organisationalUnitStatus.status, status),
 					eq(schema.organisationalUnitTypes.type, relatedType),
-					relatedType === "eric" ? eq(relatedEntity.slug, "dariah-eu") : undefined,
+					relatedType === "eric" ? eq(relatedSlug.value, "dariah-eu") : undefined,
 					durationContainsNow,
 				),
 			),
@@ -277,7 +278,7 @@ function buildActiveRelationToUnitFilter(
 	// Unit↔unit relations are document-level; idRef and relatedUnitId are version ids resolved to
 	// their document ids, and the related unit's type is checked via any of its versions.
 	const relatedUnitVersion = alias(schema.entityVersions, "exists_to_unit_related_version");
-	const relatedEntity = alias(schema.entities, "exists_to_unit_related_entity");
+	const relatedSlug = alias(schema.slugs, "exists_to_unit_related_slug");
 
 	return exists(
 		db
@@ -291,7 +292,7 @@ function buildActiveRelationToUnitFilter(
 				relatedUnitVersion,
 				eq(relatedUnitVersion.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
 			)
-			.innerJoin(relatedEntity, eq(relatedEntity.id, relatedUnitVersion.entityId))
+			.innerJoin(relatedSlug, eq(relatedSlug.entityVersionId, relatedUnitVersion.id))
 			.innerJoin(
 				schema.organisationalUnits,
 				eq(schema.organisationalUnits.id, relatedUnitVersion.id),
@@ -306,7 +307,7 @@ function buildActiveRelationToUnitFilter(
 					sql`${schema.organisationalUnitsRelations.relatedUnitDocumentId} = (SELECT ${schema.entityVersions.entityId} FROM ${schema.entityVersions} WHERE ${schema.entityVersions.id} = ${relatedUnitId})`,
 					eq(schema.organisationalUnitStatus.status, status),
 					eq(schema.organisationalUnitTypes.type, relatedType),
-					relatedType === "eric" ? eq(relatedEntity.slug, "dariah-eu") : undefined,
+					relatedType === "eric" ? eq(relatedSlug.value, "dariah-eu") : undefined,
 					durationContainsNow,
 				),
 			),
@@ -343,8 +344,8 @@ async function getInstitutionsByRelation(
 			entityVersion: {
 				columns: {},
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},
@@ -368,8 +369,8 @@ async function getInstitutionsByRelation(
 		name: string;
 		ror: string | null;
 		entityVersion: {
-			entity: {
-				slug: string;
+			slug: {
+				value: string;
 			};
 		};
 		socialMedia: Array<{
@@ -386,7 +387,7 @@ async function getInstitutionsByRelation(
 		return {
 			name: item.name,
 			ror: item.ror,
-			slug: item.entityVersion.entity.slug,
+			slug: item.entityVersion.slug.value,
 			website,
 		};
 	});
@@ -463,8 +464,8 @@ async function getNationalConsortium(
 			entityVersion: {
 				columns: { id: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},
@@ -502,13 +503,15 @@ async function getNationalConsortium(
 		return null;
 	}
 
+	assert(item.entityVersion.slug, `Slug missing for entity version "${item.entityVersion.id}".`);
+
 	const fields =
 		options?.includeDescription === true ? await getContentBlocks(db, item.entityVersion.id) : {};
 	const website = item.socialMedia.find((sm) => sm.type.type === "website")?.url ?? null;
 
 	return {
 		name: item.name,
-		slug: item.entityVersion.entity.slug,
+		slug: item.entityVersion.slug.value,
 		ror: item.ror,
 		website,
 		image: generateImageUrl(item.image, options?.imageSize ?? imageWidth.preview),
@@ -523,7 +526,7 @@ async function getContributors(db: Database | Transaction, countryId: string) {
 		.select({
 			id: schema.persons.id,
 			name: schema.persons.name,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
@@ -539,10 +542,7 @@ async function getContributors(db: Database | Transaction, countryId: string) {
 			eq(schema.documentLifecycle.documentId, schema.personsToOrganisationalUnits.personDocumentId),
 		)
 		.innerJoin(schema.persons, eq(schema.persons.id, schema.documentLifecycle.publishedId))
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.personsToOrganisationalUnits.personDocumentId),
-		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
 		.leftJoin(schema.assets, eq(schema.persons.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.innerJoin(
@@ -626,8 +626,8 @@ export async function getMemberOrPartnerById(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -755,8 +755,8 @@ export async function getMemberOrPartnerSlugs(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -795,7 +795,8 @@ export async function getMemberOrPartnerSlugs(
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -804,7 +805,7 @@ export async function getMemberOrPartnerSlugs(
 //
 
 interface GetMemberOrPartnerBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getMemberOrPartnerBySlug(
@@ -819,8 +820,8 @@ export async function getMemberOrPartnerBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -837,8 +838,8 @@ export async function getMemberOrPartnerBySlug(
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

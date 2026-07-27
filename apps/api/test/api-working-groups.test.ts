@@ -19,7 +19,7 @@ const dariahEuSlug = "dariah-eu";
 async function getDariahEu(db: Database) {
 	const unit = await db.query.organisationalUnits.findFirst({
 		columns: { id: true },
-		where: { entityVersion: { entity: { slug: dariahEuSlug } }, type: { type: "eric" } },
+		where: { entityVersion: { slug: { value: dariahEuSlug } }, type: { type: "eric" } },
 		with: { entityVersion: { columns: { entityId: true } } },
 	});
 
@@ -106,28 +106,32 @@ function createRelatedPage() {
 }
 
 async function seedWithMixedStatuses(db: Database) {
-	const [status, entityType, asset, workingGroupType, unitStatus] = await Promise.all([
-		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-		db.query.entityTypes.findFirst({
-			columns: { id: true },
-			where: { type: "organisational_units" },
-		}),
-		db.query.assets.findFirst({ columns: { id: true } }),
-		db.query.organisationalUnitTypes.findFirst({
-			columns: { id: true },
-			where: { type: "working_group" },
-		}),
-		db
-			.select()
-			.from(schema.organisationalUnitStatus)
-			.where(inArray(schema.organisationalUnitStatus.status, ["is_part_of"])),
-	]);
+	const [status, entityType, asset, workingGroupType, unitStatus, defaultLocale] =
+		await Promise.all([
+			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+			db.query.entityTypes.findFirst({
+				columns: { id: true },
+				where: { type: "organisational_units" },
+			}),
+			db.query.assets.findFirst({ columns: { id: true } }),
+			db.query.organisationalUnitTypes.findFirst({
+				columns: { id: true },
+				where: { type: "working_group" },
+			}),
+			db
+				.select()
+				.from(schema.organisationalUnitStatus)
+				.where(inArray(schema.organisationalUnitStatus.status, ["is_part_of"])),
+			db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+		]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(asset, "No assets in database.");
 	assert(workingGroupType, "No working_group type in database.");
 	assert(unitStatus.length, "No unit status in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 	const umbrella = await getDariahEu(db);
 
 	// [0] = unused placeholder, [1][2] = active working groups, [3] = inactive working group
@@ -137,13 +141,26 @@ async function seedWithMixedStatuses(db: Database) {
 
 	await db.insert(schema.entities).values(
 		items.slice(1).map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.slice(1).map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.slice(1).map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -197,6 +214,7 @@ async function seed(db: Database, items: ReturnType<typeof createItems>, chair =
 		workingGroupType,
 		institutionType,
 		unitStatus,
+		defaultLocale,
 	] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({
@@ -232,6 +250,7 @@ async function seed(db: Database, items: ReturnType<typeof createItems>, chair =
 			.select()
 			.from(schema.organisationalUnitStatus)
 			.where(inArray(schema.organisationalUnitStatus.status, ["is_part_of"])),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
@@ -244,16 +263,31 @@ async function seed(db: Database, items: ReturnType<typeof createItems>, chair =
 	assert(workingGroupType, "No working_group type in database.");
 	assert(institutionType, "No institution type in database.");
 	assert(unitStatus.length, "No unit status in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.entities).values(
 		items.slice(1).map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.slice(1).map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.slice(1).map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -288,25 +322,45 @@ async function seed(db: Database, items: ReturnType<typeof createItems>, chair =
 	await db.insert(schema.assets).values(chair.asset);
 
 	await db.insert(schema.entities).values({
-		...chair.entity,
+		id: chair.entity.id,
 		typeId: personType.id,
 	});
 
 	await db.insert(schema.entityVersions).values({
 		...chair.version,
 		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: chair.version.id,
+		entityId: chair.entity.id,
+		typeId: personType.id,
+		localeId,
+		isPublished: true,
+		value: chair.entity.slug,
 	});
 
 	await db.insert(schema.persons).values(chair.person);
 
 	await db.insert(schema.entities).values({
-		...chair.affiliation.entity,
+		id: chair.affiliation.entity.id,
 		typeId: organisationalUnitEntityType.id,
 	});
 
 	await db.insert(schema.entityVersions).values({
 		...chair.affiliation.version,
 		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: chair.affiliation.version.id,
+		entityId: chair.affiliation.entity.id,
+		typeId: organisationalUnitEntityType.id,
+		localeId,
+		isPublished: true,
+		value: chair.affiliation.entity.slug,
 	});
 
 	await db.insert(schema.organisationalUnits).values({
@@ -427,22 +481,34 @@ describe("working-groups", () => {
 				const chair = createChair();
 				const relatedPage = createRelatedPage();
 				await seed(db, items, chair);
-				const [status, pageType, asset] = await Promise.all([
+				const [status, pageType, asset, defaultLocale] = await Promise.all([
 					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 					db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "pages" } }),
 					db.query.assets.findFirst({ columns: { id: true } }),
+					db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 				]);
 				assert(status, "No entity status in database.");
 				assert(pageType, "No page entity type in database.");
 				assert(asset, "No assets in database.");
+				assert(defaultLocale, "No default locale in database.");
+				const pageLocaleId = defaultLocale.id;
 
 				await db.insert(schema.entities).values({
-					...relatedPage.entity,
+					id: relatedPage.entity.id,
 					typeId: pageType.id,
 				});
 				await db.insert(schema.entityVersions).values({
 					...relatedPage.version,
 					statusId: status.id,
+					localeId: pageLocaleId,
+				});
+				await db.insert(schema.slugs).values({
+					entityVersionId: relatedPage.version.id,
+					entityId: relatedPage.entity.id,
+					typeId: pageType.id,
+					localeId: pageLocaleId,
+					isPublished: true,
+					value: relatedPage.entity.slug,
 				});
 				await db.insert(schema.pages).values({
 					...relatedPage.page,

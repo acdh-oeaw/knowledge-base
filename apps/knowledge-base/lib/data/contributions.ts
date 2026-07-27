@@ -231,16 +231,12 @@ export async function getContributionsForAdmin(
 }
 
 /**
- * `personDocumentId` is the person's `entities.id`. The org endpoint is resolved to its latest
- * editable version for display.
- */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-/**
  * `personDocumentId` is the person's `entities.id`. Resolves each related organisational unit to
  * its latest editable version in `localeId` (or the default locale when omitted), falling back to
  * the default locale per-unit when a unit has no version in `localeId` — the unit's name/slug are
  * translatable, unlike the person's own name.
  */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getPersonContributions(personDocumentId: string, localeId?: string) {
 	const unitSelectedDraft = alias(schema.entityVersions, "contribution_unit_selected_draft");
 	const unitSelectedPublished = alias(

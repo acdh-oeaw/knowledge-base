@@ -19,8 +19,8 @@ const countryRelationStatus = alias(schema.organisationalUnitStatus, "country_re
 const countries = alias(schema.organisationalUnits, "countries");
 const countryTypes = alias(schema.organisationalUnitTypes, "country_types");
 const countryLifecycle = alias(schema.documentLifecycle, "country_lifecycle");
-const countryEntities = alias(schema.entities, "country_entities");
-const consortiumEntities = alias(schema.entities, "consortium_entities");
+const countrySlugs = alias(schema.slugs, "country_slugs");
+const consortiumSlugs = alias(schema.slugs, "consortium_slugs");
 
 const nationalConsortiumFilter = and(
 	eq(schema.organisationalUnitTypes.type, "national_consortium"),
@@ -32,7 +32,7 @@ function selectNationalConsortiumRows() {
 		id: schema.organisationalUnits.id,
 		name: schema.organisationalUnits.name,
 		acronym: schema.organisationalUnits.acronym,
-		slug: consortiumEntities.slug,
+		slug: consortiumSlugs.value,
 		logoKey: schema.assets.key,
 		logoAlt: schema.assets.alt,
 		logoCaption: schema.assets.caption,
@@ -40,7 +40,7 @@ function selectNationalConsortiumRows() {
 		licenseUrl: schema.licenses.url,
 		countryId: countries.id,
 		countryName: countries.name,
-		countrySlug: countryEntities.slug,
+		countrySlug: countrySlugs.value,
 		countryType: countryTypes.type,
 		updatedAt: schema.entityVersions.updatedAt,
 	};
@@ -76,7 +76,7 @@ function fromNationalConsortia(db: Database | Transaction) {
 			schema.documentLifecycle,
 			eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 		)
-		.innerJoin(consortiumEntities, eq(schema.entityVersions.entityId, consortiumEntities.id))
+		.innerJoin(consortiumSlugs, eq(consortiumSlugs.entityVersionId, schema.entityVersions.id))
 		.leftJoin(schema.assets, eq(schema.organisationalUnits.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.leftJoin(
@@ -97,7 +97,7 @@ function fromNationalConsortia(db: Database | Transaction) {
 		)
 		.leftJoin(countries, eq(countries.id, countryLifecycle.publishedId))
 		.leftJoin(countryTypes, eq(countries.typeId, countryTypes.id))
-		.leftJoin(countryEntities, eq(countryEntities.id, countryLifecycle.documentId));
+		.leftJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryLifecycle.publishedId));
 }
 
 function mapNationalConsortiumRow(row: NationalConsortiumRow) {
@@ -196,7 +196,7 @@ export async function getNationalConsortiumSlugs(
 		db
 			.select({
 				id: schema.organisationalUnits.id,
-				slug: consortiumEntities.slug,
+				slug: consortiumSlugs.value,
 			})
 			.from(schema.organisationalUnits)
 			.innerJoin(
@@ -208,7 +208,7 @@ export async function getNationalConsortiumSlugs(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 			)
-			.innerJoin(consortiumEntities, eq(schema.entityVersions.entityId, consortiumEntities.id))
+			.innerJoin(consortiumSlugs, eq(consortiumSlugs.entityVersionId, schema.entityVersions.id))
 			.where(nationalConsortiumFilter)
 			.orderBy(desc(schema.entityVersions.updatedAt))
 			.limit(limit)
@@ -234,7 +234,7 @@ export async function getNationalConsortiumSlugs(
 }
 
 interface GetNationalConsortiumBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getNationalConsortiumBySlug(
@@ -244,7 +244,7 @@ export async function getNationalConsortiumBySlug(
 	const { slug } = params;
 
 	const item = await fromNationalConsortia(db)
-		.where(and(nationalConsortiumFilter, eq(consortiumEntities.slug, slug)))
+		.where(and(nationalConsortiumFilter, eq(consortiumSlugs.value, slug)))
 		.limit(1);
 
 	const row = item.at(0);

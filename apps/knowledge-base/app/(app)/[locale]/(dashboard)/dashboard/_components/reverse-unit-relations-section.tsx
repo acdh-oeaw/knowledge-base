@@ -189,6 +189,7 @@ export function ReverseUnitRelationsSection(
 							unitName: sourceUnit.name,
 							unitSlug: "",
 							unitType: sourceUnitType,
+							unitIsLocaleFallback: false,
 							duration: {
 								start: new Date(data.durationStart),
 								...(data.durationEnd != null ? { end: new Date(data.durationEnd) } : {}),

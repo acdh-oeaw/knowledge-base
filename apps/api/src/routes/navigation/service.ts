@@ -54,7 +54,7 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 			isExternal: schema.navigationItems.isExternal,
 			position: schema.navigationItems.position,
 			parentId: schema.navigationItems.parentId,
-			entitySlug: schema.entities.slug,
+			entitySlug: schema.slugs.value,
 			entityType: sql<string>`
 				CASE
 					WHEN ${schema.entityTypes.type} = 'organisational_units'
@@ -68,6 +68,7 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 		.leftJoin(schema.entities, eq(schema.navigationItems.entityId, schema.entities.id))
 		.leftJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
 		.leftJoin(schema.documentLifecycle, eq(schema.documentLifecycle.documentId, schema.entities.id))
+		.leftJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
 		.leftJoin(
 			schema.organisationalUnits,
 			eq(schema.documentLifecycle.publishedId, schema.organisationalUnits.id),

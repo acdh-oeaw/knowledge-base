@@ -131,16 +131,16 @@ async function upsertById(
 async function upsertPublishedDocument(
 	db: Db,
 	row: { id: string; statusId: string; typeId: string; slug: string; versionId: string },
+	localeId: string,
 ): Promise<{ documentId: string; versionId: string }> {
 	const [document] = await db
 		.insert(schema.entities)
 		.values({
 			id: row.id,
 			typeId: row.typeId,
-			slug: row.slug,
 		})
 		.onConflictDoUpdate({
-			target: [schema.entities.typeId, schema.entities.slug],
+			target: schema.entities.id,
 			set: {
 				updatedAt: new Date(),
 			},
@@ -157,9 +157,14 @@ async function upsertPublishedDocument(
 			id: row.versionId,
 			entityId: document.id,
 			statusId: row.statusId,
+			localeId,
 		})
 		.onConflictDoUpdate({
-			target: [schema.entityVersions.entityId, schema.entityVersions.statusId],
+			target: [
+				schema.entityVersions.entityId,
+				schema.entityVersions.statusId,
+				schema.entityVersions.localeId,
+			],
 			set: {
 				updatedAt: new Date(),
 			},
@@ -169,6 +174,25 @@ async function upsertPublishedDocument(
 	if (version == null) {
 		throw new Error(`Failed to upsert published version for entity "${document.id}".`);
 	}
+
+	await db
+		.insert(schema.slugs)
+		.values({
+			entityVersionId: version.id,
+			entityId: document.id,
+			typeId: row.typeId,
+			localeId,
+			isPublished: true,
+			value: row.slug,
+		})
+		.onConflictDoUpdate({
+			target: schema.slugs.entityVersionId,
+			set: {
+				value: row.slug,
+				isPublished: true,
+				updatedAt: new Date(),
+			},
+		});
 
 	return { documentId: document.id, versionId: version.id };
 }
@@ -287,6 +311,7 @@ async function main() {
 				dataContentBlockTypeRows,
 				licenseRows,
 				fieldNameRows,
+				localeRows,
 			] = await Promise.all([
 				tx.select().from(schema.entityTypes),
 				tx.select().from(schema.entityStatus),
@@ -307,7 +332,13 @@ async function main() {
 						fieldName: schema.entityTypesFieldsNames.fieldName,
 					})
 					.from(schema.entityTypesFieldsNames),
+				tx.select().from(schema.locales),
 			]);
+
+			const defaultLocaleId = assertLookupId(
+				localeRows.find((row) => row.isDefault)?.id,
+				"Missing default locale. Seed locales before running this script.",
+			);
 
 			const entityTypeIds = new Map(entityTypeRows.map((row) => [row.type, row.id]));
 			const entityStatusIds = new Map(entityStatusRows.map((row) => [row.type, row.id]));
@@ -638,7 +669,7 @@ async function main() {
 			const entityIdsBySeedId = new Map<string, { documentId: string; versionId: string }>();
 
 			for (const entity of entities) {
-				const document = await upsertPublishedDocument(tx, entity);
+				const document = await upsertPublishedDocument(tx, entity, defaultLocaleId);
 				entityIdsBySeedId.set(entity.id, document);
 			}
 

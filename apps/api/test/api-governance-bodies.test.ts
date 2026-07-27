@@ -59,41 +59,69 @@ async function seedWorkingGroupChair(
 	workingGroup = createWorkingGroup(),
 	chair = createChair(),
 ) {
-	const [status, organisationalUnitEntityType, personEntityType, workingGroupType, chairRoleType] =
-		await Promise.all([
-			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-			db.query.entityTypes.findFirst({
-				columns: { id: true },
-				where: { type: "organisational_units" },
-			}),
-			db.query.entityTypes.findFirst({
-				columns: { id: true },
-				where: { type: "persons" },
-			}),
-			db.query.organisationalUnitTypes.findFirst({
-				columns: { id: true },
-				where: { type: "working_group" },
-			}),
-			db.query.personRoleTypes.findFirst({
-				columns: { id: true },
-				where: { type: "is_chair_of" },
-			}),
-		]);
+	const [
+		status,
+		organisationalUnitEntityType,
+		personEntityType,
+		workingGroupType,
+		chairRoleType,
+		defaultLocale,
+	] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.entityTypes.findFirst({
+			columns: { id: true },
+			where: { type: "organisational_units" },
+		}),
+		db.query.entityTypes.findFirst({
+			columns: { id: true },
+			where: { type: "persons" },
+		}),
+		db.query.organisationalUnitTypes.findFirst({
+			columns: { id: true },
+			where: { type: "working_group" },
+		}),
+		db.query.personRoleTypes.findFirst({
+			columns: { id: true },
+			where: { type: "is_chair_of" },
+		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
 
 	assert(status, "No entity status in database.");
 	assert(organisationalUnitEntityType, "No organisational unit entity type in database.");
 	assert(personEntityType, "No person entity type in database.");
 	assert(workingGroupType, "No working_group type in database.");
 	assert(chairRoleType, "No chair role type in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.entities).values([
-		{ ...workingGroup.entity, typeId: organisationalUnitEntityType.id },
-		{ ...chair.entity, typeId: personEntityType.id },
+		{ id: workingGroup.entity.id, typeId: organisationalUnitEntityType.id },
+		{ id: chair.entity.id, typeId: personEntityType.id },
 	]);
 
 	await db.insert(schema.entityVersions).values([
-		{ ...workingGroup.version, statusId: status.id },
-		{ ...chair.version, statusId: status.id },
+		{ ...workingGroup.version, statusId: status.id, localeId },
+		{ ...chair.version, statusId: status.id, localeId },
+	]);
+
+	await db.insert(schema.slugs).values([
+		{
+			entityVersionId: workingGroup.version.id,
+			entityId: workingGroup.entity.id,
+			typeId: organisationalUnitEntityType.id,
+			localeId,
+			isPublished: true,
+			value: workingGroup.entity.slug,
+		},
+		{
+			entityVersionId: chair.version.id,
+			entityId: chair.entity.id,
+			typeId: personEntityType.id,
+			localeId,
+			isPublished: true,
+			value: chair.entity.slug,
+		},
 	]);
 
 	await db.insert(schema.organisationalUnits).values({

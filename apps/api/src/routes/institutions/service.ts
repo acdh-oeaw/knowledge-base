@@ -44,7 +44,7 @@ const ericRelationDbStatuses = [
 	"is_cooperating_partner_of",
 ] as const satisfies ReadonlyArray<(typeof schema.organisationalUnitStatusEnum)[number]>;
 
-const institutionEntities = alias(schema.entities, "institution_entities");
+const institutionSlugs = alias(schema.slugs, "institution_slugs");
 
 /**
  * Resolves, per institution document, its active partner/cooperating-partner relation to the
@@ -58,7 +58,7 @@ function ericRelationSubquery(db: Database | Transaction) {
 	const lifecycle = alias(schema.documentLifecycle, "eric_lifecycle");
 	const eric = alias(schema.organisationalUnits, "eric");
 	const ericTypes = alias(schema.organisationalUnitTypes, "eric_types");
-	const ericEntities = alias(schema.entities, "eric_entities");
+	const ericSlugs = alias(schema.slugs, "eric_slugs");
 
 	return db
 		.select({
@@ -72,8 +72,8 @@ function ericRelationSubquery(db: Database | Transaction) {
 		)
 		.innerJoin(lifecycle, eq(lifecycle.documentId, relations.relatedUnitDocumentId))
 		.innerJoin(
-			ericEntities,
-			and(eq(ericEntities.id, lifecycle.documentId), eq(ericEntities.slug, dariahEuSlug)),
+			ericSlugs,
+			and(eq(ericSlugs.entityVersionId, lifecycle.publishedId), eq(ericSlugs.value, dariahEuSlug)),
 		)
 		.innerJoin(eric, eq(eric.id, lifecycle.publishedId))
 		.innerJoin(ericTypes, and(eq(eric.typeId, ericTypes.id), eq(ericTypes.type, "eric")))
@@ -91,14 +91,14 @@ function countryRelationSubquery(db: Database | Transaction) {
 	const lifecycle = alias(schema.documentLifecycle, "country_lifecycle");
 	const countries = alias(schema.organisationalUnits, "countries");
 	const countryTypes = alias(schema.organisationalUnitTypes, "country_types");
-	const countryEntities = alias(schema.entities, "country_entities");
+	const countrySlugs = alias(schema.slugs, "country_slugs");
 
 	return db
 		.select({
 			unitDocumentId: relations.unitDocumentId,
 			countryId: countries.id,
 			countryName: countries.name,
-			countrySlug: countryEntities.slug,
+			countrySlug: countrySlugs.value,
 		})
 		.from(relations)
 		.innerJoin(status, and(eq(relations.status, status.id), eq(status.status, "is_located_in")))
@@ -108,7 +108,7 @@ function countryRelationSubquery(db: Database | Transaction) {
 			countryTypes,
 			and(eq(countries.typeId, countryTypes.id), eq(countryTypes.type, "country")),
 		)
-		.innerJoin(countryEntities, eq(countryEntities.id, lifecycle.documentId))
+		.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, lifecycle.publishedId))
 		.where(sql`${relations.duration} @> NOW()::TIMESTAMPTZ`)
 		.as("country_relation");
 }
@@ -160,7 +160,7 @@ function institutionQuery(db: Database | Transaction) {
 			name: schema.organisationalUnits.name,
 			acronym: schema.organisationalUnits.acronym,
 			ror: schema.organisationalUnits.ror,
-			slug: institutionEntities.slug,
+			slug: institutionSlugs.value,
 			logoKey: schema.assets.key,
 			logoAlt: schema.assets.alt,
 			logoCaption: schema.assets.caption,
@@ -182,7 +182,7 @@ function institutionQuery(db: Database | Transaction) {
 			schema.documentLifecycle,
 			eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 		)
-		.innerJoin(institutionEntities, eq(schema.entityVersions.entityId, institutionEntities.id))
+		.innerJoin(institutionSlugs, eq(institutionSlugs.entityVersionId, schema.entityVersions.id))
 		.leftJoin(schema.assets, eq(schema.organisationalUnits.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.leftJoin(ericRelation, eq(ericRelation.unitDocumentId, schema.entityVersions.entityId))
@@ -332,7 +332,7 @@ export async function getInstitutionSlugs(
 		db
 			.select({
 				id: schema.organisationalUnits.id,
-				slug: institutionEntities.slug,
+				slug: institutionSlugs.value,
 			})
 			.from(schema.organisationalUnits)
 			.innerJoin(
@@ -344,7 +344,7 @@ export async function getInstitutionSlugs(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 			)
-			.innerJoin(institutionEntities, eq(schema.entityVersions.entityId, institutionEntities.id))
+			.innerJoin(institutionSlugs, eq(institutionSlugs.entityVersionId, schema.entityVersions.id))
 			.where(baseInstitutionFilter())
 			.orderBy(desc(schema.entityVersions.updatedAt))
 			.limit(limit)
@@ -370,7 +370,7 @@ export async function getInstitutionSlugs(
 }
 
 interface GetInstitutionBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getInstitutionBySlug(
@@ -381,7 +381,7 @@ export async function getInstitutionBySlug(
 
 	const { query } = institutionQuery(db);
 	const item = await query
-		.where(and(baseInstitutionFilter(), eq(institutionEntities.slug, slug)))
+		.where(and(baseInstitutionFilter(), eq(institutionSlugs.value, slug)))
 		.limit(1);
 
 	const row = item.at(0);

@@ -14,7 +14,7 @@ export const ImpactCaseStudyBaseSchema = v.pipe(
 	v.object({
 		...v.pick(schema.ImpactCaseStudySelectSchema, ["id", "title", "summary"]).entries,
 		image: ImageSchema,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
 	v.description("Impact case study"),
@@ -52,7 +52,7 @@ export const ImpactCaseStudySchema = v.pipe(
 				role: v.picklist(schema.articleContributorRolesEnum),
 			}),
 		),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
@@ -67,7 +67,7 @@ export type ImpactCaseStudy = v.InferOutput<typeof ImpactCaseStudySchema>;
 export const ImpactCaseStudySlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.ImpactCaseStudySelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Impact case study slug"),
 	v.metadata({ ref: "ImpactCaseStudySlug" }),

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -136,7 +137,7 @@ async function getActiveWorkingGroupChairs(db: Database | Transaction) {
 			sortName: schema.persons.sortName,
 			email: schema.persons.email,
 			orcid: schema.persons.orcid,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
@@ -171,10 +172,7 @@ async function getActiveWorkingGroupChairs(db: Database | Transaction) {
 			eq(personDocumentLifecycle.documentId, schema.personsToOrganisationalUnits.personDocumentId),
 		)
 		.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.personsToOrganisationalUnits.personDocumentId),
-		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, personDocumentLifecycle.publishedId))
 		.leftJoin(schema.assets, eq(schema.persons.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.where(
@@ -256,7 +254,7 @@ async function getActiveGovernanceBodyPersons(
 			sortName: schema.persons.sortName,
 			email: schema.persons.email,
 			orcid: schema.persons.orcid,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
@@ -282,10 +280,7 @@ async function getActiveGovernanceBodyPersons(
 			eq(personDocumentLifecycle.documentId, schema.personsToOrganisationalUnits.personDocumentId),
 		)
 		.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.personsToOrganisationalUnits.personDocumentId),
-		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, personDocumentLifecycle.publishedId))
 		.leftJoin(schema.assets, eq(schema.persons.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.where(
@@ -363,8 +358,8 @@ export async function getGovernanceBodies(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -483,8 +478,8 @@ export async function getGovernanceBodyById(
 					entityVersion: {
 						columns: { updatedAt: true },
 						with: {
-							entity: {
-								columns: { slug: true },
+							slug: {
+								columns: { value: true },
 							},
 						},
 					},
@@ -575,8 +570,8 @@ export async function getGovernanceBodySlugs(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -605,7 +600,8 @@ export async function getGovernanceBodySlugs(
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	if (offset <= total && offset + limit > total) {
@@ -619,7 +615,7 @@ export async function getGovernanceBodySlugs(
 }
 
 interface GetGovernanceBodyBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getGovernanceBodyBySlug(
@@ -638,8 +634,8 @@ export async function getGovernanceBodyBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 			type: {
@@ -657,8 +653,8 @@ export async function getGovernanceBodyBySlug(
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

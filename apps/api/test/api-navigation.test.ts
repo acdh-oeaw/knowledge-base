@@ -45,7 +45,7 @@ async function seed(db: Database) {
 }
 
 async function seedWithWorkingGroupEntity(db: Database) {
-	const [status, entityType, organisationalUnitType] = await Promise.all([
+	const [status, entityType, organisationalUnitType, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({
 			columns: { id: true },
@@ -55,11 +55,13 @@ async function seedWithWorkingGroupEntity(db: Database) {
 			columns: { id: true },
 			where: { type: "working_group" },
 		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	expect(status).toBeDefined();
 	expect(entityType).toBeDefined();
 	expect(organisationalUnitType).toBeDefined();
+	expect(defaultLocale).toBeDefined();
 
 	const menuId = uuidv7();
 	const itemId = uuidv7();
@@ -76,7 +78,6 @@ async function seedWithWorkingGroupEntity(db: Database) {
 
 	await db.insert(schema.entities).values({
 		id: entityId,
-		slug,
 		typeId: entityType!.id,
 	});
 
@@ -84,6 +85,16 @@ async function seedWithWorkingGroupEntity(db: Database) {
 		id: versionId,
 		entityId,
 		statusId: status!.id,
+		localeId: defaultLocale!.id,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: versionId,
+		entityId,
+		typeId: entityType!.id,
+		localeId: defaultLocale!.id,
+		isPublished: true,
+		value: slug,
 	});
 
 	await db.insert(schema.organisationalUnits).values({

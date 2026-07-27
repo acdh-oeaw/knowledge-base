@@ -14,7 +14,7 @@ export const PageBaseSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PageSelectSchema, ["id", "title", "summary"]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
 	v.description("Page"),
@@ -35,7 +35,7 @@ export const PageSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PageSelectSchema, ["id", "title", "summary"]).entries,
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
@@ -50,7 +50,7 @@ export type Page = v.InferOutput<typeof PageSchema>;
 export const PageSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PageSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Page slug"),
 	v.metadata({ ref: "PageSlug" }),

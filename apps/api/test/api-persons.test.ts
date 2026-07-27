@@ -62,41 +62,63 @@ function createItems(count: number) {
 }
 
 async function seed(db: Database, items: ReturnType<typeof createItems>) {
-	const [status, entityType, organisationalUnitType, institutionType, affiliatedRoleType] =
-		await Promise.all([
-			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-			db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "persons" } }),
-			db.query.entityTypes.findFirst({
-				columns: { id: true },
-				where: { type: "organisational_units" },
-			}),
-			db.query.organisationalUnitTypes.findFirst({
-				columns: { id: true },
-				where: { type: "institution" },
-			}),
-			db.query.personRoleTypes.findFirst({
-				columns: { id: true },
-				where: { type: "is_affiliated_with" },
-			}),
-		]);
+	const [
+		status,
+		entityType,
+		organisationalUnitType,
+		institutionType,
+		affiliatedRoleType,
+		defaultLocale,
+	] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "persons" } }),
+		db.query.entityTypes.findFirst({
+			columns: { id: true },
+			where: { type: "organisational_units" },
+		}),
+		db.query.organisationalUnitTypes.findFirst({
+			columns: { id: true },
+			where: { type: "institution" },
+		}),
+		db.query.personRoleTypes.findFirst({
+			columns: { id: true },
+			where: { type: "is_affiliated_with" },
+		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(organisationalUnitType, "No organisational unit entity type in database.");
 	assert(institutionType, "No institution type in database.");
 	assert(affiliatedRoleType, "No affiliated role type in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.assets).values(items.map((item) => item.asset));
 
 	await db.insert(schema.entities).values(
 		items.map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -104,13 +126,26 @@ async function seed(db: Database, items: ReturnType<typeof createItems>) {
 
 	await db.insert(schema.entities).values(
 		items.map((item) => {
-			return { ...item.affiliation.entity, typeId: organisationalUnitType.id };
+			return { id: item.affiliation.entity.id, typeId: organisationalUnitType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.map((item) => {
-			return { ...item.affiliation.version, statusId: status.id };
+			return { ...item.affiliation.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.map((item) => {
+			return {
+				entityVersionId: item.affiliation.version.id,
+				entityId: item.affiliation.entity.id,
+				typeId: organisationalUnitType.id,
+				localeId,
+				isPublished: true,
+				value: item.affiliation.entity.slug,
+			};
 		}),
 	);
 

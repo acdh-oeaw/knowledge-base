@@ -18,7 +18,7 @@ const opportunityBaseObject = v.object({
 		start: v.pipe(v.string(), v.isoTimestamp()),
 		end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 	}),
-	entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+	entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
@@ -54,7 +54,7 @@ export type Opportunity = v.InferOutput<typeof OpportunitySchema>;
 export const OpportunitySlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.OpportunitySelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Opportunity slug"),
 	v.metadata({ ref: "OpportunitySlug" }),

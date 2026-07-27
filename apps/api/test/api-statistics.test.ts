@@ -9,21 +9,30 @@ import type { Database } from "@/middlewares/db";
 import { getStatistics } from "@/routes/statistics/service";
 import { withTransaction } from "~/test/lib/with-transaction";
 
-function createOrganisationalUnit(statusId: string, entityTypeId: string) {
+function createOrganisationalUnit(statusId: string, entityTypeId: string, localeId: string) {
 	const entityId = uuidv7();
 	const versionId = uuidv7();
 	const name = f.company.name();
+	const slugValue = `${slugify(name)}-${f.string.alphanumeric(8).toLowerCase()}`;
 
 	return {
 		entity: {
 			id: entityId,
-			slug: `${slugify(name)}-${f.string.alphanumeric(8).toLowerCase()}`,
 			typeId: entityTypeId,
 		},
 		version: {
 			id: versionId,
 			entityId,
 			statusId,
+			localeId,
+		},
+		slug: {
+			entityVersionId: versionId,
+			entityId,
+			typeId: entityTypeId,
+			localeId,
+			isPublished: true,
+			value: slugValue,
 		},
 		unit: {
 			id: versionId,
@@ -33,27 +42,35 @@ function createOrganisationalUnit(statusId: string, entityTypeId: string) {
 }
 
 async function seedMemberCountryCountFixtures(db: Database) {
-	const [publishedStatus, draftStatus, entityType, countryType, ericType, memberStatus] =
-		await Promise.all([
-			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "draft" } }),
-			db.query.entityTypes.findFirst({
-				columns: { id: true },
-				where: { type: "organisational_units" },
-			}),
-			db.query.organisationalUnitTypes.findFirst({
-				columns: { id: true },
-				where: { type: "country" },
-			}),
-			db.query.organisationalUnitTypes.findFirst({
-				columns: { id: true },
-				where: { type: "eric" },
-			}),
-			db.query.organisationalUnitStatus.findFirst({
-				columns: { id: true },
-				where: { status: "is_member_of" },
-			}),
-		]);
+	const [
+		publishedStatus,
+		draftStatus,
+		entityType,
+		countryType,
+		ericType,
+		memberStatus,
+		defaultLocale,
+	] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "draft" } }),
+		db.query.entityTypes.findFirst({
+			columns: { id: true },
+			where: { type: "organisational_units" },
+		}),
+		db.query.organisationalUnitTypes.findFirst({
+			columns: { id: true },
+			where: { type: "country" },
+		}),
+		db.query.organisationalUnitTypes.findFirst({
+			columns: { id: true },
+			where: { type: "eric" },
+		}),
+		db.query.organisationalUnitStatus.findFirst({
+			columns: { id: true },
+			where: { status: "is_member_of" },
+		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
 
 	assert(publishedStatus, "No published entity status in database.");
 	assert(draftStatus, "No draft entity status in database.");
@@ -61,6 +78,8 @@ async function seedMemberCountryCountFixtures(db: Database) {
 	assert(countryType, "No country type in database.");
 	assert(ericType, "No eric type in database.");
 	assert(memberStatus, "No is_member_of status in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	const eric = await db.query.organisationalUnits.findFirst({
 		columns: { id: true },
@@ -80,12 +99,13 @@ async function seedMemberCountryCountFixtures(db: Database) {
 	});
 	assert(ericDocument, "No eric entity version in database.");
 
-	const publishedCountry = createOrganisationalUnit(publishedStatus.id, entityType.id);
-	const draftCountry = createOrganisationalUnit(draftStatus.id, entityType.id);
+	const publishedCountry = createOrganisationalUnit(publishedStatus.id, entityType.id, localeId);
+	const draftCountry = createOrganisationalUnit(draftStatus.id, entityType.id, localeId);
 	const start = f.date.past({ years: 5 });
 
 	await db.insert(schema.entities).values([publishedCountry.entity, draftCountry.entity]);
 	await db.insert(schema.entityVersions).values([publishedCountry.version, draftCountry.version]);
+	await db.insert(schema.slugs).values([publishedCountry.slug, draftCountry.slug]);
 	await db.insert(schema.organisationalUnits).values([
 		{ ...publishedCountry.unit, typeId: countryType.id },
 		{ ...draftCountry.unit, typeId: countryType.id },
@@ -110,7 +130,7 @@ async function seedMemberCountryCountFixtures(db: Database) {
 }
 
 async function seedWorkingGroupCountFixtures(db: Database) {
-	const [publishedStatus, draftStatus, entityType, workingGroupType, memberStatus] =
+	const [publishedStatus, draftStatus, entityType, workingGroupType, memberStatus, defaultLocale] =
 		await Promise.all([
 			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "draft" } }),
@@ -126,6 +146,7 @@ async function seedWorkingGroupCountFixtures(db: Database) {
 				columns: { id: true },
 				where: { status: "is_part_of" },
 			}),
+			db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 		]);
 
 	assert(publishedStatus, "No published entity status in database.");
@@ -133,6 +154,8 @@ async function seedWorkingGroupCountFixtures(db: Database) {
 	assert(entityType, "No organisational_units entity type in database.");
 	assert(workingGroupType, "No working_group type in database.");
 	assert(memberStatus, "No is_part_of status in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	const eric = await db.query.organisationalUnits.findFirst({
 		columns: { id: true },
@@ -152,14 +175,19 @@ async function seedWorkingGroupCountFixtures(db: Database) {
 	});
 	assert(ericDocument, "No eric entity version in database.");
 
-	const publishedWorkingGroup = createOrganisationalUnit(publishedStatus.id, entityType.id);
-	const draftWorkingGroup = createOrganisationalUnit(draftStatus.id, entityType.id);
+	const publishedWorkingGroup = createOrganisationalUnit(
+		publishedStatus.id,
+		entityType.id,
+		localeId,
+	);
+	const draftWorkingGroup = createOrganisationalUnit(draftStatus.id, entityType.id, localeId);
 	const start = f.date.past({ years: 5 });
 
 	await db.insert(schema.entities).values([publishedWorkingGroup.entity, draftWorkingGroup.entity]);
 	await db
 		.insert(schema.entityVersions)
 		.values([publishedWorkingGroup.version, draftWorkingGroup.version]);
+	await db.insert(schema.slugs).values([publishedWorkingGroup.slug, draftWorkingGroup.slug]);
 	await db.insert(schema.organisationalUnits).values([
 		{ ...publishedWorkingGroup.unit, typeId: workingGroupType.id },
 		{ ...draftWorkingGroup.unit, typeId: workingGroupType.id },
@@ -184,32 +212,41 @@ async function seedWorkingGroupCountFixtures(db: Database) {
 }
 
 async function seedPartnerInstitutionWithOverlappingRelations(db: Database) {
-	const [publishedStatus, entityType, institutionType, partnerStatus, coordinatingStatus] =
-		await Promise.all([
-			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-			db.query.entityTypes.findFirst({
-				columns: { id: true },
-				where: { type: "organisational_units" },
-			}),
-			db.query.organisationalUnitTypes.findFirst({
-				columns: { id: true },
-				where: { type: "institution" },
-			}),
-			db.query.organisationalUnitStatus.findFirst({
-				columns: { id: true },
-				where: { status: "is_partner_institution_of" },
-			}),
-			db.query.organisationalUnitStatus.findFirst({
-				columns: { id: true },
-				where: { status: "is_national_coordinating_institution_in" },
-			}),
-		]);
+	const [
+		publishedStatus,
+		entityType,
+		institutionType,
+		partnerStatus,
+		coordinatingStatus,
+		defaultLocale,
+	] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.entityTypes.findFirst({
+			columns: { id: true },
+			where: { type: "organisational_units" },
+		}),
+		db.query.organisationalUnitTypes.findFirst({
+			columns: { id: true },
+			where: { type: "institution" },
+		}),
+		db.query.organisationalUnitStatus.findFirst({
+			columns: { id: true },
+			where: { status: "is_partner_institution_of" },
+		}),
+		db.query.organisationalUnitStatus.findFirst({
+			columns: { id: true },
+			where: { status: "is_national_coordinating_institution_in" },
+		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
 
 	assert(publishedStatus, "No published entity status in database.");
 	assert(entityType, "No organisational_units entity type in database.");
 	assert(institutionType, "No institution type in database.");
 	assert(partnerStatus, "No is_partner_institution_of status in database.");
 	assert(coordinatingStatus, "No is_national_coordinating_institution_in status in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	const eric = await db.query.organisationalUnits.findFirst({
 		columns: { id: true },
@@ -223,9 +260,10 @@ async function seedPartnerInstitutionWithOverlappingRelations(db: Database) {
 	});
 	assert(ericDocument, "No eric entity version in database.");
 
-	const institution = createOrganisationalUnit(publishedStatus.id, entityType.id);
+	const institution = createOrganisationalUnit(publishedStatus.id, entityType.id, localeId);
 	await db.insert(schema.entities).values(institution.entity);
 	await db.insert(schema.entityVersions).values(institution.version);
+	await db.insert(schema.slugs).values(institution.slug);
 	await db
 		.insert(schema.organisationalUnits)
 		.values({ ...institution.unit, typeId: institutionType.id });

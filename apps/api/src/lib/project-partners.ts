@@ -44,7 +44,7 @@ export async function getPublishedProjectPartnersByDocuments(
 			unitVersionId: schema.organisationalUnits.id,
 			acronym: schema.organisationalUnits.acronym,
 			name: schema.organisationalUnits.name,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			unitType: schema.organisationalUnitTypes.type,
 			roleId: schema.projectRoles.id,
 			roleName: schema.projectRoles.role,
@@ -64,6 +64,7 @@ export async function getPublishedProjectPartnersByDocuments(
 		)
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.organisationalUnits.id))
 		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(
 			schema.organisationalUnitTypes,
 			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),

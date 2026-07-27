@@ -40,25 +40,41 @@ function createItems(count: number) {
 }
 
 async function seed(db: Database, items: ReturnType<typeof createItems>) {
-	const [status, entityType, scope] = await Promise.all([
+	const [status, entityType, scope, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 		db.query.projectScopes.findFirst({ columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	await db.insert(schema.entities).values(
 		items.map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		items.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		items.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -74,15 +90,18 @@ async function seed(db: Database, items: ReturnType<typeof createItems>) {
 }
 
 async function seedWithMixedStatuses(db: Database) {
-	const [status, entityType, scope] = await Promise.all([
+	const [status, entityType, scope, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 		db.query.projectScopes.findFirst({ columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	const activeItem = createItems(1)[0]!;
 	const inactiveItem = (() => {
@@ -111,13 +130,26 @@ async function seedWithMixedStatuses(db: Database) {
 
 	await db.insert(schema.entities).values(
 		allItems.map((item) => {
-			return { ...item.entity, typeId: entityType.id };
+			return { id: item.entity.id, typeId: entityType.id };
 		}),
 	);
 
 	await db.insert(schema.entityVersions).values(
 		allItems.map((item) => {
-			return { ...item.version, statusId: status.id };
+			return { ...item.version, statusId: status.id, localeId };
+		}),
+	);
+
+	await db.insert(schema.slugs).values(
+		allItems.map((item) => {
+			return {
+				entityVersionId: item.version.id,
+				entityId: item.entity.id,
+				typeId: entityType.id,
+				localeId,
+				isPublished: true,
+				value: item.entity.slug,
+			};
 		}),
 	);
 
@@ -165,7 +197,7 @@ async function seedOrganisationalUnit(
 	projectDocumentId: string,
 	roleName: "coordinator" | "participant" | "funder",
 ) {
-	const [status, unitEntityType, unitType, role] = await Promise.all([
+	const [status, unitEntityType, unitType, role, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({
 			columns: { id: true },
@@ -176,19 +208,22 @@ async function seedOrganisationalUnit(
 			columns: { id: true },
 			where: { role: roleName },
 		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(unitEntityType, "No organisational unit entity type in database.");
 	assert(unitType, "No organisational unit type in database.");
 	assert(role, "No project role in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
 
 	const unitVersionId = uuidv7();
 	const unitEntityId = uuidv7();
+	const unitSlug = `unit-${unitVersionId}`;
 
 	await db.insert(schema.entities).values({
 		id: unitEntityId,
-		slug: `unit-${unitVersionId}`,
 		typeId: unitEntityType.id,
 	});
 
@@ -196,6 +231,16 @@ async function seedOrganisationalUnit(
 		id: unitVersionId,
 		entityId: unitEntityId,
 		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: unitVersionId,
+		entityId: unitEntityId,
+		typeId: unitEntityType.id,
+		localeId,
+		isPublished: true,
+		value: unitSlug,
 	});
 
 	const [organisationalUnit] = await db

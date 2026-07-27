@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -33,7 +34,7 @@ function buildStatusFilter(
 	// Unit↔unit relations are document-level; idRef is the working group's version id, resolved to
 	// its document id, and the related eric is reached through any of its versions.
 	const relatedUnitVersion = alias(schema.entityVersions, "wg_status_related_version");
-	const relatedEntity = alias(schema.entities, "wg_status_related_entity");
+	const relatedSlug = alias(schema.slugs, "wg_status_related_slug");
 
 	return exists(
 		db
@@ -47,7 +48,7 @@ function buildStatusFilter(
 				relatedUnitVersion,
 				eq(relatedUnitVersion.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
 			)
-			.innerJoin(relatedEntity, eq(relatedEntity.id, relatedUnitVersion.entityId))
+			.innerJoin(relatedSlug, eq(relatedSlug.entityVersionId, relatedUnitVersion.id))
 			.innerJoin(
 				schema.organisationalUnits,
 				eq(schema.organisationalUnits.id, relatedUnitVersion.id),
@@ -61,7 +62,7 @@ function buildStatusFilter(
 					sql`${schema.organisationalUnitsRelations.unitDocumentId} = (SELECT ${schema.entityVersions.entityId} FROM ${schema.entityVersions} WHERE ${schema.entityVersions.id} = ${idRef})`,
 					eq(schema.organisationalUnitStatus.status, "is_part_of"),
 					eq(schema.organisationalUnitTypes.type, "eric"),
-					eq(relatedEntity.slug, "dariah-eu"),
+					eq(relatedSlug.value, "dariah-eu"),
 					durationCondition,
 				),
 			),
@@ -93,8 +94,8 @@ export async function getWorkingGroups(db: Database | Transaction, params: GetWo
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -169,7 +170,7 @@ async function getChairs(db: Database | Transaction, workingGroupId: string) {
 		.select({
 			id: schema.persons.id,
 			name: schema.persons.name,
-			slug: schema.entities.slug,
+			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
@@ -189,10 +190,7 @@ async function getChairs(db: Database | Transaction, workingGroupId: string) {
 			eq(schema.documentLifecycle.documentId, schema.personsToOrganisationalUnits.personDocumentId),
 		)
 		.innerJoin(schema.persons, eq(schema.persons.id, schema.documentLifecycle.publishedId))
-		.innerJoin(
-			schema.entities,
-			eq(schema.entities.id, schema.personsToOrganisationalUnits.personDocumentId),
-		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
 		.leftJoin(schema.assets, eq(schema.persons.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.where(
@@ -259,8 +257,8 @@ export async function getWorkingGroupById(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -354,8 +352,8 @@ export async function getWorkingGroupSlugs(
 				entityVersion: {
 					columns: { updatedAt: true },
 					with: {
-						entity: {
-							columns: { slug: true },
+						slug: {
+							columns: { value: true },
 						},
 					},
 				},
@@ -394,7 +392,8 @@ export async function getWorkingGroupSlugs(
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map(({ id, entityVersion }) => {
-		return { id, entity: { slug: entityVersion.entity.slug } };
+		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
+		return { id, entity: { slug: entityVersion.slug.value } };
 	});
 
 	return { data, limit, offset, total };
@@ -403,7 +402,7 @@ export async function getWorkingGroupSlugs(
 //
 
 interface GetWorkingGroupBySlugParams {
-	slug: schema.Entity["slug"];
+	slug: schema.Slug["value"];
 }
 
 export async function getWorkingGroupBySlug(
@@ -418,8 +417,8 @@ export async function getWorkingGroupBySlug(
 				status: {
 					type: "published",
 				},
-				entity: {
-					slug,
+				slug: {
+					value: slug,
 				},
 			},
 		},
@@ -435,8 +434,8 @@ export async function getWorkingGroupBySlug(
 			entityVersion: {
 				columns: { updatedAt: true },
 				with: {
-					entity: {
-						columns: { slug: true },
+					slug: {
+						columns: { value: true },
 					},
 				},
 			},

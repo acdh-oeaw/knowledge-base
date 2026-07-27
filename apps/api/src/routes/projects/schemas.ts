@@ -45,7 +45,7 @@ export const ProjectBaseSchema = v.pipe(
 			start: v.pipe(v.string(), v.isoTimestamp()),
 			end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 		}),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
 		socialMedia: v.array(ProjectSocialMediaSchema),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
@@ -80,7 +80,7 @@ export const ProjectSchema = v.pipe(
 			start: v.pipe(v.string(), v.isoTimestamp()),
 			end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 		}),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
 		socialMedia: v.array(ProjectSocialMediaSchema),
 		funders: v.array(ProjectOrganisationalUnitSchema),
@@ -97,7 +97,7 @@ export type Project = v.InferOutput<typeof ProjectSchema>;
 export const ProjectSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.ProjectSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Project slug"),
 	v.metadata({ ref: "ProjectSlug" }),

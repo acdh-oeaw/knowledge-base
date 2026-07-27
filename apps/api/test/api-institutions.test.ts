@@ -15,7 +15,7 @@ const dariahEuSlug = "dariah-eu";
 async function getDariahEu(db: Database) {
 	const unit = await db.query.organisationalUnits.findFirst({
 		columns: { id: true },
-		where: { entityVersion: { entity: { slug: dariahEuSlug } }, type: { type: "eric" } },
+		where: { entityVersion: { slug: { value: dariahEuSlug } }, type: { type: "eric" } },
 		with: { entityVersion: { columns: { entityId: true } } },
 	});
 
@@ -45,18 +45,21 @@ function createItem() {
 type Item = ReturnType<typeof createItem>;
 
 async function lookup(db: Database) {
-	const [publishedStatus, organisationalUnitEntityType, types, statuses] = await Promise.all([
-		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
-		db.query.entityTypes.findFirst({
-			columns: { id: true },
-			where: { type: "organisational_units" },
-		}),
-		db.query.organisationalUnitTypes.findMany({ columns: { id: true, type: true } }),
-		db.query.organisationalUnitStatus.findMany({ columns: { id: true, status: true } }),
-	]);
+	const [publishedStatus, organisationalUnitEntityType, types, statuses, defaultLocale] =
+		await Promise.all([
+			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+			db.query.entityTypes.findFirst({
+				columns: { id: true },
+				where: { type: "organisational_units" },
+			}),
+			db.query.organisationalUnitTypes.findMany({ columns: { id: true, type: true } }),
+			db.query.organisationalUnitStatus.findMany({ columns: { id: true, status: true } }),
+			db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+		]);
 
 	assert(publishedStatus, "No published entity status in database.");
 	assert(organisationalUnitEntityType, "No organisational unit entity type in database.");
+	assert(defaultLocale, "No default locale in database.");
 
 	const typeId = (type: (typeof schema.organisationalUnitTypesEnum)[number]) => {
 		const match = types.find((t) => t.type === type);
@@ -69,7 +72,13 @@ async function lookup(db: Database) {
 		return match.id;
 	};
 
-	return { publishedStatus, organisationalUnitEntityType, typeId, statusId };
+	return {
+		publishedStatus,
+		organisationalUnitEntityType,
+		typeId,
+		statusId,
+		localeId: defaultLocale.id,
+	};
 }
 
 async function seedUnit(
@@ -80,10 +89,20 @@ async function seedUnit(
 ) {
 	await db
 		.insert(schema.entities)
-		.values({ ...item.entity, typeId: meta.organisationalUnitEntityType.id });
-	await db
-		.insert(schema.entityVersions)
-		.values({ ...item.version, statusId: meta.publishedStatus.id });
+		.values({ id: item.entity.id, typeId: meta.organisationalUnitEntityType.id });
+	await db.insert(schema.entityVersions).values({
+		...item.version,
+		statusId: meta.publishedStatus.id,
+		localeId: meta.localeId,
+	});
+	await db.insert(schema.slugs).values({
+		entityVersionId: item.version.id,
+		entityId: item.entity.id,
+		typeId: meta.organisationalUnitEntityType.id,
+		localeId: meta.localeId,
+		isPublished: true,
+		value: item.entity.slug,
+	});
 	await db.insert(schema.organisationalUnits).values({ ...item.organisationalUnit, typeId });
 }
 

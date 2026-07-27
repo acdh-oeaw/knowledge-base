@@ -14,7 +14,7 @@ export const SpotlightArticleBaseSchema = v.pipe(
 	v.object({
 		...v.pick(schema.SpotlightArticleSelectSchema, ["id", "title", "summary"]).entries,
 		image: ImageSchema,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
 	v.description("Spotlight article"),
@@ -35,7 +35,7 @@ export const SpotlightArticleSchema = v.pipe(
 	v.object({
 		...v.pick(schema.SpotlightArticleSelectSchema, ["id", "title", "summary"]).entries,
 		image: ImageSchema,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
@@ -67,7 +67,7 @@ export type SpotlightArticle = v.InferOutput<typeof SpotlightArticleSchema>;
 export const SpotlightArticleSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.SpotlightArticleSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("Spotlight article slug"),
 	v.metadata({ ref: "SpotlightArticleSlug" }),

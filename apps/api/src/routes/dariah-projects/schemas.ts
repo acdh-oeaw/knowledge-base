@@ -50,7 +50,7 @@ export const DariahProjectBaseSchema = v.pipe(
 			end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 		}),
 		image: v.nullable(ImageSchema),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
 		socialMedia: v.array(DariahProjectSocialMediaSchema),
 		role: v.nullable(v.picklist(schema.projectRolesEnum)),
@@ -86,7 +86,7 @@ export const DariahProjectSchema = v.pipe(
 			start: v.pipe(v.string(), v.isoTimestamp()),
 			end: v.optional(v.pipe(v.string(), v.isoTimestamp())),
 		}),
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
 		socialMedia: v.array(DariahProjectSocialMediaSchema),
 		participants: v.array(DariahProjectOrganisationalUnitsSchema),
@@ -105,7 +105,7 @@ export type DariahProject = v.InferOutput<typeof DariahProjectSchema>;
 export const DariahProjectSlugSchema = v.pipe(
 	v.object({
 		...v.pick(schema.ProjectSelectSchema, ["id"]).entries,
-		entity: v.pick(schema.EntitySelectSchema, ["slug"]),
+		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	}),
 	v.description("DARIAH project slug"),
 	v.metadata({ ref: "DariahProjectSlug" }),
