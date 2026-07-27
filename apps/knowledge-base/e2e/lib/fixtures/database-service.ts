@@ -618,6 +618,7 @@ export class DatabaseService {
 			}
 
 			await tx.delete(schema.internalPages).where(eq(schema.internalPages.id, draftVersionId));
+			await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, draftVersionId));
 			await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, draftVersionId));
 		});
 	}
@@ -1015,6 +1016,14 @@ export class DatabaseService {
 	}
 
 	async createOpenCampaign(year: number): Promise<{ id: string }> {
+		// `year` is unique. A worker's previous run may have crashed before its afterAll ran, leaving a
+		// stale campaign (and reports) behind for this deterministic year — clear it first so this call
+		// doesn't fail on a duplicate-key conflict against orphaned data.
+		const stale = await this.getReportingCampaignByYear(year);
+		if (stale != null) {
+			await this.deleteReportingCampaign(stale.id);
+		}
+
 		const [campaign] = await this.db
 			.insert(schema.reportingCampaigns)
 			.values({ year, status: "open" })
