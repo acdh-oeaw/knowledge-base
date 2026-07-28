@@ -334,6 +334,7 @@ describe("persons", () => {
 
 				const response = await client.persons.slugs[":slug"].$get({
 					param: { slug },
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -354,6 +355,7 @@ describe("persons", () => {
 
 				const response = await client.persons.slugs[":slug"].$get({
 					param: { slug: "non-existing-slug" },
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

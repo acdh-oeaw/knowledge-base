@@ -1,7 +1,12 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
-import { ImageSchema, PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
+import {
+	ImageSchema,
+	LocaleQuerySchema,
+	PaginatedResponseSchema,
+	PaginationQuerySchema,
+} from "@/lib/schemas";
 
 const NationalConsortiumCountrySchema = v.object({
 	...v.pick(schema.OrganisationalUnitSelectSchema, ["id", "name"]).entries,
@@ -49,7 +54,7 @@ export const NationalConsortiumSlugListSchema = v.pipe(
 export type NationalConsortiumSlugList = v.InferOutput<typeof NationalConsortiumSlugListSchema>;
 
 export const GetNationalConsortia = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -72,7 +77,7 @@ export const GetNationalConsortiumById = {
 };
 
 export const GetNationalConsortiumSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -91,5 +96,6 @@ export const GetNationalConsortiumBySlug = {
 		v.description("Get national consortium by slug params"),
 		v.metadata({ ref: "GetNationalConsortiumBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: NationalConsortiumSchema,
 };

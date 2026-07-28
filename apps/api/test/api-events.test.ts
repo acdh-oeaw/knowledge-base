@@ -277,6 +277,7 @@ describe("events", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -303,6 +304,7 @@ describe("events", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

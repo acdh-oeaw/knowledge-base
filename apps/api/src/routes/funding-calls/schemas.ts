@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -80,6 +81,7 @@ const FundingCallStatusQuerySchema = v.pipe(
 
 export const FundingCallQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	status: v.pipe(
 		v.optional(FundingCallStatusQuerySchema),
 		v.description(
@@ -113,7 +115,7 @@ export const GetFundingCallById = {
 };
 
 export const GetFundingCallSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -132,5 +134,6 @@ export const GetFundingCallBySlug = {
 		v.description("Get funding call by slug params"),
 		v.metadata({ ref: "GetFundingCallBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: FundingCallSchema,
 };

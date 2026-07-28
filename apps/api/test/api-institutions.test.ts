@@ -316,6 +316,7 @@ describe("institutions", () => {
 
 				const response = await client.institutions.slugs[":slug"].$get({
 					param: { slug: institution.entity.slug },
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -335,6 +336,7 @@ describe("institutions", () => {
 
 				const response = await client.institutions.slugs[":slug"].$get({
 					param: { slug: "non-existing-slug" },
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

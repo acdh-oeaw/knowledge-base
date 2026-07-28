@@ -2,6 +2,7 @@ import { assert } from "@acdh-oeaw/lib";
 import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { resolveLocaleId } from "@/lib/locales";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -41,12 +42,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetPersons.QuerySchema),
 		async (c) => {
-			const { limit, offset } = c.req.valid("query");
+			const { limit, offset, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getPersons(db, { limit, offset });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getPersons(db, { limit, offset, localeId });
 
 			const payload = await validate(GetPersons.ResponseSchema, data, 500);
 
@@ -76,12 +79,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetPersonSlugs.QuerySchema),
 		async (c) => {
-			const { limit, offset } = c.req.valid("query");
+			const { limit, offset, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getPersonSlugs(db, { limit, offset });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getPersonSlugs(db, { limit, offset, localeId });
 
 			const payload = await validate(GetPersonSlugs.ResponseSchema, data, 500);
 
@@ -151,13 +156,17 @@ export const router = createRouter()
 			},
 		}),
 		validator("param", GetPersonBySlug.ParamsSchema),
+		validator("query", GetPersonBySlug.QuerySchema),
 		async (c) => {
 			const { slug } = c.req.valid("param");
+			const { locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getPersonBySlug(db, { slug });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getPersonBySlug(db, { slug, localeId });
 
 			if (data == null) {
 				return c.notFound();

@@ -2,6 +2,7 @@ import { assert } from "@acdh-oeaw/lib";
 import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { resolveLocaleId } from "@/lib/locales";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -32,12 +33,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetNavigation.QuerySchema),
 		async (c) => {
-			const { menu } = c.req.valid("query");
+			const { menu, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getNavigation(db, { menu });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getNavigation(db, { menu, localeId });
 
 			const payload = await validate(GetNavigation.ResponseSchema, data, 500);
 

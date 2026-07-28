@@ -2,7 +2,12 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
-import { ImageSchema, PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
+import {
+	ImageSchema,
+	LocaleQuerySchema,
+	PaginatedResponseSchema,
+	PaginationQuerySchema,
+} from "@/lib/schemas";
 
 export const PersonBaseSchema = v.pipe(
 	v.object({
@@ -77,7 +82,7 @@ export const PersonSlugListSchema = v.pipe(
 export type PersonSlugList = v.InferOutput<typeof PersonSlugListSchema>;
 
 export const GetPersons = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -100,7 +105,7 @@ export const GetPersonById = {
 };
 
 export const GetPersonSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -119,5 +124,6 @@ export const GetPersonBySlug = {
 		v.description("Get person by slug params"),
 		v.metadata({ ref: "GetPersonBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: PersonSchema,
 };

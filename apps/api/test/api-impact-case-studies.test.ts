@@ -407,6 +407,7 @@ describe("impact-case-studies", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -444,6 +445,7 @@ describe("impact-case-studies", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

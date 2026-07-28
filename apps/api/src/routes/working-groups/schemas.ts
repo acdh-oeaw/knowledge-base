@@ -4,6 +4,7 @@ import * as v from "valibot";
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -119,6 +120,7 @@ export type WorkingGroupSlugList = v.InferOutput<typeof WorkingGroupSlugListSche
 
 export const WorkingGroupQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	status: v.pipe(
 		v.optional(v.picklist(["active", "inactive"] as const)),
 		v.description(
@@ -152,7 +154,7 @@ export const GetWorkingGroupById = {
 };
 
 export const GetWorkingGroupSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -171,5 +173,6 @@ export const GetWorkingGroupBySlug = {
 		v.description("Get working group by slug params"),
 		v.metadata({ ref: "GetWorkingGroupBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: WorkingGroupSchema,
 };

@@ -6,6 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { resolveLocaleId } from "@/lib/locales";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -79,12 +80,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetDocumentsPolicies.QuerySchema),
 		async (c) => {
-			const { limit, offset } = c.req.valid("query");
+			const { limit, offset, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const result = await getDocumentsPolicies(db, { limit, offset });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const result = await getDocumentsPolicies(db, { limit, offset, localeId });
 
 			const data = {
 				...result,
@@ -118,11 +121,16 @@ export const router = createRouter()
 				},
 			},
 		}),
+		validator("query", GetDocumentsPoliciesTree.QuerySchema),
 		async (c) => {
+			const { locale } = c.req.valid("query");
+
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const result = await getDocumentsPoliciesTree(db);
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const result = await getDocumentsPoliciesTree(db, { localeId });
 			const data = {
 				data: result.data.map((node) => {
 					if (node.type === "item") {
@@ -166,12 +174,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetDocumentOrPolicySlugs.QuerySchema),
 		async (c) => {
-			const { limit, offset } = c.req.valid("query");
+			const { limit, offset, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getDocumentOrPolicySlugs(db, { limit, offset });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getDocumentOrPolicySlugs(db, { limit, offset, localeId });
 
 			const payload = await validate(GetDocumentOrPolicySlugs.ResponseSchema, data, 500);
 
@@ -292,13 +302,17 @@ export const router = createRouter()
 			},
 		}),
 		validator("param", GetDocumentOrPolicyBySlug.ParamsSchema),
+		validator("query", GetDocumentOrPolicyBySlug.QuerySchema),
 		async (c) => {
 			const { slug } = c.req.valid("param");
+			const { locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const result = await getDocumentOrPolicyBySlug(db, { slug });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const result = await getDocumentOrPolicyBySlug(db, { slug, localeId });
 
 			if (result == null) {
 				return c.notFound();

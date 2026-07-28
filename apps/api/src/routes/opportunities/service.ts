@@ -6,12 +6,14 @@ import { assert } from "@acdh-oeaw/lib";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
+import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { OpportunitySource, OpportunityStatus } from "@/routes/opportunities/schemas";
 import {
 	type SQL,
 	type SQLWrapper,
+	alias,
 	and,
 	count,
 	desc,
@@ -20,15 +22,6 @@ import {
 	or,
 	sql,
 } from "@/services/db/sql";
-
-interface GetOpportunitiesParams {
-	/** @default 10 */
-	limit?: number;
-	/** @default 0 */
-	offset?: number;
-	status?: OpportunityStatus | Array<OpportunityStatus>;
-	source?: OpportunitySource | Array<OpportunitySource>;
-}
 
 function buildStatusFilter(duration: SQLWrapper, statuses: Array<OpportunityStatus>): SQL {
 	const lower = sql`LOWER(${duration})`;
@@ -51,62 +44,108 @@ function buildStatusFilter(duration: SQLWrapper, statuses: Array<OpportunityStat
 	)!;
 }
 
+/**
+ * Resolve, per opportunity document, the published version to prefer: the requested/default
+ * locale's published version, falling back to the default locale's when the document has no version
+ * in the preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still
+ * works correctly here — both joins target the same locale and `COALESCE` just picks the
+ * (identical) match.
+ */
+async function resolvePublishedOpportunitiesLookup(
+	db: Database | Transaction,
+	requestedLocaleId?: string,
+) {
+	const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityTypes.findFirst({ where: { type: "opportunities" }, columns: { id: true } }),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(type, "No opportunities entity type in database.");
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "opportunities_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "opportunities_default_version");
+
+	return {
+		localeId,
+		defaultLocaleId,
+		typeId: type.id,
+		statusId: status.id,
+		preferredVersion,
+		defaultVersion,
+	};
+}
+
+interface GetOpportunitiesParams {
+	/** @default 10 */
+	limit?: number;
+	/** @default 0 */
+	offset?: number;
+	status?: OpportunityStatus | Array<OpportunityStatus>;
+	source?: OpportunitySource | Array<OpportunitySource>;
+	localeId?: string;
+}
+
 export async function getOpportunities(db: Database | Transaction, params: GetOpportunitiesParams) {
-	const { limit = 10, offset = 0, source, status } = params;
+	const { limit = 10, offset = 0, source, status, localeId: requestedLocaleId } = params;
 	const statuses = status == null ? [] : Array.isArray(status) ? status : [status];
 	const sources = source == null ? [] : Array.isArray(source) ? source : [source];
-	const aggregateStatusFilter =
-		statuses.length > 0 ? buildStatusFilter(schema.opportunities.duration, statuses) : undefined;
-	const aggregateSourceFilter =
-		sources.length > 0 ? inArray(schema.opportunitySources.source, sources) : undefined;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedOpportunitiesLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.opportunities.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-				RAW: statuses.length > 0 ? (t) => buildStatusFilter(t.duration, statuses) : undefined,
-				source:
-					sources.length > 0
-						? {
-								source: {
-									in: sources,
-								},
-							}
+		db
+			.select({
+				id: schema.opportunities.id,
+				title: schema.opportunities.title,
+				summary: schema.opportunities.summary,
+				website: schema.opportunities.website,
+				duration: schema.opportunities.duration,
+				updatedAt: schema.entityVersions.updatedAt,
+				slug: schema.slugs.value,
+				sourceId: schema.opportunitySources.id,
+				source: schema.opportunitySources.source,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.innerJoin(
+				schema.opportunitySources,
+				eq(schema.opportunities.sourceId, schema.opportunitySources.id),
+			)
+			.where(
+				and(
+					eq(schema.entities.typeId, typeId),
+					statuses.length > 0
+						? buildStatusFilter(schema.opportunities.duration, statuses)
 						: undefined,
-			},
-			columns: {
-				id: true,
-				title: true,
-				summary: true,
-				website: true,
-				duration: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				source: {
-					columns: {
-						id: true,
-						source: true,
-					},
-				},
-			},
-			orderBy(t) {
-				return [desc(sql`LOWER(${t.duration})`), desc(t.id)];
-			},
-			limit,
-			offset,
-		}),
+					sources.length > 0 ? inArray(schema.opportunitySources.source, sources) : undefined,
+				),
+			)
+			.orderBy(desc(sql`LOWER(${schema.opportunities.duration})`), desc(schema.opportunities.id))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.opportunities)
@@ -119,7 +158,14 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 				schema.opportunitySources,
 				eq(schema.opportunities.sourceId, schema.opportunitySources.id),
 			)
-			.where(and(aggregateStatusFilter, aggregateSourceFilter)),
+			.where(
+				and(
+					statuses.length > 0
+						? buildStatusFilter(schema.opportunities.duration, statuses)
+						: undefined,
+					sources.length > 0 ? inArray(schema.opportunitySources.source, sources) : undefined,
+				),
+			),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
@@ -127,7 +173,16 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 	const data = items.map((item) => {
 		const duration = serializeDateRange(item.duration);
 
-		return { ...flattenEntityVersion(item), duration };
+		return {
+			id: item.id,
+			title: item.title,
+			summary: item.summary,
+			website: item.website,
+			duration,
+			source: { id: item.sourceId, source: item.source },
+			entity: { slug: item.slug },
+			publishedAt: item.updatedAt.toISOString(),
+		};
 	});
 
 	return { data, limit, offset, total };
@@ -209,42 +264,50 @@ interface GetOpportunitySlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getOpportunitySlugs(
 	db: Database | Transaction,
 	params: GetOpportunitySlugsParams,
 ) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedOpportunitiesLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.opportunities.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.opportunities.id,
+				slug: schema.slugs.value,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.opportunities, eq(schema.opportunities.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.where(eq(schema.entities.typeId, typeId))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.opportunities)
@@ -257,9 +320,8 @@ export async function getOpportunitySlugs(
 
 	const total = aggregate.at(0)?.total ?? 0;
 
-	const data = items.map(({ id, entityVersion }) => {
-		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
-		return { id, entity: { slug: entityVersion.slug.value } };
+	const data = items.map(({ id, slug }) => {
+		return { id, entity: { slug } };
 	});
 
 	return { data, limit, offset, total };
@@ -269,13 +331,14 @@ export async function getOpportunitySlugs(
 
 interface GetOpportunityBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getOpportunityBySlug(
 	db: Database | Transaction,
 	params: GetOpportunityBySlugParams,
 ) {
-	const { slug } = params;
+	const { slug, localeId } = params;
 
 	const item = await db.query.opportunities.findFirst({
 		where: {
@@ -285,6 +348,7 @@ export async function getOpportunityBySlug(
 				},
 				slug: {
 					value: slug,
+					...(localeId != null ? { localeId } : {}),
 				},
 			},
 		},

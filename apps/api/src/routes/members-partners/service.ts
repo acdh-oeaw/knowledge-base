@@ -4,118 +4,216 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 
 import { type ContentBlock, getContentBlocks } from "@/lib/content-blocks";
-import { flattenEntityVersion } from "@/lib/entity-version";
 import { generateImageUrl, toImageAsset } from "@/lib/images";
+import { resolveLocaleContext } from "@/lib/locales";
 import { getPersonPositions } from "@/lib/persons";
 import { getRelatedEntities, getRelatedResources, resolveDocumentId } from "@/lib/relations";
 import { mapSocialMedia } from "@/lib/social-media";
 import type { Database, Transaction } from "@/middlewares/db";
-import { type SQLWrapper, alias, and, count, eq, exists, inArray, sql } from "@/services/db/sql";
+import {
+	type SQLWrapper,
+	alias,
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	exists,
+	inArray,
+	sql,
+} from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
 
-interface GetMembersAndPartnersParams {
-	/** @default 10 */
-	limit?: number;
-	/** @default 0 */
-	offset?: number;
+interface MembersAndPartnersContext {
+	localeId: string;
+	defaultLocaleId: string;
+	statusId: string;
 }
 
-export async function getMembersAndPartners(
+/**
+ * Resolve the locale to prefer (falling back to the default locale) and the `published` entity
+ * status id, shared across the base country lookup and every nested institution/consortium/person
+ * lookup below — `entityStatus` is entity-type-agnostic, so this is resolved once per request.
+ */
+async function resolveMembersAndPartnersContext(
 	db: Database | Transaction,
-	params: GetMembersAndPartnersParams,
-) {
-	const { limit = 10, offset = 0 } = params;
-
-	const [items, aggregate] = await Promise.all([
-		db.query.membersAndPartners.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-				metadata: true,
-				name: true,
-				summary: true,
-				status: true,
-				type: true,
-				sshocMarketplaceActorId: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-				socialMedia: {
-					columns: {
-						id: true,
-						name: true,
-						url: true,
-						duration: true,
-					},
-					with: {
-						type: {
-							columns: {
-								type: true,
-							},
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
-		db
-			.select({ total: count() })
-			.from(schema.membersAndPartners)
-			.innerJoin(schema.entityVersions, eq(schema.membersAndPartners.id, schema.entityVersions.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
-			),
+	requestedLocaleId?: string,
+): Promise<MembersAndPartnersContext> {
+	const [{ localeId, defaultLocaleId }, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
 	]);
 
-	const total = aggregate.at(0)?.total ?? 0;
+	assert(status, "No published entity status in database.");
 
-	const data = await Promise.all(
-		items.map(async (item) => {
-			const nationalConsortium =
-				item.status === "is_member_of" || item.status === "is_observer_of"
-					? await getNationalConsortium(db, item.id)
-					: null;
-			const image = nationalConsortium?.image ?? generateImageUrl(item.image, imageWidth.preview);
-			const socialMedia = mapSocialMedia(item.socialMedia);
+	return { localeId, defaultLocaleId, statusId: status.id };
+}
 
-			return { ...flattenEntityVersion(item), image, socialMedia };
+/**
+ * The `members_and_partners` DB view (member/observer countries related directly to a DARIAH-EU
+ * ERIC unit, plus countries whose located-in institutions hold a cooperating-partner relation) has
+ * no locale awareness — it's a static view and can't take the request's preferred locale as a
+ * parameter, and it returns one row per (country, locale) pair rather than one per document. Its
+ * classification logic (which countries qualify, and their status) is document-level and therefore
+ * locale-independent, so it's safe to reuse as-is for _eligibility_; we just collapse it down to
+ * distinct (document, status) pairs here and resolve locale-preferred _display_ data separately.
+ */
+function eligibleMembersAndPartners(db: Database | Transaction) {
+	const versions = alias(schema.entityVersions, "eligible_mp_versions");
+
+	return db
+		.selectDistinct({
+			entityId: versions.entityId,
+			status: schema.membersAndPartners.status,
+		})
+		.from(schema.membersAndPartners)
+		.innerJoin(versions, eq(versions.id, schema.membersAndPartners.id))
+		.as("eligible_members_and_partners");
+}
+
+function fromMembersAndPartners(db: Database | Transaction, ctx: MembersAndPartnersContext) {
+	const eligible = eligibleMembersAndPartners(db);
+	const preferredVersion = alias(schema.entityVersions, "mp_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "mp_default_version");
+
+	return db
+		.select({
+			id: schema.organisationalUnits.id,
+			metadata: schema.organisationalUnits.metadata,
+			name: schema.organisationalUnits.name,
+			summary: schema.organisationalUnits.summary,
+			sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
+			status: eligible.status,
+			updatedAt: schema.entityVersions.updatedAt,
+			slug: schema.slugs.value,
+			imageKey: schema.assets.key,
+			imageAlt: schema.assets.alt,
+			imageCaption: schema.assets.caption,
+			licenseName: schema.licenses.name,
+			licenseUrl: schema.licenses.url,
+		})
+		.from(eligible)
+		.leftJoin(
+			preferredVersion,
+			and(
+				eq(preferredVersion.entityId, eligible.entityId),
+				eq(preferredVersion.localeId, ctx.localeId),
+				eq(preferredVersion.statusId, ctx.statusId),
+			),
+		)
+		.leftJoin(
+			defaultVersion,
+			and(
+				eq(defaultVersion.entityId, eligible.entityId),
+				eq(defaultVersion.localeId, ctx.defaultLocaleId),
+				eq(defaultVersion.statusId, ctx.statusId),
+			),
+		)
+		.innerJoin(
+			schema.entityVersions,
+			sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+		)
+		.innerJoin(
+			schema.organisationalUnits,
+			eq(schema.organisationalUnits.id, schema.entityVersions.id),
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+		.leftJoin(schema.assets, eq(schema.organisationalUnits.imageId, schema.assets.id))
+		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId));
+}
+
+interface MembersAndPartnersRow {
+	id: string;
+	metadata: unknown;
+	name: string;
+	summary: string | null;
+	sshocMarketplaceActorId: number | null;
+	status: (typeof schema.membersAndPartnersUnitStatusEnum)[number] | null;
+	updatedAt: Date;
+	slug: string;
+	imageKey: string | null;
+	imageAlt: string | null;
+	imageCaption: string | null;
+	licenseName: string | null;
+	licenseUrl: string | null;
+}
+
+function rowImage(row: MembersAndPartnersRow, size: number) {
+	return generateImageUrl(
+		toImageAsset({
+			key: row.imageKey,
+			alt: row.imageAlt,
+			caption: row.imageCaption,
+			licenseName: row.licenseName,
+			licenseUrl: row.licenseUrl,
 		}),
+		size,
 	);
+}
 
-	return { data, limit, offset, total };
+/**
+ * Batched, per-organisational-unit-version social media lookup (organisational units are a to-many
+ * relation, so this can't be folded into the flat row selects above without fanning them out).
+ * Reused for the base country/institution/consortium's own social media as well as pulling just the
+ * "website" entry off institutions and the national consortium.
+ */
+async function getSocialMediaByOrganisationalUnitIds(
+	db: Database | Transaction,
+	organisationalUnitIds: Array<string>,
+) {
+	const map = new Map<
+		string,
+		Array<{
+			id: string;
+			name: string;
+			url: string;
+			duration: schema.SocialMedia["duration"];
+			type: { type: (typeof schema.socialMediaTypesEnum)[number] };
+		}>
+	>();
+
+	if (organisationalUnitIds.length === 0) {
+		return map;
+	}
+
+	const rows = await db
+		.select({
+			organisationalUnitId: schema.organisationalUnitsToSocialMedia.organisationalUnitId,
+			id: schema.socialMedia.id,
+			name: schema.socialMedia.name,
+			url: schema.socialMedia.url,
+			duration: schema.socialMedia.duration,
+			type: schema.socialMediaTypes.type,
+		})
+		.from(schema.organisationalUnitsToSocialMedia)
+		.innerJoin(
+			schema.socialMedia,
+			eq(schema.socialMedia.id, schema.organisationalUnitsToSocialMedia.socialMediaId),
+		)
+		.innerJoin(schema.socialMediaTypes, eq(schema.socialMediaTypes.id, schema.socialMedia.typeId))
+		.where(
+			inArray(schema.organisationalUnitsToSocialMedia.organisationalUnitId, organisationalUnitIds),
+		);
+
+	for (const row of rows) {
+		const items = map.get(row.organisationalUnitId) ?? [];
+		items.push({
+			id: row.id,
+			name: row.name,
+			url: row.url,
+			duration: row.duration,
+			type: { type: row.type },
+		});
+		map.set(row.organisationalUnitId, items);
+	}
+
+	return map;
+}
+
+function findWebsite(
+	socialMedia: Array<{ url: string; type: { type: string } }> | undefined,
+): string | null {
+	return socialMedia?.find((sm) => sm.type.type === "website")?.url ?? null;
 }
 
 //
@@ -214,6 +312,7 @@ type RelationStatus =
 	| "is_national_consortium_of"
 	| "is_cooperating_partner_of";
 
+/** Document-level, locale-independent relation checks — unaffected by locale preference. */
 function buildActiveRelationExistsFilter(
 	db: Database | Transaction,
 	idRef: string | SQLWrapper,
@@ -314,106 +413,119 @@ function buildActiveRelationToUnitFilter(
 	);
 }
 
+/**
+ * Institutions related to `countryVersionId` by `status` (e.g. partner institution, cooperating
+ * partner, national coordinating/representative institution), with locale-preferred display data.
+ */
 async function getInstitutionsByRelation(
 	db: Database | Transaction,
-	countryId: schema.OrganisationalUnit["id"],
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
 	status: RelationStatus | Array<RelationStatus>,
 ) {
-	const items = (await db.query.organisationalUnits.findMany({
-		where: {
-			entityVersion: {
-				status: {
-					type: "published",
-				},
-			},
-			type: {
-				type: "institution",
-			},
-			RAW(t) {
-				return and(
-					buildActiveRelationExistsFilter(db, t.id, status, "eric"),
-					buildActiveRelationToUnitFilter(db, t.id, "is_located_in", "country", countryId),
-				)!;
-			},
-		},
-		columns: {
-			name: true,
-			ror: true,
-		},
-		with: {
-			entityVersion: {
-				columns: {},
-				with: {
-					slug: {
-						columns: { value: true },
-					},
-				},
-			},
-			socialMedia: {
-				columns: {
-					url: true,
-				},
-				with: {
-					type: {
-						columns: {
-							type: true,
-						},
-					},
-				},
-			},
-		},
-		orderBy(t, { asc }) {
-			return [asc(t.name)];
-		},
-	})) as unknown as Array<{
-		name: string;
-		ror: string | null;
-		entityVersion: {
-			slug: {
-				value: string;
-			};
-		};
-		socialMedia: Array<{
-			url: string;
-			type: {
-				type: string;
-			};
-		}>;
-	}>;
+	const preferredVersion = alias(schema.entityVersions, "inst_by_rel_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "inst_by_rel_default_version");
+	// `buildActiveRelationExistsFilter`/`buildActiveRelationToUnitFilter` embed `idRef` inside their
+	// own `FROM entity_versions WHERE entity_versions.id = idRef` scalar subquery — passing the bare
+	// (unaliased) `schema.entityVersions.id` here would shadow itself inside that subquery (the
+	// inner `FROM entity_versions` wins), turning the correlation into a self-referential tautology
+	// that matches every row and makes the scalar subquery blow up with "more than one row returned".
+	// Aliasing the resolved version keeps it a distinct identifier so it correlates correctly instead.
+	const resolvedVersion = alias(schema.entityVersions, "inst_by_rel_resolved_version");
+	const institutionSlugs = alias(schema.slugs, "inst_by_rel_slugs");
+	const institutionTypes = alias(schema.organisationalUnitTypes, "inst_by_rel_types");
 
-	return items.map((item) => {
-		const website = item.socialMedia.find((sm) => sm.type.type === "website")?.url ?? null;
+	const rows = await db
+		.select({
+			id: resolvedVersion.id,
+			name: schema.organisationalUnits.name,
+			ror: schema.organisationalUnits.ror,
+			slug: institutionSlugs.value,
+		})
+		.from(schema.entities)
+		.leftJoin(
+			preferredVersion,
+			and(
+				eq(preferredVersion.entityId, schema.entities.id),
+				eq(preferredVersion.localeId, ctx.localeId),
+				eq(preferredVersion.statusId, ctx.statusId),
+			),
+		)
+		.leftJoin(
+			defaultVersion,
+			and(
+				eq(defaultVersion.entityId, schema.entities.id),
+				eq(defaultVersion.localeId, ctx.defaultLocaleId),
+				eq(defaultVersion.statusId, ctx.statusId),
+			),
+		)
+		.innerJoin(
+			resolvedVersion,
+			sql`${resolvedVersion.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+		)
+		.innerJoin(schema.organisationalUnits, eq(schema.organisationalUnits.id, resolvedVersion.id))
+		.innerJoin(institutionSlugs, eq(institutionSlugs.entityVersionId, resolvedVersion.id))
+		.innerJoin(
+			institutionTypes,
+			and(
+				eq(schema.organisationalUnits.typeId, institutionTypes.id),
+				eq(institutionTypes.type, "institution"),
+			),
+		)
+		.where(
+			and(
+				buildActiveRelationExistsFilter(db, resolvedVersion.id, status, "eric"),
+				buildActiveRelationToUnitFilter(
+					db,
+					resolvedVersion.id,
+					"is_located_in",
+					"country",
+					countryVersionId,
+				),
+			),
+		)
+		.orderBy(asc(schema.organisationalUnits.name));
 
+	const websites = await getSocialMediaByOrganisationalUnitIds(
+		db,
+		rows.map((row) => row.id),
+	);
+
+	return rows.map((row) => {
 		return {
-			name: item.name,
-			ror: item.ror,
-			slug: item.entityVersion.slug.value,
-			website,
+			name: row.name,
+			ror: row.ror,
+			slug: row.slug,
+			website: findWebsite(websites.get(row.id)),
 		};
 	});
 }
 
 function getPartnerInstitutions(
 	db: Database | Transaction,
-	countryId: schema.OrganisationalUnit["id"],
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
 ) {
-	return getInstitutionsByRelation(db, countryId, "is_partner_institution_of");
+	return getInstitutionsByRelation(db, ctx, countryVersionId, "is_partner_institution_of");
 }
 
 function getCooperatingPartnerInstitutions(
 	db: Database | Transaction,
-	countryId: schema.OrganisationalUnit["id"],
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
 ) {
-	return getInstitutionsByRelation(db, countryId, "is_cooperating_partner_of");
+	return getInstitutionsByRelation(db, ctx, countryVersionId, "is_cooperating_partner_of");
 }
 
 async function getNationalCoordinatingInstitution(
 	db: Database | Transaction,
-	countryId: schema.OrganisationalUnit["id"],
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
 ) {
 	const items = await getInstitutionsByRelation(
 		db,
-		countryId,
+		ctx,
+		countryVersionId,
 		"is_national_coordinating_institution_in",
 	);
 	return items.at(0) ?? null;
@@ -421,11 +533,13 @@ async function getNationalCoordinatingInstitution(
 
 async function getNationalRepresentativeInstitution(
 	db: Database | Transaction,
-	countryId: schema.OrganisationalUnit["id"],
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
 ) {
 	const items = await getInstitutionsByRelation(
 		db,
-		countryId,
+		ctx,
+		countryVersionId,
 		"is_national_representative_institution_in",
 	);
 	return items.at(0) ?? null;
@@ -433,100 +547,121 @@ async function getNationalRepresentativeInstitution(
 
 async function getNationalConsortium(
 	db: Database | Transaction,
-	countryId: string,
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
 	options?: { imageSize?: number; includeDescription?: boolean },
 ) {
-	const item = await db.query.organisationalUnits.findFirst({
-		where: {
-			entityVersion: {
-				status: {
-					type: "published",
-				},
-			},
-			type: {
-				type: "national_consortium",
-			},
-			RAW(t) {
-				return buildActiveRelationToUnitFilter(
-					db,
-					t.id,
-					"is_national_consortium_of",
-					"country",
-					countryId,
-				);
-			},
-		},
-		columns: {
-			name: true,
-			ror: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { id: true },
-				with: {
-					slug: {
-						columns: { value: true },
-					},
-				},
-			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
-			socialMedia: {
-				columns: {
-					url: true,
-				},
-				with: {
-					type: {
-						columns: {
-							type: true,
-						},
-					},
-				},
-			},
-		},
-	});
+	const preferredVersion = alias(schema.entityVersions, "consortium_by_country_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "consortium_by_country_default_version");
+	// See the comment in `getInstitutionsByRelation`: `buildActiveRelationToUnitFilter` embeds `idRef`
+	// inside its own `FROM entity_versions` scalar subquery, so the bare (unaliased) entityVersions
+	// join here would shadow itself there instead of correlating — alias it to keep it distinct.
+	const resolvedVersion = alias(schema.entityVersions, "consortium_by_country_resolved_version");
+	const consortiumSlugs = alias(schema.slugs, "consortium_by_country_slugs");
+	const consortiumTypes = alias(schema.organisationalUnitTypes, "consortium_by_country_types");
 
-	if (item == null) {
+	const rows = await db
+		.select({
+			id: resolvedVersion.id,
+			name: schema.organisationalUnits.name,
+			ror: schema.organisationalUnits.ror,
+			slug: consortiumSlugs.value,
+			imageKey: schema.assets.key,
+			imageAlt: schema.assets.alt,
+			imageCaption: schema.assets.caption,
+			licenseName: schema.licenses.name,
+			licenseUrl: schema.licenses.url,
+		})
+		.from(schema.entities)
+		.leftJoin(
+			preferredVersion,
+			and(
+				eq(preferredVersion.entityId, schema.entities.id),
+				eq(preferredVersion.localeId, ctx.localeId),
+				eq(preferredVersion.statusId, ctx.statusId),
+			),
+		)
+		.leftJoin(
+			defaultVersion,
+			and(
+				eq(defaultVersion.entityId, schema.entities.id),
+				eq(defaultVersion.localeId, ctx.defaultLocaleId),
+				eq(defaultVersion.statusId, ctx.statusId),
+			),
+		)
+		.innerJoin(
+			resolvedVersion,
+			sql`${resolvedVersion.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+		)
+		.innerJoin(schema.organisationalUnits, eq(schema.organisationalUnits.id, resolvedVersion.id))
+		.innerJoin(consortiumSlugs, eq(consortiumSlugs.entityVersionId, resolvedVersion.id))
+		.innerJoin(
+			consortiumTypes,
+			and(
+				eq(schema.organisationalUnits.typeId, consortiumTypes.id),
+				eq(consortiumTypes.type, "national_consortium"),
+			),
+		)
+		.leftJoin(schema.assets, eq(schema.organisationalUnits.imageId, schema.assets.id))
+		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
+		.where(
+			buildActiveRelationToUnitFilter(
+				db,
+				resolvedVersion.id,
+				"is_national_consortium_of",
+				"country",
+				countryVersionId,
+			),
+		)
+		.limit(1);
+
+	const row = rows.at(0);
+
+	if (row == null) {
 		return null;
 	}
 
-	assert(item.entityVersion.slug, `Slug missing for entity version "${item.entityVersion.id}".`);
-
-	const fields =
-		options?.includeDescription === true ? await getContentBlocks(db, item.entityVersion.id) : {};
-	const website = item.socialMedia.find((sm) => sm.type.type === "website")?.url ?? null;
+	const [fields, websites] = await Promise.all([
+		options?.includeDescription === true ? getContentBlocks(db, row.id) : Promise.resolve({}),
+		getSocialMediaByOrganisationalUnitIds(db, [row.id]),
+	]);
 
 	return {
-		name: item.name,
-		slug: item.entityVersion.slug.value,
-		ror: item.ror,
-		website,
-		image: generateImageUrl(item.image, options?.imageSize ?? imageWidth.preview),
-		description: fields.description,
+		name: row.name,
+		slug: row.slug,
+		ror: row.ror,
+		website: findWebsite(websites.get(row.id)),
+		image: generateImageUrl(
+			toImageAsset({
+				key: row.imageKey,
+				alt: row.imageAlt,
+				caption: row.imageCaption,
+				licenseName: row.licenseName,
+				licenseUrl: row.licenseUrl,
+			}),
+			options?.imageSize ?? imageWidth.preview,
+		),
+		description: (fields as { description?: Array<ContentBlock> }).description,
 	};
 }
 
-async function getContributors(db: Database | Transaction, countryId: string) {
-	// countryId is a published org version id; resolve it to its document id once here.
-	const countryDocumentId = await resolveDocumentId(db, countryId);
+async function getContributors(
+	db: Database | Transaction,
+	ctx: MembersAndPartnersContext,
+	countryVersionId: string,
+) {
+	// countryVersionId is a resolved published org version id; resolve it to its document id once.
+	const countryDocumentId = await resolveDocumentId(db, countryVersionId);
+
+	const preferredVersion = alias(schema.entityVersions, "contributor_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "contributor_default_version");
+	const contributorSlugs = alias(schema.slugs, "contributor_slugs");
+
 	const rows = await db
 		.select({
-			id: schema.persons.id,
+			id: schema.entityVersions.id,
 			name: schema.persons.name,
-			slug: schema.slugs.value,
+			slug: contributorSlugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
@@ -535,14 +670,28 @@ async function getContributors(db: Database | Transaction, countryId: string) {
 			role: schema.personRoleTypes.type,
 		})
 		.from(schema.personsToOrganisationalUnits)
-		// person↔org relations are document-level; resolve the person to its published version and
-		// match the org by its document id (countryId is a published org version id).
-		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.personsToOrganisationalUnits.personDocumentId),
+		.leftJoin(
+			preferredVersion,
+			and(
+				eq(preferredVersion.entityId, schema.personsToOrganisationalUnits.personDocumentId),
+				eq(preferredVersion.localeId, ctx.localeId),
+				eq(preferredVersion.statusId, ctx.statusId),
+			),
 		)
-		.innerJoin(schema.persons, eq(schema.persons.id, schema.documentLifecycle.publishedId))
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
+		.leftJoin(
+			defaultVersion,
+			and(
+				eq(defaultVersion.entityId, schema.personsToOrganisationalUnits.personDocumentId),
+				eq(defaultVersion.localeId, ctx.defaultLocaleId),
+				eq(defaultVersion.statusId, ctx.statusId),
+			),
+		)
+		.innerJoin(
+			schema.entityVersions,
+			sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+		)
+		.innerJoin(schema.persons, eq(schema.persons.id, schema.entityVersions.id))
+		.innerJoin(contributorSlugs, eq(contributorSlugs.entityVersionId, schema.entityVersions.id))
 		.leftJoin(schema.assets, eq(schema.persons.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 		.innerJoin(
@@ -593,94 +742,39 @@ async function getContributors(db: Database | Transaction, countryId: string) {
 	return mapPersonContributors(contributors, positions);
 }
 
-interface GetMemberOrPartnerByIdParams {
-	id: schema.OrganisationalUnit["id"];
-}
+//
 
-export async function getMemberOrPartnerById(
+async function buildMemberOrPartnerDetail(
 	db: Database | Transaction,
-	params: GetMemberOrPartnerByIdParams,
+	ctx: MembersAndPartnersContext,
+	item: MembersAndPartnersRow,
 ) {
-	const { id } = params;
+	const status = item.status;
+	assert(status, `Members-and-partners status missing for document version "${item.id}".`);
 
-	const [item, fields, relatedEntities, relatedResources] = await Promise.all([
-		db.query.membersAndPartners.findFirst({
-			where: {
-				id,
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-				metadata: true,
-				name: true,
-				summary: true,
-				status: true,
-				type: true,
-				sshocMarketplaceActorId: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-				socialMedia: {
-					columns: {
-						id: true,
-						name: true,
-						url: true,
-						duration: true,
-					},
-					with: {
-						type: {
-							columns: {
-								type: true,
-							},
-						},
-					},
-				},
-			},
-		}),
-		getContentBlocks(db, id),
-		getRelatedEntities(db, id),
-		getRelatedResources(db, id),
+	const [fields, relatedEntities, relatedResources, socialMediaMap] = await Promise.all([
+		getContentBlocks(db, item.id),
+		getRelatedEntities(db, item.id),
+		getRelatedResources(db, item.id),
+		getSocialMediaByOrganisationalUnitIds(db, [item.id]),
 	]);
 
-	if (item == null) {
-		return null;
-	}
-
 	const base = {
-		...flattenEntityVersion(item),
-		socialMedia: mapSocialMedia(item.socialMedia),
+		id: item.id,
+		metadata: item.metadata,
+		name: item.name,
+		summary: item.summary,
+		sshocMarketplaceActorId: item.sshocMarketplaceActorId,
+		type: schema.membersAndPartnersUnitType,
+		entity: { slug: item.slug },
+		publishedAt: item.updatedAt.toISOString(),
+		socialMedia: mapSocialMedia(socialMediaMap.get(item.id) ?? []),
 		...fields,
 		relatedEntities,
 		relatedResources,
 	};
 
-	if (item.status === "is_member_of" || item.status === "is_observer_of") {
+	if (status === "is_member_of" || status === "is_observer_of") {
 		const [
 			institutions,
 			contributors,
@@ -688,24 +782,24 @@ export async function getMemberOrPartnerById(
 			nationalRepresentativeInstitution,
 			nationalConsortium,
 		] = await Promise.all([
-			getPartnerInstitutions(db, item.id),
-			getContributors(db, item.id),
-			getNationalCoordinatingInstitution(db, item.id),
-			getNationalRepresentativeInstitution(db, item.id),
-			getNationalConsortium(db, item.id, {
+			getPartnerInstitutions(db, ctx, item.id),
+			getContributors(db, ctx, item.id),
+			getNationalCoordinatingInstitution(db, ctx, item.id),
+			getNationalRepresentativeInstitution(db, ctx, item.id),
+			getNationalConsortium(db, ctx, item.id, {
 				imageSize: imageWidth.featured,
 				includeDescription: true,
 			}),
 		]);
 
-		const image = nationalConsortium?.image ?? generateImageUrl(item.image, imageWidth.featured);
+		const image = nationalConsortium?.image ?? rowImage(item, imageWidth.featured);
 		const description = hasContentBlocks(nationalConsortium?.description)
 			? nationalConsortium.description
 			: fields.description;
 
 		return {
 			...base,
-			status: item.status,
+			status,
 			image,
 			description,
 			contributors,
@@ -718,10 +812,99 @@ export async function getMemberOrPartnerById(
 
 	return {
 		...base,
-		status: item.status,
-		image: generateImageUrl(item.image, imageWidth.featured),
-		institutions: await getCooperatingPartnerInstitutions(db, item.id),
+		status,
+		image: rowImage(item, imageWidth.featured),
+		institutions: await getCooperatingPartnerInstitutions(db, ctx, item.id),
 	};
+}
+
+//
+
+interface GetMembersAndPartnersParams {
+	/** @default 10 */
+	limit?: number;
+	/** @default 0 */
+	offset?: number;
+	localeId?: string;
+}
+
+export async function getMembersAndPartners(
+	db: Database | Transaction,
+	params: GetMembersAndPartnersParams,
+) {
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const ctx = await resolveMembersAndPartnersContext(db, requestedLocaleId);
+
+	const [items, aggregate] = await Promise.all([
+		fromMembersAndPartners(db, ctx)
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(eligibleMembersAndPartners(db)),
+	]);
+
+	const total = aggregate.at(0)?.total ?? 0;
+
+	const socialMediaMap = await getSocialMediaByOrganisationalUnitIds(
+		db,
+		items.map((item) => item.id),
+	);
+
+	const data = await Promise.all(
+		items.map(async (item) => {
+			const status = item.status;
+			assert(status, `Members-and-partners status missing for document version "${item.id}".`);
+
+			const nationalConsortium =
+				status === "is_member_of" || status === "is_observer_of"
+					? await getNationalConsortium(db, ctx, item.id)
+					: null;
+
+			const image = nationalConsortium?.image ?? rowImage(item, imageWidth.preview);
+			const socialMedia = mapSocialMedia(socialMediaMap.get(item.id) ?? []);
+
+			return {
+				id: item.id,
+				metadata: item.metadata,
+				name: item.name,
+				summary: item.summary,
+				sshocMarketplaceActorId: item.sshocMarketplaceActorId,
+				status,
+				type: schema.membersAndPartnersUnitType,
+				entity: { slug: item.slug },
+				publishedAt: item.updatedAt.toISOString(),
+				image,
+				socialMedia,
+			};
+		}),
+	);
+
+	return { data, limit, offset, total };
+}
+
+//
+
+interface GetMemberOrPartnerByIdParams {
+	id: schema.OrganisationalUnit["id"];
+	localeId?: string;
+}
+
+export async function getMemberOrPartnerById(
+	db: Database | Transaction,
+	params: GetMemberOrPartnerByIdParams,
+) {
+	const { id, localeId: requestedLocaleId } = params;
+	const ctx = await resolveMembersAndPartnersContext(db, requestedLocaleId);
+
+	const item = (
+		await fromMembersAndPartners(db, ctx).where(eq(schema.organisationalUnits.id, id)).limit(1)
+	).at(0);
+
+	if (item == null) {
+		return null;
+	}
+
+	return buildMemberOrPartnerDetail(db, ctx, item);
 }
 
 //
@@ -731,72 +914,62 @@ interface GetMemberOrPartnerSlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getMemberOrPartnerSlugs(
 	db: Database | Transaction,
 	params: GetMemberOrPartnerSlugsParams,
 ) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const ctx = await resolveMembersAndPartnersContext(db, requestedLocaleId);
+
+	const eligible = eligibleMembersAndPartners(db);
+	const preferredVersion = alias(schema.entityVersions, "mp_slugs_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "mp_slugs_default_version");
 
 	const [items, aggregate] = await Promise.all([
-		db.query.membersAndPartners.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
 		db
-			.select({ total: count() })
-			.from(schema.membersAndPartners)
-			.innerJoin(schema.entityVersions, eq(schema.membersAndPartners.id, schema.entityVersions.id))
+			.select({
+				id: schema.organisationalUnits.id,
+				slug: schema.slugs.value,
+			})
+			.from(eligible)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, eligible.entityId),
+					eq(preferredVersion.localeId, ctx.localeId),
+					eq(preferredVersion.statusId, ctx.statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, eligible.entityId),
+					eq(defaultVersion.localeId, ctx.defaultLocaleId),
+					eq(defaultVersion.statusId, ctx.statusId),
+				),
+			)
 			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
-			),
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(
+				schema.organisationalUnits,
+				eq(schema.organisationalUnits.id, schema.entityVersions.id),
+			)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(eligibleMembersAndPartners(db)),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
 
-	const data = items.map(({ id, entityVersion }) => {
-		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
-		return { id, entity: { slug: entityVersion.slug.value } };
+	const data = items.map(({ id, slug }) => {
+		return { id, entity: { slug } };
 	});
 
 	return { data, limit, offset, total };
@@ -806,134 +979,23 @@ export async function getMemberOrPartnerSlugs(
 
 interface GetMemberOrPartnerBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getMemberOrPartnerBySlug(
 	db: Database | Transaction,
 	params: GetMemberOrPartnerBySlugParams,
 ) {
-	const { slug } = params;
+	const { slug, localeId: requestedLocaleId } = params;
+	const ctx = await resolveMembersAndPartnersContext(db, requestedLocaleId);
 
-	const item = await db.query.membersAndPartners.findFirst({
-		where: {
-			entityVersion: {
-				status: {
-					type: "published",
-				},
-				slug: {
-					value: slug,
-				},
-			},
-		},
-		columns: {
-			id: true,
-			metadata: true,
-			name: true,
-			summary: true,
-			status: true,
-			type: true,
-			sshocMarketplaceActorId: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { updatedAt: true },
-				with: {
-					slug: {
-						columns: { value: true },
-					},
-				},
-			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
-			socialMedia: {
-				columns: {
-					id: true,
-					name: true,
-					url: true,
-					duration: true,
-				},
-				with: {
-					type: {
-						columns: {
-							type: true,
-						},
-					},
-				},
-			},
-		},
-	});
+	const item = (
+		await fromMembersAndPartners(db, ctx).where(eq(schema.slugs.value, slug)).limit(1)
+	).at(0);
 
 	if (item == null) {
 		return null;
 	}
 
-	const [fields, relatedEntities, relatedResources] = await Promise.all([
-		getContentBlocks(db, item.id),
-		getRelatedEntities(db, item.id),
-		getRelatedResources(db, item.id),
-	]);
-
-	const base = {
-		...flattenEntityVersion(item),
-		socialMedia: mapSocialMedia(item.socialMedia),
-		...fields,
-		relatedEntities,
-		relatedResources,
-	};
-
-	if (item.status === "is_member_of" || item.status === "is_observer_of") {
-		const [
-			institutions,
-			contributors,
-			nationalCoordinatingInstitution,
-			nationalRepresentativeInstitution,
-			nationalConsortium,
-		] = await Promise.all([
-			getPartnerInstitutions(db, item.id),
-			getContributors(db, item.id),
-			getNationalCoordinatingInstitution(db, item.id),
-			getNationalRepresentativeInstitution(db, item.id),
-			getNationalConsortium(db, item.id, {
-				imageSize: imageWidth.featured,
-				includeDescription: true,
-			}),
-		]);
-
-		const image = nationalConsortium?.image ?? generateImageUrl(item.image, imageWidth.featured);
-		const description = hasContentBlocks(nationalConsortium?.description)
-			? nationalConsortium.description
-			: fields.description;
-
-		return {
-			...base,
-			status: item.status,
-			image,
-			description,
-			contributors,
-			institutions,
-			nationalCoordinatingInstitution,
-			nationalRepresentativeInstitution,
-			nationalConsortium,
-		};
-	}
-
-	return {
-		...base,
-		status: item.status,
-		image: generateImageUrl(item.image, imageWidth.featured),
-		institutions: await getCooperatingPartnerInstitutions(db, item.id),
-	};
+	return buildMemberOrPartnerDetail(db, ctx, item);
 }

@@ -2,7 +2,7 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
-import { PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
+import { LocaleQuerySchema, PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
 
 const DocumentPolicyGroupSchema = v.nullable(
 	v.object({
@@ -92,7 +92,7 @@ export const DocumentOrPolicySlugListSchema = v.pipe(
 export type DocumentOrPolicySlugList = v.InferOutput<typeof DocumentOrPolicySlugListSchema>;
 
 export const GetDocumentsPolicies = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -104,6 +104,7 @@ export const GetDocumentsPolicies = {
 };
 
 export const GetDocumentsPoliciesTree = {
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: v.pipe(
 		v.object({
 			data: DocumentOrPolicyTreeSchema,
@@ -125,7 +126,7 @@ export const GetDocumentOrPolicyById = {
 };
 
 export const GetDocumentOrPolicySlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -144,5 +145,6 @@ export const GetDocumentOrPolicyBySlug = {
 		v.description("Get document or policy by slug params"),
 		v.metadata({ ref: "GetDocumentOrPolicyBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: DocumentOrPolicySchema,
 };

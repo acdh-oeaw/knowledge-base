@@ -4,6 +4,7 @@ import * as v from "valibot";
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -67,7 +68,10 @@ export const NewsItemSlugListSchema = v.pipe(
 export type NewsItemSlugList = v.InferOutput<typeof NewsItemSlugListSchema>;
 
 export const GetNews = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({
+		...PaginationQuerySchema.entries,
+		...LocaleQuerySchema.entries,
+	}),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -90,7 +94,10 @@ export const GetNewsItemById = {
 };
 
 export const GetNewsItemSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({
+		...PaginationQuerySchema.entries,
+		...LocaleQuerySchema.entries,
+	}),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -109,5 +116,6 @@ export const GetNewsItemBySlug = {
 		v.description("Get news item by slug params"),
 		v.metadata({ ref: "GetNewsItemBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: NewsItemSchema,
 };

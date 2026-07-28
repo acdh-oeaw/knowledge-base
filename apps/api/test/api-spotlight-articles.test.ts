@@ -407,6 +407,7 @@ describe("spotlight-articles", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -444,6 +445,7 @@ describe("spotlight-articles", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

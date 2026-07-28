@@ -49,6 +49,16 @@ export const PaginationQuerySchema = v.object({
 	),
 });
 
+export const LocaleQuerySchema = v.object({
+	locale: v.pipe(
+		v.optional(v.string()),
+		v.description(
+			'Locale code (e.g. "de" or "de-AT") to resolve translated content for. Falls back to the site\'s default locale.',
+		),
+		v.metadata({ ref: "LocaleParam" }),
+	),
+});
+
 export const PaginatedResponseSchema = v.object({
 	limit: v.number(),
 	offset: v.number(),

@@ -5,67 +5,99 @@ import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl } from "@/lib/images";
+import { generateImageUrl, toImageAsset } from "@/lib/images";
+import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
-import { count, eq } from "@/services/db/sql";
+import { alias, and, count, desc, eq, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
+
+/**
+ * Resolve, per page document, the published version to prefer: the requested/default locale's
+ * published version, falling back to the default locale's when the document has no version in the
+ * preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still works
+ * correctly here — both joins target the same locale and `COALESCE` just picks the (identical)
+ * match.
+ */
+async function resolvePublishedPagesLookup(db: Database | Transaction, requestedLocaleId?: string) {
+	const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityTypes.findFirst({ where: { type: "pages" }, columns: { id: true } }),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(type, "No pages entity type in database.");
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "pages_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "pages_default_version");
+
+	return {
+		localeId,
+		defaultLocaleId,
+		typeId: type.id,
+		statusId: status.id,
+		preferredVersion,
+		defaultVersion,
+	};
+}
 
 interface GetPagesParams {
 	/** @default 10 */
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getPages(db: Database | Transaction, params: GetPagesParams) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedPagesLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.pages.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-				title: true,
-				summary: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.pages.id,
+				title: schema.pages.title,
+				summary: schema.pages.summary,
+				updatedAt: schema.entityVersions.updatedAt,
+				slug: schema.slugs.value,
+				imageKey: schema.assets.key,
+				imageAlt: schema.assets.alt,
+				imageCaption: schema.assets.caption,
+				licenseName: schema.licenses.name,
+				licenseUrl: schema.licenses.url,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.pages, eq(schema.pages.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.leftJoin(schema.assets, eq(schema.pages.imageId, schema.assets.id))
+			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
+			.where(eq(schema.entities.typeId, typeId))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.pages)
@@ -79,9 +111,25 @@ export async function getPages(db: Database | Transaction, params: GetPagesParam
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map((item) => {
-		const image = generateImageUrl(item.image, imageWidth.preview);
+		const image = generateImageUrl(
+			toImageAsset({
+				key: item.imageKey,
+				alt: item.imageAlt,
+				caption: item.imageCaption,
+				licenseName: item.licenseName,
+				licenseUrl: item.licenseUrl,
+			}),
+			imageWidth.preview,
+		);
 
-		return { ...flattenEntityVersion(item), image };
+		return {
+			id: item.id,
+			title: item.title,
+			summary: item.summary,
+			entity: { slug: item.slug },
+			publishedAt: item.updatedAt.toISOString(),
+			image,
+		};
 	});
 
 	return { data, limit, offset, total };
@@ -167,54 +215,47 @@ interface GetPageSlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getPageSlugs(db: Database | Transaction, params: GetPageSlugsParams) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedPagesLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.pages.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.pages.id,
+				slug: schema.slugs.value,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.pages, eq(schema.pages.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.where(eq(schema.entities.typeId, typeId))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.pages)
@@ -227,9 +268,8 @@ export async function getPageSlugs(db: Database | Transaction, params: GetPageSl
 
 	const total = aggregate.at(0)?.total ?? 0;
 
-	const data = items.map(({ id, entityVersion }) => {
-		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
-		return { id, entity: { slug: entityVersion.slug.value } };
+	const data = items.map(({ id, slug }) => {
+		return { id, entity: { slug } };
 	});
 
 	return { data, limit, offset, total };
@@ -239,10 +279,11 @@ export async function getPageSlugs(db: Database | Transaction, params: GetPageSl
 
 interface GetPageBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getPageBySlug(db: Database | Transaction, params: GetPageBySlugParams) {
-	const { slug } = params;
+	const { slug, localeId } = params;
 
 	const item = await db.query.pages.findFirst({
 		where: {
@@ -252,6 +293,7 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 				},
 				slug: {
 					value: slug,
+					...(localeId != null ? { localeId } : {}),
 				},
 			},
 		},

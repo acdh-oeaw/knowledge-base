@@ -5,6 +5,7 @@ import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	CalendarDateSchema,
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -187,7 +188,7 @@ export const MemberOrPartnerSlugListSchema = v.pipe(
 export type MemberOrPartnerSlugList = v.InferOutput<typeof MemberOrPartnerSlugListSchema>;
 
 export const GetMembersAndPartners = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -210,7 +211,7 @@ export const GetMemberOrPartnerById = {
 };
 
 export const GetMemberOrPartnerSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -229,5 +230,6 @@ export const GetMemberOrPartnerBySlug = {
 		v.description("Get member or partner by slug params"),
 		v.metadata({ ref: "GetMemberOrPartnerBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: MemberOrPartnerSchema,
 };

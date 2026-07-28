@@ -2,6 +2,7 @@ import { assert } from "@acdh-oeaw/lib";
 import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { resolveLocaleId } from "@/lib/locales";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -31,12 +32,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetEvents.QuerySchema),
 		async (c) => {
-			const { from, until, limit, offset } = c.req.valid("query");
+			const { from, until, limit, offset, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getEvents(db, { limit, offset, from, until });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getEvents(db, { limit, offset, from, until, localeId });
 
 			const payload = await validate(GetEvents.ResponseSchema, data, 500);
 
@@ -66,12 +69,14 @@ export const router = createRouter()
 		}),
 		validator("query", GetEventSlugs.QuerySchema),
 		async (c) => {
-			const { limit, offset } = c.req.valid("query");
+			const { limit, offset, locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getEventSlugs(db, { limit, offset });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getEventSlugs(db, { limit, offset, localeId });
 
 			const payload = await validate(GetEventSlugs.ResponseSchema, data, 500);
 
@@ -141,13 +146,17 @@ export const router = createRouter()
 			},
 		}),
 		validator("param", GetEventBySlug.ParamsSchema),
+		validator("query", GetEventBySlug.QuerySchema),
 		async (c) => {
 			const { slug } = c.req.valid("param");
+			const { locale } = c.req.valid("query");
 
 			const db = c.get("db");
 			assert(db, "Database must be provided via middleware.");
 
-			const data = await getEventBySlug(db, { slug });
+			const localeId = (await resolveLocaleId(db, locale)) ?? undefined;
+
+			const data = await getEventBySlug(db, { slug, localeId });
 
 			if (data == null) {
 				return c.notFound();

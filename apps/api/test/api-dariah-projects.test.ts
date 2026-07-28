@@ -521,6 +521,7 @@ describe("dariah-projects", () => {
 
 				const response = await client["dariah-projects"].slugs[":slug"].$get({
 					param: { slug },
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -542,6 +543,7 @@ describe("dariah-projects", () => {
 
 				const response = await client["dariah-projects"].slugs[":slug"].$get({
 					param: { slug: nonDariahItem.entity.slug },
+					query: {},
 				});
 
 				expect(response.status).toBe(404);
@@ -554,6 +556,7 @@ describe("dariah-projects", () => {
 
 				const response = await client["dariah-projects"].slugs[":slug"].$get({
 					param: { slug: "non-existing-slug" },
+					query: {},
 				});
 
 				expect(response.status).toBe(404);
