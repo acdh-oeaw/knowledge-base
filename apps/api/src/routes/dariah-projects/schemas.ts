@@ -4,6 +4,7 @@ import * as v from "valibot";
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -123,6 +124,7 @@ export type DariahProjectSlugList = v.InferOutput<typeof DariahProjectSlugListSc
 
 export const DariahProjectQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	status: v.pipe(
 		v.optional(v.picklist(["active", "inactive"] as const)),
 		v.description(
@@ -156,7 +158,7 @@ export const GetDariahProjectById = {
 };
 
 export const GetDariahProjectSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -175,5 +177,6 @@ export const GetDariahProjectBySlug = {
 		v.description("Get DARIAH project by slug params"),
 		v.metadata({ ref: "GetDariahProjectBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: DariahProjectSchema,
 };

@@ -221,7 +221,7 @@ describe("documents-policies", () => {
 						.where(eq(schema.documentsPolicies.id, items[2]!.version.id)),
 				]);
 
-				const response = await client["documents-policies"].tree.$get();
+				const response = await client["documents-policies"].tree.$get({ query: {} });
 
 				expect(response.status).toBe(200);
 
@@ -350,6 +350,7 @@ describe("documents-policies", () => {
 
 				const response = await client["documents-policies"].slugs[":slug"].$get({
 					param: { slug },
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -369,6 +370,7 @@ describe("documents-policies", () => {
 
 				const response = await client["documents-policies"].slugs[":slug"].$get({
 					param: { slug: "non-existing-slug" },
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

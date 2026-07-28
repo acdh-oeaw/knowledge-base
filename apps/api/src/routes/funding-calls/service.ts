@@ -6,18 +6,11 @@ import { assert } from "@acdh-oeaw/lib";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
+import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { FundingCallStatus } from "@/routes/funding-calls/schemas";
-import { type SQL, type SQLWrapper, count, desc, eq, or, sql } from "@/services/db/sql";
-
-interface GetFundingCallsParams {
-	/** @default 10 */
-	limit?: number;
-	/** @default 0 */
-	offset?: number;
-	status?: FundingCallStatus | Array<FundingCallStatus>;
-}
+import { type SQL, type SQLWrapper, alias, and, count, desc, eq, or, sql } from "@/services/db/sql";
 
 function buildStatusFilter(duration: SQLWrapper, statuses: Array<FundingCallStatus>): SQL {
 	const lower = sql`LOWER(${duration})`;
@@ -40,44 +33,93 @@ function buildStatusFilter(duration: SQLWrapper, statuses: Array<FundingCallStat
 	)!;
 }
 
+/**
+ * Resolve, per funding call document, the published version to prefer: the requested/default
+ * locale's published version, falling back to the default locale's when the document has no version
+ * in the preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still
+ * works correctly here — both joins target the same locale and `COALESCE` just picks the
+ * (identical) match.
+ */
+async function resolvePublishedFundingCallsLookup(
+	db: Database | Transaction,
+	requestedLocaleId?: string,
+) {
+	const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityTypes.findFirst({ where: { type: "funding_calls" }, columns: { id: true } }),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(type, "No funding_calls entity type in database.");
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "funding_calls_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "funding_calls_default_version");
+
+	return {
+		localeId,
+		defaultLocaleId,
+		typeId: type.id,
+		statusId: status.id,
+		preferredVersion,
+		defaultVersion,
+	};
+}
+
+interface GetFundingCallsParams {
+	/** @default 10 */
+	limit?: number;
+	/** @default 0 */
+	offset?: number;
+	status?: FundingCallStatus | Array<FundingCallStatus>;
+	localeId?: string;
+}
+
 export async function getFundingCalls(db: Database | Transaction, params: GetFundingCallsParams) {
-	const { limit = 10, offset = 0, status } = params;
+	const { limit = 10, offset = 0, status, localeId: requestedLocaleId } = params;
 	const statuses = status == null ? [] : Array.isArray(status) ? status : [status];
-	const aggregateStatusFilter =
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedFundingCallsLookup(db, requestedLocaleId);
+	const statusFilter =
 		statuses.length > 0 ? buildStatusFilter(schema.fundingCalls.duration, statuses) : undefined;
 
 	const [items, aggregate] = await Promise.all([
-		db.query.fundingCalls.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-				RAW: statuses.length > 0 ? (t) => buildStatusFilter(t.duration, statuses) : undefined,
-			},
-			columns: {
-				id: true,
-				title: true,
-				summary: true,
-				duration: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-			},
-			orderBy(t) {
-				return [desc(sql`LOWER(${t.duration})`), desc(t.id)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.fundingCalls.id,
+				title: schema.fundingCalls.title,
+				summary: schema.fundingCalls.summary,
+				duration: schema.fundingCalls.duration,
+				updatedAt: schema.entityVersions.updatedAt,
+				slug: schema.slugs.value,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.fundingCalls, eq(schema.fundingCalls.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.where(and(eq(schema.entities.typeId, typeId), statusFilter))
+			.orderBy(desc(sql`LOWER(${schema.fundingCalls.duration})`), desc(schema.fundingCalls.id))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.fundingCalls)
@@ -86,7 +128,7 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 			)
-			.where(aggregateStatusFilter),
+			.where(statusFilter),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
@@ -94,7 +136,14 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 	const data = items.map((item) => {
 		const duration = serializeDateRange(item.duration);
 
-		return { ...flattenEntityVersion(item), duration };
+		return {
+			id: item.id,
+			title: item.title,
+			summary: item.summary,
+			duration,
+			entity: { slug: item.slug },
+			publishedAt: item.updatedAt.toISOString(),
+		};
 	});
 
 	return { data, limit, offset, total };
@@ -169,42 +218,50 @@ interface GetFundingCallSlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getFundingCallSlugs(
 	db: Database | Transaction,
 	params: GetFundingCallSlugsParams,
 ) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedFundingCallsLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.fundingCalls.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.fundingCalls.id,
+				slug: schema.slugs.value,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.fundingCalls, eq(schema.fundingCalls.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.where(eq(schema.entities.typeId, typeId))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.fundingCalls)
@@ -217,9 +274,8 @@ export async function getFundingCallSlugs(
 
 	const total = aggregate.at(0)?.total ?? 0;
 
-	const data = items.map(({ id, entityVersion }) => {
-		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
-		return { id, entity: { slug: entityVersion.slug.value } };
+	const data = items.map(({ id, slug }) => {
+		return { id, entity: { slug } };
 	});
 
 	return { data, limit, offset, total };
@@ -229,13 +285,14 @@ export async function getFundingCallSlugs(
 
 interface GetFundingCallBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getFundingCallBySlug(
 	db: Database | Transaction,
 	params: GetFundingCallBySlugParams,
 ) {
-	const { slug } = params;
+	const { slug, localeId } = params;
 
 	const item = await db.query.fundingCalls.findFirst({
 		where: {
@@ -245,6 +302,7 @@ export async function getFundingCallBySlug(
 				},
 				slug: {
 					value: slug,
+					...(localeId != null ? { localeId } : {}),
 				},
 			},
 		},

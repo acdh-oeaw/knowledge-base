@@ -2,7 +2,12 @@ import * as schema from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
-import { ImageSchema, PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
+import {
+	ImageSchema,
+	LocaleQuerySchema,
+	PaginatedResponseSchema,
+	PaginationQuerySchema,
+} from "@/lib/schemas";
 
 export const ProjectOrganisationalUnitSchema = v.pipe(
 	v.object({
@@ -115,6 +120,7 @@ export type ProjectSlugList = v.InferOutput<typeof ProjectSlugListSchema>;
 
 export const ProjectQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	status: v.pipe(
 		v.optional(v.picklist(["active", "inactive"] as const)),
 		v.description(
@@ -148,7 +154,7 @@ export const GetProjectById = {
 };
 
 export const GetProjectSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -167,5 +173,6 @@ export const GetProjectBySlug = {
 		v.description("Get project by slug params"),
 		v.metadata({ ref: "GetProjectBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: ProjectSchema,
 };

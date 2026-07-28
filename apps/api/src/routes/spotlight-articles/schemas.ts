@@ -4,6 +4,7 @@ import * as v from "valibot";
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -84,7 +85,7 @@ export const SpotlightArticleSlugListSchema = v.pipe(
 export type SpotlightArticleSlugList = v.InferOutput<typeof SpotlightArticleSlugListSchema>;
 
 export const GetSpotlightArticles = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -107,7 +108,7 @@ export const GetSpotlightArticleById = {
 };
 
 export const GetSpotlightArticleSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -126,5 +127,6 @@ export const GetSpotlightArticleBySlug = {
 		v.description("Get spotlight article by slug params"),
 		v.metadata({ ref: "GetSpotlightArticleBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: SpotlightArticleSchema,
 };

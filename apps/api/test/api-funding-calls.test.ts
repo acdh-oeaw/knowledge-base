@@ -280,6 +280,7 @@ describe("funding-calls", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -301,6 +302,7 @@ describe("funding-calls", () => {
 					param: {
 						slug: "non-existing-slug",
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

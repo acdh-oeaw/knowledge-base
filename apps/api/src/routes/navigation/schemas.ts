@@ -1,6 +1,8 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
+import { LocaleQuerySchema } from "@/lib/schemas";
+
 const publicNavigationEntityTypesEnum = [
 	"documents_policies",
 	"events",
@@ -63,6 +65,7 @@ export const GetNavigation = {
 	QuerySchema: v.pipe(
 		v.object({
 			menu: v.optional(v.string()),
+			...LocaleQuerySchema.entries,
 		}),
 		v.description("Get navigation query params"),
 		v.metadata({ ref: "GetNavigationQuery" }),

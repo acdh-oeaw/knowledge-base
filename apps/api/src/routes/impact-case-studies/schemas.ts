@@ -4,6 +4,7 @@ import * as v from "valibot";
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -84,7 +85,7 @@ export const ImpactCaseStudySlugListSchema = v.pipe(
 export type ImpactCaseStudySlugList = v.InferOutput<typeof ImpactCaseStudySlugListSchema>;
 
 export const GetImpactCaseStudies = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -107,7 +108,7 @@ export const GetImpactCaseStudyById = {
 };
 
 export const GetImpactCaseStudySlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -126,5 +127,6 @@ export const GetImpactCaseStudyBySlug = {
 		v.description("Get impact case study by slug params"),
 		v.metadata({ ref: "GetImpactCaseStudyBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: ImpactCaseStudySchema,
 };

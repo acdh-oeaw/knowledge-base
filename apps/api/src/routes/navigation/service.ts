@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
+import { resolveLocaleContext } from "@/lib/locales";
 import type { Database, Transaction } from "@/middlewares/db";
-import { and, asc, eq, isNotNull, isNull, or, sql } from "@/services/db/sql";
+import { alias, and, asc, eq, isNotNull, isNull, or, sql } from "@/services/db/sql";
 
 interface NavigationItem {
 	id: string;
@@ -37,12 +39,39 @@ function buildTree(
 	);
 }
 
+/**
+ * Resolve, per linked entity (of any type), the published version to prefer: the requested/default
+ * locale's published version, falling back to the default locale's when the document has no version
+ * in the preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still
+ * works correctly here — both joins target the same locale and `COALESCE` just picks the
+ * (identical) match.
+ */
+async function resolvePublishedNavigationLookup(
+	db: Database | Transaction,
+	requestedLocaleId?: string,
+) {
+	const [{ localeId, defaultLocaleId }, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "nav_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "nav_default_version");
+
+	return { localeId, defaultLocaleId, statusId: status.id, preferredVersion, defaultVersion };
+}
+
 interface GetNavigationParams {
 	menu?: string;
+	localeId?: string;
 }
 
 export async function getNavigation(db: Database | Transaction, params: GetNavigationParams) {
-	const { menu } = params;
+	const { menu, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedNavigationLookup(db, requestedLocaleId);
 
 	const rows = await db
 		.select({
@@ -67,11 +96,30 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 		.leftJoin(schema.navigationItems, eq(schema.navigationMenus.id, schema.navigationItems.menuId))
 		.leftJoin(schema.entities, eq(schema.navigationItems.entityId, schema.entities.id))
 		.leftJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
-		.leftJoin(schema.documentLifecycle, eq(schema.documentLifecycle.documentId, schema.entities.id))
-		.leftJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
+		.leftJoin(
+			preferredVersion,
+			and(
+				eq(preferredVersion.entityId, schema.entities.id),
+				eq(preferredVersion.localeId, localeId),
+				eq(preferredVersion.statusId, statusId),
+			),
+		)
+		.leftJoin(
+			defaultVersion,
+			and(
+				eq(defaultVersion.entityId, schema.entities.id),
+				eq(defaultVersion.localeId, defaultLocaleId),
+				eq(defaultVersion.statusId, statusId),
+			),
+		)
+		.leftJoin(
+			schema.entityVersions,
+			sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+		)
+		.leftJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.leftJoin(
 			schema.organisationalUnits,
-			eq(schema.documentLifecycle.publishedId, schema.organisationalUnits.id),
+			eq(schema.entityVersions.id, schema.organisationalUnits.id),
 		)
 		.leftJoin(
 			schema.organisationalUnitTypes,
@@ -83,7 +131,7 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 				or(
 					isNull(schema.navigationItems.id),
 					isNull(schema.navigationItems.entityId),
-					isNotNull(schema.documentLifecycle.publishedId),
+					isNotNull(schema.entityVersions.id),
 				),
 			),
 		)

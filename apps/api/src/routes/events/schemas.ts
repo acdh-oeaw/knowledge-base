@@ -5,6 +5,7 @@ import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	CalendarDateSchema,
 	ImageSchema,
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -97,6 +98,7 @@ export type EventOrder = (typeof eventOrderValues)[number];
 
 export const EventsQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	from: v.pipe(
 		v.optional(v.pipe(v.string(), v.isoDate())),
 		v.description(
@@ -137,7 +139,7 @@ export const GetEventById = {
 };
 
 export const GetEventSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -156,5 +158,6 @@ export const GetEventBySlug = {
 		v.description("Get event by slug params"),
 		v.metadata({ ref: "GetEventBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: EventSchema,
 };

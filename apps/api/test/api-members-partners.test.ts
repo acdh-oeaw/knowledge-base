@@ -1149,6 +1149,7 @@ describe("members-partners", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -1203,6 +1204,7 @@ describe("members-partners", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

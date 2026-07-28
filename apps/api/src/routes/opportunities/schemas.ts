@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
 	RelatedEntitiesSchema,
@@ -92,6 +93,7 @@ const OpportunitySourceQuerySchema = v.pipe(
 
 export const OpportunitiesQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	status: v.pipe(
 		v.optional(OpportunityStatusQuerySchema),
 		v.description(
@@ -132,7 +134,7 @@ export const GetOpportunityById = {
 };
 
 export const GetOpportunitySlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -151,5 +153,6 @@ export const GetOpportunityBySlug = {
 		v.description("Get opportunity by slug params"),
 		v.metadata({ ref: "GetOpportunityBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: OpportunitySchema,
 };

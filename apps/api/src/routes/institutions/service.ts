@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import * as schema from "@acdh-knowledge-base/database/schema";
+import { assert } from "@acdh-oeaw/lib";
 
 import { generateImageUrl, toImageAsset } from "@/lib/images";
+import { resolveLocaleContext } from "@/lib/locales";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { InstitutionRelationStatus, InstitutionStatus } from "@/routes/institutions/schemas";
 import {
@@ -22,7 +24,8 @@ import { imageWidth } from "~/config/api.config";
 /**
  * The slug of the DARIAH-EU ERIC organisational unit. Institutions can relate to several `eric`
  * units, so partner/cooperating-partner relations are always pinned to this specific one — never
- * any other unit of type `eric`.
+ * any other unit of type `eric`. This is an identity check, not a display value, so it's always
+ * matched against the default locale's slug regardless of the requested locale.
  */
 const dariahEuSlug = "dariah-eu";
 
@@ -44,7 +47,47 @@ const ericRelationDbStatuses = [
 	"is_cooperating_partner_of",
 ] as const satisfies ReadonlyArray<(typeof schema.organisationalUnitStatusEnum)[number]>;
 
-const institutionSlugs = alias(schema.slugs, "institution_slugs");
+/**
+ * Resolve, per institution document, the published version to prefer: the requested/default
+ * locale's published version, falling back to the default locale's when the document has no version
+ * in the preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still
+ * works correctly here — both joins target the same locale and `COALESCE` just picks the
+ * (identical) match.
+ */
+async function resolvePublishedInstitutionsLookup(
+	db: Database | Transaction,
+	requestedLocaleId?: string,
+) {
+	const [{ localeId, defaultLocaleId }, entityType, institutionType, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityTypes.findFirst({
+			where: { type: "organisational_units" },
+			columns: { id: true },
+		}),
+		db.query.organisationalUnitTypes.findFirst({
+			where: { type: "institution" },
+			columns: { id: true },
+		}),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(entityType, "No organisational_units entity type in database.");
+	assert(institutionType, "No institution type in database.");
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "institutions_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "institutions_default_version");
+
+	return {
+		localeId,
+		defaultLocaleId,
+		entityTypeId: entityType.id,
+		institutionTypeId: institutionType.id,
+		statusId: status.id,
+		preferredVersion,
+		defaultVersion,
+	};
+}
 
 /**
  * Resolves, per institution document, its active partner/cooperating-partner relation to the
@@ -82,13 +125,21 @@ function ericRelationSubquery(db: Database | Transaction) {
 }
 
 /**
- * Resolves, per institution document, the country it is located in (`is_located_in`). Pre-filtered
- * in a subquery for the same single-row reason as {@link ericRelationSubquery}.
+ * Resolves, per institution document, the country it is located in (`is_located_in`), preferring
+ * the requested locale's published version and falling back to the default locale's — same COALESCE
+ * pattern as the institution's own lookup. Pre-filtered in a subquery for the same single-row
+ * reason as {@link ericRelationSubquery}.
  */
-function countryRelationSubquery(db: Database | Transaction) {
+function countryRelationSubquery(
+	db: Database | Transaction,
+	localeId: string,
+	defaultLocaleId: string,
+	statusId: string,
+) {
 	const relations = alias(schema.organisationalUnitsRelations, "country_relations");
-	const status = alias(schema.organisationalUnitStatus, "country_relation_status");
-	const lifecycle = alias(schema.documentLifecycle, "country_lifecycle");
+	const relationStatus = alias(schema.organisationalUnitStatus, "country_relation_status");
+	const preferredVersion = alias(schema.entityVersions, "country_relation_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "country_relation_default_version");
 	const countries = alias(schema.organisationalUnits, "countries");
 	const countryTypes = alias(schema.organisationalUnitTypes, "country_types");
 	const countrySlugs = alias(schema.slugs, "country_slugs");
@@ -101,24 +152,37 @@ function countryRelationSubquery(db: Database | Transaction) {
 			countrySlug: countrySlugs.value,
 		})
 		.from(relations)
-		.innerJoin(status, and(eq(relations.status, status.id), eq(status.status, "is_located_in")))
-		.innerJoin(lifecycle, eq(lifecycle.documentId, relations.relatedUnitDocumentId))
-		.innerJoin(countries, eq(countries.id, lifecycle.publishedId))
+		.innerJoin(
+			relationStatus,
+			and(eq(relations.status, relationStatus.id), eq(relationStatus.status, "is_located_in")),
+		)
+		.leftJoin(
+			preferredVersion,
+			and(
+				eq(preferredVersion.entityId, relations.relatedUnitDocumentId),
+				eq(preferredVersion.localeId, localeId),
+				eq(preferredVersion.statusId, statusId),
+			),
+		)
+		.leftJoin(
+			defaultVersion,
+			and(
+				eq(defaultVersion.entityId, relations.relatedUnitDocumentId),
+				eq(defaultVersion.localeId, defaultLocaleId),
+				eq(defaultVersion.statusId, statusId),
+			),
+		)
+		.innerJoin(
+			countries,
+			sql`${countries.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+		)
 		.innerJoin(
 			countryTypes,
 			and(eq(countries.typeId, countryTypes.id), eq(countryTypes.type, "country")),
 		)
-		.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, lifecycle.publishedId))
+		.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countries.id))
 		.where(sql`${relations.duration} @> NOW()::TIMESTAMPTZ`)
 		.as("country_relation");
-}
-
-/** Published institutions, regardless of their relation to DARIAH-EU. */
-function baseInstitutionFilter(): SQL | undefined {
-	return and(
-		eq(schema.organisationalUnitTypes.type, "institution"),
-		eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
-	);
 }
 
 /**
@@ -150,9 +214,18 @@ function statusFilter(
 	return conditions.length > 1 ? or(...conditions) : conditions.at(0);
 }
 
-function institutionQuery(db: Database | Transaction) {
+function institutionQuery(
+	db: Database | Transaction,
+	ctx: Awaited<ReturnType<typeof resolvePublishedInstitutionsLookup>>,
+) {
 	const ericRelation = ericRelationSubquery(db);
-	const countryRelation = countryRelationSubquery(db);
+	const countryRelation = countryRelationSubquery(
+		db,
+		ctx.localeId,
+		ctx.defaultLocaleId,
+		ctx.statusId,
+	);
+	const institutionSlugs = alias(schema.slugs, "institution_slugs");
 
 	const query = db
 		.select({
@@ -172,23 +245,43 @@ function institutionQuery(db: Database | Transaction) {
 			countrySlug: countryRelation.countrySlug,
 			updatedAt: schema.entityVersions.updatedAt,
 		})
-		.from(schema.organisationalUnits)
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
+		.from(schema.entities)
+		.leftJoin(
+			ctx.preferredVersion,
+			and(
+				eq(ctx.preferredVersion.entityId, schema.entities.id),
+				eq(ctx.preferredVersion.localeId, ctx.localeId),
+				eq(ctx.preferredVersion.statusId, ctx.statusId),
+			),
 		)
-		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+		.leftJoin(
+			ctx.defaultVersion,
+			and(
+				eq(ctx.defaultVersion.entityId, schema.entities.id),
+				eq(ctx.defaultVersion.localeId, ctx.defaultLocaleId),
+				eq(ctx.defaultVersion.statusId, ctx.statusId),
+			),
+		)
 		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+			schema.entityVersions,
+			sql`${schema.entityVersions.id} = COALESCE(${ctx.preferredVersion.id}, ${ctx.defaultVersion.id})`,
+		)
+		.innerJoin(
+			schema.organisationalUnits,
+			eq(schema.organisationalUnits.id, schema.entityVersions.id),
 		)
 		.innerJoin(institutionSlugs, eq(institutionSlugs.entityVersionId, schema.entityVersions.id))
 		.leftJoin(schema.assets, eq(schema.organisationalUnits.imageId, schema.assets.id))
 		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
-		.leftJoin(ericRelation, eq(ericRelation.unitDocumentId, schema.entityVersions.entityId))
-		.leftJoin(countryRelation, eq(countryRelation.unitDocumentId, schema.entityVersions.entityId));
+		.leftJoin(ericRelation, eq(ericRelation.unitDocumentId, schema.entities.id))
+		.leftJoin(countryRelation, eq(countryRelation.unitDocumentId, schema.entities.id));
 
-	return { query, ericRelation };
+	const baseFilter = and(
+		eq(schema.entities.typeId, ctx.entityTypeId),
+		eq(schema.organisationalUnits.typeId, ctx.institutionTypeId),
+	);
+
+	return { query, ericRelation, institutionSlugs, baseFilter };
 }
 
 function institutionCountQuery(db: Database | Transaction) {
@@ -208,7 +301,9 @@ function institutionCountQuery(db: Database | Transaction) {
 		)
 		.leftJoin(ericRelation, eq(ericRelation.unitDocumentId, schema.entityVersions.entityId));
 
-	return { query, ericRelation };
+	const baseFilter = eq(schema.organisationalUnitTypes.type, "institution");
+
+	return { query, ericRelation, baseFilter };
 }
 
 interface InstitutionRow {
@@ -266,23 +361,23 @@ interface GetInstitutionsParams {
 	/** @default 0 */
 	offset?: number;
 	status?: Array<InstitutionStatus>;
+	localeId?: string;
 }
 
 export async function getInstitutions(db: Database | Transaction, params: GetInstitutionsParams) {
-	const { limit = 10, offset = 0, status } = params;
+	const { limit = 10, offset = 0, status, localeId: requestedLocaleId } = params;
+	const ctx = await resolvePublishedInstitutionsLookup(db, requestedLocaleId);
 
-	const list = institutionQuery(db);
+	const list = institutionQuery(db, ctx);
 	const aggregate = institutionCountQuery(db);
 
 	const [items, totals] = await Promise.all([
 		list.query
-			.where(and(baseInstitutionFilter(), statusFilter(list.ericRelation, status)))
+			.where(and(list.baseFilter, statusFilter(list.ericRelation, status)))
 			.orderBy(desc(schema.entityVersions.updatedAt))
 			.limit(limit)
 			.offset(offset),
-		aggregate.query.where(
-			and(baseInstitutionFilter(), statusFilter(aggregate.ericRelation, status)),
-		),
+		aggregate.query.where(and(aggregate.baseFilter, statusFilter(aggregate.ericRelation, status))),
 	]);
 
 	const total = totals.at(0)?.total ?? 0;
@@ -293,18 +388,18 @@ export async function getInstitutions(db: Database | Transaction, params: GetIns
 
 interface GetInstitutionByIdParams {
 	id: schema.OrganisationalUnit["id"];
+	localeId?: string;
 }
 
 export async function getInstitutionById(
 	db: Database | Transaction,
 	params: GetInstitutionByIdParams,
 ) {
-	const { id } = params;
+	const { id, localeId: requestedLocaleId } = params;
+	const ctx = await resolvePublishedInstitutionsLookup(db, requestedLocaleId);
 
-	const { query } = institutionQuery(db);
-	const item = await query
-		.where(and(baseInstitutionFilter(), eq(schema.organisationalUnits.id, id)))
-		.limit(1);
+	const { query, baseFilter } = institutionQuery(db, ctx);
+	const item = await query.where(and(baseFilter, eq(schema.organisationalUnits.id, id))).limit(1);
 
 	const row = item.at(0);
 
@@ -320,13 +415,24 @@ interface GetInstitutionSlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getInstitutionSlugs(
 	db: Database | Transaction,
 	params: GetInstitutionSlugsParams,
 ) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const {
+		localeId,
+		defaultLocaleId,
+		entityTypeId,
+		institutionTypeId,
+		statusId,
+		preferredVersion,
+		defaultVersion,
+	} = await resolvePublishedInstitutionsLookup(db, requestedLocaleId);
+	const institutionSlugs = alias(schema.slugs, "institution_slugs");
 
 	const [items, aggregate] = await Promise.all([
 		db
@@ -334,18 +440,38 @@ export async function getInstitutionSlugs(
 				id: schema.organisationalUnits.id,
 				slug: institutionSlugs.value,
 			})
-			.from(schema.organisationalUnits)
-			.innerJoin(
-				schema.organisationalUnitTypes,
-				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
 			)
-			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
 			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(
+				schema.organisationalUnits,
+				eq(schema.organisationalUnits.id, schema.entityVersions.id),
 			)
 			.innerJoin(institutionSlugs, eq(institutionSlugs.entityVersionId, schema.entityVersions.id))
-			.where(baseInstitutionFilter())
+			.where(
+				and(
+					eq(schema.entities.typeId, entityTypeId),
+					eq(schema.organisationalUnits.typeId, institutionTypeId),
+				),
+			)
 			.orderBy(desc(schema.entityVersions.updatedAt))
 			.limit(limit)
 			.offset(offset),
@@ -361,7 +487,7 @@ export async function getInstitutionSlugs(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 			)
-			.where(baseInstitutionFilter()),
+			.where(eq(schema.organisationalUnitTypes.type, "institution")),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
@@ -371,18 +497,18 @@ export async function getInstitutionSlugs(
 
 interface GetInstitutionBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getInstitutionBySlug(
 	db: Database | Transaction,
 	params: GetInstitutionBySlugParams,
 ) {
-	const { slug } = params;
+	const { slug, localeId: requestedLocaleId } = params;
+	const ctx = await resolvePublishedInstitutionsLookup(db, requestedLocaleId);
 
-	const { query } = institutionQuery(db);
-	const item = await query
-		.where(and(baseInstitutionFilter(), eq(institutionSlugs.value, slug)))
-		.limit(1);
+	const { query, institutionSlugs, baseFilter } = institutionQuery(db, ctx);
+	const item = await query.where(and(baseFilter, eq(institutionSlugs.value, slug))).limit(1);
 
 	const row = item.at(0);
 

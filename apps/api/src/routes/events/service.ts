@@ -7,30 +7,12 @@ import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import { generateImageUrl, toImageAsset } from "@/lib/images";
+import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { EventOrder } from "@/routes/events/schemas";
-import { type SQL, and, asc, count, desc, eq, sql } from "@/services/db/sql";
+import { type SQL, alias, and, asc, count, desc, eq, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
-
-interface GetEventsParams {
-	/** @default 10 */
-	limit?: number;
-	/** @default 0 */
-	offset?: number;
-	/**
-	 * ISO date string (YYYY-MM-DD). Only events whose duration overlaps on or after this date are
-	 * returned.
-	 */
-	from?: string;
-	/**
-	 * ISO date string (YYYY-MM-DD). Only events whose duration overlaps on or before this date are
-	 * returned.
-	 */
-	until?: string;
-	/** Sort order by event start date. Defaults to "asc" when `from` is set, "desc" otherwise. */
-	order?: EventOrder;
-}
 
 // Overlap condition: event overlaps [from, until] when
 //   upper IS NULL OR upper >= from  (event ends on or after the window start, or is open-ended)
@@ -54,8 +36,70 @@ function durationOverlapsUntil(lower: SQL, until: string): SQL {
 	return sql`${lower} < ${exclusive}`;
 }
 
+/**
+ * Resolve, per event document, the published version to prefer: the requested/default locale's
+ * published version, falling back to the default locale's when the document has no version in the
+ * preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still works
+ * correctly here — both joins target the same locale and `COALESCE` just picks the (identical)
+ * match.
+ */
+async function resolvePublishedEventsLookup(
+	db: Database | Transaction,
+	requestedLocaleId?: string,
+) {
+	const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityTypes.findFirst({ where: { type: "events" }, columns: { id: true } }),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(type, "No events entity type in database.");
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "events_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "events_default_version");
+
+	return {
+		localeId,
+		defaultLocaleId,
+		typeId: type.id,
+		statusId: status.id,
+		preferredVersion,
+		defaultVersion,
+	};
+}
+
+interface GetEventsParams {
+	/** @default 10 */
+	limit?: number;
+	/** @default 0 */
+	offset?: number;
+	/**
+	 * ISO date string (YYYY-MM-DD). Only events whose duration overlaps on or after this date are
+	 * returned.
+	 */
+	from?: string;
+	/**
+	 * ISO date string (YYYY-MM-DD). Only events whose duration overlaps on or before this date are
+	 * returned.
+	 */
+	until?: string;
+	/** Sort order by event start date. Defaults to "asc" when `from` is set, "desc" otherwise. */
+	order?: EventOrder;
+	localeId?: string;
+}
+
 export async function getEvents(db: Database | Transaction, params: GetEventsParams) {
-	const { limit = 10, offset = 0, from, until, order = from != null ? "asc" : "desc" } = params;
+	const {
+		limit = 10,
+		offset = 0,
+		from,
+		until,
+		order = from != null ? "asc" : "desc",
+		localeId: requestedLocaleId,
+	} = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedEventsLookup(db, requestedLocaleId);
 
 	const lower = sql`LOWER(${schema.events.duration})`;
 	const upper = sql`UPPER(${schema.events.duration})`;
@@ -90,16 +134,32 @@ export async function getEvents(db: Database | Transaction, params: GetEventsPar
 					licenseUrl: schema.licenses.url,
 				},
 			})
-			.from(schema.events)
-			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
-			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
 			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.events, eq(schema.events.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.leftJoin(schema.assets, eq(schema.assets.id, schema.events.imageId))
 			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
-			.where(rangeFilter)
+			.where(and(eq(schema.entities.typeId, typeId), rangeFilter))
 			.orderBy(orderBy)
 			.limit(limit)
 			.offset(offset),
@@ -132,10 +192,13 @@ export async function getEvents(db: Database | Transaction, params: GetEventsPar
 interface GetAdjacentEventsParams {
 	id: schema.Event["id"];
 	startDate: Date;
+	localeId?: string;
 }
 
 async function getAdjacentEvents(db: Database | Transaction, params: GetAdjacentEventsParams) {
-	const { id, startDate } = params;
+	const { id, startDate, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedEventsLookup(db, requestedLocaleId);
 
 	const lower = sql`LOWER(${schema.events.duration})`;
 
@@ -178,29 +241,41 @@ async function getAdjacentEvents(db: Database | Transaction, params: GetAdjacent
 		return { ...item, duration: serializeDateRange(item.duration) };
 	}
 
-	const [prevRows, nextRows] = await Promise.all([
-		db
+	function fromResolvedEvents() {
+		return db
 			.select(adjacentColumns)
-			.from(schema.events)
-			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
-			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
 			)
-			.where(sql`${cursor} < ${currentCursor}`)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.events, eq(schema.events.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id));
+	}
+
+	const [prevRows, nextRows] = await Promise.all([
+		fromResolvedEvents()
+			.where(and(eq(schema.entities.typeId, typeId), sql`${cursor} < ${currentCursor}`))
 			.orderBy(desc(lower), desc(schema.events.id))
 			.limit(1),
-		db
-			.select(adjacentColumns)
-			.from(schema.events)
-			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
-			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
-			)
-			.where(sql`${cursor} > ${currentCursor}`)
+		fromResolvedEvents()
+			.where(and(eq(schema.entities.typeId, typeId), sql`${cursor} > ${currentCursor}`))
 			.orderBy(asc(lower), asc(schema.events.id))
 			.limit(1),
 	]);
@@ -302,54 +377,47 @@ interface GetEventSlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getEventSlugs(db: Database | Transaction, params: GetEventSlugsParams) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedEventsLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.events.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.events.id,
+				slug: schema.slugs.value,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.events, eq(schema.events.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.where(eq(schema.entities.typeId, typeId))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.events)
@@ -362,9 +430,8 @@ export async function getEventSlugs(db: Database | Transaction, params: GetEvent
 
 	const total = aggregate.at(0)?.total ?? 0;
 
-	const data = items.map(({ id, entityVersion }) => {
-		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
-		return { id, entity: { slug: entityVersion.slug.value } };
+	const data = items.map(({ id, slug }) => {
+		return { id, entity: { slug } };
 	});
 
 	return { data, limit, offset, total };
@@ -374,10 +441,11 @@ export async function getEventSlugs(db: Database | Transaction, params: GetEvent
 
 interface GetEventBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getEventBySlug(db: Database | Transaction, params: GetEventBySlugParams) {
-	const { slug } = params;
+	const { slug, localeId } = params;
 
 	const item = await db.query.events.findFirst({
 		where: {
@@ -387,6 +455,7 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 				},
 				slug: {
 					value: slug,
+					...(localeId != null ? { localeId } : {}),
 				},
 			},
 		},
@@ -435,7 +504,7 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 
 	const [fields, links, relatedEntities, relatedResources] = await Promise.all([
 		getContentBlocks(db, item.id),
-		getAdjacentEvents(db, { id: item.id, startDate: item.duration.start }),
+		getAdjacentEvents(db, { id: item.id, startDate: item.duration.start, localeId }),
 		getRelatedEntities(db, item.id),
 		getRelatedResources(db, item.id),
 	]);

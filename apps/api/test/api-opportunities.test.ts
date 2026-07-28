@@ -351,6 +351,7 @@ describe("opportunities", () => {
 					param: {
 						slug,
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(200);
@@ -378,6 +379,7 @@ describe("opportunities", () => {
 					param: {
 						slug: "non-existing-slug",
 					},
+					query: {},
 				});
 
 				expect(response.status).toBe(404);

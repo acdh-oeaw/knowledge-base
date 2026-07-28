@@ -1,7 +1,12 @@
 import * as schema from "@acdh-knowledge-base/database/schema";
 import * as v from "valibot";
 
-import { ImageSchema, PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
+import {
+	ImageSchema,
+	LocaleQuerySchema,
+	PaginatedResponseSchema,
+	PaginationQuerySchema,
+} from "@/lib/schemas";
 
 /**
  * The two organisational-unit relation statuses an institution can hold towards the DARIAH-EU ERIC,
@@ -84,6 +89,7 @@ const InstitutionStatusFilterSchema = v.union([
 
 export const InstitutionQuerySchema = v.object({
 	...PaginationQuerySchema.entries,
+	...LocaleQuerySchema.entries,
 	status: v.pipe(
 		v.optional(InstitutionStatusFilterSchema),
 		v.description("Filter institutions by their relation to the DARIAH-EU ERIC (repeatable)"),
@@ -115,7 +121,7 @@ export const GetInstitutionById = {
 };
 
 export const GetInstitutionSlugs = {
-	QuerySchema: PaginationQuerySchema,
+	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(
 		v.object({
 			...PaginatedResponseSchema.entries,
@@ -134,5 +140,6 @@ export const GetInstitutionBySlug = {
 		v.description("Get institution by slug params"),
 		v.metadata({ ref: "GetInstitutionBySlugParams" }),
 	),
+	QuerySchema: LocaleQuerySchema,
 	ResponseSchema: InstitutionSchema,
 };

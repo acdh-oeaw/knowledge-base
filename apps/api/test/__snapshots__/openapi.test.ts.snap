@@ -7241,6 +7241,10 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "minimum": 1,
         "type": "integer",
       },
+      "LocaleParam": {
+        "description": "Locale code (e.g. "de" or "de-AT") to resolve translated content for. Falls back to the site's default locale.",
+        "type": "string",
+      },
       "MemberOrObserver": {
         "description": "Member or observer country",
         "properties": {
@@ -14288,6 +14292,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "status",
             "schema": {
               "$ref": "#/components/schemas/DariahProjectStatusParam",
@@ -14341,6 +14352,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -14377,6 +14395,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetDariahProjectBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -14483,6 +14508,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -14531,6 +14563,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -14567,6 +14606,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetDocumentOrPolicyBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -14611,6 +14657,15 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
       "get": {
         "description": "Retrieve documents and policies grouped and ordered for display",
         "operationId": "getDocumentsPoliciesTree",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+        ],
         "responses": {
           "200": {
             "content": {
@@ -14731,6 +14786,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "from",
             "schema": {
               "$ref": "#/components/schemas/EventFromParam",
@@ -14791,6 +14853,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -14827,6 +14896,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetEventBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -14967,6 +15043,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "status",
             "schema": {
               "$ref": "#/components/schemas/FundingCallStatusParam",
@@ -15020,6 +15103,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15056,6 +15146,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetFundingCallBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -15352,6 +15449,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15400,6 +15504,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15436,6 +15547,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetImpactCaseStudyBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -15544,6 +15662,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "status",
             "schema": {
               "$ref": "#/components/schemas/InstitutionStatusParam",
@@ -15597,6 +15722,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15633,6 +15765,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetInstitutionBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -15739,6 +15878,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15787,6 +15933,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15823,6 +15976,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetMemberOrPartnerBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -15929,6 +16089,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -15977,6 +16144,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16013,6 +16187,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetNationalConsortiumBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -16156,6 +16337,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16204,6 +16392,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16240,6 +16435,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetNewsItemBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -16348,6 +16550,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "status",
             "schema": {
               "$ref": "#/components/schemas/OpportunityStatusParam",
@@ -16408,6 +16617,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16444,6 +16660,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetOpportunityBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -16550,6 +16773,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16598,6 +16828,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16634,6 +16871,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetPageBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -16740,6 +16984,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16788,6 +17039,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -16824,6 +17082,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetPersonBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -16932,6 +17197,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "status",
             "schema": {
               "$ref": "#/components/schemas/ProjectStatusParam",
@@ -16985,6 +17257,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -17021,6 +17300,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetProjectBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -17264,6 +17550,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -17312,6 +17605,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -17348,6 +17648,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetSpotlightArticleBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {
@@ -17488,6 +17795,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           },
           {
             "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
+          {
+            "in": "query",
             "name": "status",
             "schema": {
               "$ref": "#/components/schemas/WorkingGroupStatusParam",
@@ -17541,6 +17855,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               "$ref": "#/components/schemas/OffsetParam",
             },
           },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
+          },
         ],
         "responses": {
           "200": {
@@ -17577,6 +17898,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "parameters": [
           {
             "$ref": "#/components/parameters/GetWorkingGroupBySlugParams",
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "$ref": "#/components/schemas/LocaleParam",
+            },
           },
         ],
         "responses": {

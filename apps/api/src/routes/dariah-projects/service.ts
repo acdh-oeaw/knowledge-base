@@ -6,14 +6,15 @@ import { assert } from "@acdh-oeaw/lib";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { type ImageAsset, generateImageUrl } from "@/lib/images";
+import { type ImageAsset, generateImageUrl, toImageAsset } from "@/lib/images";
+import { resolveLocaleContext } from "@/lib/locales";
 import {
 	getPublishedProjectPartners,
 	getPublishedProjectPartnersByDocuments,
 } from "@/lib/project-partners";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
-import { count, eq, not, sql } from "@/services/db/sql";
+import { alias, and, count, desc, eq, inArray, not, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
 
 function mapItem<
@@ -46,6 +47,76 @@ function mapItem<
 	};
 }
 
+/**
+ * Resolve, per DARIAH project document, the published version to prefer: the requested/default
+ * locale's published version, falling back to the default locale's when the document has no version
+ * in the preferred locale. `localeId === defaultLocaleId` (the no-locale-requested case) still
+ * works correctly here — both joins target the same locale and `COALESCE` just picks the
+ * (identical) match.
+ */
+async function resolvePublishedDariahProjectsLookup(
+	db: Database | Transaction,
+	requestedLocaleId?: string,
+) {
+	const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
+		resolveLocaleContext(db, requestedLocaleId),
+		db.query.entityTypes.findFirst({ where: { type: "projects" }, columns: { id: true } }),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(type, "No projects entity type in database.");
+	assert(status, "No published entity status in database.");
+
+	const preferredVersion = alias(schema.entityVersions, "dariah_projects_preferred_version");
+	const defaultVersion = alias(schema.entityVersions, "dariah_projects_default_version");
+
+	return {
+		localeId,
+		defaultLocaleId,
+		typeId: type.id,
+		statusId: status.id,
+		preferredVersion,
+		defaultVersion,
+	};
+}
+
+async function getSocialMediaByProjectVersionId(
+	db: Database | Transaction,
+	projectVersionIds: Array<string>,
+) {
+	const socialMediaByProjectId = new Map<
+		string,
+		Array<{ id: string; url: string; type: { type: string } }>
+	>();
+
+	if (projectVersionIds.length === 0) {
+		return socialMediaByProjectId;
+	}
+
+	const rows = await db
+		.select({
+			projectId: schema.projectsToSocialMedia.projectId,
+			id: schema.socialMedia.id,
+			url: schema.socialMedia.url,
+			type: schema.socialMediaTypes.type,
+		})
+		.from(schema.projectsToSocialMedia)
+		.innerJoin(
+			schema.socialMedia,
+			eq(schema.socialMedia.id, schema.projectsToSocialMedia.socialMediaId),
+		)
+		.innerJoin(schema.socialMediaTypes, eq(schema.socialMediaTypes.id, schema.socialMedia.typeId))
+		.where(inArray(schema.projectsToSocialMedia.projectId, projectVersionIds));
+
+	for (const row of rows) {
+		const list = socialMediaByProjectId.get(row.projectId) ?? [];
+		list.push({ id: row.id, url: row.url, type: { type: row.type } });
+		socialMediaByProjectId.set(row.projectId, list);
+	}
+
+	return socialMediaByProjectId;
+}
+
 //
 
 interface GetDariahProjectsParams {
@@ -54,92 +125,75 @@ interface GetDariahProjectsParams {
 	/** @default 0 */
 	offset?: number;
 	status?: "active" | "inactive";
+	localeId?: string;
 }
 
 export async function getDariahProjects(
 	db: Database | Transaction,
 	params: GetDariahProjectsParams,
 ) {
-	const { limit = 10, offset = 0, status } = params;
+	const { limit = 10, offset = 0, status, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedDariahProjectsLookup(db, requestedLocaleId);
+
+	const statusFilter =
+		status != null
+			? status === "active"
+				? sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`
+				: not(sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`)
+			: undefined;
 
 	const [items, aggregate] = await Promise.all([
-		db.query.dariahProjects.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-				RAW:
-					status != null
-						? (t) => {
-								const durationContainsNow = sql`${t.duration} @> NOW()::TIMESTAMPTZ`;
-								return status === "active" ? durationContainsNow : not(durationContainsNow);
-							}
-						: undefined,
-			},
-			columns: {
-				id: true,
-				name: true,
-				acronym: true,
-				summary: true,
-				duration: true,
-				call: true,
-				topic: true,
-				funding: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						entity: {
-							columns: { id: true },
-						},
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-				scope: {
-					columns: {
-						scope: true,
-					},
-				},
-				socialMedia: {
-					columns: {
-						id: true,
-						url: true,
-					},
-					with: {
-						type: {
-							columns: {
-								type: true,
-							},
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.dariahProjects.id,
+				documentId: schema.entities.id,
+				name: schema.dariahProjects.name,
+				acronym: schema.dariahProjects.acronym,
+				summary: schema.dariahProjects.summary,
+				duration: schema.dariahProjects.duration,
+				call: schema.dariahProjects.call,
+				topic: schema.dariahProjects.topic,
+				funding: schema.dariahProjects.funding,
+				updatedAt: schema.entityVersions.updatedAt,
+				slug: schema.slugs.value,
+				scope: schema.projectScopes.scope,
+				imageKey: schema.assets.key,
+				imageAlt: schema.assets.alt,
+				imageCaption: schema.assets.caption,
+				licenseName: schema.licenses.name,
+				licenseUrl: schema.licenses.url,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.innerJoin(schema.projectScopes, eq(schema.projectScopes.id, schema.dariahProjects.scopeId))
+			.leftJoin(schema.assets, eq(schema.dariahProjects.imageId, schema.assets.id))
+			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
+			.where(and(eq(schema.entities.typeId, typeId), statusFilter))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.dariahProjects)
@@ -148,30 +202,59 @@ export async function getDariahProjects(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 			)
-			.where(
-				status != null
-					? status === "active"
-						? sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`
-						: not(sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`)
-					: undefined,
-			),
+			.where(statusFilter),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
 
-	const partnersByDocument = await getPublishedProjectPartnersByDocuments(
-		db,
-		items.map((item) => item.entityVersion.entity.id),
-	);
+	const [partnersByDocument, socialMediaByProjectId] = await Promise.all([
+		getPublishedProjectPartnersByDocuments(
+			db,
+			items.map((item) => item.documentId),
+		),
+		getSocialMediaByProjectVersionId(
+			db,
+			items.map((item) => item.id),
+		),
+	]);
 
 	const data = items.map((item) => {
-		const partners = partnersByDocument.get(item.entityVersion.entity.id) ?? [];
+		const partners = partnersByDocument.get(item.documentId) ?? [];
 		const role =
 			partners.find((r) => r.unit.type === "eric" && r.unit.slug === "dariah-eu")?.role.role ??
 			null;
 
+		const image = generateImageUrl(
+			toImageAsset({
+				key: item.imageKey,
+				alt: item.imageAlt,
+				caption: item.imageCaption,
+				licenseName: item.licenseName,
+				licenseUrl: item.licenseUrl,
+			}),
+			imageWidth.preview,
+		);
+
+		const socialMedia = (socialMediaByProjectId.get(item.id) ?? []).map((sm) => {
+			return { ...sm, type: sm.type.type };
+		});
+
+		const duration = serializeDateRange(item.duration);
+
 		return {
-			...mapItem(item, imageWidth.preview),
+			id: item.id,
+			name: item.name,
+			acronym: item.acronym,
+			summary: item.summary,
+			call: item.call,
+			topic: item.topic,
+			funding: item.funding,
+			duration,
+			entity: { slug: item.slug },
+			scope: { scope: item.scope },
+			socialMedia,
+			publishedAt: item.updatedAt.toISOString(),
+			image,
 			role,
 		};
 	});
@@ -298,45 +381,50 @@ interface GetDariahProjectSlugsParams {
 	limit?: number;
 	/** @default 0 */
 	offset?: number;
+	localeId?: string;
 }
 
 export async function getDariahProjectSlugs(
 	db: Database | Transaction,
 	params: GetDariahProjectSlugsParams,
 ) {
-	const { limit = 10, offset = 0 } = params;
+	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+		await resolvePublishedDariahProjectsLookup(db, requestedLocaleId);
 
 	const [items, aggregate] = await Promise.all([
-		db.query.dariahProjects.findMany({
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						entity: {
-							columns: { id: true },
-						},
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-			},
-			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
-			},
-			limit,
-			offset,
-		}),
+		db
+			.select({
+				id: schema.dariahProjects.id,
+				slug: schema.slugs.value,
+			})
+			.from(schema.entities)
+			.leftJoin(
+				preferredVersion,
+				and(
+					eq(preferredVersion.entityId, schema.entities.id),
+					eq(preferredVersion.localeId, localeId),
+					eq(preferredVersion.statusId, statusId),
+				),
+			)
+			.leftJoin(
+				defaultVersion,
+				and(
+					eq(defaultVersion.entityId, schema.entities.id),
+					eq(defaultVersion.localeId, defaultLocaleId),
+					eq(defaultVersion.statusId, statusId),
+				),
+			)
+			.innerJoin(
+				schema.entityVersions,
+				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+			)
+			.innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.where(eq(schema.entities.typeId, typeId))
+			.orderBy(desc(schema.entityVersions.updatedAt))
+			.limit(limit)
+			.offset(offset),
 		db
 			.select({ total: count() })
 			.from(schema.dariahProjects)
@@ -348,9 +436,8 @@ export async function getDariahProjectSlugs(
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
-	const data = items.map(({ id, entityVersion }) => {
-		assert(entityVersion.slug, `Slug missing for entity version of document "${id}".`);
-		return { id, entity: { slug: entityVersion.slug.value } };
+	const data = items.map(({ id, slug }) => {
+		return { id, entity: { slug } };
 	});
 
 	return { data, limit, offset, total };
@@ -360,13 +447,14 @@ export async function getDariahProjectSlugs(
 
 interface GetDariahProjectBySlugParams {
 	slug: schema.Slug["value"];
+	localeId?: string;
 }
 
 export async function getDariahProjectBySlug(
 	db: Database | Transaction,
 	params: GetDariahProjectBySlugParams,
 ) {
-	const { slug } = params;
+	const { slug, localeId } = params;
 
 	const item = await db.query.dariahProjects.findFirst({
 		where: {
@@ -376,6 +464,7 @@ export async function getDariahProjectBySlug(
 				},
 				slug: {
 					value: slug,
+					...(localeId != null ? { localeId } : {}),
 				},
 			},
 		},
