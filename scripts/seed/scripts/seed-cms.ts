@@ -92,6 +92,7 @@ const personRoleToUnitTypeMappings: Array<{
 	{ roleType: "is_contact_for", unitType: "eric" },
 	{ roleType: "is_contact_for", unitType: "country" },
 	{ roleType: "is_contact_for", unitType: "regional_hub" },
+	{ roleType: "is_content_manager_for", unitType: "national_consortium" },
 	{ roleType: "national_coordinator", unitType: "country" },
 	{ roleType: "national_coordinator_deputy", unitType: "country" },
 	{ roleType: "national_coordination_staff", unitType: "country" },
