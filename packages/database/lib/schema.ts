@@ -26,4 +26,5 @@ export * from "./schema/site-metadata";
 export * from "./schema/slugs";
 export * from "./schema/social-media";
 export * from "./schema/spotlight-articles";
+export * from "./schema/tenancies";
 export * from "./schema/users";
