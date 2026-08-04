@@ -165,12 +165,15 @@ jobs:
           # The admin suite is by far the largest, so it is sharded across two runners.
           # Playwright distributes tests from the selected projects across the shards by count,
           # so non-admin rides along and is balanced into whichever shard has capacity.
+          # The impersonation project runs here rather than in a job of its own: it exists to prove
+          # that impersonating cannot reach the admin suites, which only means something while both
+          # are running against the same database.
           - name: Admin (shard 1)
-            projects: --project=admin --project=non-admin
+            projects: --project=admin --project=non-admin --project=impersonation
             shard: --shard=1/2
             report: admin-1
           - name: Admin (shard 2)
-            projects: --project=admin --project=non-admin
+            projects: --project=admin --project=non-admin --project=impersonation
             shard: --shard=2/2
             report: admin-2
           # The relation-derived reporting personas (nc / wgchair / reporter); their auth
