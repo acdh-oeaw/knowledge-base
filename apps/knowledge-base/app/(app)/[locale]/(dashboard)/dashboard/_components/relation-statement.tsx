@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@acdh-knowledge-base/ui/badge";
+import { Badge } from "@dariah-eric/ui/badge";
 import { useExtracted, useFormatter } from "next-intl";
 import type { ReactNode } from "react";
 

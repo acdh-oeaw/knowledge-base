@@ -1,5 +1,5 @@
-import { ButtonLink } from "@acdh-knowledge-base/ui/button-link";
-import { EmptyState } from "@acdh-knowledge-base/ui/empty-state";
+import { ButtonLink } from "@dariah-eric/ui/button-link";
+import { EmptyState } from "@dariah-eric/ui/empty-state";
 import { getExtracted } from "next-intl/server";
 import { Fragment, type ReactNode } from "react";
 

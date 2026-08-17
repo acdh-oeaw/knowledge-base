@@ -1,6 +1,6 @@
 "use client";
 
-import { Heading } from "@acdh-knowledge-base/ui/heading";
+import { Heading } from "@dariah-eric/ui/heading";
 import type { ReactNode } from "react";
 
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";

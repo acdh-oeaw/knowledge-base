@@ -1,13 +1,13 @@
 import * as path from "node:path";
 
-import base from "@acdh-knowledge-base/configs/oxlint/base";
-import drizzle from "@acdh-knowledge-base/configs/oxlint/drizzle";
-import nextjs from "@acdh-knowledge-base/configs/oxlint/nextjs";
-import playwright from "@acdh-knowledge-base/configs/oxlint/playwright";
-import react from "@acdh-knowledge-base/configs/oxlint/react";
-import regexp from "@acdh-knowledge-base/configs/oxlint/regexp";
-import tailwindcss from "@acdh-knowledge-base/configs/oxlint/tailwindcss";
-import turbo from "@acdh-knowledge-base/configs/oxlint/turbo";
+import base from "@dariah-eric/configs/oxlint/base";
+import drizzle from "@dariah-eric/configs/oxlint/drizzle";
+import nextjs from "@dariah-eric/configs/oxlint/nextjs";
+import playwright from "@dariah-eric/configs/oxlint/playwright";
+import react from "@dariah-eric/configs/oxlint/react";
+import regexp from "@dariah-eric/configs/oxlint/regexp";
+import tailwindcss from "@dariah-eric/configs/oxlint/tailwindcss";
+import turbo from "@dariah-eric/configs/oxlint/turbo";
 import { defineConfig } from "oxlint";
 
 const configs = [base, drizzle, nextjs, playwright, react, regexp, turbo];

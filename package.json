@@ -50,7 +50,7 @@
 		"types:check": "turbo run types:check"
 	},
 	"devDependencies": {
-		"@acdh-knowledge-base/configs": "workspace:^",
+		"@dariah-eric/configs": "workspace:^",
 		"@dotenvx/dotenvx": "catalog:",
 		"@playwright/test": "catalog:",
 		"@turbo/gen": "catalog:",

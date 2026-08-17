@@ -1,4 +1,4 @@
-import base from "@acdh-knowledge-base/configs/oxfmt/base";
+import base from "@dariah-eric/configs/oxfmt/base";
 import { defineConfig } from "oxfmt";
 
 const config = defineConfig({

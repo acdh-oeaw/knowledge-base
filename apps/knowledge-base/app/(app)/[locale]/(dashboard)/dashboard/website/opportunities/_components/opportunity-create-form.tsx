@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
+import type * as schema from "@dariah-eric/database/schema";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -9,19 +9,19 @@ import { OpportunityForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/webs
 import { createOpportunityAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_lib/create-opportunity.action";
 
 interface OpportunityCreateFormProps {
-	sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
+  sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
 }
 
 export function OpportunityCreateForm(props: Readonly<OpportunityCreateFormProps>): ReactNode {
-	const { sources } = props;
+  const { sources } = props;
 
-	const t = useExtracted();
+  const t = useExtracted();
 
-	return (
-		<Fragment>
-			<EntityFormHeader title={t("New opportunity")} />
+  return (
+    <Fragment>
+      <EntityFormHeader title={t("New opportunity")} />
 
-			<OpportunityForm formAction={createOpportunityAction} sources={sources} />
-		</Fragment>
-	);
+      <OpportunityForm formAction={createOpportunityAction} sources={sources} />
+    </Fragment>
+  );
 }

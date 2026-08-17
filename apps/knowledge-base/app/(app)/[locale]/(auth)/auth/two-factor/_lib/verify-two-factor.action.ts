@@ -1,7 +1,7 @@
 "use server";
 
-import { createActionStateError } from "@acdh-knowledge-base/next-lib/actions";
-import { globalPostRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
+import { createActionStateError } from "@dariah-eric/next-lib/actions";
+import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import { getFormDataValues } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
@@ -16,63 +16,63 @@ import { createServerAction } from "@/lib/server/create-server-action";
 const totpBucket = auth.totpBucket;
 
 export const verifyTwoFactorAction = createServerAction(
-	async function verifyTwoFactorAction(state, formData) {
-		const locale = await getLocale();
-		const t = await getExtracted();
+  async function verifyTwoFactorAction(state, formData) {
+    const locale = await getLocale();
+    const t = await getExtracted();
 
-		if (!(await globalPostRequestRateLimit())) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (!(await globalPostRequestRateLimit())) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const { session, user } = await getCurrentSession();
+    const { session, user } = await getCurrentSession();
 
-		if (session == null) {
-			return createActionStateError({ message: t("Not authenticated.") });
-		}
+    if (session == null) {
+      return createActionStateError({ message: t("Not authenticated.") });
+    }
 
-		if (!user.isEmailVerified || !user.isTwoFactorRegistered || session.isTwoFactorVerified) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
+    if (!user.isEmailVerified || !user.isTwoFactorRegistered || session.isTwoFactorVerified) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
 
-		if (!totpBucket.check(user.id, 1)) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (!totpBucket.check(user.id, 1)) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const result = await v.safeParseAsync(
-			VerifyTwoFactorActionInputSchema,
-			getFormDataValues(formData),
-			{ lang: getIntlLanguage(locale) },
-		);
+    const result = await v.safeParseAsync(
+      VerifyTwoFactorActionInputSchema,
+      getFormDataValues(formData),
+      { lang: getIntlLanguage(locale) },
+    );
 
-		if (!result.success) {
-			const errors = v.flatten<typeof VerifyTwoFactorActionInputSchema>(result.issues);
+    if (!result.success) {
+      const errors = v.flatten<typeof VerifyTwoFactorActionInputSchema>(result.issues);
 
-			return createActionStateError({
-				message: errors.root ?? t("Invalid or missing fields."),
-				validationErrors: errors.nested,
-			});
-		}
+      return createActionStateError({
+        message: errors.root ?? t("Invalid or missing fields."),
+        validationErrors: errors.nested,
+      });
+    }
 
-		const { code } = result.output;
+    const { code } = result.output;
 
-		if (!totpBucket.consume(user.id, 1)) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (!totpBucket.consume(user.id, 1)) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const totpKey = await auth.getUserTotpKey(user.id);
+    const totpKey = await auth.getUserTotpKey(user.id);
 
-		if (totpKey == null) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
+    if (totpKey == null) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
 
-		if (!auth.verifyTotp(totpKey, code)) {
-			return createActionStateError({ message: t("Incorrect code.") });
-		}
+    if (!auth.verifyTotp(totpKey, code)) {
+      return createActionStateError({ message: t("Incorrect code.") });
+    }
 
-		totpBucket.reset(user.id);
+    totpBucket.reset(user.id);
 
-		await auth.setSessionAsTwoFactorVerified(session.id);
+    await auth.setSessionAsTwoFactorVerified(session.id);
 
-		redirect({ href: "/dashboard", locale });
-	},
+    redirect({ href: "/dashboard", locale });
+  },
 );

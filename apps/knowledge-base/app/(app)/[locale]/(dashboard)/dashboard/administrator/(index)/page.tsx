@@ -1,4 +1,4 @@
-import { Heading } from "@acdh-knowledge-base/ui/heading";
+import { Heading } from "@dariah-eric/ui/heading";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { Fragment, type ReactNode } from "react";

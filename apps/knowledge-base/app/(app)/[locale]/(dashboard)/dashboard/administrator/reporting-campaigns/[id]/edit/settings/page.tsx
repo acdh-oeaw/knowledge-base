@@ -1,4 +1,4 @@
-import { Button } from "@acdh-knowledge-base/ui/button";
+import { Button } from "@dariah-eric/ui/button";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";

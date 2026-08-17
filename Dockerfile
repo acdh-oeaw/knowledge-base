@@ -34,7 +34,7 @@ COPY . .
 # -------------------------------------------------------------------------------------------------
 
 FROM source AS migrate-prune
-RUN turbo prune @acdh-knowledge-base/database --docker
+RUN turbo prune @dariah-eric/database --docker
 
 # install
 # -------------------------------------------------------------------------------------------------
@@ -53,10 +53,10 @@ FROM migrate-install AS migrate-build
 COPY --from=migrate-prune /app/out/full/ .
 RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
-    pnpm exec turbo run build --filter=@acdh-knowledge-base/database^...
+    pnpm exec turbo run build --filter=@dariah-eric/database^...
 # We don't set `injectWorkspacePackages` directly in `pnpm-workspace.yaml` because it currently
 # produces lots of peer dependency warnings.
-RUN pnpm deploy --filter @acdh-knowledge-base/database --config.inject-workspace-packages=true /out
+RUN pnpm deploy --filter @dariah-eric/database --config.inject-workspace-packages=true /out
 
 # serve
 # -------------------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ CMD ["pnpm", "run", "db:migrations:apply"]
 # prune
 # -------------------------------------------------------------------------------------------------
 FROM source AS seed-prune
-RUN turbo prune @acdh-knowledge-base/seed --docker
+RUN turbo prune @dariah-eric/seed --docker
 
 # install
 # -------------------------------------------------------------------------------------------------
@@ -87,8 +87,8 @@ FROM seed-install AS seed-build
 COPY --from=seed-prune /app/out/full/ .
 RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
-    pnpm exec turbo run build --filter=@acdh-knowledge-base/seed^...
-RUN pnpm deploy --filter @acdh-knowledge-base/seed --config.inject-workspace-packages=true /out
+    pnpm exec turbo run build --filter=@dariah-eric/seed^...
+RUN pnpm deploy --filter @dariah-eric/seed --config.inject-workspace-packages=true /out
 
 # serve
 # -------------------------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ CMD ["pnpm", "run", "data:seed:cms"]
 # -------------------------------------------------------------------------------------------------
 
 FROM source AS api-prune
-RUN turbo prune @acdh-knowledge-base/api --docker
+RUN turbo prune @dariah-eric/api --docker
 
 # install
 # -------------------------------------------------------------------------------------------------
@@ -125,10 +125,10 @@ FROM api-install AS api-build
 COPY --from=api-prune /app/out/full/ .
 RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
-    pnpm exec turbo run build --filter=@acdh-knowledge-base/api
+    pnpm exec turbo run build --filter=@dariah-eric/api
 # We don't set `injectWorkspacePackages` directly in `pnpm-workspace.yaml` because it currently
 # produces lots of peer dependency warnings.
-RUN pnpm deploy --filter @acdh-knowledge-base/api --config.inject-workspace-packages=true --prod /out
+RUN pnpm deploy --filter @dariah-eric/api --config.inject-workspace-packages=true --prod /out
 
 # serve
 # -------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ CMD [ "node", "./dist/index.mjs" ]
 # -------------------------------------------------------------------------------------------------
 
 FROM source AS app-prune
-RUN turbo prune @acdh-knowledge-base/knowledge-base --docker
+RUN turbo prune @dariah-eric/knowledge-base --docker
 
 # install
 # -------------------------------------------------------------------------------------------------
@@ -213,7 +213,7 @@ RUN --mount=type=secret,id=API_ACCESS_TOKEN,env=API_ACCESS_TOKEN \
     --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
     --mount=type=secret,id=ZOTERO_API_KEY,env=ZOTERO_API_KEY \
     --mount=type=secret,id=ZOTERO_API_BASE_URL,env=ZOTERO_API_BASE_URL \
-    pnpm exec turbo run build --filter=@acdh-knowledge-base/knowledge-base
+    pnpm exec turbo run build --filter=@dariah-eric/knowledge-base
 
 # serve
 # -------------------------------------------------------------------------------------------------

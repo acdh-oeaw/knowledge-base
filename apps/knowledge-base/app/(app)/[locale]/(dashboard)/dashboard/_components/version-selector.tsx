@@ -1,7 +1,7 @@
 "use client";
 
-import { buttonStyles } from "@acdh-knowledge-base/ui/button-styles";
-import { Link } from "@acdh-knowledge-base/ui/link";
+import { buttonStyles } from "@dariah-eric/ui/button-styles";
+import { Link } from "@dariah-eric/ui/link";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 

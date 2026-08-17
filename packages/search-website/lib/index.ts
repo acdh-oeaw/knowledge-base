@@ -1,1525 +1,1525 @@
-import type { Database } from "@acdh-knowledge-base/database";
-import * as schema from "@acdh-knowledge-base/database/schema";
-import { alias, and, eq, inArray, sql } from "@acdh-knowledge-base/database/sql";
-import type { SearchService, WebsiteDocument } from "@acdh-knowledge-base/search";
-import type { SearchAdminService } from "@acdh-knowledge-base/search/admin";
+import type { Database } from "@dariah-eric/database";
+import * as schema from "@dariah-eric/database/schema";
+import { alias, and, eq, inArray, sql } from "@dariah-eric/database/sql";
+import type { SearchService, WebsiteDocument } from "@dariah-eric/search";
+import type { SearchAdminService } from "@dariah-eric/search/admin";
 import { log } from "@acdh-oeaw/lib";
 
 import { toPlainText } from "./json-content/to-plain-text";
 
 export type SupportedWebsiteEntityType =
-	| "country"
-	| "document-or-policy"
-	| "event"
-	| "funding-call"
-	| "impact-case-study"
-	| "news-item"
-	| "opportunity"
-	| "page"
-	| "person"
-	| "project"
-	| "spotlight-article"
-	| "working-group";
+  | "country"
+  | "document-or-policy"
+  | "event"
+  | "funding-call"
+  | "impact-case-study"
+  | "news-item"
+  | "opportunity"
+  | "page"
+  | "person"
+  | "project"
+  | "spotlight-article"
+  | "working-group";
 
 export interface WebsiteDocumentDescriptor {
-	slug: string;
-	type: SupportedWebsiteEntityType;
+  slug: string;
+  type: SupportedWebsiteEntityType;
 }
 
 export interface SyncWebsiteDocumentResult {
-	entityId?: string;
-	documentId?: string;
-	error?: unknown;
-	ok: boolean;
-	operation: "deleted" | "skipped" | "upserted";
+  entityId?: string;
+  documentId?: string;
+  error?: unknown;
+  ok: boolean;
+  operation: "deleted" | "skipped" | "upserted";
 }
 
 export interface CreateWebsiteSearchIndexServiceParams {
-	db: Database;
-	search: SearchAdminService;
-	searchService: SearchService;
+  db: Database;
+  search: SearchAdminService;
+  searchService: SearchService;
 }
 
 export interface SyncWebsiteSearchIndexResult {
-	count: number;
-	failedCount: number;
+  count: number;
+  failedCount: number;
 }
 
 type CanonicalWebsiteEntityType =
-	| "country"
-	| "document-or-policy"
-	| "event"
-	| "funding-call"
-	| "impact-case-study"
-	| "institution"
-	| "national-consortium"
-	| "news-item"
-	| "opportunity"
-	| "page"
-	| "person"
-	| "project"
-	| "spotlight-article"
-	| "working-group";
+  | "country"
+  | "document-or-policy"
+  | "event"
+  | "funding-call"
+  | "impact-case-study"
+  | "institution"
+  | "national-consortium"
+  | "news-item"
+  | "opportunity"
+  | "page"
+  | "person"
+  | "project"
+  | "spotlight-article"
+  | "working-group";
 
 export const supportedWebsiteEntityTypes = [
-	"country",
-	"document-or-policy",
-	"event",
-	"funding-call",
-	"impact-case-study",
-	"news-item",
-	"opportunity",
-	"page",
-	"person",
-	"project",
-	"spotlight-article",
-	"working-group",
+  "country",
+  "document-or-policy",
+  "event",
+  "funding-call",
+  "impact-case-study",
+  "news-item",
+  "opportunity",
+  "page",
+  "person",
+  "project",
+  "spotlight-article",
+  "working-group",
 ] as const satisfies Array<SupportedWebsiteEntityType>;
 
 function createWebsiteDocumentId(descriptor: WebsiteDocumentDescriptor): string {
-	return [descriptor.type, descriptor.slug].join(":");
+  return [descriptor.type, descriptor.slug].join(":");
 }
 
 function mergeDescription(...values: Array<string | null | undefined>): string {
-	const parts = values
-		.map((value) => value?.trim())
-		.filter((value): value is string => value != null && value.length > 0);
+  const parts = values
+    .map((value) => value?.trim())
+    .filter((value): value is string => value != null && value.length > 0);
 
-	return [...new Set(parts)].join("\n\n");
+  return [...new Set(parts)].join("\n\n");
 }
 
 function createWebsiteEntityDocument(params: {
-	description: string;
-	documentId?: string;
-	importedAt: number;
-	label: string;
-	link: string;
-	sourceId: string;
-	sourceUpdatedAt: Date;
-	type: CanonicalWebsiteEntityType;
+  description: string;
+  documentId?: string;
+  importedAt: number;
+  label: string;
+  link: string;
+  sourceId: string;
+  sourceUpdatedAt: Date;
+  type: CanonicalWebsiteEntityType;
 }): WebsiteDocument {
-	const {
-		description,
-		importedAt,
-		label,
-		link,
-		sourceId,
-		documentId = sourceId,
-		sourceUpdatedAt,
-		type,
-	} = params;
+  const {
+    description,
+    importedAt,
+    label,
+    link,
+    sourceId,
+    documentId = sourceId,
+    sourceUpdatedAt,
+    type,
+  } = params;
 
-	return {
-		kind: "entity",
-		source: "the-knowledge-base",
-		source_id: sourceId,
-		source_updated_at: sourceUpdatedAt.getTime(),
-		imported_at: importedAt,
-		type,
-		id: [type, documentId].join(":"),
-		label,
-		description,
-		link,
-	};
+  return {
+    kind: "entity",
+    source: "the-knowledge-base",
+    source_id: sourceId,
+    source_updated_at: sourceUpdatedAt.getTime(),
+    imported_at: importedAt,
+    type,
+    id: [type, documentId].join(":"),
+    label,
+    description,
+    link,
+  };
 }
 
 function isMissingSearchDocumentError(error: unknown): boolean {
-	if (typeof error !== "object" || error == null) {
-		return false;
-	}
+  if (typeof error !== "object" || error == null) {
+    return false;
+  }
 
-	const cause = "cause" in error ? error.cause : undefined;
+  const cause = "cause" in error ? error.cause : undefined;
 
-	if (typeof cause !== "object" || cause == null) {
-		return false;
-	}
+  if (typeof cause !== "object" || cause == null) {
+    return false;
+  }
 
-	if ("httpStatus" in cause && cause.httpStatus === 404) {
-		return true;
-	}
+  if ("httpStatus" in cause && cause.httpStatus === 404) {
+    return true;
+  }
 
-	if ("message" in cause && typeof cause.message === "string") {
-		return cause.message.includes("Not Found") || cause.message.includes("Could not find");
-	}
+  if ("message" in cause && typeof cause.message === "string") {
+    return cause.message.includes("Not Found") || cause.message.includes("Could not find");
+  }
 
-	return false;
+  return false;
 }
 
 async function getPlainTextFieldContentByEntityId(
-	db: Database,
-	entityIds: Array<string>,
-	fieldName: string,
+  db: Database,
+  entityIds: Array<string>,
+  fieldName: string,
 ): Promise<Map<string, string>> {
-	if (entityIds.length === 0) {
-		return new Map();
-	}
+  if (entityIds.length === 0) {
+    return new Map();
+  }
 
-	const rows = await db
-		.select({
-			entityId: schema.fields.entityVersionId,
-			content: schema.richTextContentBlocks.content,
-		})
-		.from(schema.fields)
-		.innerJoin(
-			schema.entityTypesFieldsNames,
-			eq(schema.fields.fieldNameId, schema.entityTypesFieldsNames.id),
-		)
-		.innerJoin(schema.contentBlocks, eq(schema.contentBlocks.fieldId, schema.fields.id))
-		.innerJoin(
-			schema.contentBlockTypes,
-			eq(schema.contentBlocks.typeId, schema.contentBlockTypes.id),
-		)
-		.innerJoin(
-			schema.richTextContentBlocks,
-			eq(schema.richTextContentBlocks.id, schema.contentBlocks.id),
-		)
-		.where(
-			and(
-				inArray(schema.fields.entityVersionId, entityIds),
-				eq(schema.entityTypesFieldsNames.fieldName, fieldName),
-				eq(schema.contentBlockTypes.type, "rich_text"),
-			),
-		)
-		.orderBy(schema.fields.entityVersionId, schema.contentBlocks.position);
+  const rows = await db
+    .select({
+      entityId: schema.fields.entityVersionId,
+      content: schema.richTextContentBlocks.content,
+    })
+    .from(schema.fields)
+    .innerJoin(
+      schema.entityTypesFieldsNames,
+      eq(schema.fields.fieldNameId, schema.entityTypesFieldsNames.id),
+    )
+    .innerJoin(schema.contentBlocks, eq(schema.contentBlocks.fieldId, schema.fields.id))
+    .innerJoin(
+      schema.contentBlockTypes,
+      eq(schema.contentBlocks.typeId, schema.contentBlockTypes.id),
+    )
+    .innerJoin(
+      schema.richTextContentBlocks,
+      eq(schema.richTextContentBlocks.id, schema.contentBlocks.id),
+    )
+    .where(
+      and(
+        inArray(schema.fields.entityVersionId, entityIds),
+        eq(schema.entityTypesFieldsNames.fieldName, fieldName),
+        eq(schema.contentBlockTypes.type, "rich_text"),
+      ),
+    )
+    .orderBy(schema.fields.entityVersionId, schema.contentBlocks.position);
 
-	const contentByEntityId = new Map<string, Array<string>>();
+  const contentByEntityId = new Map<string, Array<string>>();
 
-	for (const row of rows) {
-		const content = toPlainText(row.content);
+  for (const row of rows) {
+    const content = toPlainText(row.content);
 
-		if (content.length === 0) {
-			continue;
-		}
+    if (content.length === 0) {
+      continue;
+    }
 
-		const existing = contentByEntityId.get(row.entityId) ?? [];
-		existing.push(content);
-		contentByEntityId.set(row.entityId, existing);
-	}
+    const existing = contentByEntityId.get(row.entityId) ?? [];
+    existing.push(content);
+    contentByEntityId.set(row.entityId, existing);
+  }
 
-	return new Map(
-		[...contentByEntityId.entries()].map(([entityId, parts]) => [
-			entityId,
-			mergeDescription(...parts),
-		]),
-	);
+  return new Map(
+    [...contentByEntityId.entries()].map(([entityId, parts]) => [
+      entityId,
+      mergeDescription(...parts),
+    ]),
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndexServiceParams) {
-	const { db, search, searchService } = params;
-
-	async function getWebsiteDocumentDescriptorByEntityId(
-		entityId: string,
-	): Promise<WebsiteDocumentDescriptor | null> {
-		// `entities` has no `slug` column of its own — slugs are versioned per locale, so
-		// resolve the default locale's published version's slug via `document_lifecycle`
-		// (which already pins `publishedId` to the default locale, see its view definition).
-		const [entity] = await db
-			.select({
-				type: schema.entityTypes.type,
-				slug: schema.slugs.value,
-			})
-			.from(schema.entities)
-			.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.documentId, schema.entities.id),
-			)
-			.innerJoin(
-				schema.slugs,
-				eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId),
-			)
-			.where(eq(schema.entities.id, entityId));
-
-		if (entity == null) {
-			return null;
-		}
-
-		switch (entity.type) {
-			case "documents_policies": {
-				return { slug: entity.slug, type: "document-or-policy" };
-			}
-			case "events": {
-				return { slug: entity.slug, type: "event" };
-			}
-			case "funding_calls": {
-				return { slug: entity.slug, type: "funding-call" };
-			}
-			case "impact_case_studies": {
-				return { slug: entity.slug, type: "impact-case-study" };
-			}
-			case "news": {
-				return { slug: entity.slug, type: "news-item" };
-			}
-			case "opportunities": {
-				return { slug: entity.slug, type: "opportunity" };
-			}
-			case "pages": {
-				return { slug: entity.slug, type: "page" };
-			}
-			case "persons": {
-				return { slug: entity.slug, type: "person" };
-			}
-			case "projects": {
-				return { slug: entity.slug, type: "project" };
-			}
-			case "spotlight_articles": {
-				return { slug: entity.slug, type: "spotlight-article" };
-			}
-			case "organisational_units": {
-				const [country, workingGroup] = await Promise.all([
-					db.query.membersAndPartners.findFirst({
-						where: {
-							id: entityId,
-						},
-						columns: {
-							id: true,
-						},
-					}),
-					db.query.workingGroups.findFirst({
-						where: {
-							id: entityId,
-						},
-						columns: {
-							id: true,
-						},
-					}),
-				]);
-
-				if (country != null) {
-					return { slug: entity.slug, type: "country" };
-				}
-
-				if (workingGroup != null) {
-					return { slug: entity.slug, type: "working-group" };
-				}
-
-				return null;
-			}
-			case "external_links": {
-				return null;
-			}
-			case "documentation_pages": {
-				return null;
-			}
-			case "internal_pages": {
-				return null;
-			}
-		}
-
-		return null;
-	}
-
-	async function getSyncableWebsiteEntityIds(): Promise<Array<string>> {
-		return getSyncableWebsiteEntityIdsByType();
-	}
-
-	async function getSyncableWebsiteEntityIdsByType(
-		entityType?: SupportedWebsiteEntityType,
-	): Promise<Array<string>> {
-		switch (entityType) {
-			case "country": {
-				const items = await db.query.membersAndPartners.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "document-or-policy": {
-				const items = await db.query.documentsPolicies.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "event": {
-				const items = await db.query.events.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "funding-call": {
-				const items = await db.query.fundingCalls.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "impact-case-study": {
-				const items = await db.query.impactCaseStudies.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "news-item": {
-				const items = await db.query.news.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "opportunity": {
-				const items = await db.query.opportunities.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "page": {
-				const items = await db.query.pages.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "person": {
-				const items = await db.query.persons.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "project": {
-				const items = await db.query.dariahProjects.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "spotlight-article": {
-				const items = await db.query.spotlightArticles.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case "working-group": {
-				const items = await db.query.workingGroups.findMany({
-					where: {
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: { id: true },
-				});
-
-				return items.map((item) => item.id);
-			}
-
-			case undefined: {
-				const groups = await Promise.all(
-					supportedWebsiteEntityTypes.map((type) => getSyncableWebsiteEntityIdsByType(type)),
-				);
-
-				return groups.flat();
-			}
-		}
-	}
-
-	async function getWebsiteDocumentForEntity(
-		entityId: string,
-		params?: { importedAt?: number },
-	): Promise<WebsiteDocument | null> {
-		const importedAt = params?.importedAt ?? Date.now();
-		const descriptor = await getWebsiteDocumentDescriptorByEntityId(entityId);
-
-		if (descriptor == null) {
-			return null;
-		}
-
-		switch (descriptor.type) {
-			case "country": {
-				const item = await db.query.membersAndPartners.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						name: true,
-						summary: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const descriptions = await getPlainTextFieldContentByEntityId(
-					db,
-					[entityId],
-					"description",
-				);
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "country",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: mergeDescription(descriptions.get(entityId), item.summary ?? ""),
-					link: `/network/members-and-partners/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "document-or-policy": {
-				const item = await db.query.documentsPolicies.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "document-or-policy",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary ?? "",
-					link: "/about/documents",
-				});
-			}
-
-			case "event": {
-				const item = await db.query.events.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "event",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary ?? "",
-					link: `/events/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "funding-call": {
-				const item = await db.query.fundingCalls.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "funding-call",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary ?? "",
-					link: `/funding-calls/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "impact-case-study": {
-				const item = await db.query.impactCaseStudies.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "impact-case-study",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary,
-					link: `/about/impact-case-studies/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "news-item": {
-				const item = await db.query.news.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "news-item",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(content.get(entityId), item.summary),
-					link: `/news/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "opportunity": {
-				const item = await db.query.opportunities.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "opportunity",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(content.get(entityId), item.summary ?? ""),
-					link: `/opportunities/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "page": {
-				const item = await db.query.pages.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "page",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(content.get(entityId), item.summary),
-					link: `/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "person": {
-				const item = await db.query.persons.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						name: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const biographies = await getPlainTextFieldContentByEntityId(db, [entityId], "biography");
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "person",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: biographies.get(entityId) ?? "",
-					link: `/persons/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "project": {
-				const item = await db.query.dariahProjects.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						name: true,
-						summary: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const descriptions = await getPlainTextFieldContentByEntityId(
-					db,
-					[entityId],
-					"description",
-				);
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "project",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: mergeDescription(descriptions.get(entityId), item.summary),
-					link: `/projects/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "spotlight-article": {
-				const item = await db.query.spotlightArticles.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						summary: true,
-						title: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "spotlight-article",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(content.get(entityId), item.summary),
-					link: `/spotlights/${item.entityVersion.slug!.value}`,
-				});
-			}
-
-			case "working-group": {
-				const item = await db.query.workingGroups.findFirst({
-					where: {
-						id: entityId,
-						entityVersion: {
-							status: {
-								type: "published",
-							},
-						},
-					},
-					columns: {
-						name: true,
-						summary: true,
-						updatedAt: true,
-					},
-					with: {
-						entityVersion: {
-							columns: {},
-							with: {
-								slug: {
-									columns: {
-										value: true,
-									},
-								},
-							},
-						},
-					},
-				});
-
-				if (item == null) {
-					return null;
-				}
-
-				const descriptions = await getPlainTextFieldContentByEntityId(
-					db,
-					[entityId],
-					"description",
-				);
-
-				return createWebsiteEntityDocument({
-					importedAt,
-					type: "working-group",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: mergeDescription(descriptions.get(entityId), item.summary ?? ""),
-					link: `/network/working-groups/${item.entityVersion.slug!.value}`,
-				});
-			}
-		}
-	}
-
-	async function createWebsiteEntityDocuments(params?: {
-		importedAt?: number;
-	}): Promise<Array<WebsiteDocument>> {
-		const importedAt = params?.importedAt ?? Date.now();
-		const website: Array<WebsiteDocument> = [];
-
-		const [
-			countryDescriptions,
-			newsContent,
-			opportunityContent,
-			pageContent,
-			personBiographies,
-			projectDescriptions,
-			spotlightContent,
-			workingGroupDescriptions,
-		] = await Promise.all([
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.membersAndPartners.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"description",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.news.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"content",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.opportunities.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"content",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.pages.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"content",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.persons.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"biography",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.dariahProjects.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"description",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.workingGroups.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"description",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.spotlightArticles.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"content",
-			),
-			getPlainTextFieldContentByEntityId(
-				db,
-				(
-					await db.query.workingGroups.findMany({
-						columns: { id: true },
-					})
-				).map((item) => item.id),
-				"description",
-			),
-		]);
-
-		const documentsPolicies = await db.query.documentsPolicies.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
-
-		website.push(
-			...documentsPolicies.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "document-or-policy",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary ?? "",
-					link: "/about/documents",
-				}),
-			),
-		);
-
-		const events = await db.query.events.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
-
-		website.push(
-			...events.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "event",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary,
-					link: `/events/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
-
-		const fundingCalls = await db.query.fundingCalls.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
-
-		website.push(
-			...fundingCalls.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "funding-call",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary ?? "",
-					link: `/funding-calls/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
-
-		const impactCaseStudies = await db.query.impactCaseStudies.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
-
-		website.push(
-			...impactCaseStudies.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "impact-case-study",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: item.summary,
-					link: `/about/impact-case-studies/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
-
-		const membersAndPartners = await db.query.membersAndPartners.findMany({
-			columns: {
-				id: true,
-				name: true,
-				summary: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
-
-		website.push(
-			...membersAndPartners.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "country",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: mergeDescription(countryDescriptions.get(item.id), item.summary ?? ""),
-					link: `/network/members-and-partners/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
-
-		const countryEntities = alias(schema.entities, "country_entities");
-		const countryEntityVersions = alias(schema.entityVersions, "country_entity_versions");
-		const countrySlugs = alias(schema.slugs, "country_slugs");
-		const itemEntities = alias(schema.entities, "item_entities");
-		const itemEntityVersions = alias(schema.entityVersions, "item_entity_versions");
-		const itemSlugs = alias(schema.slugs, "item_slugs");
-		const organisationalRelationStatus = alias(
-			schema.organisationalUnitStatus,
-			"organisational_relation_status",
-		);
-		const organisationalUnitType = alias(
-			schema.organisationalUnitTypes,
-			"organisational_unit_type",
-		);
-		const publishedEntityStatus = alias(schema.entityStatus, "published_entity_status");
-
-		const organisationalUnitDescriptions = await getPlainTextFieldContentByEntityId(
-			db,
-			(
-				await db.query.organisationalUnits.findMany({
-					columns: { id: true },
-				})
-			).map((item) => item.id),
-			"description",
-		);
-
-		const nationalConsortia = await db
-			.select({
-				itemId: schema.organisationalUnits.id,
-				countrySlug: countrySlugs.value,
-				itemSlug: itemSlugs.value,
-				label: schema.organisationalUnits.name,
-				description: schema.organisationalUnits.summary,
-				sourceUpdatedAt: schema.organisationalUnits.updatedAt,
-			})
-			.from(schema.organisationalUnits)
-			.innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
-			.innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
-			.innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
-			.innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
-			.innerJoin(
-				organisationalUnitType,
-				eq(schema.organisationalUnits.typeId, organisationalUnitType.id),
-			)
-			.innerJoin(
-				schema.organisationalUnitsRelations,
-				// unit↔unit relations are document-level; the owner unit is pinned to its published version.
-				eq(schema.organisationalUnitsRelations.unitDocumentId, itemEntities.id),
-			)
-			.innerJoin(
-				organisationalRelationStatus,
-				eq(schema.organisationalUnitsRelations.status, organisationalRelationStatus.id),
-			)
-			.innerJoin(
-				countryEntities,
-				eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
-			)
-			.innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
-			.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
-			.innerJoin(
-				schema.membersAndPartners,
-				eq(schema.membersAndPartners.id, countryEntityVersions.id),
-			)
-			.where(
-				and(
-					eq(publishedEntityStatus.type, "published"),
-					eq(organisationalUnitType.type, "national_consortium"),
-					eq(organisationalRelationStatus.status, "is_national_consortium_of"),
-					sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
-				),
-			);
-
-		website.push(
-			...nationalConsortia.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "national-consortium",
-					sourceId: item.itemSlug,
-					documentId: `${item.countrySlug}:${item.itemSlug}`,
-					sourceUpdatedAt: item.sourceUpdatedAt,
-					label: item.label,
-					description: mergeDescription(
-						organisationalUnitDescriptions.get(item.itemId),
-						item.description ?? "",
-					),
-					link: `/network/members-and-partners/${item.countrySlug}`,
-				}),
-			),
-		);
-
-		const partnerInstitutions = await db
-			.select({
-				itemId: schema.organisationalUnits.id,
-				countrySlug: countrySlugs.value,
-				itemSlug: itemSlugs.value,
-				label: schema.organisationalUnits.name,
-				description: schema.organisationalUnits.summary,
-				sourceUpdatedAt: schema.organisationalUnits.updatedAt,
-			})
-			.from(schema.organisationalUnits)
-			.innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
-			.innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
-			.innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
-			.innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
-			.innerJoin(
-				organisationalUnitType,
-				eq(schema.organisationalUnits.typeId, organisationalUnitType.id),
-			)
-			.innerJoin(
-				schema.organisationalUnitsRelations,
-				// unit↔unit relations are document-level; the owner unit is pinned to its published version.
-				eq(schema.organisationalUnitsRelations.unitDocumentId, itemEntities.id),
-			)
-			.innerJoin(
-				organisationalRelationStatus,
-				eq(schema.organisationalUnitsRelations.status, organisationalRelationStatus.id),
-			)
-			.innerJoin(
-				countryEntities,
-				eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
-			)
-			.innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
-			.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
-			.innerJoin(
-				schema.membersAndPartners,
-				eq(schema.membersAndPartners.id, countryEntityVersions.id),
-			)
-			.where(
-				and(
-					eq(publishedEntityStatus.type, "published"),
-					eq(organisationalUnitType.type, "institution"),
-					eq(organisationalRelationStatus.status, "is_located_in"),
-					sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
-					sql`
+  const { db, search, searchService } = params;
+
+  async function getWebsiteDocumentDescriptorByEntityId(
+    entityId: string,
+  ): Promise<WebsiteDocumentDescriptor | null> {
+    // `entities` has no `slug` column of its own — slugs are versioned per locale, so
+    // resolve the default locale's published version's slug via `document_lifecycle`
+    // (which already pins `publishedId` to the default locale, see its view definition).
+    const [entity] = await db
+      .select({
+        type: schema.entityTypes.type,
+        slug: schema.slugs.value,
+      })
+      .from(schema.entities)
+      .innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
+      .innerJoin(
+        schema.documentLifecycle,
+        eq(schema.documentLifecycle.documentId, schema.entities.id),
+      )
+      .innerJoin(
+        schema.slugs,
+        eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId),
+      )
+      .where(eq(schema.entities.id, entityId));
+
+    if (entity == null) {
+      return null;
+    }
+
+    switch (entity.type) {
+      case "documents_policies": {
+        return { slug: entity.slug, type: "document-or-policy" };
+      }
+      case "events": {
+        return { slug: entity.slug, type: "event" };
+      }
+      case "funding_calls": {
+        return { slug: entity.slug, type: "funding-call" };
+      }
+      case "impact_case_studies": {
+        return { slug: entity.slug, type: "impact-case-study" };
+      }
+      case "news": {
+        return { slug: entity.slug, type: "news-item" };
+      }
+      case "opportunities": {
+        return { slug: entity.slug, type: "opportunity" };
+      }
+      case "pages": {
+        return { slug: entity.slug, type: "page" };
+      }
+      case "persons": {
+        return { slug: entity.slug, type: "person" };
+      }
+      case "projects": {
+        return { slug: entity.slug, type: "project" };
+      }
+      case "spotlight_articles": {
+        return { slug: entity.slug, type: "spotlight-article" };
+      }
+      case "organisational_units": {
+        const [country, workingGroup] = await Promise.all([
+          db.query.membersAndPartners.findFirst({
+            where: {
+              id: entityId,
+            },
+            columns: {
+              id: true,
+            },
+          }),
+          db.query.workingGroups.findFirst({
+            where: {
+              id: entityId,
+            },
+            columns: {
+              id: true,
+            },
+          }),
+        ]);
+
+        if (country != null) {
+          return { slug: entity.slug, type: "country" };
+        }
+
+        if (workingGroup != null) {
+          return { slug: entity.slug, type: "working-group" };
+        }
+
+        return null;
+      }
+      case "external_links": {
+        return null;
+      }
+      case "documentation_pages": {
+        return null;
+      }
+      case "internal_pages": {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  async function getSyncableWebsiteEntityIds(): Promise<Array<string>> {
+    return getSyncableWebsiteEntityIdsByType();
+  }
+
+  async function getSyncableWebsiteEntityIdsByType(
+    entityType?: SupportedWebsiteEntityType,
+  ): Promise<Array<string>> {
+    switch (entityType) {
+      case "country": {
+        const items = await db.query.membersAndPartners.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "document-or-policy": {
+        const items = await db.query.documentsPolicies.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "event": {
+        const items = await db.query.events.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "funding-call": {
+        const items = await db.query.fundingCalls.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "impact-case-study": {
+        const items = await db.query.impactCaseStudies.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "news-item": {
+        const items = await db.query.news.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "opportunity": {
+        const items = await db.query.opportunities.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "page": {
+        const items = await db.query.pages.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "person": {
+        const items = await db.query.persons.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "project": {
+        const items = await db.query.dariahProjects.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "spotlight-article": {
+        const items = await db.query.spotlightArticles.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case "working-group": {
+        const items = await db.query.workingGroups.findMany({
+          where: {
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: { id: true },
+        });
+
+        return items.map((item) => item.id);
+      }
+
+      case undefined: {
+        const groups = await Promise.all(
+          supportedWebsiteEntityTypes.map((type) => getSyncableWebsiteEntityIdsByType(type)),
+        );
+
+        return groups.flat();
+      }
+    }
+  }
+
+  async function getWebsiteDocumentForEntity(
+    entityId: string,
+    params?: { importedAt?: number },
+  ): Promise<WebsiteDocument | null> {
+    const importedAt = params?.importedAt ?? Date.now();
+    const descriptor = await getWebsiteDocumentDescriptorByEntityId(entityId);
+
+    if (descriptor == null) {
+      return null;
+    }
+
+    switch (descriptor.type) {
+      case "country": {
+        const item = await db.query.membersAndPartners.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            name: true,
+            summary: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const descriptions = await getPlainTextFieldContentByEntityId(
+          db,
+          [entityId],
+          "description",
+        );
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "country",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: mergeDescription(descriptions.get(entityId), item.summary ?? ""),
+          link: `/network/members-and-partners/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "document-or-policy": {
+        const item = await db.query.documentsPolicies.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "document-or-policy",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary ?? "",
+          link: "/about/documents",
+        });
+      }
+
+      case "event": {
+        const item = await db.query.events.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "event",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary ?? "",
+          link: `/events/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "funding-call": {
+        const item = await db.query.fundingCalls.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "funding-call",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary ?? "",
+          link: `/funding-calls/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "impact-case-study": {
+        const item = await db.query.impactCaseStudies.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "impact-case-study",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary,
+          link: `/about/impact-case-studies/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "news-item": {
+        const item = await db.query.news.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "news-item",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(content.get(entityId), item.summary),
+          link: `/news/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "opportunity": {
+        const item = await db.query.opportunities.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "opportunity",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(content.get(entityId), item.summary ?? ""),
+          link: `/opportunities/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "page": {
+        const item = await db.query.pages.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "page",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(content.get(entityId), item.summary),
+          link: `/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "person": {
+        const item = await db.query.persons.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            name: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const biographies = await getPlainTextFieldContentByEntityId(db, [entityId], "biography");
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "person",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: biographies.get(entityId) ?? "",
+          link: `/persons/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "project": {
+        const item = await db.query.dariahProjects.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            name: true,
+            summary: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const descriptions = await getPlainTextFieldContentByEntityId(
+          db,
+          [entityId],
+          "description",
+        );
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "project",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: mergeDescription(descriptions.get(entityId), item.summary),
+          link: `/projects/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "spotlight-article": {
+        const item = await db.query.spotlightArticles.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            summary: true,
+            title: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const content = await getPlainTextFieldContentByEntityId(db, [entityId], "content");
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "spotlight-article",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(content.get(entityId), item.summary),
+          link: `/spotlights/${item.entityVersion.slug!.value}`,
+        });
+      }
+
+      case "working-group": {
+        const item = await db.query.workingGroups.findFirst({
+          where: {
+            id: entityId,
+            entityVersion: {
+              status: {
+                type: "published",
+              },
+            },
+          },
+          columns: {
+            name: true,
+            summary: true,
+            updatedAt: true,
+          },
+          with: {
+            entityVersion: {
+              columns: {},
+              with: {
+                slug: {
+                  columns: {
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (item == null) {
+          return null;
+        }
+
+        const descriptions = await getPlainTextFieldContentByEntityId(
+          db,
+          [entityId],
+          "description",
+        );
+
+        return createWebsiteEntityDocument({
+          importedAt,
+          type: "working-group",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: mergeDescription(descriptions.get(entityId), item.summary ?? ""),
+          link: `/network/working-groups/${item.entityVersion.slug!.value}`,
+        });
+      }
+    }
+  }
+
+  async function createWebsiteEntityDocuments(params?: {
+    importedAt?: number;
+  }): Promise<Array<WebsiteDocument>> {
+    const importedAt = params?.importedAt ?? Date.now();
+    const website: Array<WebsiteDocument> = [];
+
+    const [
+      countryDescriptions,
+      newsContent,
+      opportunityContent,
+      pageContent,
+      personBiographies,
+      projectDescriptions,
+      spotlightContent,
+      workingGroupDescriptions,
+    ] = await Promise.all([
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.membersAndPartners.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "description",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.news.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "content",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.opportunities.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "content",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.pages.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "content",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.persons.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "biography",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.dariahProjects.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "description",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.workingGroups.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "description",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.spotlightArticles.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "content",
+      ),
+      getPlainTextFieldContentByEntityId(
+        db,
+        (
+          await db.query.workingGroups.findMany({
+            columns: { id: true },
+          })
+        ).map((item) => item.id),
+        "description",
+      ),
+    ]);
+
+    const documentsPolicies = await db.query.documentsPolicies.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    website.push(
+      ...documentsPolicies.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "document-or-policy",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary ?? "",
+          link: "/about/documents",
+        }),
+      ),
+    );
+
+    const events = await db.query.events.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    website.push(
+      ...events.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "event",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary,
+          link: `/events/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
+
+    const fundingCalls = await db.query.fundingCalls.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    website.push(
+      ...fundingCalls.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "funding-call",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary ?? "",
+          link: `/funding-calls/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
+
+    const impactCaseStudies = await db.query.impactCaseStudies.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    website.push(
+      ...impactCaseStudies.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "impact-case-study",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: item.summary,
+          link: `/about/impact-case-studies/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
+
+    const membersAndPartners = await db.query.membersAndPartners.findMany({
+      columns: {
+        id: true,
+        name: true,
+        summary: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    website.push(
+      ...membersAndPartners.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "country",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: mergeDescription(countryDescriptions.get(item.id), item.summary ?? ""),
+          link: `/network/members-and-partners/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
+
+    const countryEntities = alias(schema.entities, "country_entities");
+    const countryEntityVersions = alias(schema.entityVersions, "country_entity_versions");
+    const countrySlugs = alias(schema.slugs, "country_slugs");
+    const itemEntities = alias(schema.entities, "item_entities");
+    const itemEntityVersions = alias(schema.entityVersions, "item_entity_versions");
+    const itemSlugs = alias(schema.slugs, "item_slugs");
+    const organisationalRelationStatus = alias(
+      schema.organisationalUnitStatus,
+      "organisational_relation_status",
+    );
+    const organisationalUnitType = alias(
+      schema.organisationalUnitTypes,
+      "organisational_unit_type",
+    );
+    const publishedEntityStatus = alias(schema.entityStatus, "published_entity_status");
+
+    const organisationalUnitDescriptions = await getPlainTextFieldContentByEntityId(
+      db,
+      (
+        await db.query.organisationalUnits.findMany({
+          columns: { id: true },
+        })
+      ).map((item) => item.id),
+      "description",
+    );
+
+    const nationalConsortia = await db
+      .select({
+        itemId: schema.organisationalUnits.id,
+        countrySlug: countrySlugs.value,
+        itemSlug: itemSlugs.value,
+        label: schema.organisationalUnits.name,
+        description: schema.organisationalUnits.summary,
+        sourceUpdatedAt: schema.organisationalUnits.updatedAt,
+      })
+      .from(schema.organisationalUnits)
+      .innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
+      .innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
+      .innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
+      .innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
+      .innerJoin(
+        organisationalUnitType,
+        eq(schema.organisationalUnits.typeId, organisationalUnitType.id),
+      )
+      .innerJoin(
+        schema.organisationalUnitsRelations,
+        // unit↔unit relations are document-level; the owner unit is pinned to its published version.
+        eq(schema.organisationalUnitsRelations.unitDocumentId, itemEntities.id),
+      )
+      .innerJoin(
+        organisationalRelationStatus,
+        eq(schema.organisationalUnitsRelations.status, organisationalRelationStatus.id),
+      )
+      .innerJoin(
+        countryEntities,
+        eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+      )
+      .innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
+      .innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
+      .innerJoin(
+        schema.membersAndPartners,
+        eq(schema.membersAndPartners.id, countryEntityVersions.id),
+      )
+      .where(
+        and(
+          eq(publishedEntityStatus.type, "published"),
+          eq(organisationalUnitType.type, "national_consortium"),
+          eq(organisationalRelationStatus.status, "is_national_consortium_of"),
+          sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
+        ),
+      );
+
+    website.push(
+      ...nationalConsortia.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "national-consortium",
+          sourceId: item.itemSlug,
+          documentId: `${item.countrySlug}:${item.itemSlug}`,
+          sourceUpdatedAt: item.sourceUpdatedAt,
+          label: item.label,
+          description: mergeDescription(
+            organisationalUnitDescriptions.get(item.itemId),
+            item.description ?? "",
+          ),
+          link: `/network/members-and-partners/${item.countrySlug}`,
+        }),
+      ),
+    );
+
+    const partnerInstitutions = await db
+      .select({
+        itemId: schema.organisationalUnits.id,
+        countrySlug: countrySlugs.value,
+        itemSlug: itemSlugs.value,
+        label: schema.organisationalUnits.name,
+        description: schema.organisationalUnits.summary,
+        sourceUpdatedAt: schema.organisationalUnits.updatedAt,
+      })
+      .from(schema.organisationalUnits)
+      .innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
+      .innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
+      .innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
+      .innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
+      .innerJoin(
+        organisationalUnitType,
+        eq(schema.organisationalUnits.typeId, organisationalUnitType.id),
+      )
+      .innerJoin(
+        schema.organisationalUnitsRelations,
+        // unit↔unit relations are document-level; the owner unit is pinned to its published version.
+        eq(schema.organisationalUnitsRelations.unitDocumentId, itemEntities.id),
+      )
+      .innerJoin(
+        organisationalRelationStatus,
+        eq(schema.organisationalUnitsRelations.status, organisationalRelationStatus.id),
+      )
+      .innerJoin(
+        countryEntities,
+        eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+      )
+      .innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
+      .innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
+      .innerJoin(
+        schema.membersAndPartners,
+        eq(schema.membersAndPartners.id, countryEntityVersions.id),
+      )
+      .where(
+        and(
+          eq(publishedEntityStatus.type, "published"),
+          eq(organisationalUnitType.type, "institution"),
+          eq(organisationalRelationStatus.status, "is_located_in"),
+          sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
+          sql`
 						EXISTS (
 							SELECT
 								1
@@ -1536,71 +1536,71 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								AND partner_relations.duration @> NOW()::TIMESTAMPTZ
 						)
 					`,
-				),
-			);
+        ),
+      );
 
-		website.push(
-			...partnerInstitutions.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "institution",
-					sourceId: item.itemSlug,
-					documentId: `${item.countrySlug}:${item.itemSlug}`,
-					sourceUpdatedAt: item.sourceUpdatedAt,
-					label: item.label,
-					description: mergeDescription(
-						organisationalUnitDescriptions.get(item.itemId),
-						item.description ?? "",
-					),
-					link: `/network/members-and-partners/${item.countrySlug}`,
-				}),
-			),
-		);
+    website.push(
+      ...partnerInstitutions.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "institution",
+          sourceId: item.itemSlug,
+          documentId: `${item.countrySlug}:${item.itemSlug}`,
+          sourceUpdatedAt: item.sourceUpdatedAt,
+          label: item.label,
+          description: mergeDescription(
+            organisationalUnitDescriptions.get(item.itemId),
+            item.description ?? "",
+          ),
+          link: `/network/members-and-partners/${item.countrySlug}`,
+        }),
+      ),
+    );
 
-		const cooperatingPartnerInstitutions = await db
-			.select({
-				itemId: schema.organisationalUnits.id,
-				countrySlug: countrySlugs.value,
-				itemSlug: itemSlugs.value,
-				label: schema.organisationalUnits.name,
-				description: schema.organisationalUnits.summary,
-				sourceUpdatedAt: schema.organisationalUnits.updatedAt,
-			})
-			.from(schema.organisationalUnits)
-			.innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
-			.innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
-			.innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
-			.innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
-			.innerJoin(
-				organisationalUnitType,
-				eq(schema.organisationalUnits.typeId, organisationalUnitType.id),
-			)
-			.innerJoin(
-				schema.organisationalUnitsRelations,
-				// unit↔unit relations are document-level; the owner unit is pinned to its published version.
-				eq(schema.organisationalUnitsRelations.unitDocumentId, itemEntities.id),
-			)
-			.innerJoin(
-				organisationalRelationStatus,
-				eq(schema.organisationalUnitsRelations.status, organisationalRelationStatus.id),
-			)
-			.innerJoin(
-				countryEntities,
-				eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
-			)
-			.innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
-			.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
-			.innerJoin(
-				schema.membersAndPartners,
-				eq(schema.membersAndPartners.id, countryEntityVersions.id),
-			)
-			.where(
-				and(
-					eq(publishedEntityStatus.type, "published"),
-					eq(organisationalUnitType.type, "institution"),
-					eq(organisationalRelationStatus.status, "is_located_in"),
-					sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
-					sql`
+    const cooperatingPartnerInstitutions = await db
+      .select({
+        itemId: schema.organisationalUnits.id,
+        countrySlug: countrySlugs.value,
+        itemSlug: itemSlugs.value,
+        label: schema.organisationalUnits.name,
+        description: schema.organisationalUnits.summary,
+        sourceUpdatedAt: schema.organisationalUnits.updatedAt,
+      })
+      .from(schema.organisationalUnits)
+      .innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
+      .innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
+      .innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
+      .innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
+      .innerJoin(
+        organisationalUnitType,
+        eq(schema.organisationalUnits.typeId, organisationalUnitType.id),
+      )
+      .innerJoin(
+        schema.organisationalUnitsRelations,
+        // unit↔unit relations are document-level; the owner unit is pinned to its published version.
+        eq(schema.organisationalUnitsRelations.unitDocumentId, itemEntities.id),
+      )
+      .innerJoin(
+        organisationalRelationStatus,
+        eq(schema.organisationalUnitsRelations.status, organisationalRelationStatus.id),
+      )
+      .innerJoin(
+        countryEntities,
+        eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+      )
+      .innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
+      .innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
+      .innerJoin(
+        schema.membersAndPartners,
+        eq(schema.membersAndPartners.id, countryEntityVersions.id),
+      )
+      .where(
+        and(
+          eq(publishedEntityStatus.type, "published"),
+          eq(organisationalUnitType.type, "institution"),
+          eq(organisationalRelationStatus.status, "is_located_in"),
+          sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
+          sql`
 						EXISTS (
 							SELECT
 								1
@@ -1617,533 +1617,533 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								AND cooperating_relations.duration @> NOW()::TIMESTAMPTZ
 						)
 					`,
-				),
-			);
+        ),
+      );
 
-		website.push(
-			...cooperatingPartnerInstitutions.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "institution",
-					sourceId: item.itemSlug,
-					documentId: `${item.countrySlug}:${item.itemSlug}`,
-					sourceUpdatedAt: item.sourceUpdatedAt,
-					label: item.label,
-					description: mergeDescription(
-						organisationalUnitDescriptions.get(item.itemId),
-						item.description ?? "",
-					),
-					link: `/network/members-and-partners/${item.countrySlug}`,
-				}),
-			),
-		);
+    website.push(
+      ...cooperatingPartnerInstitutions.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "institution",
+          sourceId: item.itemSlug,
+          documentId: `${item.countrySlug}:${item.itemSlug}`,
+          sourceUpdatedAt: item.sourceUpdatedAt,
+          label: item.label,
+          description: mergeDescription(
+            organisationalUnitDescriptions.get(item.itemId),
+            item.description ?? "",
+          ),
+          link: `/network/members-and-partners/${item.countrySlug}`,
+        }),
+      ),
+    );
 
-		const personRoleType = alias(schema.personRoleTypes, "person_role_type");
+    const personRoleType = alias(schema.personRoleTypes, "person_role_type");
 
-		const countryContributors = await db
-			.select({
-				itemId: schema.persons.id,
-				countrySlug: countrySlugs.value,
-				itemSlug: itemSlugs.value,
-				label: schema.persons.name,
-				sourceUpdatedAt: schema.persons.updatedAt,
-			})
-			.from(schema.personsToOrganisationalUnits)
-			// person↔org relations are document-level; resolve the person to its published version.
-			.innerJoin(
-				itemEntities,
-				eq(itemEntities.id, schema.personsToOrganisationalUnits.personDocumentId),
-			)
-			.innerJoin(itemEntityVersions, eq(itemEntityVersions.entityId, itemEntities.id))
-			.innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
-			.innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
-			.innerJoin(schema.persons, eq(schema.persons.id, itemEntityVersions.id))
-			.innerJoin(
-				personRoleType,
-				eq(schema.personsToOrganisationalUnits.roleTypeId, personRoleType.id),
-			)
-			// resolve the org to its published version via the members-and-partners view.
-			.innerJoin(
-				countryEntities,
-				eq(countryEntities.id, schema.personsToOrganisationalUnits.organisationalUnitDocumentId),
-			)
-			.innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
-			.innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
-			.innerJoin(
-				schema.membersAndPartners,
-				eq(schema.membersAndPartners.id, countryEntityVersions.id),
-			)
-			.where(
-				and(
-					eq(publishedEntityStatus.type, "published"),
-					inArray(personRoleType.type, [
-						"national_coordinator",
-						"national_coordinator_deputy",
-						"national_representative",
-						"national_representative_deputy",
-					]),
-					sql`${schema.personsToOrganisationalUnits.duration} @> NOW()::TIMESTAMPTZ`,
-				),
-			);
+    const countryContributors = await db
+      .select({
+        itemId: schema.persons.id,
+        countrySlug: countrySlugs.value,
+        itemSlug: itemSlugs.value,
+        label: schema.persons.name,
+        sourceUpdatedAt: schema.persons.updatedAt,
+      })
+      .from(schema.personsToOrganisationalUnits)
+      // person↔org relations are document-level; resolve the person to its published version.
+      .innerJoin(
+        itemEntities,
+        eq(itemEntities.id, schema.personsToOrganisationalUnits.personDocumentId),
+      )
+      .innerJoin(itemEntityVersions, eq(itemEntityVersions.entityId, itemEntities.id))
+      .innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
+      .innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
+      .innerJoin(schema.persons, eq(schema.persons.id, itemEntityVersions.id))
+      .innerJoin(
+        personRoleType,
+        eq(schema.personsToOrganisationalUnits.roleTypeId, personRoleType.id),
+      )
+      // resolve the org to its published version via the members-and-partners view.
+      .innerJoin(
+        countryEntities,
+        eq(countryEntities.id, schema.personsToOrganisationalUnits.organisationalUnitDocumentId),
+      )
+      .innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
+      .innerJoin(countrySlugs, eq(countrySlugs.entityVersionId, countryEntityVersions.id))
+      .innerJoin(
+        schema.membersAndPartners,
+        eq(schema.membersAndPartners.id, countryEntityVersions.id),
+      )
+      .where(
+        and(
+          eq(publishedEntityStatus.type, "published"),
+          inArray(personRoleType.type, [
+            "national_coordinator",
+            "national_coordinator_deputy",
+            "national_representative",
+            "national_representative_deputy",
+          ]),
+          sql`${schema.personsToOrganisationalUnits.duration} @> NOW()::TIMESTAMPTZ`,
+        ),
+      );
 
-		const contributorDocumentsById = new Map<string, WebsiteDocument>();
+    const contributorDocumentsById = new Map<string, WebsiteDocument>();
 
-		for (const item of countryContributors) {
-			contributorDocumentsById.set(`${item.countrySlug}:${item.itemSlug}`, {
-				kind: "entity",
-				source: "the-knowledge-base",
-				source_id: item.itemSlug,
-				source_updated_at: item.sourceUpdatedAt.getTime(),
-				imported_at: importedAt,
-				type: "person",
-				id: ["person", `${item.countrySlug}:${item.itemSlug}`].join(":"),
-				label: item.label,
-				description: personBiographies.get(item.itemId) ?? "",
-				link: `/network/members-and-partners/${item.countrySlug}`,
-			});
-		}
+    for (const item of countryContributors) {
+      contributorDocumentsById.set(`${item.countrySlug}:${item.itemSlug}`, {
+        kind: "entity",
+        source: "the-knowledge-base",
+        source_id: item.itemSlug,
+        source_updated_at: item.sourceUpdatedAt.getTime(),
+        imported_at: importedAt,
+        type: "person",
+        id: ["person", `${item.countrySlug}:${item.itemSlug}`].join(":"),
+        label: item.label,
+        description: personBiographies.get(item.itemId) ?? "",
+        link: `/network/members-and-partners/${item.countrySlug}`,
+      });
+    }
 
-		website.push(...contributorDocumentsById.values());
+    website.push(...contributorDocumentsById.values());
 
-		const news = await db.query.news.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const news = await db.query.news.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...news.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "news-item",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(newsContent.get(item.id), item.summary),
-					link: `/news/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...news.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "news-item",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(newsContent.get(item.id), item.summary),
+          link: `/news/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		const opportunities = await db.query.opportunities.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const opportunities = await db.query.opportunities.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...opportunities.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "opportunity",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(opportunityContent.get(item.id), item.summary ?? ""),
-					link: `/opportunities/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...opportunities.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "opportunity",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(opportunityContent.get(item.id), item.summary ?? ""),
+          link: `/opportunities/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		const pages = await db.query.pages.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const pages = await db.query.pages.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...pages.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "page",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(pageContent.get(item.id), item.summary),
-					link: `/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...pages.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "page",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(pageContent.get(item.id), item.summary),
+          link: `/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		const persons = await db.query.persons.findMany({
-			columns: {
-				id: true,
-				name: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const persons = await db.query.persons.findMany({
+      columns: {
+        id: true,
+        name: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...persons.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "person",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: personBiographies.get(item.id) ?? "",
-					link: `/persons/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...persons.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "person",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: personBiographies.get(item.id) ?? "",
+          link: `/persons/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		const dariahProjects = await db.query.dariahProjects.findMany({
-			columns: {
-				id: true,
-				name: true,
-				summary: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const dariahProjects = await db.query.dariahProjects.findMany({
+      columns: {
+        id: true,
+        name: true,
+        summary: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...dariahProjects.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "project",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: mergeDescription(projectDescriptions.get(item.id), item.summary),
-					link: `/projects/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...dariahProjects.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "project",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: mergeDescription(projectDescriptions.get(item.id), item.summary),
+          link: `/projects/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		const spotlightArticles = await db.query.spotlightArticles.findMany({
-			columns: {
-				id: true,
-				summary: true,
-				title: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const spotlightArticles = await db.query.spotlightArticles.findMany({
+      columns: {
+        id: true,
+        summary: true,
+        title: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...spotlightArticles.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "spotlight-article",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.title,
-					description: mergeDescription(spotlightContent.get(item.id), item.summary),
-					link: `/spotlights/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...spotlightArticles.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "spotlight-article",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.title,
+          description: mergeDescription(spotlightContent.get(item.id), item.summary),
+          link: `/spotlights/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		const workingGroups = await db.query.workingGroups.findMany({
-			columns: {
-				id: true,
-				name: true,
-				summary: true,
-				updatedAt: true,
-			},
-			where: {
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			with: {
-				entityVersion: {
-					columns: {},
-					with: {
-						slug: {
-							columns: {
-								value: true,
-							},
-						},
-					},
-				},
-			},
-		});
+    const workingGroups = await db.query.workingGroups.findMany({
+      columns: {
+        id: true,
+        name: true,
+        summary: true,
+        updatedAt: true,
+      },
+      where: {
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      with: {
+        entityVersion: {
+          columns: {},
+          with: {
+            slug: {
+              columns: {
+                value: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
-		website.push(
-			...workingGroups.map((item) =>
-				createWebsiteEntityDocument({
-					importedAt,
-					type: "working-group",
-					sourceId: item.entityVersion.slug!.value,
-					sourceUpdatedAt: item.updatedAt,
-					label: item.name,
-					description: mergeDescription(workingGroupDescriptions.get(item.id), item.summary ?? ""),
-					link: `/network/working-groups/${item.entityVersion.slug!.value}`,
-				}),
-			),
-		);
+    website.push(
+      ...workingGroups.map((item) =>
+        createWebsiteEntityDocument({
+          importedAt,
+          type: "working-group",
+          sourceId: item.entityVersion.slug!.value,
+          sourceUpdatedAt: item.updatedAt,
+          label: item.name,
+          description: mergeDescription(workingGroupDescriptions.get(item.id), item.summary ?? ""),
+          link: `/network/working-groups/${item.entityVersion.slug!.value}`,
+        }),
+      ),
+    );
 
-		return website;
-	}
+    return website;
+  }
 
-	async function syncWebsiteSearchIndex(): Promise<SyncWebsiteSearchIndexResult> {
-		const documents = await createWebsiteEntityDocuments();
-		const result = await search.collections.website.ingest(documents);
+  async function syncWebsiteSearchIndex(): Promise<SyncWebsiteSearchIndexResult> {
+    const documents = await createWebsiteEntityDocuments();
+    const result = await search.collections.website.ingest(documents);
 
-		if (result.isErr()) {
-			throw result.error;
-		}
+    if (result.isErr()) {
+      throw result.error;
+    }
 
-		const currentDocumentIds = new Set(documents.map((document) => document.id));
+    const currentDocumentIds = new Set(documents.map((document) => document.id));
 
-		const existingDocumentIds = new Set<string>();
-		let page = 1;
-		let totalPages;
+    const existingDocumentIds = new Set<string>();
+    let page = 1;
+    let totalPages;
 
-		do {
-			const result = await searchService.collections.website.search({
-				filterBy: "source:=the-knowledge-base",
-				page,
-				perPage: 250,
-				query: "*",
-			});
+    do {
+      const result = await searchService.collections.website.search({
+        filterBy: "source:=the-knowledge-base",
+        page,
+        perPage: 250,
+        query: "*",
+      });
 
-			if (result.isErr()) {
-				throw result.error;
-			}
+      if (result.isErr()) {
+        throw result.error;
+      }
 
-			for (const item of result.value.items) {
-				existingDocumentIds.add(item.document.id);
-			}
+      for (const item of result.value.items) {
+        existingDocumentIds.add(item.document.id);
+      }
 
-			totalPages = result.value.pagination.totalPages;
-			page += 1;
-		} while (page <= totalPages);
+      totalPages = result.value.pagination.totalPages;
+      page += 1;
+    } while (page <= totalPages);
 
-		let failedCount = 0;
+    let failedCount = 0;
 
-		for (const documentId of existingDocumentIds) {
-			if (currentDocumentIds.has(documentId)) {
-				continue;
-			}
+    for (const documentId of existingDocumentIds) {
+      if (currentDocumentIds.has(documentId)) {
+        continue;
+      }
 
-			const result = await search.collections.website.delete(documentId);
+      const result = await search.collections.website.delete(documentId);
 
-			if (result.isErr() && !isMissingSearchDocumentError(result.error)) {
-				log.error("Failed to delete stale website search document.", {
-					documentId,
-					error: result.error,
-				});
+      if (result.isErr() && !isMissingSearchDocumentError(result.error)) {
+        log.error("Failed to delete stale website search document.", {
+          documentId,
+          error: result.error,
+        });
 
-				failedCount += 1;
-			}
-		}
+        failedCount += 1;
+      }
+    }
 
-		return {
-			count: documents.length,
-			failedCount,
-		};
-	}
+    return {
+      count: documents.length,
+      failedCount,
+    };
+  }
 
-	async function deleteWebsiteDocument(
-		descriptor: WebsiteDocumentDescriptor,
-	): Promise<SyncWebsiteDocumentResult> {
-		const documentId = createWebsiteDocumentId(descriptor);
-		const result = await search.collections.website.delete(documentId);
+  async function deleteWebsiteDocument(
+    descriptor: WebsiteDocumentDescriptor,
+  ): Promise<SyncWebsiteDocumentResult> {
+    const documentId = createWebsiteDocumentId(descriptor);
+    const result = await search.collections.website.delete(documentId);
 
-		if (result.isErr() && !isMissingSearchDocumentError(result.error)) {
-			log.error("Failed to delete website search document.", {
-				documentId,
-				error: result.error,
-			});
+    if (result.isErr() && !isMissingSearchDocumentError(result.error)) {
+      log.error("Failed to delete website search document.", {
+        documentId,
+        error: result.error,
+      });
 
-			return {
-				documentId,
-				error: result.error,
-				ok: false,
-				operation: "deleted",
-			};
-		}
+      return {
+        documentId,
+        error: result.error,
+        ok: false,
+        operation: "deleted",
+      };
+    }
 
-		return {
-			documentId,
-			ok: true,
-			operation: "deleted",
-		};
-	}
+    return {
+      documentId,
+      ok: true,
+      operation: "deleted",
+    };
+  }
 
-	async function syncWebsiteDocumentForEntity(entityId: string): Promise<void> {
-		await syncWebsiteDocumentForEntityWithResult(entityId);
-	}
+  async function syncWebsiteDocumentForEntity(entityId: string): Promise<void> {
+    await syncWebsiteDocumentForEntityWithResult(entityId);
+  }
 
-	async function syncWebsiteDocumentForEntityWithResult(
-		entityId: string,
-	): Promise<SyncWebsiteDocumentResult> {
-		const descriptor = await getWebsiteDocumentDescriptorByEntityId(entityId);
+  async function syncWebsiteDocumentForEntityWithResult(
+    entityId: string,
+  ): Promise<SyncWebsiteDocumentResult> {
+    const descriptor = await getWebsiteDocumentDescriptorByEntityId(entityId);
 
-		if (descriptor == null) {
-			return { entityId, ok: true, operation: "skipped" };
-		}
+    if (descriptor == null) {
+      return { entityId, ok: true, operation: "skipped" };
+    }
 
-		const document = await getWebsiteDocumentForEntity(entityId);
+    const document = await getWebsiteDocumentForEntity(entityId);
 
-		if (document == null) {
-			const result = await deleteWebsiteDocument(descriptor);
+    if (document == null) {
+      const result = await deleteWebsiteDocument(descriptor);
 
-			return { ...result, entityId };
-		}
+      return { ...result, entityId };
+    }
 
-		const result = await search.collections.website.upsert(document);
+    const result = await search.collections.website.upsert(document);
 
-		if (result.isErr()) {
-			log.error("Failed to upsert website search document.", {
-				entityId,
-				documentId: document.id,
-				error: result.error,
-			});
+    if (result.isErr()) {
+      log.error("Failed to upsert website search document.", {
+        entityId,
+        documentId: document.id,
+        error: result.error,
+      });
 
-			return {
-				entityId,
-				documentId: document.id,
-				error: result.error,
-				ok: false,
-				operation: "upserted",
-			};
-		}
+      return {
+        entityId,
+        documentId: document.id,
+        error: result.error,
+        ok: false,
+        operation: "upserted",
+      };
+    }
 
-		return {
-			entityId,
-			documentId: document.id,
-			ok: true,
-			operation: "upserted",
-		};
-	}
+    return {
+      entityId,
+      documentId: document.id,
+      ok: true,
+      operation: "upserted",
+    };
+  }
 
-	return {
-		createWebsiteEntityDocuments,
-		deleteWebsiteDocument,
-		getSyncableWebsiteEntityIds,
-		getSyncableWebsiteEntityIdsByType,
-		getWebsiteDocumentDescriptorByEntityId,
-		getWebsiteDocumentForEntity,
-		supportedWebsiteEntityTypes,
-		syncWebsiteDocumentForEntity,
-		syncWebsiteDocumentForEntityWithResult,
-		syncWebsiteSearchIndex,
-	};
+  return {
+    createWebsiteEntityDocuments,
+    deleteWebsiteDocument,
+    getSyncableWebsiteEntityIds,
+    getSyncableWebsiteEntityIdsByType,
+    getWebsiteDocumentDescriptorByEntityId,
+    getWebsiteDocumentForEntity,
+    supportedWebsiteEntityTypes,
+    syncWebsiteDocumentForEntity,
+    syncWebsiteDocumentForEntityWithResult,
+    syncWebsiteSearchIndex,
+  };
 }

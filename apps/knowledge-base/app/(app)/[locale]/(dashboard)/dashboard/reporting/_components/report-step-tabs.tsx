@@ -1,6 +1,6 @@
 "use client";
 
-import { Tab, TabList, Tabs } from "@acdh-knowledge-base/ui/tabs";
+import { Tab, TabList, Tabs } from "@dariah-eric/ui/tabs";
 import type { ReactNode } from "react";
 
 import { usePathname } from "@/lib/navigation/navigation";

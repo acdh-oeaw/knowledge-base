@@ -1,4 +1,4 @@
-import { Link } from "@acdh-knowledge-base/ui/link";
+import { Link } from "@dariah-eric/ui/link";
 import cn from "clsx/lite";
 import { useExtracted } from "next-intl";
 import { getExtracted } from "next-intl/server";

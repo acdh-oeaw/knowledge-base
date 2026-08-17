@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@acdh-knowledge-base/ui/button";
+import { Button } from "@dariah-eric/ui/button";
 import { type ErrorInfo, unstable_catchError } from "next/error";
 import type { ReactNode } from "react";
 

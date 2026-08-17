@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { Label } from "@acdh-knowledge-base/ui/field";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@acdh-knowledge-base/ui/select";
+import { Button } from "@dariah-eric/ui/button";
+import { Label } from "@dariah-eric/ui/field";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@dariah-eric/ui/select";
 import {
 	Table,
 	TableBody,
@@ -10,7 +10,7 @@ import {
 	TableColumn,
 	TableHeader,
 	TableRow,
-} from "@acdh-knowledge-base/ui/table";
+} from "@dariah-eric/ui/table";
 import { useExtracted } from "next-intl";
 import { type ReactNode, useOptimistic, useTransition } from "react";
 import type { Key } from "react-aria-components";

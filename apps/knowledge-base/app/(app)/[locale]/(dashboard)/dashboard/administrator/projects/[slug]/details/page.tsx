@@ -1,4 +1,4 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
@@ -23,230 +23,230 @@ import { createMetadata } from "@/lib/server/create-metadata";
 interface DashboardAdministratorProjectDetailsPageProps extends PageProps<"/[locale]/dashboard/administrator/projects/[slug]/details"> {}
 
 export async function generateMetadata(
-	_props: Readonly<DashboardAdministratorProjectDetailsPageProps>,
-	resolvingMetadata: ResolvingMetadata,
+  _props: Readonly<DashboardAdministratorProjectDetailsPageProps>,
+  resolvingMetadata: ResolvingMetadata,
 ): Promise<Metadata> {
-	const t = await getExtracted();
+  const t = await getExtracted();
 
-	const metadata: Metadata = await createMetadata(resolvingMetadata, {
-		title: t("Administrator dashboard - Project details"),
-	});
+  const metadata: Metadata = await createMetadata(resolvingMetadata, {
+    title: t("Administrator dashboard - Project details"),
+  });
 
-	return metadata;
+  return metadata;
 }
 
 export default async function DashboardAdministratorProjectDetailsPage(
-	props: Readonly<DashboardAdministratorProjectDetailsPageProps>,
+  props: Readonly<DashboardAdministratorProjectDetailsPageProps>,
 ): Promise<ReactNode> {
-	const { params, searchParams: searchParamsPromise } = props;
+  const { params, searchParams: searchParamsPromise } = props;
 
-	const { slug } = await params;
+  const { slug } = await params;
 
-	const t = await getExtracted();
-	await assertAuthenticated();
+  const t = await getExtracted();
+  await assertAuthenticated();
 
-	const anyVersion = await db.query.projects.findFirst({
-		where: { entityVersion: { slug: { value: slug } } },
-		columns: {},
-		with: {
-			entityVersion: {
-				columns: {},
-				with: { entity: { columns: { id: true } } },
-			},
-		},
-	});
+  const anyVersion = await db.query.projects.findFirst({
+    where: { entityVersion: { slug: { value: slug } } },
+    columns: {},
+    with: {
+      entityVersion: {
+        columns: {},
+        with: { entity: { columns: { id: true } } },
+      },
+    },
+  });
 
-	if (anyVersion == null) {
-		notFound();
-	}
+  if (anyVersion == null) {
+    notFound();
+  }
 
-	const documentId = anyVersion.entityVersion.entity.id;
+  const documentId = anyVersion.entityVersion.entity.id;
 
-	const { locale: localeParam, version } = await searchParamsPromise;
+  const { locale: localeParam, version } = await searchParamsPromise;
 
-	const locales = await getLocales();
-	const requestedLocale = locales.find((locale) => locale.code === localeParam);
-	const selectedLocale =
-		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+  const locales = await getLocales();
+  const requestedLocale = locales.find((locale) => locale.code === localeParam);
+  const selectedLocale =
+    requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
 
-	if (selectedLocale == null) {
-		notFound();
-	}
+  if (selectedLocale == null) {
+    notFound();
+  }
 
-	const localizedVersion = await resolveLocalizedDetailVersion(
-		documentId,
-		version,
-		locales,
-		selectedLocale.id,
-	);
+  const localizedVersion = await resolveLocalizedDetailVersion(
+    documentId,
+    version,
+    locales,
+    selectedLocale.id,
+  );
 
-	if (localizedVersion == null) {
-		return (
-			<Fragment>
-				<div className="flex items-center justify-between">
-					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
-				</div>
-				<p className="text-sm text-muted-fg italic">
-					{t("This document has no content in the selected locale yet.")}
-				</p>
-			</Fragment>
-		);
-	}
-	const {
-		displayLocaleId,
-		hasDraftChanges,
-		isLocaleFallback,
-		publishedId,
-		selectedVersion,
-		versionId,
-	} = localizedVersion;
+  if (localizedVersion == null) {
+    return (
+      <Fragment>
+        <div className="flex items-center justify-between">
+          <LocaleSelector locales={locales} selectedLocaleCode={selectedLocale.code} />
+        </div>
+        <p className="text-sm text-muted-fg italic">
+          {t("This document has no content in the selected locale yet.")}
+        </p>
+      </Fragment>
+    );
+  }
+  const {
+    displayLocaleId,
+    hasDraftChanges,
+    isLocaleFallback,
+    publishedId,
+    selectedVersion,
+    versionId,
+  } = localizedVersion;
 
-	const project = await db.query.projects.findFirst({
-		where: { id: versionId },
-		columns: {
-			acronym: true,
-			call: true,
-			duration: true,
-			funding: true,
-			id: true,
-			name: true,
-			summary: true,
-			topic: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { id: true },
-				with: {
-					entity: {
-						columns: {
-							id: true,
-						},
-					},
-					slug: {
-						columns: {
-							value: true,
-						},
-					},
-					status: {
-						columns: {
-							id: true,
-							type: true,
-						},
-					},
-				},
-			},
-			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
-			},
-			scope: {
-				columns: {
-					id: true,
-					scope: true,
-				},
-			},
-		},
-	});
+  const project = await db.query.projects.findFirst({
+    where: { id: versionId },
+    columns: {
+      acronym: true,
+      call: true,
+      duration: true,
+      funding: true,
+      id: true,
+      name: true,
+      summary: true,
+      topic: true,
+    },
+    with: {
+      entityVersion: {
+        columns: { id: true },
+        with: {
+          entity: {
+            columns: {
+              id: true,
+            },
+          },
+          slug: {
+            columns: {
+              value: true,
+            },
+          },
+          status: {
+            columns: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+      },
+      image: {
+        columns: {
+          key: true,
+          label: true,
+        },
+      },
+      scope: {
+        columns: {
+          id: true,
+          scope: true,
+        },
+      },
+    },
+  });
 
-	if (project == null) {
-		notFound();
-	}
+  if (project == null) {
+    notFound();
+  }
 
-	assert(
-		project.entityVersion.slug,
-		`Slug missing for entity version "${project.entityVersion.id}".`,
-	);
-	const entityVersionSlug = project.entityVersion.slug;
+  assert(
+    project.entityVersion.slug,
+    `Slug missing for entity version "${project.entityVersion.id}".`,
+  );
+  const entityVersionSlug = project.entityVersion.slug;
 
-	const [descriptionContentBlocks, partners, persons, socialMediaLinks] = await Promise.all([
-		getEntityContentBlocks(versionId, "description"),
-		getProjectPartnerUnits(documentId, displayLocaleId),
-		(() => {
-			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
-			return db
-				.select({
-					id: schema.projectsToPersons.id,
-					duration: schema.projectsToPersons.duration,
-					personName: schema.persons.name,
-					personSlug: schema.slugs.value,
-					roleName: schema.projectRoles.role,
-				})
-				.from(schema.projectsToPersons)
-				.innerJoin(
-					personDocumentLifecycle,
-					eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
-				)
-				.innerJoin(
-					schema.persons,
-					sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.publishedId}, ${personDocumentLifecycle.draftId})`,
-				)
-				.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.persons.id))
-				.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
-				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
-		})(),
-		db.query.projectsToSocialMedia.findMany({
-			where: { projectId: project.id },
-			columns: {},
-			with: {
-				socialMedia: {
-					columns: { id: true, name: true, url: true },
-					with: { type: { columns: { type: true } } },
-				},
-			},
-		}),
-	]);
+  const [descriptionContentBlocks, partners, persons, socialMediaLinks] = await Promise.all([
+    getEntityContentBlocks(versionId, "description"),
+    getProjectPartnerUnits(documentId, displayLocaleId),
+    (() => {
+      const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
+      return db
+        .select({
+          id: schema.projectsToPersons.id,
+          duration: schema.projectsToPersons.duration,
+          personName: schema.persons.name,
+          personSlug: schema.slugs.value,
+          roleName: schema.projectRoles.role,
+        })
+        .from(schema.projectsToPersons)
+        .innerJoin(
+          personDocumentLifecycle,
+          eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+        )
+        .innerJoin(
+          schema.persons,
+          sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.publishedId}, ${personDocumentLifecycle.draftId})`,
+        )
+        .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.persons.id))
+        .innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
+        .where(eq(schema.projectsToPersons.projectDocumentId, documentId));
+    })(),
+    db.query.projectsToSocialMedia.findMany({
+      where: { projectId: project.id },
+      columns: {},
+      with: {
+        socialMedia: {
+          columns: { id: true, name: true, url: true },
+          with: { type: { columns: { type: true } } },
+        },
+      },
+    }),
+  ]);
 
-	const image =
-		project.image != null
-			? {
-					...project.image,
-					url: images.generateSignedImageUrl({
-						key: project.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
-			: null;
+  const image =
+    project.image != null
+      ? {
+          ...project.image,
+          url: images.generateSignedImageUrl({
+            key: project.image.key,
+            options: imageGridOptions,
+          }).url,
+        }
+      : null;
 
-	return (
-		<ProjectDetails
-			discardDraftAction={discardProjectDraftAction}
-			documentId={documentId}
-			hasDraft={hasDraftChanges}
-			isLocaleFallback={isLocaleFallback}
-			isPublished={publishedId != null}
-			locales={locales}
-			selectedLocaleCode={selectedLocale.code}
-			project={{
-				...project,
-				entityVersion: { ...project.entityVersion, slug: entityVersionSlug },
-				descriptionContentBlocks,
-				image,
-				partners: partners.map((partner) => {
-					return {
-						id: partner.id,
-						unitName: partner.unitName,
-						unitSlug: partner.unitSlug,
-						unitType: partner.unitType,
-						roleName: partner.roleName,
-						duration: partner.duration ?? null,
-						unitIsLocaleFallback: partner.unitIsLocaleFallback,
-					};
-				}),
-				persons: persons.map((person) => {
-					return {
-						id: person.id,
-						personName: person.personName,
-						personSlug: person.personSlug,
-						roleName: person.roleName,
-						duration: person.duration ?? null,
-					};
-				}),
-				socialMedia: socialMediaLinks.map((link) => link.socialMedia),
-			}}
-			publishAction={publishProjectAction}
-			selectedVersion={selectedVersion}
-		/>
-	);
+  return (
+    <ProjectDetails
+      discardDraftAction={discardProjectDraftAction}
+      documentId={documentId}
+      hasDraft={hasDraftChanges}
+      isLocaleFallback={isLocaleFallback}
+      isPublished={publishedId != null}
+      locales={locales}
+      selectedLocaleCode={selectedLocale.code}
+      project={{
+        ...project,
+        entityVersion: { ...project.entityVersion, slug: entityVersionSlug },
+        descriptionContentBlocks,
+        image,
+        partners: partners.map((partner) => {
+          return {
+            id: partner.id,
+            unitName: partner.unitName,
+            unitSlug: partner.unitSlug,
+            unitType: partner.unitType,
+            roleName: partner.roleName,
+            duration: partner.duration ?? null,
+            unitIsLocaleFallback: partner.unitIsLocaleFallback,
+          };
+        }),
+        persons: persons.map((person) => {
+          return {
+            id: person.id,
+            personName: person.personName,
+            personSlug: person.personSlug,
+            roleName: person.roleName,
+            duration: person.duration ?? null,
+          };
+        }),
+        socialMedia: socialMediaLinks.map((link) => link.socialMedia),
+      }}
+      publishAction={publishProjectAction}
+      selectedVersion={selectedVersion}
+    />
+  );
 }

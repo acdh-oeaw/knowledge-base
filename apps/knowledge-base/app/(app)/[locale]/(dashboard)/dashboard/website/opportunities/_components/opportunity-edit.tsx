@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
+import type * as schema from "@dariah-eric/database/schema";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,48 +12,48 @@ import { publishOpportunityAction } from "@/app/(app)/[locale]/(dashboard)/dashb
 import { updateOpportunityAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_lib/update-opportunity.action";
 
 interface OpportunityEditFormProps {
-	contentBlocks: Array<ContentBlock>;
-	documentId: string;
-	hasDraftChanges: boolean;
-	isPublished: boolean;
-	opportunity: Pick<
-		schema.Opportunity,
-		"id" | "duration" | "sourceId" | "title" | "summary" | "website"
-	> & {
-		entityVersion: {
-			entity: Pick<schema.Entity, "id">;
-			slug: Pick<schema.Slug, "value">;
-			status: Pick<schema.EntityStatus, "id" | "type">;
-		};
-		source: Pick<schema.OpportunitySource, "id" | "source">;
-	};
-	sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
+  contentBlocks: Array<ContentBlock>;
+  documentId: string;
+  hasDraftChanges: boolean;
+  isPublished: boolean;
+  opportunity: Pick<
+    schema.Opportunity,
+    "id" | "duration" | "sourceId" | "title" | "summary" | "website"
+  > & {
+    entityVersion: {
+      entity: Pick<schema.Entity, "id">;
+      slug: Pick<schema.Slug, "value">;
+      status: Pick<schema.EntityStatus, "id" | "type">;
+    };
+    source: Pick<schema.OpportunitySource, "id" | "source">;
+  };
+  sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
 }
 
 export function OpportunityEditForm(props: Readonly<OpportunityEditFormProps>): ReactNode {
-	const { contentBlocks, documentId, hasDraftChanges, isPublished, opportunity, sources } = props;
+  const { contentBlocks, documentId, hasDraftChanges, isPublished, opportunity, sources } = props;
 
-	const t = useExtracted();
+  const t = useExtracted();
 
-	return (
-		<Fragment>
-			<EntityFormHeader
-				title={t("Edit opportunity")}
-				lifecycle={{
-					documentId,
-					hasDraft: hasDraftChanges,
-					isPublished,
-					publishAction: publishOpportunityAction,
-					discardDraftAction: discardOpportunityDraftAction,
-				}}
-			/>
+  return (
+    <Fragment>
+      <EntityFormHeader
+        title={t("Edit opportunity")}
+        lifecycle={{
+          documentId,
+          hasDraft: hasDraftChanges,
+          isPublished,
+          publishAction: publishOpportunityAction,
+          discardDraftAction: discardOpportunityDraftAction,
+        }}
+      />
 
-			<OpportunityForm
-				contentBlocks={contentBlocks}
-				formAction={updateOpportunityAction}
-				opportunity={opportunity}
-				sources={sources}
-			/>
-		</Fragment>
-	);
+      <OpportunityForm
+        contentBlocks={contentBlocks}
+        formAction={updateOpportunityAction}
+        opportunity={opportunity}
+        sources={sources}
+      />
+    </Fragment>
+  );
 }

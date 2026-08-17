@@ -1,7 +1,7 @@
 "use server";
 
-import { createActionStateError } from "@acdh-knowledge-base/next-lib/actions";
-import { globalPostRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
+import { createActionStateError } from "@dariah-eric/next-lib/actions";
+import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import { getFormDataValues } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
@@ -13,61 +13,61 @@ import { redirect } from "@/lib/navigation/navigation";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const verifyPasswordResetEmailAction = createServerAction(
-	async function verifyPasswordResetEmailAction(state, formData) {
-		const locale = await getLocale();
-		const t = await getExtracted();
+  async function verifyPasswordResetEmailAction(state, formData) {
+    const locale = await getLocale();
+    const t = await getExtracted();
 
-		if (!(await globalPostRequestRateLimit())) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (!(await globalPostRequestRateLimit())) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const { session } = await auth.validatePasswordResetSessionFromRequest();
+    const { session } = await auth.validatePasswordResetSessionFromRequest();
 
-		if (session == null) {
-			return createActionStateError({ message: t("Not authenticated.") });
-		}
-		if (session.isEmailVerified) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
-		if (!auth.emailVerificationBucket.check(session.userId, 1)) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (session == null) {
+      return createActionStateError({ message: t("Not authenticated.") });
+    }
+    if (session.isEmailVerified) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
+    if (!auth.emailVerificationBucket.check(session.userId, 1)) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const result = await v.safeParseAsync(
-			VerifyPasswordResetEmailActionInputSchema,
-			getFormDataValues(formData),
-			{ lang: getIntlLanguage(locale) },
-		);
+    const result = await v.safeParseAsync(
+      VerifyPasswordResetEmailActionInputSchema,
+      getFormDataValues(formData),
+      { lang: getIntlLanguage(locale) },
+    );
 
-		if (!result.success) {
-			const errors = v.flatten<typeof VerifyPasswordResetEmailActionInputSchema>(result.issues);
+    if (!result.success) {
+      const errors = v.flatten<typeof VerifyPasswordResetEmailActionInputSchema>(result.issues);
 
-			return createActionStateError({
-				message: errors.root ?? t("Invalid or missing fields."),
-				validationErrors: errors.nested,
-			});
-		}
+      return createActionStateError({
+        message: errors.root ?? t("Invalid or missing fields."),
+        validationErrors: errors.nested,
+      });
+    }
 
-		const { code } = result.output;
+    const { code } = result.output;
 
-		if (!auth.emailVerificationBucket.consume(session.userId, 1)) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
-		if (code !== session.code) {
-			return createActionStateError({ message: t("Incorrect code.") });
-		}
+    if (!auth.emailVerificationBucket.consume(session.userId, 1)) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
+    if (code !== session.code) {
+      return createActionStateError({ message: t("Incorrect code.") });
+    }
 
-		auth.emailVerificationBucket.reset(session.userId);
-		await auth.setPasswordResetSessionAsEmailVerified(session.id);
+    auth.emailVerificationBucket.reset(session.userId);
+    await auth.setPasswordResetSessionAsEmailVerified(session.id);
 
-		const emailMatches = await auth.setUserAsEmailVerifiedIfEmailMatches(
-			session.userId,
-			session.email,
-		);
-		if (!emailMatches) {
-			return createActionStateError({ message: t("Please restart the process.") });
-		}
+    const emailMatches = await auth.setUserAsEmailVerifiedIfEmailMatches(
+      session.userId,
+      session.email,
+    );
+    if (!emailMatches) {
+      return createActionStateError({ message: t("Please restart the process.") });
+    }
 
-		redirect({ href: "/auth/reset-password/two-factor", locale });
-	},
+    redirect({ href: "/auth/reset-password/two-factor", locale });
+  },
 );

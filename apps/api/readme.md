@@ -1,4 +1,4 @@
-# @acdh-knowledge-base/api
+# @dariah-eric/api
 
 the knowledge base api server, deployed at .
 

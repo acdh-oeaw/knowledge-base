@@ -1,4 +1,4 @@
-import { SidebarInset, SidebarProvider } from "@acdh-knowledge-base/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@dariah-eric/ui/sidebar";
 import { getExtracted } from "next-intl/server";
 import { cookies } from "next/headers";
 import { connection } from "next/server";

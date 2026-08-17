@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar } from "@acdh-knowledge-base/ui/avatar";
+import { Avatar } from "@dariah-eric/ui/avatar";
 import {
 	Menu,
 	MenuContent,
@@ -10,7 +10,7 @@ import {
 	MenuSection,
 	MenuSeparator,
 	MenuTrigger,
-} from "@acdh-knowledge-base/ui/menu";
+} from "@dariah-eric/ui/menu";
 import {
 	ArrowLeftStartOnRectangleIcon,
 	Cog6ToothIcon,

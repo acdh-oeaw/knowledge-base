@@ -1,11 +1,11 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 
 import { db } from "@/lib/db";
 import { and, eq, sql } from "@/lib/db/sql";
 
 export interface ReportRouteParams {
-	year: string;
-	slug: string;
+  year: string;
+  slug: string;
 }
 
 /**
@@ -13,14 +13,14 @@ export interface ReportRouteParams {
  * the admin tree, which render the same report data through shared screen components.
  */
 export const countryReportRevalidatePaths = [
-	"/[locale]/dashboard/reporting",
-	"/[locale]/dashboard/administrator/country-reports/[id]",
+  "/[locale]/dashboard/reporting",
+  "/[locale]/dashboard/administrator/country-reports/[id]",
 ] as const;
 
 /** Paths revalidated after a working-group-report mutation. See {@link countryReportRevalidatePaths}. */
 export const workingGroupReportRevalidatePaths = [
-	"/[locale]/dashboard/reporting",
-	"/[locale]/dashboard/administrator/working-group-reports/[id]",
+  "/[locale]/dashboard/reporting",
+  "/[locale]/dashboard/administrator/working-group-reports/[id]",
 ] as const;
 
 /**
@@ -28,148 +28,148 @@ export const workingGroupReportRevalidatePaths = [
  * be driven from both the reporting and admin trees. Only same-app dashboard paths are honoured.
  */
 export function sanitizeReportRedirectTo(value: FormDataEntryValue | null): string | null {
-	return typeof value === "string" && value.startsWith("/dashboard/") ? value : null;
+  return typeof value === "string" && value.startsWith("/dashboard/") ? value : null;
 }
 
 export function getCountryReportHref(year: number, slug: string): string {
-	return `/dashboard/reporting/country-reports/${year}/${slug}`;
+  return `/dashboard/reporting/country-reports/${year}/${slug}`;
 }
 
 export function getCountryReportEditHref(year: number, slug: string, step?: string): string {
-	const base = `${getCountryReportHref(year, slug)}/edit`;
+  const base = `${getCountryReportHref(year, slug)}/edit`;
 
-	return step == null ? base : `${base}/${step}`;
+  return step == null ? base : `${base}/${step}`;
 }
 
 export function getWorkingGroupReportHref(year: number, slug: string): string {
-	return `/dashboard/reporting/working-group-reports/${year}/${slug}`;
+  return `/dashboard/reporting/working-group-reports/${year}/${slug}`;
 }
 
 export function getWorkingGroupReportEditHref(year: number, slug: string, step?: string): string {
-	const base = `${getWorkingGroupReportHref(year, slug)}/edit`;
+  const base = `${getWorkingGroupReportHref(year, slug)}/edit`;
 
-	return step == null ? base : `${base}/${step}`;
+  return step == null ? base : `${base}/${step}`;
 }
 
 export async function resolveCountryReportId(params: ReportRouteParams): Promise<string | null> {
-	const year = Number(params.year);
+  const year = Number(params.year);
 
-	if (!Number.isInteger(year)) {
-		return null;
-	}
+  if (!Number.isInteger(year)) {
+    return null;
+  }
 
-	const report = await db
-		.select({ id: schema.countryReports.id })
-		.from(schema.countryReports)
-		.innerJoin(
-			schema.reportingCampaigns,
-			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
-		)
-		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.where(and(eq(schema.reportingCampaigns.year, year), eq(schema.slugs.value, params.slug)))
-		.limit(1);
+  const report = await db
+    .select({ id: schema.countryReports.id })
+    .from(schema.countryReports)
+    .innerJoin(
+      schema.reportingCampaigns,
+      eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
+    )
+    .innerJoin(
+      schema.documentLifecycle,
+      eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .where(and(eq(schema.reportingCampaigns.year, year), eq(schema.slugs.value, params.slug)))
+    .limit(1);
 
-	return report[0]?.id ?? null;
+  return report[0]?.id ?? null;
 }
 
 export async function resolveWorkingGroupReportId(
-	params: ReportRouteParams,
+  params: ReportRouteParams,
 ): Promise<string | null> {
-	const year = Number(params.year);
+  const year = Number(params.year);
 
-	if (!Number.isInteger(year)) {
-		return null;
-	}
+  if (!Number.isInteger(year)) {
+    return null;
+  }
 
-	const report = await db
-		.select({ id: schema.workingGroupReports.id })
-		.from(schema.workingGroupReports)
-		.innerJoin(
-			schema.reportingCampaigns,
-			eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
-		)
-		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.where(and(eq(schema.reportingCampaigns.year, year), eq(schema.slugs.value, params.slug)))
-		.limit(1);
+  const report = await db
+    .select({ id: schema.workingGroupReports.id })
+    .from(schema.workingGroupReports)
+    .innerJoin(
+      schema.reportingCampaigns,
+      eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
+    )
+    .innerJoin(
+      schema.documentLifecycle,
+      eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .where(and(eq(schema.reportingCampaigns.year, year), eq(schema.slugs.value, params.slug)))
+    .limit(1);
 
-	return report[0]?.id ?? null;
+  return report[0]?.id ?? null;
 }
 
 export async function getCountryReportEditHrefById(id: string, step?: string): Promise<string> {
-	const report = await db
-		.select({
-			year: schema.reportingCampaigns.year,
-			slug: schema.slugs.value,
-		})
-		.from(schema.countryReports)
-		.innerJoin(
-			schema.reportingCampaigns,
-			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
-		)
-		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.where(eq(schema.countryReports.id, id))
-		.limit(1);
+  const report = await db
+    .select({
+      year: schema.reportingCampaigns.year,
+      slug: schema.slugs.value,
+    })
+    .from(schema.countryReports)
+    .innerJoin(
+      schema.reportingCampaigns,
+      eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
+    )
+    .innerJoin(
+      schema.documentLifecycle,
+      eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .where(eq(schema.countryReports.id, id))
+    .limit(1);
 
-	const [item] = report;
+  const [item] = report;
 
-	return item == null
-		? "/dashboard/reporting/country-reports"
-		: getCountryReportEditHref(item.year, item.slug, step);
+  return item == null
+    ? "/dashboard/reporting/country-reports"
+    : getCountryReportEditHref(item.year, item.slug, step);
 }
 
 export async function getWorkingGroupReportEditHrefById(
-	id: string,
-	step?: string,
+  id: string,
+  step?: string,
 ): Promise<string> {
-	const report = await db
-		.select({
-			year: schema.reportingCampaigns.year,
-			slug: schema.slugs.value,
-		})
-		.from(schema.workingGroupReports)
-		.innerJoin(
-			schema.reportingCampaigns,
-			eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
-		)
-		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.where(eq(schema.workingGroupReports.id, id))
-		.limit(1);
+  const report = await db
+    .select({
+      year: schema.reportingCampaigns.year,
+      slug: schema.slugs.value,
+    })
+    .from(schema.workingGroupReports)
+    .innerJoin(
+      schema.reportingCampaigns,
+      eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
+    )
+    .innerJoin(
+      schema.documentLifecycle,
+      eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .where(eq(schema.workingGroupReports.id, id))
+    .limit(1);
 
-	const [item] = report;
+  const [item] = report;
 
-	return item == null
-		? "/dashboard/reporting/working-group-reports"
-		: getWorkingGroupReportEditHref(item.year, item.slug, step);
+  return item == null
+    ? "/dashboard/reporting/working-group-reports"
+    : getWorkingGroupReportEditHref(item.year, item.slug, step);
 }

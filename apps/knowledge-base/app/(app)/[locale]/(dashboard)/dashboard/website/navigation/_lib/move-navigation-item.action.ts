@@ -1,6 +1,6 @@
 "use server";
 
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
@@ -12,71 +12,71 @@ import { and, eq, isNull } from "@/lib/db/sql";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function moveNavigationItemAction(
-	id: string,
-	direction: "up" | "down",
+  id: string,
+  direction: "up" | "down",
 ): Promise<void> {
-	const auditSession = await assertAdmin();
+  const auditSession = await assertAdmin();
 
-	await db.transaction(async (tx) => {
-		const item = await tx.query.navigationItems.findFirst({
-			where: { id },
-			columns: { id: true, position: true, menuId: true, parentId: true, localeId: true },
-		});
+  await db.transaction(async (tx) => {
+    const item = await tx.query.navigationItems.findFirst({
+      where: { id },
+      columns: { id: true, position: true, menuId: true, parentId: true, localeId: true },
+    });
 
-		if (item == null) {
-			return;
-		}
+    if (item == null) {
+      return;
+    }
 
-		const siblings = await tx
-			.select({ id: schema.navigationItems.id, position: schema.navigationItems.position })
-			.from(schema.navigationItems)
-			.where(
-				and(
-					item.parentId != null
-						? eq(schema.navigationItems.parentId, item.parentId)
-						: and(
-								eq(schema.navigationItems.menuId, item.menuId),
-								isNull(schema.navigationItems.parentId),
-							),
-					navigationItemLocaleWhere(item.localeId),
-				),
-			)
-			.orderBy(schema.navigationItems.position);
+    const siblings = await tx
+      .select({ id: schema.navigationItems.id, position: schema.navigationItems.position })
+      .from(schema.navigationItems)
+      .where(
+        and(
+          item.parentId != null
+            ? eq(schema.navigationItems.parentId, item.parentId)
+            : and(
+                eq(schema.navigationItems.menuId, item.menuId),
+                isNull(schema.navigationItems.parentId),
+              ),
+          navigationItemLocaleWhere(item.localeId),
+        ),
+      )
+      .orderBy(schema.navigationItems.position);
 
-		const currentIndex = siblings.findIndex((s) => s.id === id);
-		const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const currentIndex = siblings.findIndex((s) => s.id === id);
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
-		if (targetIndex < 0 || targetIndex >= siblings.length) {
-			return;
-		}
+    if (targetIndex < 0 || targetIndex >= siblings.length) {
+      return;
+    }
 
-		const target = siblings[targetIndex];
-		if (target == null) {
-			return;
-		}
+    const target = siblings[targetIndex];
+    if (target == null) {
+      return;
+    }
 
-		await tx
-			.update(schema.navigationItems)
-			.set({ position: target.position })
-			.where(eq(schema.navigationItems.id, id));
+    await tx
+      .update(schema.navigationItems)
+      .set({ position: target.position })
+      .where(eq(schema.navigationItems.id, id));
 
-		await tx
-			.update(schema.navigationItems)
-			.set({ position: item.position })
-			.where(eq(schema.navigationItems.id, target.id));
-	});
+    await tx
+      .update(schema.navigationItems)
+      .set({ position: item.position })
+      .where(eq(schema.navigationItems.id, target.id));
+  });
 
-	after(async () => {
-		await dispatchWebhook({ type: "navigation" });
-	});
+  after(async () => {
+    await dispatchWebhook({ type: "navigation" });
+  });
 
-	await recordAuditEvent(db, {
-		actorUserId: auditSession.user.id,
-		action: "update",
-		subjectType: "navigation",
-		subjectId: id,
-		summary: { direction },
-	});
+  await recordAuditEvent(db, {
+    actorUserId: auditSession.user.id,
+    action: "update",
+    subjectType: "navigation",
+    subjectId: id,
+    summary: { direction },
+  });
 
-	revalidatePath("/[locale]/dashboard/website/navigation", "layout");
+  revalidatePath("/[locale]/dashboard/website/navigation", "layout");
 }

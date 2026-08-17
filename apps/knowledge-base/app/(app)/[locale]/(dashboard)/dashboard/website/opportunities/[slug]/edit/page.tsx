@@ -1,4 +1,4 @@
-import { db } from "@acdh-knowledge-base/database/client";
+import { db } from "@dariah-eric/database/client";
 import { assert } from "@acdh-oeaw/lib";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
@@ -14,118 +14,118 @@ import { createMetadata } from "@/lib/server/create-metadata";
 interface DashboardWebsiteEditOpportunityPageProps extends PageProps<"/[locale]/dashboard/website/opportunities/[slug]/edit"> {}
 
 export async function generateMetadata(
-	_props: Readonly<DashboardWebsiteEditOpportunityPageProps>,
-	resolvingMetadata: ResolvingMetadata,
+  _props: Readonly<DashboardWebsiteEditOpportunityPageProps>,
+  resolvingMetadata: ResolvingMetadata,
 ): Promise<Metadata> {
-	const t = await getExtracted();
+  const t = await getExtracted();
 
-	const metadata: Metadata = await createMetadata(resolvingMetadata, {
-		title: t("Administrator dashboard - Edit opportunity"),
-	});
+  const metadata: Metadata = await createMetadata(resolvingMetadata, {
+    title: t("Administrator dashboard - Edit opportunity"),
+  });
 
-	return metadata;
+  return metadata;
 }
 
 export default async function DashboardWebsiteEditOpportunityPage(
-	props: Readonly<DashboardWebsiteEditOpportunityPageProps>,
+  props: Readonly<DashboardWebsiteEditOpportunityPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+  const { params } = props;
 
-	const { slug } = await params;
+  const { slug } = await params;
 
-	const anyVersion = await db.query.opportunities.findFirst({
-		where: { entityVersion: { slug: { value: slug } } },
-		columns: {},
-		with: {
-			entityVersion: {
-				columns: {},
-				with: { entity: { columns: { id: true } } },
-			},
-		},
-	});
+  const anyVersion = await db.query.opportunities.findFirst({
+    where: { entityVersion: { slug: { value: slug } } },
+    columns: {},
+    with: {
+      entityVersion: {
+        columns: {},
+        with: { entity: { columns: { id: true } } },
+      },
+    },
+  });
 
-	if (anyVersion == null) {
-		notFound();
-	}
+  if (anyVersion == null) {
+    notFound();
+  }
 
-	const documentId = anyVersion.entityVersion.entity.id;
+  const documentId = anyVersion.entityVersion.entity.id;
 
-	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, opportunitiesLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
-		return { draftVersionId, hasDraftChanges, publishedId };
-	});
+  const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
+    const draftVersionId = await ensureDraftVersion(tx, documentId, opportunitiesLifecycleAdapter);
+    const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+    return { draftVersionId, hasDraftChanges, publishedId };
+  });
 
-	const opportunity = await db.query.opportunities.findFirst({
-		where: { id: draftVersionId },
-		columns: {
-			id: true,
-			duration: true,
-			sourceId: true,
-			title: true,
-			summary: true,
-			website: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { id: true },
-				with: {
-					entity: {
-						columns: {
-							id: true,
-						},
-					},
-					slug: {
-						columns: {
-							value: true,
-						},
-					},
-					status: {
-						columns: {
-							id: true,
-							type: true,
-						},
-					},
-				},
-			},
-			source: {
-				columns: {
-					id: true,
-					source: true,
-				},
-			},
-		},
-	});
+  const opportunity = await db.query.opportunities.findFirst({
+    where: { id: draftVersionId },
+    columns: {
+      id: true,
+      duration: true,
+      sourceId: true,
+      title: true,
+      summary: true,
+      website: true,
+    },
+    with: {
+      entityVersion: {
+        columns: { id: true },
+        with: {
+          entity: {
+            columns: {
+              id: true,
+            },
+          },
+          slug: {
+            columns: {
+              value: true,
+            },
+          },
+          status: {
+            columns: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+      },
+      source: {
+        columns: {
+          id: true,
+          source: true,
+        },
+      },
+    },
+  });
 
-	if (opportunity == null) {
-		notFound();
-	}
+  if (opportunity == null) {
+    notFound();
+  }
 
-	assert(
-		opportunity.entityVersion.slug,
-		`Slug missing for entity version "${opportunity.entityVersion.id}".`,
-	);
-	const entityVersionSlug = opportunity.entityVersion.slug;
+  assert(
+    opportunity.entityVersion.slug,
+    `Slug missing for entity version "${opportunity.entityVersion.id}".`,
+  );
+  const entityVersionSlug = opportunity.entityVersion.slug;
 
-	const [contentBlocks, sources] = await Promise.all([
-		getEntityContentBlocks(opportunity.id, "content"),
-		db.query.opportunitySources.findMany({
-			orderBy: { source: "asc" },
-			columns: { id: true, source: true },
-		}),
-	]);
+  const [contentBlocks, sources] = await Promise.all([
+    getEntityContentBlocks(opportunity.id, "content"),
+    db.query.opportunitySources.findMany({
+      orderBy: { source: "asc" },
+      columns: { id: true, source: true },
+    }),
+  ]);
 
-	return (
-		<OpportunityEditForm
-			contentBlocks={contentBlocks}
-			documentId={documentId}
-			hasDraftChanges={hasDraftChanges}
-			isPublished={publishedId != null}
-			opportunity={{
-				...opportunity,
-				entityVersion: { ...opportunity.entityVersion, slug: entityVersionSlug },
-			}}
-			sources={sources}
-		/>
-	);
+  return (
+    <OpportunityEditForm
+      contentBlocks={contentBlocks}
+      documentId={documentId}
+      hasDraftChanges={hasDraftChanges}
+      isPublished={publishedId != null}
+      opportunity={{
+        ...opportunity,
+        entityVersion: { ...opportunity.entityVersion, slug: entityVersionSlug },
+      }}
+      sources={sources}
+    />
+  );
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 
 import { UpdateWorkingGroupActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_lib/update-working-group.schema";
@@ -15,101 +15,101 @@ import { createMutationAction } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateWorkingGroupAction = createMutationAction({
-	schema: UpdateWorkingGroupActionInputSchema,
-	requireAdmin: true,
-	audit: { action: "update", subjectType: "working_groups" },
-	revalidate: "/[locale]/dashboard/administrator/working-groups",
-	redirect: "/dashboard/administrator/working-groups",
+  schema: UpdateWorkingGroupActionInputSchema,
+  requireAdmin: true,
+  audit: { action: "update", subjectType: "working_groups" },
+  revalidate: "/[locale]/dashboard/administrator/working-groups",
+  redirect: "/dashboard/administrator/working-groups",
 
-	async mutate(tx, input, { formData }) {
-		const draftVersionId = await ensureDraftVersion(
-			tx,
-			input.documentId,
-			organisationalUnitsLifecycleAdapter,
-		);
+  async mutate(tx, input, { formData }) {
+    const draftVersionId = await ensureDraftVersion(
+      tx,
+      input.documentId,
+      organisationalUnitsLifecycleAdapter,
+    );
 
-		let imageId: string | null = null;
-		if (input.imageKey != null) {
-			const asset = await tx.query.assets.findFirst({
-				where: { key: input.imageKey },
-				columns: { id: true },
-			});
-			assert(asset);
-			imageId = asset.id;
-		}
+    let imageId: string | null = null;
+    if (input.imageKey != null) {
+      const asset = await tx.query.assets.findFirst({
+        where: { key: input.imageKey },
+        columns: { id: true },
+      });
+      assert(asset);
+      imageId = asset.id;
+    }
 
-		await tx
-			.update(schema.organisationalUnits)
-			.set({
-				acronym: input.acronym,
-				imageId,
-				name: input.name,
-				sshocMarketplaceActorId: input.sshocMarketplaceActorId,
-				summary: input.summary,
-			})
-			.where(eq(schema.organisationalUnits.id, draftVersionId));
+    await tx
+      .update(schema.organisationalUnits)
+      .set({
+        acronym: input.acronym,
+        imageId,
+        name: input.name,
+        sshocMarketplaceActorId: input.sshocMarketplaceActorId,
+        summary: input.summary,
+      })
+      .where(eq(schema.organisationalUnits.id, draftVersionId));
 
-		await replaceEntityVersionFieldContentBlocks(
-			tx,
-			draftVersionId,
-			"description",
-			input.descriptionContentBlocks,
-		);
+    await replaceEntityVersionFieldContentBlocks(
+      tx,
+      draftVersionId,
+      "description",
+      input.descriptionContentBlocks,
+    );
 
-		const existingSocialMedia = await tx.query.organisationalUnitsToSocialMedia.findMany({
-			where: { organisationalUnitId: draftVersionId },
-			columns: { id: true, socialMediaId: true },
-		});
-		const existingSocialMediaIds = new Set(existingSocialMedia.map((row) => row.socialMediaId));
-		const submittedSocialMediaIds = new Set(input.socialMediaIds);
+    const existingSocialMedia = await tx.query.organisationalUnitsToSocialMedia.findMany({
+      where: { organisationalUnitId: draftVersionId },
+      columns: { id: true, socialMediaId: true },
+    });
+    const existingSocialMediaIds = new Set(existingSocialMedia.map((row) => row.socialMediaId));
+    const submittedSocialMediaIds = new Set(input.socialMediaIds);
 
-		const socialMediaToDelete = existingSocialMedia
-			.filter((row) => !submittedSocialMediaIds.has(row.socialMediaId))
-			.map((row) => row.id);
+    const socialMediaToDelete = existingSocialMedia
+      .filter((row) => !submittedSocialMediaIds.has(row.socialMediaId))
+      .map((row) => row.id);
 
-		if (socialMediaToDelete.length > 0) {
-			await tx
-				.delete(schema.organisationalUnitsToSocialMedia)
-				.where(inArray(schema.organisationalUnitsToSocialMedia.id, socialMediaToDelete));
-		}
+    if (socialMediaToDelete.length > 0) {
+      await tx
+        .delete(schema.organisationalUnitsToSocialMedia)
+        .where(inArray(schema.organisationalUnitsToSocialMedia.id, socialMediaToDelete));
+    }
 
-		const socialMediaToInsert = input.socialMediaIds.filter(
-			(socialMediaId) => !existingSocialMediaIds.has(socialMediaId),
-		);
+    const socialMediaToInsert = input.socialMediaIds.filter(
+      (socialMediaId) => !existingSocialMediaIds.has(socialMediaId),
+    );
 
-		if (socialMediaToInsert.length > 0) {
-			await tx.insert(schema.organisationalUnitsToSocialMedia).values(
-				socialMediaToInsert.map((socialMediaId) => {
-					return { organisationalUnitId: draftVersionId, socialMediaId };
-				}),
-			);
-		}
+    if (socialMediaToInsert.length > 0) {
+      await tx.insert(schema.organisationalUnitsToSocialMedia).values(
+        socialMediaToInsert.map((socialMediaId) => {
+          return { organisationalUnitId: draftVersionId, socialMediaId };
+        }),
+      );
+    }
 
-		await syncEntityRelations(
-			tx,
-			input.documentId,
-			input.relatedEntityIds,
-			input.relatedResourceIds,
-		);
-		await touchVersion(tx, draftVersionId);
+    await syncEntityRelations(
+      tx,
+      input.documentId,
+      input.relatedEntityIds,
+      input.relatedResourceIds,
+    );
+    await touchVersion(tx, draftVersionId);
 
-		if (shouldSaveAndPublish(formData)) {
-			await publishVersion(tx, input.documentId, organisationalUnitsLifecycleAdapter);
-		}
+    if (shouldSaveAndPublish(formData)) {
+      await publishVersion(tx, input.documentId, organisationalUnitsLifecycleAdapter);
+    }
 
-		return {
-			subjectId: input.documentId,
-			auditSummary: {
-				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
-			},
-		};
-	},
+    return {
+      subjectId: input.documentId,
+      auditSummary: {
+        lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
+      },
+    };
+  },
 
-	async postCommit({ result, ctx }) {
-		if (!shouldSaveAndPublish(ctx.formData)) {
-			return;
-		}
-		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "working-groups" });
-	},
+  async postCommit({ result, ctx }) {
+    if (!shouldSaveAndPublish(ctx.formData)) {
+      return;
+    }
+    await syncWebsiteDocumentForEntity(result.subjectId);
+    await dispatchWebhook({ type: "working-groups" });
+  },
 });

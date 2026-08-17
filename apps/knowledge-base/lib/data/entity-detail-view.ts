@@ -1,18 +1,18 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
 
 import {
-	getDocumentLifecycleState,
-	getDocumentLifecycleStateForLocale,
+  getDocumentLifecycleState,
+  getDocumentLifecycleStateForLocale,
 } from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
 import { and, eq } from "@/lib/db/sql";
 
 export interface SelectedDetailVersion {
-	hasDraftChanges: boolean;
-	publishedId: string | null;
-	selectedVersion: "draft" | "published";
-	versionId: string;
+  hasDraftChanges: boolean;
+  publishedId: string | null;
+  selectedVersion: "draft" | "published";
+  versionId: string;
 }
 
 /**
@@ -26,45 +26,45 @@ export interface SelectedDetailVersion {
  * explicit locale id to resolve a document's version in another locale instead.
  */
 export async function resolveSelectedDetailVersion(
-	documentId: string,
-	version: string | Array<string> | undefined,
-	localeId?: string,
+  documentId: string,
+  version: string | Array<string> | undefined,
+  localeId?: string,
 ): Promise<SelectedDetailVersion | null> {
-	const { draftId, hasDraftChanges, publishedId } = await db.transaction((tx) =>
-		localeId != null
-			? getDocumentLifecycleStateForLocale(tx, documentId, localeId)
-			: getDocumentLifecycleState(tx, documentId),
-	);
+  const { draftId, hasDraftChanges, publishedId } = await db.transaction((tx) =>
+    localeId != null
+      ? getDocumentLifecycleStateForLocale(tx, documentId, localeId)
+      : getDocumentLifecycleState(tx, documentId),
+  );
 
-	// The version selector only kicks in when the draft actually diverges from published. Right after
-	// publish a draft clone exists with no real changes -> treat as published-only.
-	const showVersionSelector = hasDraftChanges && publishedId != null;
+  // The version selector only kicks in when the draft actually diverges from published. Right after
+  // publish a draft clone exists with no real changes -> treat as published-only.
+  const showVersionSelector = hasDraftChanges && publishedId != null;
 
-	let selectedVersion: "draft" | "published";
-	let versionId: string | null;
-	if (showVersionSelector) {
-		selectedVersion = version === "published" ? "published" : "draft";
-		versionId = selectedVersion === "published" ? publishedId : draftId;
-	} else if (publishedId != null) {
-		selectedVersion = "published";
-		versionId = publishedId;
-	} else {
-		selectedVersion = "draft";
-		versionId = draftId;
-	}
+  let selectedVersion: "draft" | "published";
+  let versionId: string | null;
+  if (showVersionSelector) {
+    selectedVersion = version === "published" ? "published" : "draft";
+    versionId = selectedVersion === "published" ? publishedId : draftId;
+  } else if (publishedId != null) {
+    selectedVersion = "published";
+    versionId = publishedId;
+  } else {
+    selectedVersion = "draft";
+    versionId = draftId;
+  }
 
-	if (versionId == null) {
-		return null;
-	}
+  if (versionId == null) {
+    return null;
+  }
 
-	return { hasDraftChanges, publishedId, selectedVersion, versionId };
+  return { hasDraftChanges, publishedId, selectedVersion, versionId };
 }
 
 export interface LocalizedDetailVersion extends SelectedDetailVersion {
-	/** The locale actually being displayed — equals `selectedLocaleId` unless `isLocaleFallback`. */
-	displayLocaleId: string;
-	/** True when `selectedLocaleId` had no version and this fell back to the default locale. */
-	isLocaleFallback: boolean;
+  /** The locale actually being displayed — equals `selectedLocaleId` unless `isLocaleFallback`. */
+  displayLocaleId: string;
+  /** True when `selectedLocaleId` had no version and this fell back to the default locale. */
+  isLocaleFallback: boolean;
 }
 
 /**
@@ -74,57 +74,57 @@ export interface LocalizedDetailVersion extends SelectedDetailVersion {
  * a version, which only happens for a genuinely broken/empty document.
  */
 export async function resolveLocalizedDetailVersion(
-	documentId: string,
-	version: string | Array<string> | undefined,
-	locales: ReadonlyArray<{ id: string; isDefault: boolean }>,
-	selectedLocaleId: string,
+  documentId: string,
+  version: string | Array<string> | undefined,
+  locales: ReadonlyArray<{ id: string; isDefault: boolean }>,
+  selectedLocaleId: string,
 ): Promise<LocalizedDetailVersion | null> {
-	const versionState = await resolveSelectedDetailVersion(documentId, version, selectedLocaleId);
+  const versionState = await resolveSelectedDetailVersion(documentId, version, selectedLocaleId);
 
-	if (versionState != null) {
-		return { ...versionState, displayLocaleId: selectedLocaleId, isLocaleFallback: false };
-	}
+  if (versionState != null) {
+    return { ...versionState, displayLocaleId: selectedLocaleId, isLocaleFallback: false };
+  }
 
-	const defaultLocale = locales.find((locale) => locale.isDefault);
+  const defaultLocale = locales.find((locale) => locale.isDefault);
 
-	if (defaultLocale == null || defaultLocale.id === selectedLocaleId) {
-		return null;
-	}
+  if (defaultLocale == null || defaultLocale.id === selectedLocaleId) {
+    return null;
+  }
 
-	const fallbackVersionState = await resolveSelectedDetailVersion(
-		documentId,
-		version,
-		defaultLocale.id,
-	);
+  const fallbackVersionState = await resolveSelectedDetailVersion(
+    documentId,
+    version,
+    defaultLocale.id,
+  );
 
-	if (fallbackVersionState == null) {
-		return null;
-	}
+  if (fallbackVersionState == null) {
+    return null;
+  }
 
-	return { ...fallbackVersionState, displayLocaleId: defaultLocale.id, isLocaleFallback: true };
+  return { ...fallbackVersionState, displayLocaleId: defaultLocale.id, isLocaleFallback: true };
 }
 
 /** Reads a rich-text field's JSON content for one entity version (e.g. "description"/"biography"). */
 export async function getRichTextFieldContent(
-	versionId: string,
-	fieldName: string,
+  versionId: string,
+  fieldName: string,
 ): Promise<JSONContent | null> {
-	const [row] = await db
-		.select({ content: schema.richTextContentBlocks.content })
-		.from(schema.richTextContentBlocks)
-		.innerJoin(schema.contentBlocks, eq(schema.richTextContentBlocks.id, schema.contentBlocks.id))
-		.innerJoin(schema.fields, eq(schema.contentBlocks.fieldId, schema.fields.id))
-		.innerJoin(
-			schema.entityTypesFieldsNames,
-			eq(schema.fields.fieldNameId, schema.entityTypesFieldsNames.id),
-		)
-		.where(
-			and(
-				eq(schema.fields.entityVersionId, versionId),
-				eq(schema.entityTypesFieldsNames.fieldName, fieldName),
-			),
-		)
-		.limit(1);
+  const [row] = await db
+    .select({ content: schema.richTextContentBlocks.content })
+    .from(schema.richTextContentBlocks)
+    .innerJoin(schema.contentBlocks, eq(schema.richTextContentBlocks.id, schema.contentBlocks.id))
+    .innerJoin(schema.fields, eq(schema.contentBlocks.fieldId, schema.fields.id))
+    .innerJoin(
+      schema.entityTypesFieldsNames,
+      eq(schema.fields.fieldNameId, schema.entityTypesFieldsNames.id),
+    )
+    .where(
+      and(
+        eq(schema.fields.entityVersionId, versionId),
+        eq(schema.entityTypesFieldsNames.fieldName, fieldName),
+      ),
+    )
+    .limit(1);
 
-	return row?.content ?? null;
+  return row?.content ?? null;
 }

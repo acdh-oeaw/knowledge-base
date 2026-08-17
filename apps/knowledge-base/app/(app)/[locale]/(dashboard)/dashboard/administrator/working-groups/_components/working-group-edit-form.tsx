@@ -1,14 +1,14 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
-import { TabList, TabPanel } from "@acdh-knowledge-base/ui/tabs";
+import type * as schema from "@dariah-eric/database/schema";
+import { TabList, TabPanel } from "@dariah-eric/ui/tabs";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import {
-	EntityEditTab,
-	EntityEditTabs,
+  EntityEditTab,
+  EntityEditTabs,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
@@ -24,140 +24,140 @@ import type { PersonRelation, PersonRelationRoleOption } from "@/lib/data/person
 import type { UnitRelation, UnitRelationStatusOption } from "@/lib/data/unit-relations";
 
 interface WorkingGroupEditFormProps {
-	initialAssets: Array<{ key: string; label: string; url: string }>;
-	documentId: string;
-	hasDraftChanges: boolean;
-	isDefaultLocale: boolean;
-	isPublished: boolean;
-	locales: Array<{ code: string; name: string }>;
-	selectedLocaleCode: string;
-	workingGroup: Pick<
-		schema.OrganisationalUnit,
-		"acronym" | "id" | "name" | "sshocMarketplaceActorId" | "summary"
-	> & {
-		descriptionContentBlocks?: Array<ContentBlock>;
-		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
-	initialRelatedEntityIds: Array<string>;
-	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
-	initialRelatedEntityTotal: number;
-	initialRelatedResourceIds: Array<string>;
-	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
-	initialRelatedResourceTotal: number;
-	initialSocialMediaIds: Array<string>;
-	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
-	initialSocialMediaTotal: number;
-	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
-	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
-	selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
-	relations: Array<UnitRelation>;
-	unitRelationStatusOptions: Array<UnitRelationStatusOption>;
-	personRelations: Array<PersonRelation>;
-	personRelationRoleOptions: Array<PersonRelationRoleOption>;
-	initialPersonItems: Array<ContributionPersonOption>;
-	initialPersonTotal: number;
+  initialAssets: Array<{ key: string; label: string; url: string }>;
+  documentId: string;
+  hasDraftChanges: boolean;
+  isDefaultLocale: boolean;
+  isPublished: boolean;
+  locales: Array<{ code: string; name: string }>;
+  selectedLocaleCode: string;
+  workingGroup: Pick<
+    schema.OrganisationalUnit,
+    "acronym" | "id" | "name" | "sshocMarketplaceActorId" | "summary"
+  > & {
+    descriptionContentBlocks?: Array<ContentBlock>;
+    entityVersion: { entity: { id: string }; slug: { value: string } };
+  } & { image: { key: string; label: string; url: string } | null };
+  initialRelatedEntityIds: Array<string>;
+  initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
+  initialRelatedEntityTotal: number;
+  initialRelatedResourceIds: Array<string>;
+  initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
+  initialRelatedResourceTotal: number;
+  initialSocialMediaIds: Array<string>;
+  initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+  initialSocialMediaTotal: number;
+  selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
+  selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
+  selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+  relations: Array<UnitRelation>;
+  unitRelationStatusOptions: Array<UnitRelationStatusOption>;
+  personRelations: Array<PersonRelation>;
+  personRelationRoleOptions: Array<PersonRelationRoleOption>;
+  initialPersonItems: Array<ContributionPersonOption>;
+  initialPersonTotal: number;
 }
 
 export function WorkingGroupEditForm(props: Readonly<WorkingGroupEditFormProps>): ReactNode {
-	const {
-		initialAssets,
-		documentId,
-		hasDraftChanges,
-		isDefaultLocale,
-		isPublished,
-		locales,
-		selectedLocaleCode,
-		workingGroup,
-		initialRelatedEntityIds,
-		initialRelatedEntityItems,
-		initialRelatedEntityTotal,
-		initialRelatedResourceIds,
-		initialRelatedResourceItems,
-		initialRelatedResourceTotal,
-		initialSocialMediaIds,
-		initialSocialMediaItems,
-		initialSocialMediaTotal,
-		selectedRelatedEntities,
-		selectedRelatedResources,
-		selectedSocialMediaItems,
-		relations,
-		unitRelationStatusOptions,
-		personRelations,
-		personRelationRoleOptions,
-		initialPersonItems,
-		initialPersonTotal,
-	} = props;
+  const {
+    initialAssets,
+    documentId,
+    hasDraftChanges,
+    isDefaultLocale,
+    isPublished,
+    locales,
+    selectedLocaleCode,
+    workingGroup,
+    initialRelatedEntityIds,
+    initialRelatedEntityItems,
+    initialRelatedEntityTotal,
+    initialRelatedResourceIds,
+    initialRelatedResourceItems,
+    initialRelatedResourceTotal,
+    initialSocialMediaIds,
+    initialSocialMediaItems,
+    initialSocialMediaTotal,
+    selectedRelatedEntities,
+    selectedRelatedResources,
+    selectedSocialMediaItems,
+    relations,
+    unitRelationStatusOptions,
+    personRelations,
+    personRelationRoleOptions,
+    initialPersonItems,
+    initialPersonTotal,
+  } = props;
 
-	const t = useExtracted();
-	const formId = "working-group-edit-form";
+  const t = useExtracted();
+  const formId = "working-group-edit-form";
 
-	return (
-		<Fragment>
-			<EntityFormHeader title={t("Edit working group")} />
+  return (
+    <Fragment>
+      <EntityFormHeader title={t("Edit working group")} />
 
-			<EntityEditTabs defaultTab="details">
-				<TabList aria-label={t("Edit working group")}>
-					<EntityEditTab id="details">{t("Details")}</EntityEditTab>
-					<EntityEditTab id="people">{t("People")}</EntityEditTab>
-					<EntityEditTab id="relations">{t("Relations")}</EntityEditTab>
-				</TabList>
+      <EntityEditTabs defaultTab="details">
+        <TabList aria-label={t("Edit working group")}>
+          <EntityEditTab id="details">{t("Details")}</EntityEditTab>
+          <EntityEditTab id="people">{t("People")}</EntityEditTab>
+          <EntityEditTab id="relations">{t("Relations")}</EntityEditTab>
+        </TabList>
 
-				<TabPanel
-					className="flex flex-col gap-y-(--layout-padding)"
-					id="details"
-					shouldPreserveState={true}
-				>
-					<div className="flex items-center justify-end gap-x-4">
-						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
-						<EntityLifecycleBar
-							discardDraftAction={discardWorkingGroupDraftAction}
-							documentId={documentId}
-							hasDraft={hasDraftChanges}
-							isPublished={isPublished}
-							publishAction={publishWorkingGroupAction}
-						/>
-					</div>
+        <TabPanel
+          className="flex flex-col gap-y-(--layout-padding)"
+          id="details"
+          shouldPreserveState={true}
+        >
+          <div className="flex items-center justify-end gap-x-4">
+            <LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+            <EntityLifecycleBar
+              discardDraftAction={discardWorkingGroupDraftAction}
+              documentId={documentId}
+              hasDraft={hasDraftChanges}
+              isPublished={isPublished}
+              publishAction={publishWorkingGroupAction}
+            />
+          </div>
 
-					<WorkingGroupForm
-						key={workingGroup.id}
-						formAction={updateWorkingGroupAction}
-						formId={formId}
-						isDefaultLocale={isDefaultLocale}
-						initialAssets={initialAssets}
-						initialRelatedEntityIds={initialRelatedEntityIds}
-						initialRelatedEntityItems={initialRelatedEntityItems}
-						initialRelatedEntityTotal={initialRelatedEntityTotal}
-						initialRelatedResourceIds={initialRelatedResourceIds}
-						initialRelatedResourceItems={initialRelatedResourceItems}
-						initialRelatedResourceTotal={initialRelatedResourceTotal}
-						initialSocialMediaIds={initialSocialMediaIds}
-						initialSocialMediaItems={initialSocialMediaItems}
-						initialSocialMediaTotal={initialSocialMediaTotal}
-						selectedRelatedEntities={selectedRelatedEntities}
-						selectedRelatedResources={selectedRelatedResources}
-						selectedSocialMediaItems={selectedSocialMediaItems}
-						workingGroup={workingGroup}
-					/>
-				</TabPanel>
+          <WorkingGroupForm
+            key={workingGroup.id}
+            formAction={updateWorkingGroupAction}
+            formId={formId}
+            isDefaultLocale={isDefaultLocale}
+            initialAssets={initialAssets}
+            initialRelatedEntityIds={initialRelatedEntityIds}
+            initialRelatedEntityItems={initialRelatedEntityItems}
+            initialRelatedEntityTotal={initialRelatedEntityTotal}
+            initialRelatedResourceIds={initialRelatedResourceIds}
+            initialRelatedResourceItems={initialRelatedResourceItems}
+            initialRelatedResourceTotal={initialRelatedResourceTotal}
+            initialSocialMediaIds={initialSocialMediaIds}
+            initialSocialMediaItems={initialSocialMediaItems}
+            initialSocialMediaTotal={initialSocialMediaTotal}
+            selectedRelatedEntities={selectedRelatedEntities}
+            selectedRelatedResources={selectedRelatedResources}
+            selectedSocialMediaItems={selectedSocialMediaItems}
+            workingGroup={workingGroup}
+          />
+        </TabPanel>
 
-				<TabPanel id="people" shouldPreserveState={true}>
-					<PersonRelationsSection
-						initialPersonItems={initialPersonItems}
-						initialPersonTotal={initialPersonTotal}
-						relations={personRelations}
-						roleOptions={personRelationRoleOptions}
-						organisationalUnitDocumentId={documentId}
-					/>
-				</TabPanel>
+        <TabPanel id="people" shouldPreserveState={true}>
+          <PersonRelationsSection
+            initialPersonItems={initialPersonItems}
+            initialPersonTotal={initialPersonTotal}
+            relations={personRelations}
+            roleOptions={personRelationRoleOptions}
+            organisationalUnitDocumentId={documentId}
+          />
+        </TabPanel>
 
-				<TabPanel id="relations" shouldPreserveState={true}>
-					<UnitRelationsSection
-						relations={relations}
-						statusOptions={unitRelationStatusOptions}
-						unitDocumentId={documentId}
-					/>
-				</TabPanel>
-			</EntityEditTabs>
-		</Fragment>
-	);
+        <TabPanel id="relations" shouldPreserveState={true}>
+          <UnitRelationsSection
+            relations={relations}
+            statusOptions={unitRelationStatusOptions}
+            unitDocumentId={documentId}
+          />
+        </TabPanel>
+      </EntityEditTabs>
+    </Fragment>
+  );
 }

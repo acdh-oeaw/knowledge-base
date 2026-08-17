@@ -1,4 +1,4 @@
-# @acdh-knowledge-base/client-zenodo
+# @dariah-eric/client-zenodo
 
 A thin client for the [Zenodo REST API](https://developers.zenodo.org/).
 

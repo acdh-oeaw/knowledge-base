@@ -1,42 +1,42 @@
 {
-	"name": "@acdh-knowledge-base/migrate",
-	"private": true,
-	"license": "MIT",
-	"type": "module",
-	"sideEffects": false,
-	"scripts": {
-		"data:migrate:clariah-at": "tsx ./scripts/migrate-clariah-at-website.ts",
-		"format:check": "oxfmt --check",
-		"format:fix": "oxfmt --write",
-		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
-		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
-		"types:check": "tsc --noEmit"
-	},
-	"dependencies": {
-		"@acdh-knowledge-base/database": "workspace:^",
-		"@acdh-knowledge-base/env": "workspace:^",
-		"@acdh-knowledge-base/storage": "workspace:^",
-		"@acdh-oeaw/lib": "catalog:",
-		"@sindresorhus/slugify": "catalog:",
-		"@tiptap/core": "catalog:",
-		"@tiptap/extension-image": "catalog:",
-		"@tiptap/html": "catalog:",
-		"@tiptap/starter-kit": "catalog:",
-		"drizzle-orm": "catalog:",
-		"hast-util-to-text": "catalog:",
-		"rehype-parse": "catalog:",
-		"unified": "catalog:",
-		"valibot": "catalog:"
-	},
-	"devDependencies": {
-		"@acdh-knowledge-base/configs": "workspace:^",
-		"@types/node": "catalog:",
-		"drizzle-kit": "catalog:",
-		"tsx": "catalog:",
-		"typescript": "catalog:",
-		"wp-types": "catalog:"
-	},
-	"engines": {
-		"node": "24.x"
-	}
+  "name": "@dariah-eric/migrate",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "data:migrate:clariah-at": "tsx ./scripts/migrate-clariah-at-website.ts",
+    "format:check": "oxfmt --check",
+    "format:fix": "oxfmt --write",
+    "lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+    "lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+    "types:check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@acdh-oeaw/lib": "catalog:",
+    "@dariah-eric/database": "workspace:^",
+    "@dariah-eric/env": "workspace:^",
+    "@dariah-eric/storage": "workspace:^",
+    "@sindresorhus/slugify": "catalog:",
+    "@tiptap/core": "catalog:",
+    "@tiptap/extension-image": "catalog:",
+    "@tiptap/html": "catalog:",
+    "@tiptap/starter-kit": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hast-util-to-text": "catalog:",
+    "rehype-parse": "catalog:",
+    "unified": "catalog:",
+    "valibot": "catalog:"
+  },
+  "devDependencies": {
+    "@dariah-eric/configs": "workspace:^",
+    "@types/node": "catalog:",
+    "drizzle-kit": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "wp-types": "catalog:"
+  },
+  "engines": {
+    "node": "24.x"
+  }
 }

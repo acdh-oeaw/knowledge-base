@@ -1,6 +1,6 @@
 "use client";
 
-import { RichTextEditor } from "@acdh-knowledge-base/ui/rich-text-editor";
+import { RichTextEditor } from "@dariah-eric/ui/rich-text-editor";
 import type { JSONContent } from "@tiptap/core";
 import type { ReactNode } from "react";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch, type SwitchProps } from "@acdh-knowledge-base/ui/switch";
+import { Switch, type SwitchProps } from "@dariah-eric/ui/switch";
 import type { ReactNode } from "react";
 
 import { useColorScheme } from "@/lib/color-scheme/use-color-scheme";

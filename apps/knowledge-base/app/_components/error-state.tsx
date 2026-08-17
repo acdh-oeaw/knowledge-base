@@ -1,8 +1,8 @@
 "use client";
 
-import { Avatar } from "@acdh-knowledge-base/ui/avatar";
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { ButtonLink } from "@acdh-knowledge-base/ui/button-link";
+import { Avatar } from "@dariah-eric/ui/avatar";
+import { Button } from "@dariah-eric/ui/button";
+import { ButtonLink } from "@dariah-eric/ui/button-link";
 import type { ReactNode } from "react";
 
 import { Main } from "@/components/main";

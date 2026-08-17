@@ -1,10 +1,10 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 
 import { relationOptionsPageSize } from "@/lib/constants/relations";
 import {
-	localeMatch,
-	publishedEntityVersionWhere,
-	statusMatch,
+  localeMatch,
+  publishedEntityVersionWhere,
+  statusMatch,
 } from "@/lib/data/current-entity-version";
 import type { OrganisationalUnitType } from "@/lib/data/organisational-units";
 import { db } from "@/lib/db";
@@ -19,85 +19,85 @@ import { alias, and, count, eq, inArray, sql } from "@/lib/db/sql";
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getUnitRelations(unitDocumentId: string, localeId?: string) {
-	const relatedSelectedDraft = alias(schema.entityVersions, "related_unit_selected_draft");
-	const relatedSelectedPublished = alias(schema.entityVersions, "related_unit_selected_published");
-	const relatedDefaultDraft = alias(schema.entityVersions, "related_unit_default_draft");
-	const relatedDefaultPublished = alias(schema.entityVersions, "related_unit_default_published");
+  const relatedSelectedDraft = alias(schema.entityVersions, "related_unit_selected_draft");
+  const relatedSelectedPublished = alias(schema.entityVersions, "related_unit_selected_published");
+  const relatedDefaultDraft = alias(schema.entityVersions, "related_unit_default_draft");
+  const relatedDefaultPublished = alias(schema.entityVersions, "related_unit_default_published");
 
-	return db
-		.select({
-			id: schema.organisationalUnitsRelations.id,
-			duration: schema.organisationalUnitsRelations.duration,
-			statusId: schema.organisationalUnitsRelations.status,
-			statusType: schema.organisationalUnitStatus.status,
-			relatedUnitDocumentId: schema.organisationalUnitsRelations.relatedUnitDocumentId,
-			relatedUnitName: schema.organisationalUnits.name,
-			relatedUnitSlug: schema.slugs.value,
-			relatedUnitType: schema.organisationalUnitTypes.type,
-			// True when the related unit has no version in the selected locale and this row fell
-			// back to its default-locale version instead.
-			relatedUnitIsLocaleFallback: sql<boolean>`(${relatedSelectedDraft.id} IS NULL AND ${relatedSelectedPublished.id} IS NULL)`,
-		})
-		.from(schema.organisationalUnitsRelations)
-		.innerJoin(
-			schema.organisationalUnitStatus,
-			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
-		)
-		.leftJoin(
-			relatedSelectedDraft,
-			and(
-				eq(
-					relatedSelectedDraft.entityId,
-					schema.organisationalUnitsRelations.relatedUnitDocumentId,
-				),
-				localeMatch(relatedSelectedDraft.localeId, localeId),
-				statusMatch(relatedSelectedDraft.statusId, "draft"),
-			),
-		)
-		.leftJoin(
-			relatedSelectedPublished,
-			and(
-				eq(
-					relatedSelectedPublished.entityId,
-					schema.organisationalUnitsRelations.relatedUnitDocumentId,
-				),
-				localeMatch(relatedSelectedPublished.localeId, localeId),
-				statusMatch(relatedSelectedPublished.statusId, "published"),
-			),
-		)
-		.leftJoin(
-			relatedDefaultDraft,
-			and(
-				eq(relatedDefaultDraft.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
-				localeMatch(relatedDefaultDraft.localeId, undefined),
-				statusMatch(relatedDefaultDraft.statusId, "draft"),
-			),
-		)
-		.leftJoin(
-			relatedDefaultPublished,
-			and(
-				eq(
-					relatedDefaultPublished.entityId,
-					schema.organisationalUnitsRelations.relatedUnitDocumentId,
-				),
-				localeMatch(relatedDefaultPublished.localeId, undefined),
-				statusMatch(relatedDefaultPublished.statusId, "published"),
-			),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${relatedSelectedDraft.id}, ${relatedSelectedPublished.id}, ${relatedDefaultDraft.id}, ${relatedDefaultPublished.id})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
-		)
-		.where(eq(schema.organisationalUnitsRelations.unitDocumentId, unitDocumentId))
-		.orderBy(
-			sql`UPPER(${schema.organisationalUnitsRelations.duration}) DESC NULLS FIRST`,
-			sql`LOWER(${schema.organisationalUnitsRelations.duration}) DESC`,
-		);
+  return db
+    .select({
+      id: schema.organisationalUnitsRelations.id,
+      duration: schema.organisationalUnitsRelations.duration,
+      statusId: schema.organisationalUnitsRelations.status,
+      statusType: schema.organisationalUnitStatus.status,
+      relatedUnitDocumentId: schema.organisationalUnitsRelations.relatedUnitDocumentId,
+      relatedUnitName: schema.organisationalUnits.name,
+      relatedUnitSlug: schema.slugs.value,
+      relatedUnitType: schema.organisationalUnitTypes.type,
+      // True when the related unit has no version in the selected locale and this row fell
+      // back to its default-locale version instead.
+      relatedUnitIsLocaleFallback: sql<boolean>`(${relatedSelectedDraft.id} IS NULL AND ${relatedSelectedPublished.id} IS NULL)`,
+    })
+    .from(schema.organisationalUnitsRelations)
+    .innerJoin(
+      schema.organisationalUnitStatus,
+      eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
+    )
+    .leftJoin(
+      relatedSelectedDraft,
+      and(
+        eq(
+          relatedSelectedDraft.entityId,
+          schema.organisationalUnitsRelations.relatedUnitDocumentId,
+        ),
+        localeMatch(relatedSelectedDraft.localeId, localeId),
+        statusMatch(relatedSelectedDraft.statusId, "draft"),
+      ),
+    )
+    .leftJoin(
+      relatedSelectedPublished,
+      and(
+        eq(
+          relatedSelectedPublished.entityId,
+          schema.organisationalUnitsRelations.relatedUnitDocumentId,
+        ),
+        localeMatch(relatedSelectedPublished.localeId, localeId),
+        statusMatch(relatedSelectedPublished.statusId, "published"),
+      ),
+    )
+    .leftJoin(
+      relatedDefaultDraft,
+      and(
+        eq(relatedDefaultDraft.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+        localeMatch(relatedDefaultDraft.localeId, undefined),
+        statusMatch(relatedDefaultDraft.statusId, "draft"),
+      ),
+    )
+    .leftJoin(
+      relatedDefaultPublished,
+      and(
+        eq(
+          relatedDefaultPublished.entityId,
+          schema.organisationalUnitsRelations.relatedUnitDocumentId,
+        ),
+        localeMatch(relatedDefaultPublished.localeId, undefined),
+        statusMatch(relatedDefaultPublished.statusId, "published"),
+      ),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${relatedSelectedDraft.id}, ${relatedSelectedPublished.id}, ${relatedDefaultDraft.id}, ${relatedDefaultPublished.id})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .innerJoin(
+      schema.organisationalUnitTypes,
+      eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
+    )
+    .where(eq(schema.organisationalUnitsRelations.unitDocumentId, unitDocumentId))
+    .orderBy(
+      sql`UPPER(${schema.organisationalUnitsRelations.duration}) DESC NULLS FIRST`,
+      sql`LOWER(${schema.organisationalUnitsRelations.duration}) DESC`,
+    );
 }
 
 export type UnitRelation = Awaited<ReturnType<typeof getUnitRelations>>[number];
@@ -106,206 +106,206 @@ export type UnitRelation = Awaited<ReturnType<typeof getUnitRelations>>[number];
 export type UnitRelationStatusType = typeof schema.organisationalUnitStatus.$inferSelect.status;
 
 export interface UnitRelationStatusOption {
-	statusId: string;
-	statusType: UnitRelationStatusType;
+  statusId: string;
+  statusType: UnitRelationStatusType;
 }
 
 interface GetUnitRelationRelatedUnitOptionsParams {
-	unitDocumentId: string;
-	statusId: string;
-	limit?: number;
-	offset?: number;
-	q?: string;
+  unitDocumentId: string;
+  statusId: string;
+  limit?: number;
+  offset?: number;
+  q?: string;
 }
 
 export async function getUnitRelationStatusOptions(
-	unitType: string,
+  unitType: string,
 ): Promise<Array<UnitRelationStatusOption>> {
-	const rows = await db
-		.select({
-			statusId: schema.organisationalUnitStatus.id,
-			statusType: schema.organisationalUnitStatus.status,
-		})
-		.from(schema.organisationalUnitsAllowedRelations)
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			and(
-				eq(
-					schema.organisationalUnitTypes.id,
-					schema.organisationalUnitsAllowedRelations.unitTypeId,
-				),
-				eq(
-					schema.organisationalUnitTypes.type,
-					unitType as typeof schema.organisationalUnitTypes.$inferSelect.type,
-				),
-			),
-		)
-		.innerJoin(
-			schema.organisationalUnitStatus,
-			eq(
-				schema.organisationalUnitStatus.id,
-				schema.organisationalUnitsAllowedRelations.relationTypeId,
-			),
-		)
-		.orderBy(schema.organisationalUnitStatus.status);
+  const rows = await db
+    .select({
+      statusId: schema.organisationalUnitStatus.id,
+      statusType: schema.organisationalUnitStatus.status,
+    })
+    .from(schema.organisationalUnitsAllowedRelations)
+    .innerJoin(
+      schema.organisationalUnitTypes,
+      and(
+        eq(
+          schema.organisationalUnitTypes.id,
+          schema.organisationalUnitsAllowedRelations.unitTypeId,
+        ),
+        eq(
+          schema.organisationalUnitTypes.type,
+          unitType as typeof schema.organisationalUnitTypes.$inferSelect.type,
+        ),
+      ),
+    )
+    .innerJoin(
+      schema.organisationalUnitStatus,
+      eq(
+        schema.organisationalUnitStatus.id,
+        schema.organisationalUnitsAllowedRelations.relationTypeId,
+      ),
+    )
+    .orderBy(schema.organisationalUnitStatus.status);
 
-	const byStatusId = new Map(rows.map((row) => [row.statusId, row] as const));
+  const byStatusId = new Map(rows.map((row) => [row.statusId, row] as const));
 
-	return [...byStatusId.values()];
+  return [...byStatusId.values()];
 }
 
 export async function getUnitRelationRelatedUnitOptions(
-	params: GetUnitRelationRelatedUnitOptionsParams,
+  params: GetUnitRelationRelatedUnitOptionsParams,
 ): Promise<{ items: Array<{ id: string; name: string }>; total: number }> {
-	const { unitDocumentId, statusId, limit = relationOptionsPageSize, offset = 0, q } = params;
-	const query = q?.trim();
+  const { unitDocumentId, statusId, limit = relationOptionsPageSize, offset = 0, q } = params;
+  const query = q?.trim();
 
-	const currentUnit = await db
-		.select({ typeId: schema.organisationalUnits.typeId })
-		.from(schema.documentLifecycle)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
-		)
-		.where(eq(schema.documentLifecycle.documentId, unitDocumentId))
-		.limit(1)
-		.then((rows) => rows[0] ?? null);
+  const currentUnit = await db
+    .select({ typeId: schema.organisationalUnits.typeId })
+    .from(schema.documentLifecycle)
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+    )
+    .where(eq(schema.documentLifecycle.documentId, unitDocumentId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
 
-	if (currentUnit == null) {
-		return { items: [], total: 0 };
-	}
+  if (currentUnit == null) {
+    return { items: [], total: 0 };
+  }
 
-	const allowedRelatedUnitTypes = await db
-		.select({ relatedUnitTypeId: schema.organisationalUnitsAllowedRelations.relatedUnitTypeId })
-		.from(schema.organisationalUnitsAllowedRelations)
-		.where(
-			and(
-				eq(schema.organisationalUnitsAllowedRelations.unitTypeId, currentUnit.typeId),
-				eq(schema.organisationalUnitsAllowedRelations.relationTypeId, statusId),
-			),
-		);
+  const allowedRelatedUnitTypes = await db
+    .select({ relatedUnitTypeId: schema.organisationalUnitsAllowedRelations.relatedUnitTypeId })
+    .from(schema.organisationalUnitsAllowedRelations)
+    .where(
+      and(
+        eq(schema.organisationalUnitsAllowedRelations.unitTypeId, currentUnit.typeId),
+        eq(schema.organisationalUnitsAllowedRelations.relationTypeId, statusId),
+      ),
+    );
 
-	const relatedUnitTypeIds = [
-		...new Set(allowedRelatedUnitTypes.map((row) => row.relatedUnitTypeId)),
-	];
+  const relatedUnitTypeIds = [
+    ...new Set(allowedRelatedUnitTypes.map((row) => row.relatedUnitTypeId)),
+  ];
 
-	if (relatedUnitTypeIds.length === 0) {
-		return { items: [], total: 0 };
-	}
+  if (relatedUnitTypeIds.length === 0) {
+    return { items: [], total: 0 };
+  }
 
-	const where = and(
-		publishedEntityVersionWhere(),
-		inArray(schema.organisationalUnits.typeId, relatedUnitTypeIds),
-		query != null && query !== ""
-			? unaccentIlike(schema.organisationalUnits.name, `%${query}%`)
-			: undefined,
-	);
+  const where = and(
+    publishedEntityVersionWhere(),
+    inArray(schema.organisationalUnits.typeId, relatedUnitTypeIds),
+    query != null && query !== ""
+      ? unaccentIlike(schema.organisationalUnits.name, `%${query}%`)
+      : undefined,
+  );
 
-	const [items, aggregate] = await Promise.all([
-		db
-			.select({ id: schema.entityVersions.entityId, name: schema.organisationalUnits.name })
-			.from(schema.organisationalUnits)
-			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(where)
-			.orderBy(schema.organisationalUnits.name)
-			.limit(limit)
-			.offset(offset),
-		db
-			.select({ total: count() })
-			.from(schema.organisationalUnits)
-			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(where),
-	]);
+  const [items, aggregate] = await Promise.all([
+    db
+      .select({ id: schema.entityVersions.entityId, name: schema.organisationalUnits.name })
+      .from(schema.organisationalUnits)
+      .innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+      .where(where)
+      .orderBy(schema.organisationalUnits.name)
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(schema.organisationalUnits)
+      .innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+      .where(where),
+  ]);
 
-	return { items, total: aggregate.at(0)?.total ?? 0 };
+  return { items, total: aggregate.at(0)?.total ?? 0 };
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getUnitRelationOptions(unitType: string) {
-	const allowedCombos = await db
-		.select({
-			statusId: schema.organisationalUnitStatus.id,
-			statusType: schema.organisationalUnitStatus.status,
-			relatedUnitTypeId: schema.organisationalUnitsAllowedRelations.relatedUnitTypeId,
-		})
-		.from(schema.organisationalUnitsAllowedRelations)
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			and(
-				eq(
-					schema.organisationalUnitTypes.id,
-					schema.organisationalUnitsAllowedRelations.unitTypeId,
-				),
-				eq(
-					schema.organisationalUnitTypes.type,
-					unitType as typeof schema.organisationalUnitTypes.$inferSelect.type,
-				),
-			),
-		)
-		.innerJoin(
-			schema.organisationalUnitStatus,
-			eq(
-				schema.organisationalUnitStatus.id,
-				schema.organisationalUnitsAllowedRelations.relationTypeId,
-			),
-		);
+  const allowedCombos = await db
+    .select({
+      statusId: schema.organisationalUnitStatus.id,
+      statusType: schema.organisationalUnitStatus.status,
+      relatedUnitTypeId: schema.organisationalUnitsAllowedRelations.relatedUnitTypeId,
+    })
+    .from(schema.organisationalUnitsAllowedRelations)
+    .innerJoin(
+      schema.organisationalUnitTypes,
+      and(
+        eq(
+          schema.organisationalUnitTypes.id,
+          schema.organisationalUnitsAllowedRelations.unitTypeId,
+        ),
+        eq(
+          schema.organisationalUnitTypes.type,
+          unitType as typeof schema.organisationalUnitTypes.$inferSelect.type,
+        ),
+      ),
+    )
+    .innerJoin(
+      schema.organisationalUnitStatus,
+      eq(
+        schema.organisationalUnitStatus.id,
+        schema.organisationalUnitsAllowedRelations.relationTypeId,
+      ),
+    );
 
-	if (allowedCombos.length === 0) {
-		return [];
-	}
+  if (allowedCombos.length === 0) {
+    return [];
+  }
 
-	const relatedUnitTypeIds = [...new Set(allowedCombos.map((c) => c.relatedUnitTypeId))];
+  const relatedUnitTypeIds = [...new Set(allowedCombos.map((c) => c.relatedUnitTypeId))];
 
-	const relatedUnits = await db
-		.select({
-			id: schema.entityVersions.entityId,
-			name: schema.organisationalUnits.name,
-			typeId: schema.organisationalUnits.typeId,
-		})
-		.from(schema.organisationalUnits)
-		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-		.where(
-			and(
-				publishedEntityVersionWhere(),
-				inArray(schema.organisationalUnits.typeId, relatedUnitTypeIds),
-			),
-		);
+  const relatedUnits = await db
+    .select({
+      id: schema.entityVersions.entityId,
+      name: schema.organisationalUnits.name,
+      typeId: schema.organisationalUnits.typeId,
+    })
+    .from(schema.organisationalUnits)
+    .innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+    .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+    .where(
+      and(
+        publishedEntityVersionWhere(),
+        inArray(schema.organisationalUnits.typeId, relatedUnitTypeIds),
+      ),
+    );
 
-	const byStatus = new Map<
-		string,
-		{ statusId: string; statusType: string; availableUnits: Array<{ id: string; name: string }> }
-	>();
+  const byStatus = new Map<
+    string,
+    { statusId: string; statusType: string; availableUnits: Array<{ id: string; name: string }> }
+  >();
 
-	for (const combo of allowedCombos) {
-		if (!byStatus.has(combo.statusId)) {
-			byStatus.set(combo.statusId, {
-				statusId: combo.statusId,
-				statusType: combo.statusType,
-				availableUnits: [],
-			});
-		}
+  for (const combo of allowedCombos) {
+    if (!byStatus.has(combo.statusId)) {
+      byStatus.set(combo.statusId, {
+        statusId: combo.statusId,
+        statusType: combo.statusType,
+        availableUnits: [],
+      });
+    }
 
-		const entry = byStatus.get(combo.statusId)!;
+    const entry = byStatus.get(combo.statusId)!;
 
-		for (const unit of relatedUnits) {
-			if (
-				unit.typeId === combo.relatedUnitTypeId &&
-				!entry.availableUnits.some((u) => u.id === unit.id)
-			) {
-				entry.availableUnits.push({ id: unit.id, name: unit.name });
-			}
-		}
-	}
+    for (const unit of relatedUnits) {
+      if (
+        unit.typeId === combo.relatedUnitTypeId &&
+        !entry.availableUnits.some((u) => u.id === unit.id)
+      ) {
+        entry.availableUnits.push({ id: unit.id, name: unit.name });
+      }
+    }
+  }
 
-	return Array.from(byStatus.values()).map((entry) => {
-		return {
-			...entry,
-			availableUnits: entry.availableUnits.toSorted((a, b) => a.name.localeCompare(b.name)),
-		};
-	});
+  return Array.from(byStatus.values()).map((entry) => {
+    return {
+      ...entry,
+      availableUnits: entry.availableUnits.toSorted((a, b) => a.name.localeCompare(b.name)),
+    };
+  });
 }
 
 export type UnitRelationOption = Awaited<ReturnType<typeof getUnitRelationOptions>>[number];
@@ -319,89 +319,89 @@ export type UnitRelationOption = Awaited<ReturnType<typeof getUnitRelationOption
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getReverseUnitRelations(
-	relatedUnitDocumentId: string,
-	options: { sourceUnitType?: OrganisationalUnitType; localeId?: string } = {},
+  relatedUnitDocumentId: string,
+  options: { sourceUnitType?: OrganisationalUnitType; localeId?: string } = {},
 ) {
-	const { sourceUnitType, localeId } = options;
+  const { sourceUnitType, localeId } = options;
 
-	const ownerSelectedDraft = alias(schema.entityVersions, "owner_unit_selected_draft");
-	const ownerSelectedPublished = alias(schema.entityVersions, "owner_unit_selected_published");
-	const ownerDefaultDraft = alias(schema.entityVersions, "owner_unit_default_draft");
-	const ownerDefaultPublished = alias(schema.entityVersions, "owner_unit_default_published");
+  const ownerSelectedDraft = alias(schema.entityVersions, "owner_unit_selected_draft");
+  const ownerSelectedPublished = alias(schema.entityVersions, "owner_unit_selected_published");
+  const ownerDefaultDraft = alias(schema.entityVersions, "owner_unit_default_draft");
+  const ownerDefaultPublished = alias(schema.entityVersions, "owner_unit_default_published");
 
-	return db
-		.select({
-			id: schema.organisationalUnitsRelations.id,
-			duration: schema.organisationalUnitsRelations.duration,
-			statusId: schema.organisationalUnitsRelations.status,
-			statusType: schema.organisationalUnitStatus.status,
-			unitDocumentId: schema.organisationalUnitsRelations.unitDocumentId,
-			unitName: schema.organisationalUnits.name,
-			unitSlug: schema.slugs.value,
-			unitType: schema.organisationalUnitTypes.type,
-			// True when the owner unit has no version in the selected locale and this row fell back
-			// to its default-locale version instead.
-			unitIsLocaleFallback: sql<boolean>`(${ownerSelectedDraft.id} IS NULL AND ${ownerSelectedPublished.id} IS NULL)`,
-		})
-		.from(schema.organisationalUnitsRelations)
-		.innerJoin(
-			schema.organisationalUnitStatus,
-			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
-		)
-		.leftJoin(
-			ownerSelectedDraft,
-			and(
-				eq(ownerSelectedDraft.entityId, schema.organisationalUnitsRelations.unitDocumentId),
-				localeMatch(ownerSelectedDraft.localeId, localeId),
-				statusMatch(ownerSelectedDraft.statusId, "draft"),
-			),
-		)
-		.leftJoin(
-			ownerSelectedPublished,
-			and(
-				eq(ownerSelectedPublished.entityId, schema.organisationalUnitsRelations.unitDocumentId),
-				localeMatch(ownerSelectedPublished.localeId, localeId),
-				statusMatch(ownerSelectedPublished.statusId, "published"),
-			),
-		)
-		.leftJoin(
-			ownerDefaultDraft,
-			and(
-				eq(ownerDefaultDraft.entityId, schema.organisationalUnitsRelations.unitDocumentId),
-				localeMatch(ownerDefaultDraft.localeId, undefined),
-				statusMatch(ownerDefaultDraft.statusId, "draft"),
-			),
-		)
-		.leftJoin(
-			ownerDefaultPublished,
-			and(
-				eq(ownerDefaultPublished.entityId, schema.organisationalUnitsRelations.unitDocumentId),
-				localeMatch(ownerDefaultPublished.localeId, undefined),
-				statusMatch(ownerDefaultPublished.statusId, "published"),
-			),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${ownerSelectedDraft.id}, ${ownerSelectedPublished.id}, ${ownerDefaultDraft.id}, ${ownerDefaultPublished.id})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
-		)
-		.where(
-			and(
-				eq(schema.organisationalUnitsRelations.relatedUnitDocumentId, relatedUnitDocumentId),
-				sourceUnitType != null
-					? eq(schema.organisationalUnitTypes.type, sourceUnitType)
-					: undefined,
-			),
-		)
-		.orderBy(
-			sql`UPPER(${schema.organisationalUnitsRelations.duration}) DESC NULLS FIRST`,
-			sql`LOWER(${schema.organisationalUnitsRelations.duration}) DESC`,
-			schema.organisationalUnits.name,
-		);
+  return db
+    .select({
+      id: schema.organisationalUnitsRelations.id,
+      duration: schema.organisationalUnitsRelations.duration,
+      statusId: schema.organisationalUnitsRelations.status,
+      statusType: schema.organisationalUnitStatus.status,
+      unitDocumentId: schema.organisationalUnitsRelations.unitDocumentId,
+      unitName: schema.organisationalUnits.name,
+      unitSlug: schema.slugs.value,
+      unitType: schema.organisationalUnitTypes.type,
+      // True when the owner unit has no version in the selected locale and this row fell back
+      // to its default-locale version instead.
+      unitIsLocaleFallback: sql<boolean>`(${ownerSelectedDraft.id} IS NULL AND ${ownerSelectedPublished.id} IS NULL)`,
+    })
+    .from(schema.organisationalUnitsRelations)
+    .innerJoin(
+      schema.organisationalUnitStatus,
+      eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
+    )
+    .leftJoin(
+      ownerSelectedDraft,
+      and(
+        eq(ownerSelectedDraft.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+        localeMatch(ownerSelectedDraft.localeId, localeId),
+        statusMatch(ownerSelectedDraft.statusId, "draft"),
+      ),
+    )
+    .leftJoin(
+      ownerSelectedPublished,
+      and(
+        eq(ownerSelectedPublished.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+        localeMatch(ownerSelectedPublished.localeId, localeId),
+        statusMatch(ownerSelectedPublished.statusId, "published"),
+      ),
+    )
+    .leftJoin(
+      ownerDefaultDraft,
+      and(
+        eq(ownerDefaultDraft.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+        localeMatch(ownerDefaultDraft.localeId, undefined),
+        statusMatch(ownerDefaultDraft.statusId, "draft"),
+      ),
+    )
+    .leftJoin(
+      ownerDefaultPublished,
+      and(
+        eq(ownerDefaultPublished.entityId, schema.organisationalUnitsRelations.unitDocumentId),
+        localeMatch(ownerDefaultPublished.localeId, undefined),
+        statusMatch(ownerDefaultPublished.statusId, "published"),
+      ),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${ownerSelectedDraft.id}, ${ownerSelectedPublished.id}, ${ownerDefaultDraft.id}, ${ownerDefaultPublished.id})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .innerJoin(
+      schema.organisationalUnitTypes,
+      eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
+    )
+    .where(
+      and(
+        eq(schema.organisationalUnitsRelations.relatedUnitDocumentId, relatedUnitDocumentId),
+        sourceUnitType != null
+          ? eq(schema.organisationalUnitTypes.type, sourceUnitType)
+          : undefined,
+      ),
+    )
+    .orderBy(
+      sql`UPPER(${schema.organisationalUnitsRelations.duration}) DESC NULLS FIRST`,
+      sql`LOWER(${schema.organisationalUnitsRelations.duration}) DESC`,
+      schema.organisationalUnits.name,
+    );
 }
 
 export type ReverseUnitRelation = Awaited<ReturnType<typeof getReverseUnitRelations>>[number];
@@ -412,39 +412,39 @@ export type ReverseUnitRelation = Awaited<ReturnType<typeof getReverseUnitRelati
  * type.
  */
 export async function getReverseUnitRelationStatusOptions(
-	relatedUnitType: OrganisationalUnitType,
-	sourceUnitType?: OrganisationalUnitType,
+  relatedUnitType: OrganisationalUnitType,
+  sourceUnitType?: OrganisationalUnitType,
 ): Promise<Array<UnitRelationStatusOption>> {
-	const sourceType = alias(schema.organisationalUnitTypes, "reverse_source_unit_type");
-	const relatedType = alias(schema.organisationalUnitTypes, "reverse_related_unit_type");
+  const sourceType = alias(schema.organisationalUnitTypes, "reverse_source_unit_type");
+  const relatedType = alias(schema.organisationalUnitTypes, "reverse_related_unit_type");
 
-	const rows = await db
-		.select({
-			statusId: schema.organisationalUnitStatus.id,
-			statusType: schema.organisationalUnitStatus.status,
-		})
-		.from(schema.organisationalUnitsAllowedRelations)
-		.innerJoin(
-			relatedType,
-			and(
-				eq(relatedType.id, schema.organisationalUnitsAllowedRelations.relatedUnitTypeId),
-				eq(relatedType.type, relatedUnitType),
-			),
-		)
-		.innerJoin(sourceType, eq(sourceType.id, schema.organisationalUnitsAllowedRelations.unitTypeId))
-		.innerJoin(
-			schema.organisationalUnitStatus,
-			eq(
-				schema.organisationalUnitStatus.id,
-				schema.organisationalUnitsAllowedRelations.relationTypeId,
-			),
-		)
-		.where(sourceUnitType != null ? eq(sourceType.type, sourceUnitType) : undefined)
-		.orderBy(schema.organisationalUnitStatus.status);
+  const rows = await db
+    .select({
+      statusId: schema.organisationalUnitStatus.id,
+      statusType: schema.organisationalUnitStatus.status,
+    })
+    .from(schema.organisationalUnitsAllowedRelations)
+    .innerJoin(
+      relatedType,
+      and(
+        eq(relatedType.id, schema.organisationalUnitsAllowedRelations.relatedUnitTypeId),
+        eq(relatedType.type, relatedUnitType),
+      ),
+    )
+    .innerJoin(sourceType, eq(sourceType.id, schema.organisationalUnitsAllowedRelations.unitTypeId))
+    .innerJoin(
+      schema.organisationalUnitStatus,
+      eq(
+        schema.organisationalUnitStatus.id,
+        schema.organisationalUnitsAllowedRelations.relationTypeId,
+      ),
+    )
+    .where(sourceUnitType != null ? eq(sourceType.type, sourceUnitType) : undefined)
+    .orderBy(schema.organisationalUnitStatus.status);
 
-	const byStatusId = new Map(rows.map((row) => [row.statusId, row] as const));
+  const byStatusId = new Map(rows.map((row) => [row.statusId, row] as const));
 
-	return [...byStatusId.values()];
+  return [...byStatusId.values()];
 }
 
 /**
@@ -453,10 +453,10 @@ export async function getReverseUnitRelationStatusOptions(
  * to institutions located in that country.
  */
 const countryEricInstitutionStatuses = [
-	"is_national_coordinating_institution_in",
-	"is_national_representative_institution_in",
-	"is_partner_institution_of",
-	"is_cooperating_partner_of",
+  "is_national_coordinating_institution_in",
+  "is_national_representative_institution_in",
+  "is_partner_institution_of",
+  "is_cooperating_partner_of",
 ] as const satisfies ReadonlyArray<UnitRelationStatusType>;
 
 /**
@@ -468,116 +468,116 @@ const countryEricInstitutionStatuses = [
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getEricInstitutionsForCountry(countryDocumentId: string, localeId?: string) {
-	const ericRelations = alias(schema.organisationalUnitsRelations, "country_eric_relations");
-	const locatedInRelations = alias(
-		schema.organisationalUnitsRelations,
-		"country_located_in_relations",
-	);
-	const ericStatus = alias(schema.organisationalUnitStatus, "country_eric_status");
-	const locatedInStatus = alias(schema.organisationalUnitStatus, "country_located_in_status");
-	const institutionSelectedDraft = alias(
-		schema.entityVersions,
-		"country_eric_institution_selected_draft",
-	);
-	const institutionSelectedPublished = alias(
-		schema.entityVersions,
-		"country_eric_institution_selected_published",
-	);
-	const institutionDefaultDraft = alias(
-		schema.entityVersions,
-		"country_eric_institution_default_draft",
-	);
-	const institutionDefaultPublished = alias(
-		schema.entityVersions,
-		"country_eric_institution_default_published",
-	);
+  const ericRelations = alias(schema.organisationalUnitsRelations, "country_eric_relations");
+  const locatedInRelations = alias(
+    schema.organisationalUnitsRelations,
+    "country_located_in_relations",
+  );
+  const ericStatus = alias(schema.organisationalUnitStatus, "country_eric_status");
+  const locatedInStatus = alias(schema.organisationalUnitStatus, "country_located_in_status");
+  const institutionSelectedDraft = alias(
+    schema.entityVersions,
+    "country_eric_institution_selected_draft",
+  );
+  const institutionSelectedPublished = alias(
+    schema.entityVersions,
+    "country_eric_institution_selected_published",
+  );
+  const institutionDefaultDraft = alias(
+    schema.entityVersions,
+    "country_eric_institution_default_draft",
+  );
+  const institutionDefaultPublished = alias(
+    schema.entityVersions,
+    "country_eric_institution_default_published",
+  );
 
-	const rows = await db
-		.select({
-			id: ericRelations.id,
-			institutionId: ericRelations.unitDocumentId,
-			institutionName: schema.organisationalUnits.name,
-			institutionSlug: schema.slugs.value,
-			institutionType: schema.organisationalUnitTypes.type,
-			statusId: ericStatus.id,
-			statusType: ericStatus.status,
-			duration: ericRelations.duration,
-			// True when the institution has no version in the selected locale and this row fell back
-			// to its default-locale version instead.
-			institutionIsLocaleFallback: sql<boolean>`(${institutionSelectedDraft.id} IS NULL AND ${institutionSelectedPublished.id} IS NULL)`,
-		})
-		.from(ericRelations)
-		.innerJoin(ericStatus, eq(ericStatus.id, ericRelations.status))
-		.innerJoin(
-			locatedInRelations,
-			eq(locatedInRelations.unitDocumentId, ericRelations.unitDocumentId),
-		)
-		.innerJoin(locatedInStatus, eq(locatedInStatus.id, locatedInRelations.status))
-		.leftJoin(
-			institutionSelectedDraft,
-			and(
-				eq(institutionSelectedDraft.entityId, ericRelations.unitDocumentId),
-				localeMatch(institutionSelectedDraft.localeId, localeId),
-				statusMatch(institutionSelectedDraft.statusId, "draft"),
-			),
-		)
-		.leftJoin(
-			institutionSelectedPublished,
-			and(
-				eq(institutionSelectedPublished.entityId, ericRelations.unitDocumentId),
-				localeMatch(institutionSelectedPublished.localeId, localeId),
-				statusMatch(institutionSelectedPublished.statusId, "published"),
-			),
-		)
-		.leftJoin(
-			institutionDefaultDraft,
-			and(
-				eq(institutionDefaultDraft.entityId, ericRelations.unitDocumentId),
-				localeMatch(institutionDefaultDraft.localeId, undefined),
-				statusMatch(institutionDefaultDraft.statusId, "draft"),
-			),
-		)
-		.leftJoin(
-			institutionDefaultPublished,
-			and(
-				eq(institutionDefaultPublished.entityId, ericRelations.unitDocumentId),
-				localeMatch(institutionDefaultPublished.localeId, undefined),
-				statusMatch(institutionDefaultPublished.statusId, "published"),
-			),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${institutionSelectedDraft.id}, ${institutionSelectedPublished.id}, ${institutionDefaultDraft.id}, ${institutionDefaultPublished.id})`,
-		)
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.where(
-			and(
-				inArray(ericStatus.status, [...countryEricInstitutionStatuses]),
-				eq(locatedInStatus.status, "is_located_in"),
-				eq(locatedInRelations.relatedUnitDocumentId, countryDocumentId),
-			),
-		)
-		.orderBy(ericStatus.status, schema.organisationalUnits.name);
+  const rows = await db
+    .select({
+      id: ericRelations.id,
+      institutionId: ericRelations.unitDocumentId,
+      institutionName: schema.organisationalUnits.name,
+      institutionSlug: schema.slugs.value,
+      institutionType: schema.organisationalUnitTypes.type,
+      statusId: ericStatus.id,
+      statusType: ericStatus.status,
+      duration: ericRelations.duration,
+      // True when the institution has no version in the selected locale and this row fell back
+      // to its default-locale version instead.
+      institutionIsLocaleFallback: sql<boolean>`(${institutionSelectedDraft.id} IS NULL AND ${institutionSelectedPublished.id} IS NULL)`,
+    })
+    .from(ericRelations)
+    .innerJoin(ericStatus, eq(ericStatus.id, ericRelations.status))
+    .innerJoin(
+      locatedInRelations,
+      eq(locatedInRelations.unitDocumentId, ericRelations.unitDocumentId),
+    )
+    .innerJoin(locatedInStatus, eq(locatedInStatus.id, locatedInRelations.status))
+    .leftJoin(
+      institutionSelectedDraft,
+      and(
+        eq(institutionSelectedDraft.entityId, ericRelations.unitDocumentId),
+        localeMatch(institutionSelectedDraft.localeId, localeId),
+        statusMatch(institutionSelectedDraft.statusId, "draft"),
+      ),
+    )
+    .leftJoin(
+      institutionSelectedPublished,
+      and(
+        eq(institutionSelectedPublished.entityId, ericRelations.unitDocumentId),
+        localeMatch(institutionSelectedPublished.localeId, localeId),
+        statusMatch(institutionSelectedPublished.statusId, "published"),
+      ),
+    )
+    .leftJoin(
+      institutionDefaultDraft,
+      and(
+        eq(institutionDefaultDraft.entityId, ericRelations.unitDocumentId),
+        localeMatch(institutionDefaultDraft.localeId, undefined),
+        statusMatch(institutionDefaultDraft.statusId, "draft"),
+      ),
+    )
+    .leftJoin(
+      institutionDefaultPublished,
+      and(
+        eq(institutionDefaultPublished.entityId, ericRelations.unitDocumentId),
+        localeMatch(institutionDefaultPublished.localeId, undefined),
+        statusMatch(institutionDefaultPublished.statusId, "published"),
+      ),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${institutionSelectedDraft.id}, ${institutionSelectedPublished.id}, ${institutionDefaultDraft.id}, ${institutionDefaultPublished.id})`,
+    )
+    .innerJoin(
+      schema.organisationalUnitTypes,
+      eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .where(
+      and(
+        inArray(ericStatus.status, [...countryEricInstitutionStatuses]),
+        eq(locatedInStatus.status, "is_located_in"),
+        eq(locatedInRelations.relatedUnitDocumentId, countryDocumentId),
+      ),
+    )
+    .orderBy(ericStatus.status, schema.organisationalUnits.name);
 
-	// An institution could have more than one located-in row for the country; key by the ERIC row.
-	const byId = new Map(rows.map((row) => [row.id, row] as const));
+  // An institution could have more than one located-in row for the country; key by the ERIC row.
+  const byId = new Map(rows.map((row) => [row.id, row] as const));
 
-	return [...byId.values()];
+  return [...byId.values()];
 }
 
 export type CountryEricInstitution = Awaited<
-	ReturnType<typeof getEricInstitutionsForCountry>
+  ReturnType<typeof getEricInstitutionsForCountry>
 >[number];
 
 /** Slug of the DARIAH ERIC organisational unit. Relations to ERIC are resolved against this. */
 const dariahEricSlug = "dariah-eu";
 
 export type CountryReportInstitutionRepresentation =
-	(typeof schema.countryReportInstitutionRepresentationEnum)[number];
+  (typeof schema.countryReportInstitutionRepresentationEnum)[number];
 
 /**
  * Resolve the DARIAH ERIC organisational unit's document id (`entities.id`), explicitly by its
@@ -585,13 +585,13 @@ export type CountryReportInstitutionRepresentation =
  * Returns `null` if it is absent.
  */
 export async function getDariahEricDocumentId(): Promise<string | null> {
-	const unit = await db.query.organisationalUnits.findFirst({
-		where: { type: { type: "eric" }, entityVersion: { slug: { value: dariahEricSlug } } },
-		columns: {},
-		with: { entityVersion: { columns: {}, with: { entity: { columns: { id: true } } } } },
-	});
+  const unit = await db.query.organisationalUnits.findFirst({
+    where: { type: { type: "eric" }, entityVersion: { slug: { value: dariahEricSlug } } },
+    columns: {},
+    with: { entityVersion: { columns: {}, with: { entity: { columns: { id: true } } } } },
+  });
 
-	return unit?.entityVersion.entity.id ?? null;
+  return unit?.entityVersion.entity.id ?? null;
 }
 
 /**
@@ -603,29 +603,29 @@ export async function getDariahEricDocumentId(): Promise<string | null> {
  * institutions snapshot.
  */
 export interface CurrentPartnerInstitution {
-	institutionDocumentId: string;
-	representationType: CountryReportInstitutionRepresentation;
-	name: string;
-	acronym: string | null;
-	slug: string;
+  institutionDocumentId: string;
+  representationType: CountryReportInstitutionRepresentation;
+  name: string;
+  acronym: string | null;
+  slug: string;
 }
 
 export async function getCurrentPartnerInstitutions(
-	countryDocumentId: string,
-	year: number,
+  countryDocumentId: string,
+  year: number,
 ): Promise<Array<CurrentPartnerInstitution>> {
-	const ericDocumentId = await getDariahEricDocumentId();
-	if (ericDocumentId == null) {
-		return [];
-	}
+  const ericDocumentId = await getDariahEricDocumentId();
+  if (ericDocumentId == null) {
+    return [];
+  }
 
-	const ericRelations = alias(schema.organisationalUnitsRelations, "capture_eric_relations");
-	const locatedInRelations = alias(schema.organisationalUnitsRelations, "capture_located_in");
-	const ericStatus = alias(schema.organisationalUnitStatus, "capture_eric_status");
-	const locatedInStatus = alias(schema.organisationalUnitStatus, "capture_located_in_status");
-	const institutionLifecycle = alias(schema.documentLifecycle, "capture_institution_lifecycle");
+  const ericRelations = alias(schema.organisationalUnitsRelations, "capture_eric_relations");
+  const locatedInRelations = alias(schema.organisationalUnitsRelations, "capture_located_in");
+  const ericStatus = alias(schema.organisationalUnitStatus, "capture_eric_status");
+  const locatedInStatus = alias(schema.organisationalUnitStatus, "capture_located_in_status");
+  const institutionLifecycle = alias(schema.documentLifecycle, "capture_institution_lifecycle");
 
-	const representationPrecedence = sql`
+  const representationPrecedence = sql`
 		CASE ${ericStatus.status}
 			WHEN 'is_national_coordinating_institution_in' THEN 1
 			WHEN 'is_national_representative_institution_in' THEN 2
@@ -634,59 +634,59 @@ export async function getCurrentPartnerInstitutions(
 		END
 	`;
 
-	const rows = await db
-		.select({
-			institutionDocumentId: ericRelations.unitDocumentId,
-			representationType: ericStatus.status,
-			name: schema.organisationalUnits.name,
-			acronym: schema.organisationalUnits.acronym,
-			slug: schema.slugs.value,
-		})
-		.from(ericRelations)
-		.innerJoin(ericStatus, eq(ericStatus.id, ericRelations.status))
-		.innerJoin(
-			locatedInRelations,
-			eq(locatedInRelations.unitDocumentId, ericRelations.unitDocumentId),
-		)
-		.innerJoin(locatedInStatus, eq(locatedInStatus.id, locatedInRelations.status))
-		.innerJoin(
-			institutionLifecycle,
-			eq(institutionLifecycle.documentId, ericRelations.unitDocumentId),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${institutionLifecycle.draftId}, ${institutionLifecycle.publishedId})`,
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
-		.where(
-			and(
-				eq(ericRelations.relatedUnitDocumentId, ericDocumentId),
-				inArray(ericStatus.status, [...schema.countryReportInstitutionRepresentationEnum]),
-				eq(locatedInStatus.status, "is_located_in"),
-				eq(locatedInRelations.relatedUnitDocumentId, countryDocumentId),
-				sql`
+  const rows = await db
+    .select({
+      institutionDocumentId: ericRelations.unitDocumentId,
+      representationType: ericStatus.status,
+      name: schema.organisationalUnits.name,
+      acronym: schema.organisationalUnits.acronym,
+      slug: schema.slugs.value,
+    })
+    .from(ericRelations)
+    .innerJoin(ericStatus, eq(ericStatus.id, ericRelations.status))
+    .innerJoin(
+      locatedInRelations,
+      eq(locatedInRelations.unitDocumentId, ericRelations.unitDocumentId),
+    )
+    .innerJoin(locatedInStatus, eq(locatedInStatus.id, locatedInRelations.status))
+    .innerJoin(
+      institutionLifecycle,
+      eq(institutionLifecycle.documentId, ericRelations.unitDocumentId),
+    )
+    .innerJoin(
+      schema.organisationalUnits,
+      sql`${schema.organisationalUnits.id} = COALESCE(${institutionLifecycle.draftId}, ${institutionLifecycle.publishedId})`,
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+    .where(
+      and(
+        eq(ericRelations.relatedUnitDocumentId, ericDocumentId),
+        inArray(ericStatus.status, [...schema.countryReportInstitutionRepresentationEnum]),
+        eq(locatedInStatus.status, "is_located_in"),
+        eq(locatedInRelations.relatedUnitDocumentId, countryDocumentId),
+        sql`
 					${ericRelations.duration} && tstzrange (
 						MAKE_DATE(${year}, 1, 1)::TIMESTAMPTZ,
 						MAKE_DATE(${year + 1}, 1, 1)::TIMESTAMPTZ
 					)
 				`,
-			),
-		)
-		.orderBy(representationPrecedence, schema.organisationalUnits.name);
+      ),
+    )
+    .orderBy(representationPrecedence, schema.organisationalUnits.name);
 
-	// One row per institution; the precedence ordering keeps the most significant representation.
-	const byInstitution = new Map<string, CurrentPartnerInstitution>();
-	for (const row of rows) {
-		if (!byInstitution.has(row.institutionDocumentId)) {
-			byInstitution.set(row.institutionDocumentId, {
-				institutionDocumentId: row.institutionDocumentId,
-				representationType: row.representationType as CountryReportInstitutionRepresentation,
-				name: row.name,
-				acronym: row.acronym,
-				slug: row.slug,
-			});
-		}
-	}
+  // One row per institution; the precedence ordering keeps the most significant representation.
+  const byInstitution = new Map<string, CurrentPartnerInstitution>();
+  for (const row of rows) {
+    if (!byInstitution.has(row.institutionDocumentId)) {
+      byInstitution.set(row.institutionDocumentId, {
+        institutionDocumentId: row.institutionDocumentId,
+        representationType: row.representationType as CountryReportInstitutionRepresentation,
+        name: row.name,
+        acronym: row.acronym,
+        slug: row.slug,
+      });
+    }
+  }
 
-	return [...byInstitution.values()];
+  return [...byInstitution.values()];
 }

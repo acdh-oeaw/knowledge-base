@@ -7,7 +7,7 @@ import {
 	TableColumn,
 	TableHeader,
 	TableRow,
-} from "@acdh-knowledge-base/ui/table";
+} from "@dariah-eric/ui/table";
 import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";

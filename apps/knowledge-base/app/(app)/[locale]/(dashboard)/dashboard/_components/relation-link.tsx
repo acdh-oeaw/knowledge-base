@@ -1,6 +1,6 @@
 "use client";
 
-import { Link } from "@acdh-knowledge-base/ui/link";
+import { Link } from "@dariah-eric/ui/link";
 import type { ReactNode } from "react";
 
 interface RelationLinkProps {

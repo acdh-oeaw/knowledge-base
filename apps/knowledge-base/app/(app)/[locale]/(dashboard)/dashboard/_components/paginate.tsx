@@ -13,7 +13,7 @@ import {
 	PaginationPrevious,
 	PaginationSection,
 	PaginationSpacer,
-} from "@acdh-knowledge-base/ui/pagination";
+} from "@dariah-eric/ui/pagination";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 

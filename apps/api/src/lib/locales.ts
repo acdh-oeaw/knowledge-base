@@ -1,4 +1,4 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 
 import type { Database, Transaction } from "@/middlewares/db";
 import { and, eq, isNull } from "@/services/db/sql";
@@ -9,54 +9,54 @@ import { and, eq, isNull } from "@/services/db/sql";
  * fall back to the default locale.
  */
 export async function resolveLocaleId(
-	db: Database | Transaction,
-	code: string | undefined,
+  db: Database | Transaction,
+  code: string | undefined,
 ): Promise<string | null> {
-	if (code == null || code.trim() === "") {
-		return null;
-	}
+  if (code == null || code.trim() === "") {
+    return null;
+  }
 
-	const [languageCode, regionCode] = code.split("-");
+  const [languageCode, regionCode] = code.split("-");
 
-	if (languageCode == null || languageCode === "") {
-		return null;
-	}
+  if (languageCode == null || languageCode === "") {
+    return null;
+  }
 
-	const [locale] = await db
-		.select({ id: schema.locales.id })
-		.from(schema.locales)
-		.where(
-			and(
-				eq(schema.locales.languageCode, languageCode.toLowerCase()),
-				regionCode != null && regionCode !== ""
-					? eq(schema.locales.regionCode, regionCode.toUpperCase())
-					: isNull(schema.locales.regionCode),
-			),
-		)
-		.limit(1);
+  const [locale] = await db
+    .select({ id: schema.locales.id })
+    .from(schema.locales)
+    .where(
+      and(
+        eq(schema.locales.languageCode, languageCode.toLowerCase()),
+        regionCode != null && regionCode !== ""
+          ? eq(schema.locales.regionCode, regionCode.toUpperCase())
+          : isNull(schema.locales.regionCode),
+      ),
+    )
+    .limit(1);
 
-	return locale?.id ?? null;
+  return locale?.id ?? null;
 }
 
 export async function getDefaultLocaleId(db: Database | Transaction): Promise<string> {
-	const [locale] = await db
-		.select({ id: schema.locales.id })
-		.from(schema.locales)
-		.where(eq(schema.locales.isDefault, true))
-		.limit(1);
+  const [locale] = await db
+    .select({ id: schema.locales.id })
+    .from(schema.locales)
+    .where(eq(schema.locales.isDefault, true))
+    .limit(1);
 
-	if (locale == null) {
-		throw new Error("No default locale configured in database.");
-	}
+  if (locale == null) {
+    throw new Error("No default locale configured in database.");
+  }
 
-	return locale.id;
+  return locale.id;
 }
 
 export interface LocaleContext {
-	/** The locale to prefer — the requested locale, or the default locale when none was requested. */
-	localeId: string;
-	/** The default locale — the fallback for documents with no version in `localeId`. */
-	defaultLocaleId: string;
+  /** The locale to prefer — the requested locale, or the default locale when none was requested. */
+  localeId: string;
+  /** The default locale — the fallback for documents with no version in `localeId`. */
+  defaultLocaleId: string;
 }
 
 /**
@@ -66,9 +66,9 @@ export interface LocaleContext {
  * both unconditionally without special-casing "no locale requested".
  */
 export async function resolveLocaleContext(
-	db: Database | Transaction,
-	requestedLocaleId: string | undefined,
+  db: Database | Transaction,
+  requestedLocaleId: string | undefined,
 ): Promise<LocaleContext> {
-	const defaultLocaleId = await getDefaultLocaleId(db);
-	return { localeId: requestedLocaleId ?? defaultLocaleId, defaultLocaleId };
+  const defaultLocaleId = await getDefaultLocaleId(db);
+  return { localeId: requestedLocaleId ?? defaultLocaleId, defaultLocaleId };
 }

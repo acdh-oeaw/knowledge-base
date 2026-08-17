@@ -1,16 +1,10 @@
 "use client";
 
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { buttonStyles } from "@acdh-knowledge-base/ui/button-styles";
-import { Link } from "@acdh-knowledge-base/ui/link";
-import {
-	Menu,
-	MenuContent,
-	MenuItem,
-	MenuLabel,
-	MenuSeparator,
-} from "@acdh-knowledge-base/ui/menu";
-import { SearchField, SearchInput } from "@acdh-knowledge-base/ui/search-field";
+import { Button } from "@dariah-eric/ui/button";
+import { buttonStyles } from "@dariah-eric/ui/button-styles";
+import { Link } from "@dariah-eric/ui/link";
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "@dariah-eric/ui/menu";
+import { SearchField, SearchInput } from "@dariah-eric/ui/search-field";
 import { EllipsisHorizontalIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";

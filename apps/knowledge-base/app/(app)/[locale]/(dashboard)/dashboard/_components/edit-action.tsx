@@ -1,7 +1,7 @@
 "use client";
 
-import { buttonStyles } from "@acdh-knowledge-base/ui/button-styles";
-import { Link, type LinkProps } from "@acdh-knowledge-base/ui/link";
+import { buttonStyles } from "@dariah-eric/ui/button-styles";
+import { Link, type LinkProps } from "@dariah-eric/ui/link";
 import { PencilSquareIcon as IconHighlight } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";

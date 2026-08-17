@@ -1,4 +1,4 @@
-import { ButtonLink } from "@acdh-knowledge-base/ui/button-link";
+import { ButtonLink } from "@dariah-eric/ui/button-link";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import type { ReactNode } from "react";

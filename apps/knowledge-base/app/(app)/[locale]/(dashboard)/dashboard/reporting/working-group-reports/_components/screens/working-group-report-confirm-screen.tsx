@@ -1,5 +1,5 @@
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { buttonStyles } from "@acdh-knowledge-base/ui/button-styles";
+import { Button } from "@dariah-eric/ui/button";
+import { buttonStyles } from "@dariah-eric/ui/button-styles";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";

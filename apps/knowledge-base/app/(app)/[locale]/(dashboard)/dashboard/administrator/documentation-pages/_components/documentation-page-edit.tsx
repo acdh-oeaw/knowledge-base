@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
+import type * as schema from "@dariah-eric/database/schema";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,42 +12,42 @@ import { publishDocumentationPageAction } from "@/app/(app)/[locale]/(dashboard)
 import { updateDocumentationPageAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/documentation-pages/_lib/update-documentation-page.action";
 
 interface DocumentationPageEditFormProps {
-	contentBlocks: Array<ContentBlock>;
-	documentId: string;
-	documentationPage: Pick<schema.DocumentationPage, "id" | "title"> & {
-		entityVersion: {
-			entity: Pick<schema.Entity, "id">;
-			slug: Pick<schema.Slug, "value">;
-		};
-	};
-	hasDraftChanges: boolean;
-	isPublished: boolean;
+  contentBlocks: Array<ContentBlock>;
+  documentId: string;
+  documentationPage: Pick<schema.DocumentationPage, "id" | "title"> & {
+    entityVersion: {
+      entity: Pick<schema.Entity, "id">;
+      slug: Pick<schema.Slug, "value">;
+    };
+  };
+  hasDraftChanges: boolean;
+  isPublished: boolean;
 }
 
 export function DocumentationPageEditForm(
-	props: Readonly<DocumentationPageEditFormProps>,
+  props: Readonly<DocumentationPageEditFormProps>,
 ): ReactNode {
-	const { contentBlocks, documentId, documentationPage, hasDraftChanges, isPublished } = props;
+  const { contentBlocks, documentId, documentationPage, hasDraftChanges, isPublished } = props;
 
-	const t = useExtracted();
+  const t = useExtracted();
 
-	return (
-		<Fragment>
-			<EntityFormHeader
-				title={t("Edit documentation page")}
-				lifecycle={{
-					documentId,
-					hasDraft: hasDraftChanges,
-					isPublished,
-					publishAction: publishDocumentationPageAction,
-					discardDraftAction: discardDocumentationPageDraftAction,
-				}}
-			/>
-			<DocumentationPageForm
-				contentBlocks={contentBlocks}
-				documentationPage={documentationPage}
-				formAction={updateDocumentationPageAction}
-			/>
-		</Fragment>
-	);
+  return (
+    <Fragment>
+      <EntityFormHeader
+        title={t("Edit documentation page")}
+        lifecycle={{
+          documentId,
+          hasDraft: hasDraftChanges,
+          isPublished,
+          publishAction: publishDocumentationPageAction,
+          discardDraftAction: discardDocumentationPageDraftAction,
+        }}
+      />
+      <DocumentationPageForm
+        contentBlocks={contentBlocks}
+        documentationPage={documentationPage}
+        formAction={updateDocumentationPageAction}
+      />
+    </Fragment>
+  );
 }

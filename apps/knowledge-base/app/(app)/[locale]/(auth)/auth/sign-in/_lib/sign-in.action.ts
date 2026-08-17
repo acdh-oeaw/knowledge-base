@@ -1,7 +1,7 @@
 "use server";
 
-import { createActionStateError } from "@acdh-knowledge-base/next-lib/actions";
-import { globalPostRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
+import { createActionStateError } from "@dariah-eric/next-lib/actions";
+import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import { getFormDataValues } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import { headers } from "next/headers";
@@ -14,63 +14,63 @@ import { redirect } from "@/lib/navigation/navigation";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const signInAction = createServerAction(async function signInAction(state, formData) {
-	const locale = await getLocale();
-	const t = await getExtracted();
+  const locale = await getLocale();
+  const t = await getExtracted();
 
-	if (!(await globalPostRequestRateLimit())) {
-		return createActionStateError({ message: t("Too many requests.") });
-	}
+  if (!(await globalPostRequestRateLimit())) {
+    return createActionStateError({ message: t("Too many requests.") });
+  }
 
-	const ip = (await headers()).get("x-forwarded-for");
-	if (ip != null && !auth.signInIpBucket.check(ip, 1)) {
-		return createActionStateError({ message: t("Too many requests.") });
-	}
+  const ip = (await headers()).get("x-forwarded-for");
+  if (ip != null && !auth.signInIpBucket.check(ip, 1)) {
+    return createActionStateError({ message: t("Too many requests.") });
+  }
 
-	const result = await v.safeParseAsync(SignInActionInputSchema, getFormDataValues(formData), {
-		lang: getIntlLanguage(locale),
-	});
+  const result = await v.safeParseAsync(SignInActionInputSchema, getFormDataValues(formData), {
+    lang: getIntlLanguage(locale),
+  });
 
-	if (!result.success) {
-		const errors = v.flatten<typeof SignInActionInputSchema>(result.issues);
+  if (!result.success) {
+    const errors = v.flatten<typeof SignInActionInputSchema>(result.issues);
 
-		return createActionStateError({
-			message: errors.root ?? t("Invalid or missing fields."),
-			validationErrors: errors.nested,
-		});
-	}
+    return createActionStateError({
+      message: errors.root ?? t("Invalid or missing fields."),
+      validationErrors: errors.nested,
+    });
+  }
 
-	const { email, password } = result.output;
+  const { email, password } = result.output;
 
-	const user = await auth.getUserByEmail(email);
-	if (user == null) {
-		return createActionStateError({ message: t("Account does not exist.") });
-	}
+  const user = await auth.getUserByEmail(email);
+  if (user == null) {
+    return createActionStateError({ message: t("Account does not exist.") });
+  }
 
-	if (ip != null && !auth.signInIpBucket.consume(ip, 1)) {
-		return createActionStateError({ message: t("Too many requests.") });
-	}
-	if (!auth.signInTrottler.consume(user.id)) {
-		return createActionStateError({ message: t("Too many requests.") });
-	}
+  if (ip != null && !auth.signInIpBucket.consume(ip, 1)) {
+    return createActionStateError({ message: t("Too many requests.") });
+  }
+  if (!auth.signInTrottler.consume(user.id)) {
+    return createActionStateError({ message: t("Too many requests.") });
+  }
 
-	const passwordHash = await auth.getUserPasswordHash(user.id);
-	const isValidPassword = await auth.verifyPasswordHash(passwordHash, password);
-	if (!isValidPassword) {
-		return createActionStateError({ message: t("Incorrect password.") });
-	}
+  const passwordHash = await auth.getUserPasswordHash(user.id);
+  const isValidPassword = await auth.verifyPasswordHash(passwordHash, password);
+  if (!isValidPassword) {
+    return createActionStateError({ message: t("Incorrect password.") });
+  }
 
-	auth.signInTrottler.reset(user.id);
+  auth.signInTrottler.reset(user.id);
 
-	const session = await auth.createSession(user.id);
-	await auth.setSessionCookie(session.token, session.expiresAt);
+  const session = await auth.createSession(user.id);
+  await auth.setSessionCookie(session.token, session.expiresAt);
 
-	if (!user.isEmailVerified) {
-		redirect({ href: "/auth/verify-email", locale });
-	}
+  if (!user.isEmailVerified) {
+    redirect({ href: "/auth/verify-email", locale });
+  }
 
-	if (!user.isTwoFactorRegistered) {
-		redirect({ href: "/auth/two-factor/setup", locale });
-	}
+  if (!user.isTwoFactorRegistered) {
+    redirect({ href: "/auth/two-factor/setup", locale });
+  }
 
-	redirect({ href: "/auth/two-factor", locale });
+  redirect({ href: "/auth/two-factor", locale });
 });

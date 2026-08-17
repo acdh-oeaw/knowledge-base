@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { ProgressCircle } from "@acdh-knowledge-base/ui/progress-circle";
+import { Button } from "@dariah-eric/ui/button";
+import { ProgressCircle } from "@dariah-eric/ui/progress-circle";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useEffect, useState } from "react";
 

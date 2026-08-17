@@ -1,4 +1,4 @@
-import type { AsyncOption } from "@acdh-knowledge-base/ui/use-async-options";
+import type { AsyncOption } from "@dariah-eric/ui/use-async-options";
 
 export interface OrganisationalUnitOption {
 	documentId: string;

@@ -278,7 +278,7 @@ jobs:
         run: pnpm exec turbo run build
 
       - name: Run e2e tests
-        run: pnpm exec turbo run --filter "@acdh-knowledge-base/knowledge-base" test:e2e -- --project=admin --project=non-admin
+        run: pnpm exec turbo run --filter "@dariah-eric/knowledge-base" test:e2e -- --project=admin --project=non-admin
 
       - uses: actions/upload-artifact@v7
         if: ${{ failure() }}
@@ -412,7 +412,7 @@ jobs:
         run: pnpm exec turbo run build
 
       - name: Run e2e tests
-        run: pnpm exec turbo run --filter "@acdh-knowledge-base/knowledge-base" test:e2e -- --project=chromium --project=firefox --project=webkit
+        run: pnpm exec turbo run --filter "@dariah-eric/knowledge-base" test:e2e -- --project=chromium --project=firefox --project=webkit
 
       - uses: actions/upload-artifact@v7
         if: ${{ failure() }}

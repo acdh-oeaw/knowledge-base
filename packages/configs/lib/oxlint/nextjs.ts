@@ -47,7 +47,7 @@ const config = defineConfig({
 				paths: [
 					{
 						allowImportNames: ["useLinkStatus"],
-						message: "Please use `@acdh-knowledge-base/ui/link` instead.",
+						message: "Please use `@dariah-eric/ui/link` instead.",
 						name: "next/link",
 					},
 					{

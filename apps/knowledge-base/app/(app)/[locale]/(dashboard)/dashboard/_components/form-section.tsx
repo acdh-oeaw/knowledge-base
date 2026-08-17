@@ -1,4 +1,4 @@
-import { Description } from "@acdh-knowledge-base/ui/field";
+import { Description } from "@dariah-eric/ui/field";
 import { Fragment, type ReactNode, createContext, use } from "react";
 import { twMerge } from "tailwind-merge";
 

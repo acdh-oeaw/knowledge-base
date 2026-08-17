@@ -1,6 +1,6 @@
 "use client";
 
-import { type UiContextValue, UiProvider } from "@acdh-knowledge-base/ui/ui-provider";
+import { type UiContextValue, UiProvider } from "@dariah-eric/ui/ui-provider";
 import type { ReactNode } from "react";
 import {
 	I18nProvider as AriaI18nProvider,

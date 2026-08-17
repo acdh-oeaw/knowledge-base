@@ -1,4 +1,4 @@
-import { CardDescription, CardHeader } from "@acdh-knowledge-base/ui/card";
+import { CardDescription, CardHeader } from "@dariah-eric/ui/card";
 import type { ComponentProps, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 

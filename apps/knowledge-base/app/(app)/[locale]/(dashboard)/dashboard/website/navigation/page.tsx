@@ -1,4 +1,4 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -16,132 +16,132 @@ import { createMetadata } from "@/lib/server/create-metadata";
 interface DashboardWebsiteNavigationPageProps extends PageProps<"/[locale]/dashboard/website/navigation"> {}
 
 export async function generateMetadata(
-	_props: Readonly<DashboardWebsiteNavigationPageProps>,
-	resolvingMetadata: ResolvingMetadata,
+  _props: Readonly<DashboardWebsiteNavigationPageProps>,
+  resolvingMetadata: ResolvingMetadata,
 ): Promise<Metadata> {
-	const t = await getExtracted();
+  const t = await getExtracted();
 
-	const metadata: Metadata = await createMetadata(resolvingMetadata, {
-		title: t("Website dashboard - Navigation"),
-	});
+  const metadata: Metadata = await createMetadata(resolvingMetadata, {
+    title: t("Website dashboard - Navigation"),
+  });
 
-	return metadata;
+  return metadata;
 }
 
 export default async function DashboardWebsiteNavigationPage(
-	props: Readonly<DashboardWebsiteNavigationPageProps>,
+  props: Readonly<DashboardWebsiteNavigationPageProps>,
 ): Promise<ReactNode> {
-	const { searchParams: searchParamsPromise } = props;
+  const { searchParams: searchParamsPromise } = props;
 
-	const { locale: localeParam } = await searchParamsPromise;
+  const { locale: localeParam } = await searchParamsPromise;
 
-	const locales = await getLocales();
-	const requestedLocale = locales.find((locale) => locale.code === localeParam);
-	const selectedLocale =
-		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+  const locales = await getLocales();
+  const requestedLocale = locales.find((locale) => locale.code === localeParam);
+  const selectedLocale =
+    requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
 
-	if (selectedLocale == null) {
-		notFound();
-	}
+  if (selectedLocale == null) {
+    notFound();
+  }
 
-	const [menus, items, pages, spotlightArticles, impactCaseStudies] = await Promise.all([
-		db.query.navigationMenus.findMany({
-			orderBy: { name: "asc" },
-			columns: { id: true, name: true },
-		}),
-		db
-			.select({
-				id: schema.navigationItems.id,
-				menuId: schema.navigationItems.menuId,
-				parentId: schema.navigationItems.parentId,
-				label: schema.navigationItems.label,
-				href: schema.navigationItems.href,
-				entityId: schema.navigationItems.entityId,
-				isExternal: schema.navigationItems.isExternal,
-				position: schema.navigationItems.position,
-			})
-			.from(schema.navigationItems)
-			.where(navigationItemLocaleWhere(selectedLocale.id))
-			.orderBy(schema.navigationItems.position),
-		db
-			.select({ id: schema.pages.id, title: schema.pages.title })
-			.from(schema.pages)
-			.innerJoin(schema.entityVersions, eq(schema.pages.id, schema.entityVersions.id))
-			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(publishedEntityVersionWhere())
-			.orderBy(schema.pages.title),
-		db
-			.select({ id: schema.spotlightArticles.id, title: schema.spotlightArticles.title })
-			.from(schema.spotlightArticles)
-			.innerJoin(schema.entityVersions, eq(schema.spotlightArticles.id, schema.entityVersions.id))
-			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(publishedEntityVersionWhere())
-			.orderBy(schema.spotlightArticles.title),
-		db
-			.select({ id: schema.impactCaseStudies.id, title: schema.impactCaseStudies.title })
-			.from(schema.impactCaseStudies)
-			.innerJoin(schema.entityVersions, eq(schema.impactCaseStudies.id, schema.entityVersions.id))
-			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(publishedEntityVersionWhere())
-			.orderBy(schema.impactCaseStudies.title),
-	]);
+  const [menus, items, pages, spotlightArticles, impactCaseStudies] = await Promise.all([
+    db.query.navigationMenus.findMany({
+      orderBy: { name: "asc" },
+      columns: { id: true, name: true },
+    }),
+    db
+      .select({
+        id: schema.navigationItems.id,
+        menuId: schema.navigationItems.menuId,
+        parentId: schema.navigationItems.parentId,
+        label: schema.navigationItems.label,
+        href: schema.navigationItems.href,
+        entityId: schema.navigationItems.entityId,
+        isExternal: schema.navigationItems.isExternal,
+        position: schema.navigationItems.position,
+      })
+      .from(schema.navigationItems)
+      .where(navigationItemLocaleWhere(selectedLocale.id))
+      .orderBy(schema.navigationItems.position),
+    db
+      .select({ id: schema.pages.id, title: schema.pages.title })
+      .from(schema.pages)
+      .innerJoin(schema.entityVersions, eq(schema.pages.id, schema.entityVersions.id))
+      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+      .where(publishedEntityVersionWhere())
+      .orderBy(schema.pages.title),
+    db
+      .select({ id: schema.spotlightArticles.id, title: schema.spotlightArticles.title })
+      .from(schema.spotlightArticles)
+      .innerJoin(schema.entityVersions, eq(schema.spotlightArticles.id, schema.entityVersions.id))
+      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+      .where(publishedEntityVersionWhere())
+      .orderBy(schema.spotlightArticles.title),
+    db
+      .select({ id: schema.impactCaseStudies.id, title: schema.impactCaseStudies.title })
+      .from(schema.impactCaseStudies)
+      .innerJoin(schema.entityVersions, eq(schema.impactCaseStudies.id, schema.entityVersions.id))
+      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+      .where(publishedEntityVersionWhere())
+      .orderBy(schema.impactCaseStudies.title),
+  ]);
 
-	const entityTitleMap = new Map<string, { title: string; type: EntityOption["type"] }>([
-		...pages.map((e): [string, { title: string; type: EntityOption["type"] }] => [
-			e.id,
-			{ title: e.title, type: "page" },
-		]),
-		...spotlightArticles.map((e): [string, { title: string; type: EntityOption["type"] }] => [
-			e.id,
-			{ title: e.title, type: "spotlight" },
-		]),
-		...impactCaseStudies.map((e): [string, { title: string; type: EntityOption["type"] }] => [
-			e.id,
-			{ title: e.title, type: "impact-case-study" },
-		]),
-	]);
+  const entityTitleMap = new Map<string, { title: string; type: EntityOption["type"] }>([
+    ...pages.map((e): [string, { title: string; type: EntityOption["type"] }] => [
+      e.id,
+      { title: e.title, type: "page" },
+    ]),
+    ...spotlightArticles.map((e): [string, { title: string; type: EntityOption["type"] }] => [
+      e.id,
+      { title: e.title, type: "spotlight" },
+    ]),
+    ...impactCaseStudies.map((e): [string, { title: string; type: EntityOption["type"] }] => [
+      e.id,
+      { title: e.title, type: "impact-case-study" },
+    ]),
+  ]);
 
-	const menusWithItems = menus.map((menu) => {
-		return {
-			id: menu.id,
-			name: menu.name,
-			items: items
-				.filter((item) => item.menuId === menu.id)
-				.map((item) => {
-					const entityMeta = item.entityId != null ? entityTitleMap.get(item.entityId) : null;
-					return {
-						id: item.id,
-						menuId: item.menuId,
-						parentId: item.parentId,
-						label: item.label,
-						href: item.href,
-						entityId: item.entityId,
-						isExternal: item.isExternal,
-						position: item.position,
-						entityTitle: entityMeta?.title ?? null,
-					};
-				}),
-		};
-	});
+  const menusWithItems = menus.map((menu) => {
+    return {
+      id: menu.id,
+      name: menu.name,
+      items: items
+        .filter((item) => item.menuId === menu.id)
+        .map((item) => {
+          const entityMeta = item.entityId != null ? entityTitleMap.get(item.entityId) : null;
+          return {
+            id: item.id,
+            menuId: item.menuId,
+            parentId: item.parentId,
+            label: item.label,
+            href: item.href,
+            entityId: item.entityId,
+            isExternal: item.isExternal,
+            position: item.position,
+            entityTitle: entityMeta?.title ?? null,
+          };
+        }),
+    };
+  });
 
-	const entities: Array<EntityOption> = [
-		...pages.map((e) => {
-			return { id: e.id, title: e.title, type: "page" as const };
-		}),
-		...spotlightArticles.map((e) => {
-			return { id: e.id, title: e.title, type: "spotlight" as const };
-		}),
-		...impactCaseStudies.map((e) => {
-			return { id: e.id, title: e.title, type: "impact-case-study" as const };
-		}),
-	];
+  const entities: Array<EntityOption> = [
+    ...pages.map((e) => {
+      return { id: e.id, title: e.title, type: "page" as const };
+    }),
+    ...spotlightArticles.map((e) => {
+      return { id: e.id, title: e.title, type: "spotlight" as const };
+    }),
+    ...impactCaseStudies.map((e) => {
+      return { id: e.id, title: e.title, type: "impact-case-study" as const };
+    }),
+  ];
 
-	return (
-		<NavigationPage
-			entities={entities}
-			locales={locales}
-			menus={menusWithItems}
-			selectedLocaleCode={selectedLocale.code}
-		/>
-	);
+  return (
+    <NavigationPage
+      entities={entities}
+      locales={locales}
+      menus={menusWithItems}
+      selectedLocaleCode={selectedLocale.code}
+    />
+  );
 }

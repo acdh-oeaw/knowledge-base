@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
+import type * as schema from "@dariah-eric/database/schema";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,40 +12,40 @@ import { publishInternalPageAction } from "@/app/(app)/[locale]/(dashboard)/dash
 import { updateInternalPageAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-pages/_lib/update-internal-page.action";
 
 interface InternalPageEditFormProps {
-	contentBlocks: Array<ContentBlock>;
-	documentId: string;
-	hasDraftChanges: boolean;
-	internalPage: Pick<schema.InternalPage, "id" | "title"> & {
-		entityVersion: {
-			entity: Pick<schema.Entity, "id">;
-			slug: Pick<schema.Slug, "value">;
-		};
-	};
-	isPublished: boolean;
+  contentBlocks: Array<ContentBlock>;
+  documentId: string;
+  hasDraftChanges: boolean;
+  internalPage: Pick<schema.InternalPage, "id" | "title"> & {
+    entityVersion: {
+      entity: Pick<schema.Entity, "id">;
+      slug: Pick<schema.Slug, "value">;
+    };
+  };
+  isPublished: boolean;
 }
 
 export function InternalPageEditForm(props: Readonly<InternalPageEditFormProps>): ReactNode {
-	const { contentBlocks, documentId, hasDraftChanges, internalPage, isPublished } = props;
+  const { contentBlocks, documentId, hasDraftChanges, internalPage, isPublished } = props;
 
-	const t = useExtracted();
+  const t = useExtracted();
 
-	return (
-		<Fragment>
-			<EntityFormHeader
-				title={t("Edit internal page")}
-				lifecycle={{
-					documentId,
-					hasDraft: hasDraftChanges,
-					isPublished,
-					publishAction: publishInternalPageAction,
-					discardDraftAction: discardInternalPageDraftAction,
-				}}
-			/>
-			<InternalPageForm
-				contentBlocks={contentBlocks}
-				formAction={updateInternalPageAction}
-				internalPage={internalPage}
-			/>
-		</Fragment>
-	);
+  return (
+    <Fragment>
+      <EntityFormHeader
+        title={t("Edit internal page")}
+        lifecycle={{
+          documentId,
+          hasDraft: hasDraftChanges,
+          isPublished,
+          publishAction: publishInternalPageAction,
+          discardDraftAction: discardInternalPageDraftAction,
+        }}
+      />
+      <InternalPageForm
+        contentBlocks={contentBlocks}
+        formAction={updateInternalPageAction}
+        internalPage={internalPage}
+      />
+    </Fragment>
+  );
 }

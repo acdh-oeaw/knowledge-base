@@ -1,6 +1,6 @@
 "use client";
 
-import { Tab, type TabProps, Tabs } from "@acdh-knowledge-base/ui/tabs";
+import { Tab, type TabProps, Tabs } from "@dariah-eric/ui/tabs";
 import type { ReactNode } from "react";
 import type { Key } from "react-aria-components";
 

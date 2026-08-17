@@ -1,10 +1,10 @@
 "use server";
 
 import {
-	type GetValidationErrors,
-	createActionStateError,
-	createActionStateSuccess,
-} from "@acdh-knowledge-base/next-lib/actions";
+  type GetValidationErrors,
+  createActionStateError,
+  createActionStateSuccess,
+} from "@dariah-eric/next-lib/actions";
 import { getFormDataValues, log } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
@@ -16,45 +16,45 @@ import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const sendContactFormEmailAction = createServerAction<
-	unknown,
-	GetValidationErrors<typeof SendContactFormInputSchema>
+  unknown,
+  GetValidationErrors<typeof SendContactFormInputSchema>
 >(async function sendContactFormEmailAction(state, formData) {
-	const locale = await getLocale();
-	const t = await getExtracted();
+  const locale = await getLocale();
+  const t = await getExtracted();
 
-	const validation = await v.safeParseAsync(
-		SendContactFormInputSchema,
-		getFormDataValues(formData),
-		{ lang: getIntlLanguage(locale) },
-	);
+  const validation = await v.safeParseAsync(
+    SendContactFormInputSchema,
+    getFormDataValues(formData),
+    { lang: getIntlLanguage(locale) },
+  );
 
-	if (!validation.success) {
-		const errors = v.flatten<typeof SendContactFormInputSchema>(validation.issues);
+  if (!validation.success) {
+    const errors = v.flatten<typeof SendContactFormInputSchema>(validation.issues);
 
-		return createActionStateError({
-			formData,
-			message: errors.root ?? t("Invalid or missing fields."),
-			validationErrors: errors.nested,
-		});
-	}
+    return createActionStateError({
+      formData,
+      message: errors.root ?? t("Invalid or missing fields."),
+      validationErrors: errors.nested,
+    });
+  }
 
-	const { email, message, name, subject } = validation.output;
+  const { email, message, name, subject } = validation.output;
 
-	const result = await emailService.sendEmail({
-		from: `${name} <${email}>`,
-		to: env.EMAIL_ADDRESS,
-		subject,
-		text: message,
-	});
+  const result = await emailService.sendEmail({
+    from: `${name} <${email}>`,
+    to: env.EMAIL_ADDRESS,
+    subject,
+    text: message,
+  });
 
-	if (result.isErr()) {
-		return createActionStateError({
-			formData,
-			message: t("Failed to send message."),
-		});
-	}
+  if (result.isErr()) {
+    return createActionStateError({
+      formData,
+      message: t("Failed to send message."),
+    });
+  }
 
-	log.info(result.value);
+  log.info(result.value);
 
-	return createActionStateSuccess({ message: t("Successfully sent message.") });
+  return createActionStateSuccess({ message: t("Successfully sent message.") });
 });

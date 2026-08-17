@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
+import type * as schema from "@dariah-eric/database/schema";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,58 +12,58 @@ import { publishDocumentOrPolicyAction } from "@/app/(app)/[locale]/(dashboard)/
 import { updateDocumentOrPolicyAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/update-document-or-policy.action";
 
 interface DocumentOrPolicyEditFormProps {
-	initialAssets: Array<{ key: string; label: string; url: string }>;
-	contentBlocks: Array<ContentBlock>;
-	documentId: string;
-	hasDraftChanges: boolean;
-	isPublished: boolean;
-	documentOrPolicy: Pick<
-		schema.DocumentOrPolicy,
-		"id" | "title" | "summary" | "url" | "groupId"
-	> & {
-		entityVersion: {
-			entity: { id: string };
-			slug: { value: string };
-		};
-	} & { document: { key: string; label: string; url: string } };
-	groups: Array<Pick<schema.DocumentPolicyGroup, "id" | "label">>;
+  initialAssets: Array<{ key: string; label: string; url: string }>;
+  contentBlocks: Array<ContentBlock>;
+  documentId: string;
+  hasDraftChanges: boolean;
+  isPublished: boolean;
+  documentOrPolicy: Pick<
+    schema.DocumentOrPolicy,
+    "id" | "title" | "summary" | "url" | "groupId"
+  > & {
+    entityVersion: {
+      entity: { id: string };
+      slug: { value: string };
+    };
+  } & { document: { key: string; label: string; url: string } };
+  groups: Array<Pick<schema.DocumentPolicyGroup, "id" | "label">>;
 }
 
 export function DocumentOrPolicyEditForm(
-	props: Readonly<DocumentOrPolicyEditFormProps>,
+  props: Readonly<DocumentOrPolicyEditFormProps>,
 ): ReactNode {
-	const {
-		initialAssets,
-		contentBlocks,
-		documentId,
-		hasDraftChanges,
-		isPublished,
-		documentOrPolicy,
-		groups,
-	} = props;
+  const {
+    initialAssets,
+    contentBlocks,
+    documentId,
+    hasDraftChanges,
+    isPublished,
+    documentOrPolicy,
+    groups,
+  } = props;
 
-	const t = useExtracted();
+  const t = useExtracted();
 
-	return (
-		<Fragment>
-			<EntityFormHeader
-				title={t("Edit document or policy")}
-				lifecycle={{
-					documentId,
-					hasDraft: hasDraftChanges,
-					isPublished,
-					publishAction: publishDocumentOrPolicyAction,
-					discardDraftAction: discardDocumentOrPolicyDraftAction,
-				}}
-			/>
+  return (
+    <Fragment>
+      <EntityFormHeader
+        title={t("Edit document or policy")}
+        lifecycle={{
+          documentId,
+          hasDraft: hasDraftChanges,
+          isPublished,
+          publishAction: publishDocumentOrPolicyAction,
+          discardDraftAction: discardDocumentOrPolicyDraftAction,
+        }}
+      />
 
-			<DocumentOrPolicyForm
-				contentBlocks={contentBlocks}
-				documentOrPolicy={documentOrPolicy}
-				formAction={updateDocumentOrPolicyAction}
-				groups={groups}
-				initialAssets={initialAssets}
-			/>
-		</Fragment>
-	);
+      <DocumentOrPolicyForm
+        contentBlocks={contentBlocks}
+        documentOrPolicy={documentOrPolicy}
+        formAction={updateDocumentOrPolicyAction}
+        groups={groups}
+        initialAssets={initialAssets}
+      />
+    </Fragment>
+  );
 }

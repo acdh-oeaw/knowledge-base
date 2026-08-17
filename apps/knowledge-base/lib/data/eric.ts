@@ -1,90 +1,90 @@
-import type { User } from "@acdh-knowledge-base/auth";
-import * as schema from "@acdh-knowledge-base/database/schema";
+import type { User } from "@dariah-eric/auth";
+import * as schema from "@dariah-eric/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 import { forbidden } from "next/navigation";
 
 import {
-	type EricReverseRelationSourceType,
-	ericReverseRelationSourceTypes,
+  type EricReverseRelationSourceType,
+  ericReverseRelationSourceTypes,
 } from "@/lib/data/eric-relation-source-types";
 import {
-	type ReverseUnitRelation,
-	type UnitRelationStatusOption,
-	getReverseUnitRelationStatusOptions,
-	getReverseUnitRelations,
+  type ReverseUnitRelation,
+  type UnitRelationStatusOption,
+  getReverseUnitRelationStatusOptions,
+  getReverseUnitRelations,
 } from "@/lib/data/unit-relations";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 
 export interface EricReverseRelationGroup {
-	relations: Array<ReverseUnitRelation>;
-	statusOptions: Array<UnitRelationStatusOption>;
+  relations: Array<ReverseUnitRelation>;
+  statusOptions: Array<UnitRelationStatusOption>;
 }
 
 export type EricReverseRelationGroups = Record<
-	EricReverseRelationSourceType,
-	EricReverseRelationGroup
+  EricReverseRelationSourceType,
+  EricReverseRelationGroup
 >;
 
 export interface EricForAdmin {
-	documentId: string;
-	slug: string;
-	name: string;
-	hasDraft: boolean;
-	isPublished: boolean;
+  documentId: string;
+  slug: string;
+  name: string;
+  hasDraft: boolean;
+  isPublished: boolean;
 }
 
 function assertAdminUser(user: Pick<User, "role">): void {
-	if (user.role !== "admin") {
-		forbidden();
-	}
+  if (user.role !== "admin") {
+    forbidden();
+  }
 }
 
 /** Resolve the singleton ERIC document and its lifecycle state for the admin list/landing. */
 export async function getEricForAdmin(
-	currentUser: Pick<User, "role">,
+  currentUser: Pick<User, "role">,
 ): Promise<EricForAdmin | null> {
-	assertAdminUser(currentUser);
+  assertAdminUser(currentUser);
 
-	const unit = await db.query.organisationalUnits.findFirst({
-		where: { type: { type: "eric" } },
-		columns: { name: true },
-		with: {
-			entityVersion: {
-				columns: {},
-				with: {
-					entity: { columns: { id: true } },
-					slug: { columns: { value: true } },
-				},
-			},
-		},
-	});
+  const unit = await db.query.organisationalUnits.findFirst({
+    where: { type: { type: "eric" } },
+    columns: { name: true },
+    with: {
+      entityVersion: {
+        columns: {},
+        with: {
+          entity: { columns: { id: true } },
+          slug: { columns: { value: true } },
+        },
+      },
+    },
+  });
 
-	if (unit == null) {
-		return null;
-	}
+  if (unit == null) {
+    return null;
+  }
 
-	assert(unit.entityVersion.slug, `Slug missing for entity version of ERIC unit document.`);
-	const slug = unit.entityVersion.slug.value;
+  assert(unit.entityVersion.slug, `Slug missing for entity version of ERIC unit document.`);
+  const slug = unit.entityVersion.slug.value;
 
-	const documentId = unit.entityVersion.entity.id;
+  const documentId = unit.entityVersion.entity.id;
 
-	const lifecycle = await db
-		.select({
-			hasDraftChanges: schema.documentLifecycle.hasDraftChanges,
-			publishedId: schema.documentLifecycle.publishedId,
-		})
-		.from(schema.documentLifecycle)
-		.where(eq(schema.documentLifecycle.documentId, documentId))
-		.then((rows) => rows[0] ?? null);
+  const lifecycle = await db
+    .select({
+      hasDraftChanges: schema.documentLifecycle.hasDraftChanges,
+      publishedId: schema.documentLifecycle.publishedId,
+    })
+    .from(schema.documentLifecycle)
+    .where(eq(schema.documentLifecycle.documentId, documentId))
+    .then((rows) => rows[0] ?? null);
 
-	return {
-		documentId,
-		slug,
-		name: unit.name,
-		hasDraft: lifecycle?.hasDraftChanges ?? false,
-		isPublished: lifecycle?.publishedId != null,
-	};
+  return {
+    documentId,
+    slug,
+    name: unit.name,
+    hasDraft: lifecycle?.hasDraftChanges ?? false,
+    isPublished: lifecycle?.publishedId != null,
+  };
 }
 
 /**
@@ -92,19 +92,19 @@ export async function getEricForAdmin(
  * into ERIC for that source. Shared by the edit (editable tabs) and details (read-only) views.
  */
 export async function getEricReverseRelationGroups(
-	documentId: string,
-	localeId?: string,
+  documentId: string,
+  localeId?: string,
 ): Promise<EricReverseRelationGroups> {
-	const entries = await Promise.all(
-		ericReverseRelationSourceTypes.map(async (sourceUnitType) => {
-			const [relations, statusOptions] = await Promise.all([
-				getReverseUnitRelations(documentId, { sourceUnitType, localeId }),
-				getReverseUnitRelationStatusOptions("eric", sourceUnitType),
-			]);
+  const entries = await Promise.all(
+    ericReverseRelationSourceTypes.map(async (sourceUnitType) => {
+      const [relations, statusOptions] = await Promise.all([
+        getReverseUnitRelations(documentId, { sourceUnitType, localeId }),
+        getReverseUnitRelationStatusOptions("eric", sourceUnitType),
+      ]);
 
-			return [sourceUnitType, { relations, statusOptions }] as const;
-		}),
-	);
+      return [sourceUnitType, { relations, statusOptions }] as const;
+    }),
+  );
 
-	return Object.fromEntries(entries) as EricReverseRelationGroups;
+  return Object.fromEntries(entries) as EricReverseRelationGroups;
 }

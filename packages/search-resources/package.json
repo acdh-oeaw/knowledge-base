@@ -1,50 +1,50 @@
 {
-	"name": "@acdh-knowledge-base/search-resources",
-	"private": true,
-	"license": "MIT",
-	"type": "module",
-	"sideEffects": false,
-	"imports": {
-		"#/*": "./*"
-	},
-	"exports": {
-		".": "./dist/index.mjs"
-	},
-	"scripts": {
-		"build": "tsdown",
-		"dev": "tsdown --watch",
-		"format:check": "oxfmt --check",
-		"format:fix": "oxfmt --write",
-		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
-		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
-		"types:check": "tsc --noEmit"
-	},
-	"devDependencies": {
-		"@acdh-knowledge-base/client-sshoc": "workspace:^",
-		"@acdh-knowledge-base/client-zotero": "workspace:^",
-		"@acdh-knowledge-base/configs": "workspace:^",
-		"@acdh-knowledge-base/database": "workspace:^",
-		"@acdh-knowledge-base/search": "workspace:^",
-		"@acdh-oeaw/lib": "catalog:",
-		"@types/node": "catalog:",
-		"better-result": "catalog:",
-		"remark-parse": "catalog:",
-		"remark-stringify": "catalog:",
-		"strip-markdown": "catalog:",
-		"tsdown": "catalog:",
-		"typescript": "catalog:",
-		"unified": "catalog:"
-	},
-	"peerDependencies": {
-		"@acdh-knowledge-base/client-sshoc": "workspace:^",
-		"@acdh-knowledge-base/client-zotero": "workspace:^",
-		"@acdh-knowledge-base/database": "workspace:^",
-		"@acdh-knowledge-base/search": "workspace:^",
-		"@acdh-oeaw/lib": "catalog:",
-		"better-result": "catalog:",
-		"remark-parse": "catalog:",
-		"remark-stringify": "catalog:",
-		"strip-markdown": "catalog:",
-		"unified": "catalog:"
-	}
+  "name": "@dariah-eric/search-resources",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#/*": "./*"
+  },
+  "exports": {
+    ".": "./dist/index.mjs"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "format:check": "oxfmt --check",
+    "format:fix": "oxfmt --write",
+    "lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+    "lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+    "types:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@acdh-oeaw/lib": "catalog:",
+    "@dariah-eric/client-sshoc": "workspace:^",
+    "@dariah-eric/client-zotero": "workspace:^",
+    "@dariah-eric/configs": "workspace:^",
+    "@dariah-eric/database": "workspace:^",
+    "@dariah-eric/search": "workspace:^",
+    "@types/node": "catalog:",
+    "better-result": "catalog:",
+    "remark-parse": "catalog:",
+    "remark-stringify": "catalog:",
+    "strip-markdown": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "unified": "catalog:"
+  },
+  "peerDependencies": {
+    "@acdh-oeaw/lib": "catalog:",
+    "@dariah-eric/client-sshoc": "workspace:^",
+    "@dariah-eric/client-zotero": "workspace:^",
+    "@dariah-eric/database": "workspace:^",
+    "@dariah-eric/search": "workspace:^",
+    "better-result": "catalog:",
+    "remark-parse": "catalog:",
+    "remark-stringify": "catalog:",
+    "strip-markdown": "catalog:",
+    "unified": "catalog:"
+  }
 }

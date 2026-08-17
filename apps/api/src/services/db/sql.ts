@@ -1,1 +1,1 @@
-export * from "@acdh-knowledge-base/database/sql";
+export * from "@dariah-eric/database/sql";

@@ -1,6 +1,6 @@
-import { globalGetRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
-import { Avatar } from "@acdh-knowledge-base/ui/avatar";
-import { Link } from "@acdh-knowledge-base/ui/link";
+import { globalGetRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
+import { Avatar } from "@dariah-eric/ui/avatar";
+import { Link } from "@dariah-eric/ui/link";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted, getLocale } from "next-intl/server";
 import type { ReactNode } from "react";
@@ -17,68 +17,68 @@ import { createMetadata } from "@/lib/server/create-metadata";
 interface TwoFactorSetupPageProps extends PageProps<"/[locale]/auth/two-factor/setup"> {}
 
 export async function generateMetadata(
-	_props: Readonly<TwoFactorSetupPageProps>,
-	resolvingMetadata: ResolvingMetadata,
+  _props: Readonly<TwoFactorSetupPageProps>,
+  resolvingMetadata: ResolvingMetadata,
 ): Promise<Metadata> {
-	const t = await getExtracted();
+  const t = await getExtracted();
 
-	const metadata: Metadata = await createMetadata(resolvingMetadata, {
-		title: t("Two-factor authentication setup"),
-	});
+  const metadata: Metadata = await createMetadata(resolvingMetadata, {
+    title: t("Two-factor authentication setup"),
+  });
 
-	return metadata;
+  return metadata;
 }
 
 export default async function TwoFactorSetupPage(
-	_props: Readonly<TwoFactorSetupPageProps>,
+  _props: Readonly<TwoFactorSetupPageProps>,
 ): Promise<ReactNode> {
-	const locale = await getLocale();
+  const locale = await getLocale();
 
-	const t = await getExtracted();
+  const t = await getExtracted();
 
-	if (!(await globalGetRequestRateLimit())) {
-		return t("Too many requests.");
-	}
+  if (!(await globalGetRequestRateLimit())) {
+    return t("Too many requests.");
+  }
 
-	const { session, user } = await getCurrentSession();
+  const { session, user } = await getCurrentSession();
 
-	if (session == null) {
-		redirect({ href: "/auth/sign-in", locale });
-	}
+  if (session == null) {
+    redirect({ href: "/auth/sign-in", locale });
+  }
 
-	if (!user.isEmailVerified) {
-		redirect({ href: "/auth/verify-email", locale });
-	}
+  if (!user.isEmailVerified) {
+    redirect({ href: "/auth/verify-email", locale });
+  }
 
-	if (user.isTwoFactorRegistered && !session.isTwoFactorVerified) {
-		redirect({ href: "/auth/two-factor", locale });
-	}
+  if (user.isTwoFactorRegistered && !session.isTwoFactorVerified) {
+    redirect({ href: "/auth/two-factor", locale });
+  }
 
-	const { key, uri } = auth.createTotpKeyUri(issuer, user.name);
-	const qrcode = renderSVG(uri);
+  const { key, uri } = auth.createTotpKeyUri(issuer, user.name);
+  const qrcode = renderSVG(uri);
 
-	return (
-		<Main className="min-block-full p-6 items-center justify-center flex flex-col">
-			<div className="inline-full max-inline-sm flex flex-col gap-y-4">
-				<Link aria-label={t("Home")} className="mbe-2 rounded-xs self-start inline-block" href="/">
-					<Avatar
-						className="dark:invert"
-						isSquare={true}
-						size="md"
-						src="/assets/images/logo-dariah.svg"
-					/>
-				</Link>
+  return (
+    <Main className="min-block-full p-6 items-center justify-center flex flex-col">
+      <div className="inline-full max-inline-sm flex flex-col gap-y-4">
+        <Link aria-label={t("Home")} className="mbe-2 rounded-xs self-start inline-block" href="/">
+          <Avatar
+            className="dark:invert"
+            isSquare={true}
+            size="md"
+            src="/assets/images/logo-dariah.svg"
+          />
+        </Link>
 
-				<div>
-					<h1 className="text-xl/10 font-semibold">{t("Set up two-factor authentication")}</h1>
-				</div>
+        <div>
+          <h1 className="text-xl/10 font-semibold">{t("Set up two-factor authentication")}</h1>
+        </div>
 
-				<div className="flex flex-col gap-y-4">
-					<div className="block-48 inline-48" dangerouslySetInnerHTML={{ __html: qrcode }} />
+        <div className="flex flex-col gap-y-4">
+          <div className="block-48 inline-48" dangerouslySetInnerHTML={{ __html: qrcode }} />
 
-					<TwoFactorSetUpForm encodedTotpKey={key} />
-				</div>
-			</div>
-		</Main>
-	);
+          <TwoFactorSetUpForm encodedTotpKey={key} />
+        </div>
+      </div>
+    </Main>
+  );
 }

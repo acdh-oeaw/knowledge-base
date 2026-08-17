@@ -1,5 +1,5 @@
-import { ToastRegion } from "@acdh-knowledge-base/ui/toast";
 import { createUrl } from "@acdh-oeaw/lib";
+import { ToastRegion } from "@dariah-eric/ui/toast";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { notFound } from "next/navigation";

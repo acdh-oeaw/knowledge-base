@@ -86,7 +86,7 @@ jobs:
               pnpm dlx turbo ls --affected --output json \
               2>/dev/null || echo '{"packages":{"items":[]}}'
             )
-            NAMES=$(echo "$AFFECTED" | jq -c '[.packages.items[] | select(.path | startswith("apps/")) | .name | sub("^@acdh-knowledge-base/"; "")]')
+            NAMES=$(echo "$AFFECTED" | jq -c '[.packages.items[] | select(.path | startswith("apps/")) | .name | sub("^@@dariah-eric/"; "")]')
             MATRIX=$(echo "$ALL_APPS" | jq -c --argjson names "$NAMES" '[.[] | select(.name as $n | $names | index($n))]')
           fi
           echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"

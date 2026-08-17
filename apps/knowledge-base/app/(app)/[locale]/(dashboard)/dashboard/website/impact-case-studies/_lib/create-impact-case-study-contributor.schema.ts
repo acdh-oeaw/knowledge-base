@@ -1,8 +1,8 @@
-import { articleContributorRolesEnum } from "@acdh-knowledge-base/database/schema";
+import { articleContributorRolesEnum } from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
 export const CreateImpactCaseStudyContributorActionInputSchema = v.object({
-	articleId: v.pipe(v.string(), v.uuid()),
-	personId: v.pipe(v.string(), v.uuid()),
-	role: v.picklist(articleContributorRolesEnum),
+  articleId: v.pipe(v.string(), v.uuid()),
+  personId: v.pipe(v.string(), v.uuid()),
+  role: v.picklist(articleContributorRolesEnum),
 });

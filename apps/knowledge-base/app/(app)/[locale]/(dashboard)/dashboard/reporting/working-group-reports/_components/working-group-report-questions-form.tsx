@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { RichTextEditor } from "@acdh-knowledge-base/ui/rich-text-editor";
+import { Button } from "@dariah-eric/ui/button";
+import { RichTextEditor } from "@dariah-eric/ui/rich-text-editor";
 import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";

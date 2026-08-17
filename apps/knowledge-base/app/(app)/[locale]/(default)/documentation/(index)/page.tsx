@@ -1,4 +1,4 @@
-import { Link } from "@acdh-knowledge-base/ui/link";
+import { Link } from "@dariah-eric/ui/link";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import type { ReactNode } from "react";

@@ -1,7 +1,7 @@
 "use server";
 
-import { createActionStateError } from "@acdh-knowledge-base/next-lib/actions";
-import { globalPostRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
+import { createActionStateError } from "@dariah-eric/next-lib/actions";
+import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import { getFormDataValues } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
@@ -13,60 +13,60 @@ import { redirect } from "@/lib/navigation/navigation";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const verifyPasswordResetTwoFactorWithTotpAction = createServerAction(
-	async function verifyPasswordResetTwoFactorWithTotpAction(state, formData) {
-		const locale = await getLocale();
-		const t = await getExtracted();
+  async function verifyPasswordResetTwoFactorWithTotpAction(state, formData) {
+    const locale = await getLocale();
+    const t = await getExtracted();
 
-		if (!(await globalPostRequestRateLimit())) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (!(await globalPostRequestRateLimit())) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const { session, user } = await auth.validatePasswordResetSessionFromRequest();
+    const { session, user } = await auth.validatePasswordResetSessionFromRequest();
 
-		if (session == null) {
-			return createActionStateError({ message: t("Not authenticated.") });
-		}
-		if (!session.isEmailVerified || !user.isTwoFactorRegistered || session.isTwoFactorVerified) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
-		if (!auth.totpBucket.check(session.userId, 1)) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (session == null) {
+      return createActionStateError({ message: t("Not authenticated.") });
+    }
+    if (!session.isEmailVerified || !user.isTwoFactorRegistered || session.isTwoFactorVerified) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
+    if (!auth.totpBucket.check(session.userId, 1)) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const result = await v.safeParseAsync(
-			VerifyPasswordResetTwoFactorWithTotpActionInputSchema,
-			getFormDataValues(formData),
-			{ lang: getIntlLanguage(locale) },
-		);
+    const result = await v.safeParseAsync(
+      VerifyPasswordResetTwoFactorWithTotpActionInputSchema,
+      getFormDataValues(formData),
+      { lang: getIntlLanguage(locale) },
+    );
 
-		if (!result.success) {
-			const errors = v.flatten<typeof VerifyPasswordResetTwoFactorWithTotpActionInputSchema>(
-				result.issues,
-			);
+    if (!result.success) {
+      const errors = v.flatten<typeof VerifyPasswordResetTwoFactorWithTotpActionInputSchema>(
+        result.issues,
+      );
 
-			return createActionStateError({
-				message: errors.root ?? t("Invalid or missing fields."),
-				validationErrors: errors.nested,
-			});
-		}
+      return createActionStateError({
+        message: errors.root ?? t("Invalid or missing fields."),
+        validationErrors: errors.nested,
+      });
+    }
 
-		const { code } = result.output;
+    const { code } = result.output;
 
-		const totpKey = await auth.getUserTotpKey(session.userId);
-		if (totpKey == null) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
-		if (!auth.totpBucket.consume(session.userId, 1)) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
-		if (!auth.verifyTotp(totpKey, code)) {
-			return createActionStateError({ message: t("Incorrect code.") });
-		}
+    const totpKey = await auth.getUserTotpKey(session.userId);
+    if (totpKey == null) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
+    if (!auth.totpBucket.consume(session.userId, 1)) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
+    if (!auth.verifyTotp(totpKey, code)) {
+      return createActionStateError({ message: t("Incorrect code.") });
+    }
 
-		auth.totpBucket.reset(session.userId);
+    auth.totpBucket.reset(session.userId);
 
-		await auth.setPasswordResetSessionAsTwoFactorVerified(session.id);
+    await auth.setPasswordResetSessionAsTwoFactorVerified(session.id);
 
-		redirect({ href: "/auth/reset-password", locale });
-	},
+    redirect({ href: "/auth/reset-password", locale });
+  },
 );

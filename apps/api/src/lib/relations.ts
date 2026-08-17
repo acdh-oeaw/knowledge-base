@@ -1,4 +1,4 @@
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 
 import type { PublicRelatedEntityType } from "@/lib/schemas";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -6,10 +6,10 @@ import { and, eq, notInArray, sql } from "@/services/db/sql";
 import { search } from "@/services/search";
 
 export interface RelatedEntity {
-	id: string;
-	slug: string;
-	entityType: PublicRelatedEntityType;
-	label: string | null;
+  id: string;
+  slug: string;
+  entityType: PublicRelatedEntityType;
+  label: string | null;
 }
 
 /**
@@ -19,32 +19,32 @@ export interface RelatedEntity {
  * entity_versions …)` scalar subquery in a filter.
  */
 export async function resolveDocumentId(db: Database | Transaction, id: string): Promise<string> {
-	const entityVersion = await db.query.entityVersions.findFirst({
-		where: { id },
-		columns: { entityId: true },
-	});
+  const entityVersion = await db.query.entityVersions.findFirst({
+    where: { id },
+    columns: { entityId: true },
+  });
 
-	return entityVersion?.entityId ?? id;
+  return entityVersion?.entityId ?? id;
 }
 
 export async function getRelatedEntities(
-	db: Database | Transaction,
-	entityId: string,
+  db: Database | Transaction,
+  entityId: string,
 ): Promise<Array<RelatedEntity>> {
-	const documentId = await resolveDocumentId(db, entityId);
+  const documentId = await resolveDocumentId(db, entityId);
 
-	return db
-		.select({
-			id: schema.entities.id,
-			slug: schema.slugs.value,
-			entityType: sql<RelatedEntity["entityType"]>`
+  return db
+    .select({
+      id: schema.entities.id,
+      slug: schema.slugs.value,
+      entityType: sql<RelatedEntity["entityType"]>`
 				CASE
 					WHEN ${schema.entityTypes.type} = 'organisational_units'
 					THEN ${schema.organisationalUnitTypes.type}
 					ELSE ${schema.entityTypes.type}
 				END
 			`.as("entity_type"),
-			label: sql<string>`
+      label: sql<string>`
 				COALESCE(
 					${schema.news.title},
 					${schema.events.title},
@@ -58,87 +58,87 @@ export async function getRelatedEntities(
 					${schema.projects.name}
 				)
 			`.as("label"),
-		})
-		.from(schema.entitiesToEntities)
-		.innerJoin(schema.entities, eq(schema.entitiesToEntities.relatedEntityId, schema.entities.id))
-		.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
-		.innerJoin(
-			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.entities.id),
-		)
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
-		.leftJoin(schema.news, eq(schema.documentLifecycle.publishedId, schema.news.id))
-		.leftJoin(schema.events, eq(schema.documentLifecycle.publishedId, schema.events.id))
-		.leftJoin(schema.pages, eq(schema.documentLifecycle.publishedId, schema.pages.id))
-		.leftJoin(
-			schema.impactCaseStudies,
-			eq(schema.documentLifecycle.publishedId, schema.impactCaseStudies.id),
-		)
-		.leftJoin(
-			schema.spotlightArticles,
-			eq(schema.documentLifecycle.publishedId, schema.spotlightArticles.id),
-		)
-		.leftJoin(
-			schema.documentsPolicies,
-			eq(schema.documentLifecycle.publishedId, schema.documentsPolicies.id),
-		)
-		.leftJoin(
-			schema.externalLinks,
-			eq(schema.documentLifecycle.publishedId, schema.externalLinks.id),
-		)
-		.leftJoin(schema.persons, eq(schema.documentLifecycle.publishedId, schema.persons.id))
-		.leftJoin(
-			schema.organisationalUnits,
-			eq(schema.documentLifecycle.publishedId, schema.organisationalUnits.id),
-		)
-		.leftJoin(
-			schema.organisationalUnitTypes,
-			eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
-		)
-		.leftJoin(schema.projects, eq(schema.documentLifecycle.publishedId, schema.projects.id))
-		.where(
-			and(
-				eq(schema.entitiesToEntities.entityId, documentId),
-				notInArray(schema.entityTypes.type, [
-					"documentation_pages",
-					"external_links",
-					"internal_pages",
-				]),
-			),
-		);
+    })
+    .from(schema.entitiesToEntities)
+    .innerJoin(schema.entities, eq(schema.entitiesToEntities.relatedEntityId, schema.entities.id))
+    .innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
+    .innerJoin(
+      schema.documentLifecycle,
+      eq(schema.documentLifecycle.documentId, schema.entities.id),
+    )
+    .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.documentLifecycle.publishedId))
+    .leftJoin(schema.news, eq(schema.documentLifecycle.publishedId, schema.news.id))
+    .leftJoin(schema.events, eq(schema.documentLifecycle.publishedId, schema.events.id))
+    .leftJoin(schema.pages, eq(schema.documentLifecycle.publishedId, schema.pages.id))
+    .leftJoin(
+      schema.impactCaseStudies,
+      eq(schema.documentLifecycle.publishedId, schema.impactCaseStudies.id),
+    )
+    .leftJoin(
+      schema.spotlightArticles,
+      eq(schema.documentLifecycle.publishedId, schema.spotlightArticles.id),
+    )
+    .leftJoin(
+      schema.documentsPolicies,
+      eq(schema.documentLifecycle.publishedId, schema.documentsPolicies.id),
+    )
+    .leftJoin(
+      schema.externalLinks,
+      eq(schema.documentLifecycle.publishedId, schema.externalLinks.id),
+    )
+    .leftJoin(schema.persons, eq(schema.documentLifecycle.publishedId, schema.persons.id))
+    .leftJoin(
+      schema.organisationalUnits,
+      eq(schema.documentLifecycle.publishedId, schema.organisationalUnits.id),
+    )
+    .leftJoin(
+      schema.organisationalUnitTypes,
+      eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
+    )
+    .leftJoin(schema.projects, eq(schema.documentLifecycle.publishedId, schema.projects.id))
+    .where(
+      and(
+        eq(schema.entitiesToEntities.entityId, documentId),
+        notInArray(schema.entityTypes.type, [
+          "documentation_pages",
+          "external_links",
+          "internal_pages",
+        ]),
+      ),
+    );
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getRelatedResources(db: Database | Transaction, entityId: string) {
-	const documentId = await resolveDocumentId(db, entityId);
-	const rows = await db
-		.select({ resourceId: schema.entitiesToResources.resourceId })
-		.from(schema.entitiesToResources)
-		.where(eq(schema.entitiesToResources.entityId, documentId));
+  const documentId = await resolveDocumentId(db, entityId);
+  const rows = await db
+    .select({ resourceId: schema.entitiesToResources.resourceId })
+    .from(schema.entitiesToResources)
+    .where(eq(schema.entitiesToResources.entityId, documentId));
 
-	if (rows.length === 0) {
-		return [];
-	}
+  if (rows.length === 0) {
+    return [];
+  }
 
-	const ids = rows.map((r) => r.resourceId);
+  const ids = rows.map((r) => r.resourceId);
 
-	const result = await search.collections.resources.search({
-		query: "*",
-		queryBy: ["label"],
-		filterBy: `id:[${ids.join(",")}]`,
-		perPage: ids.length,
-	});
+  const result = await search.collections.resources.search({
+    query: "*",
+    queryBy: ["label"],
+    filterBy: `id:[${ids.join(",")}]`,
+    perPage: ids.length,
+  });
 
-	if (result.isErr()) {
-		throw result.error;
-	}
+  if (result.isErr()) {
+    throw result.error;
+  }
 
-	return result.value.items.map((hit) => {
-		return {
-			id: hit.document.id,
-			label: hit.document.label,
-			type: hit.document.type,
-			links: hit.document.links,
-		};
-	});
+  return result.value.items.map((hit) => {
+    return {
+      id: hit.document.id,
+      label: hit.document.label,
+      type: hit.document.type,
+      links: hit.document.links,
+    };
+  });
 }

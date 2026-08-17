@@ -1,6 +1,6 @@
 "use client";
 
-import { Breadcrumbs, BreadcrumbsItem } from "@acdh-knowledge-base/ui/breadcrumbs";
+import { Breadcrumbs, BreadcrumbsItem } from "@dariah-eric/ui/breadcrumbs";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 

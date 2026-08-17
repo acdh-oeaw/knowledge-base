@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 
 import { getContentBlocks } from "@/lib/content-blocks";
@@ -9,8 +9,8 @@ import { flattenEntityVersion } from "@/lib/entity-version";
 import { type ImageAsset, generateImageUrl, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import {
-	getPublishedProjectPartners,
-	getPublishedProjectPartnersByDocuments,
+  getPublishedProjectPartners,
+  getPublishedProjectPartnersByDocuments,
 } from "@/lib/project-partners";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -18,33 +18,33 @@ import { alias, and, count, desc, eq, inArray, not, sql } from "@/services/db/sq
 import { imageWidth } from "~/config/api.config";
 
 function mapItem<
-	T extends {
-		image: ImageAsset | null;
-		socialMedia: Array<{
-			id: string;
-			url: string;
-			type: { type: string };
-		}>;
-		entityVersion: { updatedAt: Date; slug: { value: string } | null };
-		duration: { start: Date; end?: Date };
-	},
+  T extends {
+    image: ImageAsset | null;
+    socialMedia: Array<{
+      id: string;
+      url: string;
+      type: { type: string };
+    }>;
+    entityVersion: { updatedAt: Date; slug: { value: string } | null };
+    duration: { start: Date; end?: Date };
+  },
 >(item: T, width: number) {
-	const image = generateImageUrl(item.image, width);
-	const duration = serializeDateRange(item.duration);
+  const image = generateImageUrl(item.image, width);
+  const duration = serializeDateRange(item.duration);
 
-	const socialMedia = item.socialMedia.map((sm) => {
-		return {
-			...sm,
-			type: sm.type.type,
-		};
-	});
+  const socialMedia = item.socialMedia.map((sm) => {
+    return {
+      ...sm,
+      type: sm.type.type,
+    };
+  });
 
-	return {
-		...flattenEntityVersion(item),
-		duration,
-		image,
-		socialMedia,
-	};
+  return {
+    ...flattenEntityVersion(item),
+    duration,
+    image,
+    socialMedia,
+  };
 }
 
 /**
@@ -55,504 +55,504 @@ function mapItem<
  * (identical) match.
  */
 async function resolvePublishedDariahProjectsLookup(
-	db: Database | Transaction,
-	requestedLocaleId?: string,
+  db: Database | Transaction,
+  requestedLocaleId?: string,
 ) {
-	const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
-		resolveLocaleContext(db, requestedLocaleId),
-		db.query.entityTypes.findFirst({ where: { type: "projects" }, columns: { id: true } }),
-		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
-	]);
+  const [{ localeId, defaultLocaleId }, type, status] = await Promise.all([
+    resolveLocaleContext(db, requestedLocaleId),
+    db.query.entityTypes.findFirst({ where: { type: "projects" }, columns: { id: true } }),
+    db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+  ]);
 
-	assert(type, "No projects entity type in database.");
-	assert(status, "No published entity status in database.");
+  assert(type, "No projects entity type in database.");
+  assert(status, "No published entity status in database.");
 
-	const preferredVersion = alias(schema.entityVersions, "dariah_projects_preferred_version");
-	const defaultVersion = alias(schema.entityVersions, "dariah_projects_default_version");
+  const preferredVersion = alias(schema.entityVersions, "dariah_projects_preferred_version");
+  const defaultVersion = alias(schema.entityVersions, "dariah_projects_default_version");
 
-	return {
-		localeId,
-		defaultLocaleId,
-		typeId: type.id,
-		statusId: status.id,
-		preferredVersion,
-		defaultVersion,
-	};
+  return {
+    localeId,
+    defaultLocaleId,
+    typeId: type.id,
+    statusId: status.id,
+    preferredVersion,
+    defaultVersion,
+  };
 }
 
 async function getSocialMediaByProjectVersionId(
-	db: Database | Transaction,
-	projectVersionIds: Array<string>,
+  db: Database | Transaction,
+  projectVersionIds: Array<string>,
 ) {
-	const socialMediaByProjectId = new Map<
-		string,
-		Array<{ id: string; url: string; type: { type: string } }>
-	>();
+  const socialMediaByProjectId = new Map<
+    string,
+    Array<{ id: string; url: string; type: { type: string } }>
+  >();
 
-	if (projectVersionIds.length === 0) {
-		return socialMediaByProjectId;
-	}
+  if (projectVersionIds.length === 0) {
+    return socialMediaByProjectId;
+  }
 
-	const rows = await db
-		.select({
-			projectId: schema.projectsToSocialMedia.projectId,
-			id: schema.socialMedia.id,
-			url: schema.socialMedia.url,
-			type: schema.socialMediaTypes.type,
-		})
-		.from(schema.projectsToSocialMedia)
-		.innerJoin(
-			schema.socialMedia,
-			eq(schema.socialMedia.id, schema.projectsToSocialMedia.socialMediaId),
-		)
-		.innerJoin(schema.socialMediaTypes, eq(schema.socialMediaTypes.id, schema.socialMedia.typeId))
-		.where(inArray(schema.projectsToSocialMedia.projectId, projectVersionIds));
+  const rows = await db
+    .select({
+      projectId: schema.projectsToSocialMedia.projectId,
+      id: schema.socialMedia.id,
+      url: schema.socialMedia.url,
+      type: schema.socialMediaTypes.type,
+    })
+    .from(schema.projectsToSocialMedia)
+    .innerJoin(
+      schema.socialMedia,
+      eq(schema.socialMedia.id, schema.projectsToSocialMedia.socialMediaId),
+    )
+    .innerJoin(schema.socialMediaTypes, eq(schema.socialMediaTypes.id, schema.socialMedia.typeId))
+    .where(inArray(schema.projectsToSocialMedia.projectId, projectVersionIds));
 
-	for (const row of rows) {
-		const list = socialMediaByProjectId.get(row.projectId) ?? [];
-		list.push({ id: row.id, url: row.url, type: { type: row.type } });
-		socialMediaByProjectId.set(row.projectId, list);
-	}
+  for (const row of rows) {
+    const list = socialMediaByProjectId.get(row.projectId) ?? [];
+    list.push({ id: row.id, url: row.url, type: { type: row.type } });
+    socialMediaByProjectId.set(row.projectId, list);
+  }
 
-	return socialMediaByProjectId;
+  return socialMediaByProjectId;
 }
 
 //
 
 interface GetDariahProjectsParams {
-	/** @default 10 */
-	limit?: number;
-	/** @default 0 */
-	offset?: number;
-	status?: "active" | "inactive";
-	localeId?: string;
+  /** @default 10 */
+  limit?: number;
+  /** @default 0 */
+  offset?: number;
+  status?: "active" | "inactive";
+  localeId?: string;
 }
 
 export async function getDariahProjects(
-	db: Database | Transaction,
-	params: GetDariahProjectsParams,
+  db: Database | Transaction,
+  params: GetDariahProjectsParams,
 ) {
-	const { limit = 10, offset = 0, status, localeId: requestedLocaleId } = params;
-	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
-		await resolvePublishedDariahProjectsLookup(db, requestedLocaleId);
+  const { limit = 10, offset = 0, status, localeId: requestedLocaleId } = params;
+  const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+    await resolvePublishedDariahProjectsLookup(db, requestedLocaleId);
 
-	const statusFilter =
-		status != null
-			? status === "active"
-				? sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`
-				: not(sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`)
-			: undefined;
+  const statusFilter =
+    status != null
+      ? status === "active"
+        ? sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`
+        : not(sql`${schema.dariahProjects.duration} @> NOW()::TIMESTAMPTZ`)
+      : undefined;
 
-	const [items, aggregate] = await Promise.all([
-		db
-			.select({
-				id: schema.dariahProjects.id,
-				documentId: schema.entities.id,
-				name: schema.dariahProjects.name,
-				acronym: schema.dariahProjects.acronym,
-				summary: schema.dariahProjects.summary,
-				duration: schema.dariahProjects.duration,
-				call: schema.dariahProjects.call,
-				topic: schema.dariahProjects.topic,
-				funding: schema.dariahProjects.funding,
-				updatedAt: schema.entityVersions.updatedAt,
-				slug: schema.slugs.value,
-				scope: schema.projectScopes.scope,
-				imageKey: schema.assets.key,
-				imageAlt: schema.assets.alt,
-				imageCaption: schema.assets.caption,
-				licenseName: schema.licenses.name,
-				licenseUrl: schema.licenses.url,
-			})
-			.from(schema.entities)
-			.leftJoin(
-				preferredVersion,
-				and(
-					eq(preferredVersion.entityId, schema.entities.id),
-					eq(preferredVersion.localeId, localeId),
-					eq(preferredVersion.statusId, statusId),
-				),
-			)
-			.leftJoin(
-				defaultVersion,
-				and(
-					eq(defaultVersion.entityId, schema.entities.id),
-					eq(defaultVersion.localeId, defaultLocaleId),
-					eq(defaultVersion.statusId, statusId),
-				),
-			)
-			.innerJoin(
-				schema.entityVersions,
-				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
-			)
-			.innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
-			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
-			.innerJoin(schema.projectScopes, eq(schema.projectScopes.id, schema.dariahProjects.scopeId))
-			.leftJoin(schema.assets, eq(schema.dariahProjects.imageId, schema.assets.id))
-			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
-			.where(and(eq(schema.entities.typeId, typeId), statusFilter))
-			.orderBy(desc(schema.entityVersions.updatedAt))
-			.limit(limit)
-			.offset(offset),
-		db
-			.select({ total: count() })
-			.from(schema.dariahProjects)
-			.innerJoin(schema.entityVersions, eq(schema.dariahProjects.id, schema.entityVersions.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
-			)
-			.where(statusFilter),
-	]);
+  const [items, aggregate] = await Promise.all([
+    db
+      .select({
+        id: schema.dariahProjects.id,
+        documentId: schema.entities.id,
+        name: schema.dariahProjects.name,
+        acronym: schema.dariahProjects.acronym,
+        summary: schema.dariahProjects.summary,
+        duration: schema.dariahProjects.duration,
+        call: schema.dariahProjects.call,
+        topic: schema.dariahProjects.topic,
+        funding: schema.dariahProjects.funding,
+        updatedAt: schema.entityVersions.updatedAt,
+        slug: schema.slugs.value,
+        scope: schema.projectScopes.scope,
+        imageKey: schema.assets.key,
+        imageAlt: schema.assets.alt,
+        imageCaption: schema.assets.caption,
+        licenseName: schema.licenses.name,
+        licenseUrl: schema.licenses.url,
+      })
+      .from(schema.entities)
+      .leftJoin(
+        preferredVersion,
+        and(
+          eq(preferredVersion.entityId, schema.entities.id),
+          eq(preferredVersion.localeId, localeId),
+          eq(preferredVersion.statusId, statusId),
+        ),
+      )
+      .leftJoin(
+        defaultVersion,
+        and(
+          eq(defaultVersion.entityId, schema.entities.id),
+          eq(defaultVersion.localeId, defaultLocaleId),
+          eq(defaultVersion.statusId, statusId),
+        ),
+      )
+      .innerJoin(
+        schema.entityVersions,
+        sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+      )
+      .innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
+      .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+      .innerJoin(schema.projectScopes, eq(schema.projectScopes.id, schema.dariahProjects.scopeId))
+      .leftJoin(schema.assets, eq(schema.dariahProjects.imageId, schema.assets.id))
+      .leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
+      .where(and(eq(schema.entities.typeId, typeId), statusFilter))
+      .orderBy(desc(schema.entityVersions.updatedAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(schema.dariahProjects)
+      .innerJoin(schema.entityVersions, eq(schema.dariahProjects.id, schema.entityVersions.id))
+      .innerJoin(
+        schema.documentLifecycle,
+        eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+      )
+      .where(statusFilter),
+  ]);
 
-	const total = aggregate.at(0)?.total ?? 0;
+  const total = aggregate.at(0)?.total ?? 0;
 
-	const [partnersByDocument, socialMediaByProjectId] = await Promise.all([
-		getPublishedProjectPartnersByDocuments(
-			db,
-			items.map((item) => item.documentId),
-		),
-		getSocialMediaByProjectVersionId(
-			db,
-			items.map((item) => item.id),
-		),
-	]);
+  const [partnersByDocument, socialMediaByProjectId] = await Promise.all([
+    getPublishedProjectPartnersByDocuments(
+      db,
+      items.map((item) => item.documentId),
+    ),
+    getSocialMediaByProjectVersionId(
+      db,
+      items.map((item) => item.id),
+    ),
+  ]);
 
-	const data = items.map((item) => {
-		const partners = partnersByDocument.get(item.documentId) ?? [];
-		const role =
-			partners.find((r) => r.unit.type === "eric" && r.unit.slug === "dariah-eu")?.role.role ??
-			null;
+  const data = items.map((item) => {
+    const partners = partnersByDocument.get(item.documentId) ?? [];
+    const role =
+      partners.find((r) => r.unit.type === "eric" && r.unit.slug === "dariah-eu")?.role.role ??
+      null;
 
-		const image = generateImageUrl(
-			toImageAsset({
-				key: item.imageKey,
-				alt: item.imageAlt,
-				caption: item.imageCaption,
-				licenseName: item.licenseName,
-				licenseUrl: item.licenseUrl,
-			}),
-			imageWidth.preview,
-		);
+    const image = generateImageUrl(
+      toImageAsset({
+        key: item.imageKey,
+        alt: item.imageAlt,
+        caption: item.imageCaption,
+        licenseName: item.licenseName,
+        licenseUrl: item.licenseUrl,
+      }),
+      imageWidth.preview,
+    );
 
-		const socialMedia = (socialMediaByProjectId.get(item.id) ?? []).map((sm) => {
-			return { ...sm, type: sm.type.type };
-		});
+    const socialMedia = (socialMediaByProjectId.get(item.id) ?? []).map((sm) => {
+      return { ...sm, type: sm.type.type };
+    });
 
-		const duration = serializeDateRange(item.duration);
+    const duration = serializeDateRange(item.duration);
 
-		return {
-			id: item.id,
-			name: item.name,
-			acronym: item.acronym,
-			summary: item.summary,
-			call: item.call,
-			topic: item.topic,
-			funding: item.funding,
-			duration,
-			entity: { slug: item.slug },
-			scope: { scope: item.scope },
-			socialMedia,
-			publishedAt: item.updatedAt.toISOString(),
-			image,
-			role,
-		};
-	});
+    return {
+      id: item.id,
+      name: item.name,
+      acronym: item.acronym,
+      summary: item.summary,
+      call: item.call,
+      topic: item.topic,
+      funding: item.funding,
+      duration,
+      entity: { slug: item.slug },
+      scope: { scope: item.scope },
+      socialMedia,
+      publishedAt: item.updatedAt.toISOString(),
+      image,
+      role,
+    };
+  });
 
-	return { data, limit, offset, total };
+  return { data, limit, offset, total };
 }
 
 //
 
 interface GetDariahProjectByIdParams {
-	id: schema.Project["id"];
+  id: schema.Project["id"];
 }
 
 export async function getDariahProjectById(
-	db: Database | Transaction,
-	params: GetDariahProjectByIdParams,
+  db: Database | Transaction,
+  params: GetDariahProjectByIdParams,
 ) {
-	const { id } = params;
+  const { id } = params;
 
-	const [item, fields] = await Promise.all([
-		db.query.dariahProjects.findFirst({
-			where: {
-				id,
-				entityVersion: {
-					status: {
-						type: "published",
-					},
-				},
-			},
-			columns: {
-				id: true,
-				name: true,
-				acronym: true,
-				summary: true,
-				duration: true,
-				call: true,
-				topic: true,
-				funding: true,
-			},
-			with: {
-				entityVersion: {
-					columns: { updatedAt: true },
-					with: {
-						entity: {
-							columns: { id: true },
-						},
-						slug: {
-							columns: { value: true },
-						},
-					},
-				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
-				scope: {
-					columns: {
-						scope: true,
-					},
-				},
-				socialMedia: {
-					columns: {
-						id: true,
-						url: true,
-					},
-					with: {
-						type: {
-							columns: {
-								type: true,
-							},
-						},
-					},
-				},
-			},
-		}),
-		getContentBlocks(db, id),
-	]);
+  const [item, fields] = await Promise.all([
+    db.query.dariahProjects.findFirst({
+      where: {
+        id,
+        entityVersion: {
+          status: {
+            type: "published",
+          },
+        },
+      },
+      columns: {
+        id: true,
+        name: true,
+        acronym: true,
+        summary: true,
+        duration: true,
+        call: true,
+        topic: true,
+        funding: true,
+      },
+      with: {
+        entityVersion: {
+          columns: { updatedAt: true },
+          with: {
+            entity: {
+              columns: { id: true },
+            },
+            slug: {
+              columns: { value: true },
+            },
+          },
+        },
+        image: {
+          columns: {
+            key: true,
+            alt: true,
+            caption: true,
+          },
+          with: {
+            license: {
+              columns: {
+                name: true,
+                url: true,
+              },
+            },
+          },
+        },
+        scope: {
+          columns: {
+            scope: true,
+          },
+        },
+        socialMedia: {
+          columns: {
+            id: true,
+            url: true,
+          },
+          with: {
+            type: {
+              columns: {
+                type: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    getContentBlocks(db, id),
+  ]);
 
-	if (item == null) {
-		return null;
-	}
+  if (item == null) {
+    return null;
+  }
 
-	const [relatedEntities, relatedResources] = await Promise.all([
-		getRelatedEntities(db, id),
-		getRelatedResources(db, id),
-	]);
+  const [relatedEntities, relatedResources] = await Promise.all([
+    getRelatedEntities(db, id),
+    getRelatedResources(db, id),
+  ]);
 
-	const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
-	const rest = item;
+  const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
+  const rest = item;
 
-	const participants = projectPartners
-		.filter((r) => r.role.role === "participant")
-		.map((r) => r.unit);
+  const participants = projectPartners
+    .filter((r) => r.role.role === "participant")
+    .map((r) => r.unit);
 
-	const coordinators = projectPartners
-		.filter((r) => r.role.role === "coordinator")
-		.map((r) => r.unit);
+  const coordinators = projectPartners
+    .filter((r) => r.role.role === "coordinator")
+    .map((r) => r.unit);
 
-	return {
-		...mapItem(rest, imageWidth.featured),
-		...fields,
-		participants,
-		coordinators,
-		relatedEntities,
-		relatedResources,
-	};
+  return {
+    ...mapItem(rest, imageWidth.featured),
+    ...fields,
+    participants,
+    coordinators,
+    relatedEntities,
+    relatedResources,
+  };
 }
 
 //
 
 interface GetDariahProjectSlugsParams {
-	/** @default 10 */
-	limit?: number;
-	/** @default 0 */
-	offset?: number;
-	localeId?: string;
+  /** @default 10 */
+  limit?: number;
+  /** @default 0 */
+  offset?: number;
+  localeId?: string;
 }
 
 export async function getDariahProjectSlugs(
-	db: Database | Transaction,
-	params: GetDariahProjectSlugsParams,
+  db: Database | Transaction,
+  params: GetDariahProjectSlugsParams,
 ) {
-	const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
-	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
-		await resolvePublishedDariahProjectsLookup(db, requestedLocaleId);
+  const { limit = 10, offset = 0, localeId: requestedLocaleId } = params;
+  const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
+    await resolvePublishedDariahProjectsLookup(db, requestedLocaleId);
 
-	const [items, aggregate] = await Promise.all([
-		db
-			.select({
-				id: schema.dariahProjects.id,
-				slug: schema.slugs.value,
-			})
-			.from(schema.entities)
-			.leftJoin(
-				preferredVersion,
-				and(
-					eq(preferredVersion.entityId, schema.entities.id),
-					eq(preferredVersion.localeId, localeId),
-					eq(preferredVersion.statusId, statusId),
-				),
-			)
-			.leftJoin(
-				defaultVersion,
-				and(
-					eq(defaultVersion.entityId, schema.entities.id),
-					eq(defaultVersion.localeId, defaultLocaleId),
-					eq(defaultVersion.statusId, statusId),
-				),
-			)
-			.innerJoin(
-				schema.entityVersions,
-				sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
-			)
-			.innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
-			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
-			.where(eq(schema.entities.typeId, typeId))
-			.orderBy(desc(schema.entityVersions.updatedAt))
-			.limit(limit)
-			.offset(offset),
-		db
-			.select({ total: count() })
-			.from(schema.dariahProjects)
-			.innerJoin(schema.entityVersions, eq(schema.dariahProjects.id, schema.entityVersions.id))
-			.innerJoin(
-				schema.documentLifecycle,
-				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
-			),
-	]);
+  const [items, aggregate] = await Promise.all([
+    db
+      .select({
+        id: schema.dariahProjects.id,
+        slug: schema.slugs.value,
+      })
+      .from(schema.entities)
+      .leftJoin(
+        preferredVersion,
+        and(
+          eq(preferredVersion.entityId, schema.entities.id),
+          eq(preferredVersion.localeId, localeId),
+          eq(preferredVersion.statusId, statusId),
+        ),
+      )
+      .leftJoin(
+        defaultVersion,
+        and(
+          eq(defaultVersion.entityId, schema.entities.id),
+          eq(defaultVersion.localeId, defaultLocaleId),
+          eq(defaultVersion.statusId, statusId),
+        ),
+      )
+      .innerJoin(
+        schema.entityVersions,
+        sql`${schema.entityVersions.id} = COALESCE(${preferredVersion.id}, ${defaultVersion.id})`,
+      )
+      .innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
+      .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+      .where(eq(schema.entities.typeId, typeId))
+      .orderBy(desc(schema.entityVersions.updatedAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: count() })
+      .from(schema.dariahProjects)
+      .innerJoin(schema.entityVersions, eq(schema.dariahProjects.id, schema.entityVersions.id))
+      .innerJoin(
+        schema.documentLifecycle,
+        eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+      ),
+  ]);
 
-	const total = aggregate.at(0)?.total ?? 0;
-	const data = items.map(({ id, slug }) => {
-		return { id, entity: { slug } };
-	});
+  const total = aggregate.at(0)?.total ?? 0;
+  const data = items.map(({ id, slug }) => {
+    return { id, entity: { slug } };
+  });
 
-	return { data, limit, offset, total };
+  return { data, limit, offset, total };
 }
 
 //
 
 interface GetDariahProjectBySlugParams {
-	slug: schema.Slug["value"];
-	localeId?: string;
+  slug: schema.Slug["value"];
+  localeId?: string;
 }
 
 export async function getDariahProjectBySlug(
-	db: Database | Transaction,
-	params: GetDariahProjectBySlugParams,
+  db: Database | Transaction,
+  params: GetDariahProjectBySlugParams,
 ) {
-	const { slug, localeId } = params;
+  const { slug, localeId } = params;
 
-	const item = await db.query.dariahProjects.findFirst({
-		where: {
-			entityVersion: {
-				status: {
-					type: "published",
-				},
-				slug: {
-					value: slug,
-					...(localeId != null ? { localeId } : {}),
-				},
-			},
-		},
-		columns: {
-			id: true,
-			name: true,
-			acronym: true,
-			summary: true,
-			duration: true,
-			call: true,
-			topic: true,
-			funding: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { updatedAt: true },
-				with: {
-					entity: {
-						columns: { id: true },
-					},
-					slug: {
-						columns: { value: true },
-					},
-				},
-			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
-			scope: {
-				columns: {
-					scope: true,
-				},
-			},
-			socialMedia: {
-				columns: {
-					id: true,
-					url: true,
-				},
-				with: {
-					type: {
-						columns: {
-							type: true,
-						},
-					},
-				},
-			},
-		},
-	});
+  const item = await db.query.dariahProjects.findFirst({
+    where: {
+      entityVersion: {
+        status: {
+          type: "published",
+        },
+        slug: {
+          value: slug,
+          ...(localeId != null ? { localeId } : {}),
+        },
+      },
+    },
+    columns: {
+      id: true,
+      name: true,
+      acronym: true,
+      summary: true,
+      duration: true,
+      call: true,
+      topic: true,
+      funding: true,
+    },
+    with: {
+      entityVersion: {
+        columns: { updatedAt: true },
+        with: {
+          entity: {
+            columns: { id: true },
+          },
+          slug: {
+            columns: { value: true },
+          },
+        },
+      },
+      image: {
+        columns: {
+          key: true,
+          alt: true,
+          caption: true,
+        },
+        with: {
+          license: {
+            columns: {
+              name: true,
+              url: true,
+            },
+          },
+        },
+      },
+      scope: {
+        columns: {
+          scope: true,
+        },
+      },
+      socialMedia: {
+        columns: {
+          id: true,
+          url: true,
+        },
+        with: {
+          type: {
+            columns: {
+              type: true,
+            },
+          },
+        },
+      },
+    },
+  });
 
-	if (item == null) {
-		return null;
-	}
+  if (item == null) {
+    return null;
+  }
 
-	const [fields, relatedEntities, relatedResources] = await Promise.all([
-		getContentBlocks(db, item.id),
-		getRelatedEntities(db, item.id),
-		getRelatedResources(db, item.id),
-	]);
+  const [fields, relatedEntities, relatedResources] = await Promise.all([
+    getContentBlocks(db, item.id),
+    getRelatedEntities(db, item.id),
+    getRelatedResources(db, item.id),
+  ]);
 
-	const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
-	const rest = item;
+  const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
+  const rest = item;
 
-	const participants = projectPartners
-		.filter((r) => r.role.role === "participant")
-		.map((r) => r.unit);
+  const participants = projectPartners
+    .filter((r) => r.role.role === "participant")
+    .map((r) => r.unit);
 
-	const coordinators = projectPartners
-		.filter((r) => r.role.role === "coordinator")
-		.map((r) => r.unit);
+  const coordinators = projectPartners
+    .filter((r) => r.role.role === "coordinator")
+    .map((r) => r.unit);
 
-	return {
-		...mapItem(rest, imageWidth.featured),
-		...fields,
-		participants,
-		coordinators,
-		relatedEntities,
-		relatedResources,
-	};
+  return {
+    ...mapItem(rest, imageWidth.featured),
+    ...fields,
+    participants,
+    coordinators,
+    relatedEntities,
+    relatedResources,
+  };
 }

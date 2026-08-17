@@ -1,6 +1,6 @@
 "use client";
 
-import { Link, type LinkProps } from "@acdh-knowledge-base/ui/link";
+import { Link, type LinkProps } from "@dariah-eric/ui/link";
 import type { ReactNode } from "react";
 
 import { useNavLink } from "@/lib/navigation/use-nav-link";

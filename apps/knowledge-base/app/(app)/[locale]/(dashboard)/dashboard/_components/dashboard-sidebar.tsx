@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@acdh-knowledge-base/ui/button";
-import { Keyboard } from "@acdh-knowledge-base/ui/keyboard";
-import { Link } from "@acdh-knowledge-base/ui/link";
+import { Button } from "@dariah-eric/ui/button";
+import { Keyboard } from "@dariah-eric/ui/keyboard";
+import { Link } from "@dariah-eric/ui/link";
 import {
 	Sidebar,
 	SidebarContent,
@@ -16,7 +16,7 @@ import {
 	SidebarSection,
 	SidebarSectionGroup,
 	useSidebar,
-} from "@acdh-knowledge-base/ui/sidebar";
+} from "@dariah-eric/ui/sidebar";
 import { ListBulletIcon, MagnifyingGlassIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import cn from "clsx/lite";
 import { useExtracted } from "next-intl";

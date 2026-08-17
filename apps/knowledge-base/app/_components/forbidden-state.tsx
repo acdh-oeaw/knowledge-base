@@ -1,5 +1,5 @@
-import { Avatar } from "@acdh-knowledge-base/ui/avatar";
-import { ButtonLink } from "@acdh-knowledge-base/ui/button-link";
+import { Avatar } from "@dariah-eric/ui/avatar";
+import { ButtonLink } from "@dariah-eric/ui/button-link";
 import type { ReactNode } from "react";
 
 import { Main } from "@/components/main";

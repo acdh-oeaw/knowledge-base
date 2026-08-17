@@ -50,7 +50,7 @@ async function getIntlMessages(locale: IntlLocale): Promise<IntlMessages> {
 	] = await Promise.all([
 		// import(`@/messages/${language}.json`, { with: { type: "json" } }),
 		import(`@/messages/metadata/${language}/index.json`, { with: { type: "json" } }),
-		import(`@acdh-knowledge-base/ui/i18n/${language}`, { with: { type: "json" } }),
+		import(`@dariah-eric/ui/i18n/${language}`, { with: { type: "json" } }),
 	]);
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

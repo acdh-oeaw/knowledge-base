@@ -1,6 +1,6 @@
 "use server";
 
-import * as schema from "@acdh-knowledge-base/database/schema";
+import * as schema from "@dariah-eric/database/schema";
 import { assert } from "@acdh-oeaw/lib";
 import { getExtracted } from "next-intl/server";
 
@@ -18,52 +18,52 @@ import { createMutationAction } from "@/lib/server/create-mutation-action";
  * institution/country screens; this only reconciles the snapshot.
  */
 export const refreshCountryReportInstitutionsAction = createMutationAction({
-	schema: RefreshCountryReportInstitutionsActionInputSchema,
-	requireAuth: true,
-	audit: { action: "update", subjectType: "country_report" },
-	revalidate: countryReportRevalidatePaths,
+  schema: RefreshCountryReportInstitutionsActionInputSchema,
+  requireAuth: true,
+  audit: { action: "update", subjectType: "country_report" },
+  revalidate: countryReportRevalidatePaths,
 
-	async preCheck({ input, ctx }) {
-		await assertCan(ctx.user, "update", { type: "country_report", id: input.countryReportId });
-		return undefined;
-	},
+  async preCheck({ input, ctx }) {
+    await assertCan(ctx.user, "update", { type: "country_report", id: input.countryReportId });
+    return undefined;
+  },
 
-	async mutate(tx, input) {
-		const t = await getExtracted();
+  async mutate(tx, input) {
+    const t = await getExtracted();
 
-		const report = await tx.query.countryReports.findFirst({
-			where: { id: input.countryReportId },
-			columns: { countryDocumentId: true },
-			with: { campaign: { columns: { year: true } } },
-		});
+    const report = await tx.query.countryReports.findFirst({
+      where: { id: input.countryReportId },
+      columns: { countryDocumentId: true },
+      with: { campaign: { columns: { year: true } } },
+    });
 
-		assert(report, "Country report not found.");
+    assert(report, "Country report not found.");
 
-		const partners = await getCurrentPartnerInstitutions(
-			report.countryDocumentId,
-			report.campaign.year,
-		);
+    const partners = await getCurrentPartnerInstitutions(
+      report.countryDocumentId,
+      report.campaign.year,
+    );
 
-		// Replace the snapshot wholesale so it mirrors the current partner-institution relations.
-		await tx
-			.delete(schema.countryReportInstitutions)
-			.where(eq(schema.countryReportInstitutions.countryReportId, input.countryReportId));
+    // Replace the snapshot wholesale so it mirrors the current partner-institution relations.
+    await tx
+      .delete(schema.countryReportInstitutions)
+      .where(eq(schema.countryReportInstitutions.countryReportId, input.countryReportId));
 
-		if (partners.length > 0) {
-			await tx.insert(schema.countryReportInstitutions).values(
-				partners.map((partner) => {
-					return {
-						countryReportId: input.countryReportId,
-						organisationalUnitDocumentId: partner.institutionDocumentId,
-						representationType: partner.representationType,
-					};
-				}),
-			);
-		}
+    if (partners.length > 0) {
+      await tx.insert(schema.countryReportInstitutions).values(
+        partners.map((partner) => {
+          return {
+            countryReportId: input.countryReportId,
+            organisationalUnitDocumentId: partner.institutionDocumentId,
+            representationType: partner.representationType,
+          };
+        }),
+      );
+    }
 
-		return {
-			subjectId: input.countryReportId,
-			successMessage: t("Institutions updated from current relations."),
-		};
-	},
+    return {
+      subjectId: input.countryReportId,
+      successMessage: t("Institutions updated from current relations."),
+    };
+  },
 });

@@ -1,11 +1,11 @@
 import * as path from "node:path";
 
-import base from "@acdh-knowledge-base/configs/oxlint/base";
-import react from "@acdh-knowledge-base/configs/oxlint/react";
-import storybook from "@acdh-knowledge-base/configs/oxlint/storybook";
-import tailwindcss from "@acdh-knowledge-base/configs/oxlint/tailwindcss";
-import turbo from "@acdh-knowledge-base/configs/oxlint/turbo";
-import vitest from "@acdh-knowledge-base/configs/oxlint/vitest";
+import base from "@dariah-eric/configs/oxlint/base";
+import react from "@dariah-eric/configs/oxlint/react";
+import storybook from "@dariah-eric/configs/oxlint/storybook";
+import tailwindcss from "@dariah-eric/configs/oxlint/tailwindcss";
+import turbo from "@dariah-eric/configs/oxlint/turbo";
+import vitest from "@dariah-eric/configs/oxlint/vitest";
 import { defineConfig } from "oxlint";
 
 const configs = [base, react, storybook, turbo, vitest];

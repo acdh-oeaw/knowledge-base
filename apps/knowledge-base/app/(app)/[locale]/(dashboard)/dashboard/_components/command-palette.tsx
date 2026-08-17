@@ -8,7 +8,7 @@ import {
 	CommandMenuList,
 	CommandMenuSearch,
 	CommandMenuSection,
-} from "@acdh-knowledge-base/ui/command-menu";
+} from "@dariah-eric/ui/command-menu";
 import { useExtracted } from "next-intl";
 import { type ReactNode, useEffect, useState } from "react";
 

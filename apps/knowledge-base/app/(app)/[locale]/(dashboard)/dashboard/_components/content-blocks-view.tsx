@@ -2,7 +2,7 @@
 
 "use client";
 
-import { createRichTextExtensions } from "@acdh-knowledge-base/ui/rich-text-editor";
+import { createRichTextExtensions } from "@dariah-eric/ui/rich-text-editor";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import type { ReactNode } from "react";
 

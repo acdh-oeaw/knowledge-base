@@ -20,7 +20,7 @@ export async function getIntlMessages(locale: IntlLocale): Promise<IntlMessages>
 	const [{ default: extracted }, { default: metadata }, { default: ui }] = await Promise.all([
 		import(`@/messages/${language}.po`),
 		import(`@/messages/metadata/${language}/index.json`) as Promise<{ default: Metadata }>,
-		import(`@acdh-knowledge-base/ui/i18n/${language}`),
+		import(`@dariah-eric/ui/i18n/${language}`),
 	]);
 
 	const social = keyBy(metadata.social, (item) => item.kind);

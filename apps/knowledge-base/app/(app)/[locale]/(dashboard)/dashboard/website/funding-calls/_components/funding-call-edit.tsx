@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@acdh-knowledge-base/database/schema";
+import type * as schema from "@dariah-eric/database/schema";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,42 +12,42 @@ import { publishFundingCallAction } from "@/app/(app)/[locale]/(dashboard)/dashb
 import { updateFundingCallAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_lib/update-funding-call.action";
 
 interface FundingCallEditFormProps {
-	contentBlocks: Array<ContentBlock>;
-	documentId: string;
-	hasDraftChanges: boolean;
-	isPublished: boolean;
-	fundingCall: Pick<schema.FundingCall, "id" | "duration" | "title" | "summary"> & {
-		entityVersion: {
-			entity: Pick<schema.Entity, "id">;
-			slug: Pick<schema.Slug, "value">;
-			status: Pick<schema.EntityStatus, "id" | "type">;
-		};
-	};
+  contentBlocks: Array<ContentBlock>;
+  documentId: string;
+  hasDraftChanges: boolean;
+  isPublished: boolean;
+  fundingCall: Pick<schema.FundingCall, "id" | "duration" | "title" | "summary"> & {
+    entityVersion: {
+      entity: Pick<schema.Entity, "id">;
+      slug: Pick<schema.Slug, "value">;
+      status: Pick<schema.EntityStatus, "id" | "type">;
+    };
+  };
 }
 
 export function FundingCallEditForm(props: Readonly<FundingCallEditFormProps>): ReactNode {
-	const { contentBlocks, documentId, hasDraftChanges, isPublished, fundingCall } = props;
+  const { contentBlocks, documentId, hasDraftChanges, isPublished, fundingCall } = props;
 
-	const t = useExtracted();
+  const t = useExtracted();
 
-	return (
-		<Fragment>
-			<EntityFormHeader
-				title={t("Edit funding call")}
-				lifecycle={{
-					documentId,
-					hasDraft: hasDraftChanges,
-					isPublished,
-					publishAction: publishFundingCallAction,
-					discardDraftAction: discardFundingCallDraftAction,
-				}}
-			/>
+  return (
+    <Fragment>
+      <EntityFormHeader
+        title={t("Edit funding call")}
+        lifecycle={{
+          documentId,
+          hasDraft: hasDraftChanges,
+          isPublished,
+          publishAction: publishFundingCallAction,
+          discardDraftAction: discardFundingCallDraftAction,
+        }}
+      />
 
-			<FundingCallForm
-				contentBlocks={contentBlocks}
-				formAction={updateFundingCallAction}
-				fundingCall={fundingCall}
-			/>
-		</Fragment>
-	);
+      <FundingCallForm
+        contentBlocks={contentBlocks}
+        formAction={updateFundingCallAction}
+        fundingCall={fundingCall}
+      />
+    </Fragment>
+  );
 }

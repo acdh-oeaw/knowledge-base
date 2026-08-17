@@ -1,7 +1,7 @@
 "use client";
 
-import { FormStatus } from "@acdh-knowledge-base/ui/form-status";
-import { Separator } from "@acdh-knowledge-base/ui/separator";
+import { FormStatus } from "@dariah-eric/ui/form-status";
+import { Separator } from "@dariah-eric/ui/separator";
 import { useExtracted } from "next-intl";
 import type { ComponentProps, ReactNode } from "react";
 

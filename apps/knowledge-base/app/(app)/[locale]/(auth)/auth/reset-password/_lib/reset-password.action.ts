@@ -1,7 +1,7 @@
 "use server";
 
-import { createActionStateError } from "@acdh-knowledge-base/next-lib/actions";
-import { globalPostRequestRateLimit } from "@acdh-knowledge-base/next-lib/rate-limiter";
+import { createActionStateError } from "@dariah-eric/next-lib/actions";
+import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import { getFormDataValues } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
@@ -13,57 +13,57 @@ import { redirect } from "@/lib/navigation/navigation";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const resetPasswordAction = createServerAction(
-	async function resetPasswordAction(state, formData) {
-		const locale = await getLocale();
-		const t = await getExtracted();
+  async function resetPasswordAction(state, formData) {
+    const locale = await getLocale();
+    const t = await getExtracted();
 
-		if (!(await globalPostRequestRateLimit())) {
-			return createActionStateError({ message: t("Too many requests.") });
-		}
+    if (!(await globalPostRequestRateLimit())) {
+      return createActionStateError({ message: t("Too many requests.") });
+    }
 
-		const { session: passwordResetSession, user } =
-			await auth.validatePasswordResetSessionFromRequest();
+    const { session: passwordResetSession, user } =
+      await auth.validatePasswordResetSessionFromRequest();
 
-		if (passwordResetSession == null) {
-			return createActionStateError({ message: t("Not authenticated.") });
-		}
-		if (!passwordResetSession.isEmailVerified) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
-		if (user.isTwoFactorRegistered && !passwordResetSession.isTwoFactorVerified) {
-			return createActionStateError({ message: t("Forbidden.") });
-		}
+    if (passwordResetSession == null) {
+      return createActionStateError({ message: t("Not authenticated.") });
+    }
+    if (!passwordResetSession.isEmailVerified) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
+    if (user.isTwoFactorRegistered && !passwordResetSession.isTwoFactorVerified) {
+      return createActionStateError({ message: t("Forbidden.") });
+    }
 
-		const result = await v.safeParseAsync(
-			ResetPasswordActionInputSchema,
-			getFormDataValues(formData),
-			{ lang: getIntlLanguage(locale) },
-		);
+    const result = await v.safeParseAsync(
+      ResetPasswordActionInputSchema,
+      getFormDataValues(formData),
+      { lang: getIntlLanguage(locale) },
+    );
 
-		if (!result.success) {
-			const errors = v.flatten<typeof ResetPasswordActionInputSchema>(result.issues);
+    if (!result.success) {
+      const errors = v.flatten<typeof ResetPasswordActionInputSchema>(result.issues);
 
-			return createActionStateError({
-				message: errors.root ?? t("Invalid or missing fields."),
-				validationErrors: errors.nested,
-			});
-		}
+      return createActionStateError({
+        message: errors.root ?? t("Invalid or missing fields."),
+        validationErrors: errors.nested,
+      });
+    }
 
-		const { password } = result.output;
+    const { password } = result.output;
 
-		const isStrongPassword = await auth.verifyPasswordStrength(password);
-		if (!isStrongPassword) {
-			return createActionStateError({ message: t("Weak password.") });
-		}
+    const isStrongPassword = await auth.verifyPasswordStrength(password);
+    if (!isStrongPassword) {
+      return createActionStateError({ message: t("Weak password.") });
+    }
 
-		await auth.deleteUserPasswordResetSessions(passwordResetSession.userId);
-		await auth.deleteUserSessions(passwordResetSession.userId);
-		await auth.updatePassword(passwordResetSession.userId, password);
+    await auth.deleteUserPasswordResetSessions(passwordResetSession.userId);
+    await auth.deleteUserSessions(passwordResetSession.userId);
+    await auth.updatePassword(passwordResetSession.userId, password);
 
-		const session = await auth.createSession(user.id, passwordResetSession.isTwoFactorVerified);
-		await auth.setSessionCookie(session.token, session.expiresAt);
-		await auth.deletePasswordResetSessionCookie();
+    const session = await auth.createSession(user.id, passwordResetSession.isTwoFactorVerified);
+    await auth.setSessionCookie(session.token, session.expiresAt);
+    await auth.deletePasswordResetSessionCookie();
 
-		redirect({ href: "/dashboard", locale });
-	},
+    redirect({ href: "/dashboard", locale });
+  },
 );

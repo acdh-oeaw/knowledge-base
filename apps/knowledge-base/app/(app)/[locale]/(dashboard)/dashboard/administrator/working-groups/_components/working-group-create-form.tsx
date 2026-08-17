@@ -1,6 +1,6 @@
 "use client";
 
-import { Note } from "@acdh-knowledge-base/ui/note";
+import { Note } from "@dariah-eric/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
