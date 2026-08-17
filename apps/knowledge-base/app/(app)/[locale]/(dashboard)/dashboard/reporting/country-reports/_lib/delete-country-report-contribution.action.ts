@@ -12,32 +12,32 @@ import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 
 export async function deleteCountryReportContributionAction(formData: FormData): Promise<void> {
-  if (!(await globalPostRequestRateLimit())) {
-    return;
-  }
+	if (!(await globalPostRequestRateLimit())) {
+		return;
+	}
 
-  const contributionId = formData.get("contributionId");
-  const countryReportId = formData.get("countryReportId");
-  if (typeof contributionId !== "string" || typeof countryReportId !== "string") {
-    return;
-  }
+	const contributionId = formData.get("contributionId");
+	const countryReportId = formData.get("countryReportId");
+	if (typeof contributionId !== "string" || typeof countryReportId !== "string") {
+		return;
+	}
 
-  const { user } = await assertAuthenticated();
-  await assertCan(user, "update", { type: "country_report", id: countryReportId });
+	const { user } = await assertAuthenticated();
+	await assertCan(user, "update", { type: "country_report", id: countryReportId });
 
-  await db
-    .delete(schema.countryReportContributions)
-    .where(eq(schema.countryReportContributions.id, contributionId));
+	await db
+		.delete(schema.countryReportContributions)
+		.where(eq(schema.countryReportContributions.id, contributionId));
 
-  await recordAuditEvent(db, {
-    actorUserId: user.id,
-    action: "delete",
-    subjectType: "country_report",
-    subjectId: countryReportId,
-    summary: getAuditSummaryFromFormData(formData),
-  });
+	await recordAuditEvent(db, {
+		actorUserId: user.id,
+		action: "delete",
+		subjectType: "country_report",
+		subjectId: countryReportId,
+		summary: getAuditSummaryFromFormData(formData),
+	});
 
-  for (const path of countryReportRevalidatePaths) {
-    revalidatePath(path, "layout");
-  }
+	for (const path of countryReportRevalidatePaths) {
+		revalidatePath(path, "layout");
+	}
 }

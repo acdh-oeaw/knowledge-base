@@ -10,37 +10,37 @@ import { eq } from "@/lib/db/sql";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 export const updateReportingCampaignAction = createMutationAction({
-  schema: UpdateReportingCampaignActionInputSchema,
-  requireAdmin: true,
-  audit: { action: "update", subjectType: "reporting_campaigns" },
-  revalidate: "/[locale]/dashboard/administrator/reporting-campaigns",
-  redirect: "/dashboard/administrator/reporting-campaigns",
+	schema: UpdateReportingCampaignActionInputSchema,
+	requireAdmin: true,
+	audit: { action: "update", subjectType: "reporting_campaigns" },
+	revalidate: "/[locale]/dashboard/administrator/reporting-campaigns",
+	redirect: "/dashboard/administrator/reporting-campaigns",
 
-  async preCheck({ input }) {
-    const t = await getExtracted();
-    const existing = await db.query.reportingCampaigns.findFirst({
-      where: { year: input.year },
-      columns: { id: true },
-    });
+	async preCheck({ input }) {
+		const t = await getExtracted();
+		const existing = await db.query.reportingCampaigns.findFirst({
+			where: { year: input.year },
+			columns: { id: true },
+		});
 
-    if (existing != null && existing.id !== input.id) {
-      return createActionStateError({
-        message: t("A campaign for this year already exists."),
-        validationErrors: {
-          year: [t("A campaign for this year already exists.")],
-        },
-      });
-    }
+		if (existing != null && existing.id !== input.id) {
+			return createActionStateError({
+				message: t("A campaign for this year already exists."),
+				validationErrors: {
+					year: [t("A campaign for this year already exists.")],
+				},
+			});
+		}
 
-    return undefined;
-  },
+		return undefined;
+	},
 
-  async mutate(tx, input) {
-    await tx
-      .update(schema.reportingCampaigns)
-      .set({ year: input.year, status: input.status })
-      .where(eq(schema.reportingCampaigns.id, input.id));
+	async mutate(tx, input) {
+		await tx
+			.update(schema.reportingCampaigns)
+			.set({ year: input.year, status: input.status })
+			.where(eq(schema.reportingCampaigns.id, input.id));
 
-    return { subjectId: input.id };
-  },
+		return { subjectId: input.id };
+	},
 });

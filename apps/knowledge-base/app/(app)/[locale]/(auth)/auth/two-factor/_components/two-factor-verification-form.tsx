@@ -13,21 +13,21 @@ import { type ReactNode, useActionState } from "react";
 import { verifyTwoFactorAction } from "@/app/(app)/[locale]/(auth)/auth/two-factor/_lib/verify-two-factor.action";
 
 export function TwoFactorVerificationForm(): ReactNode {
-  const t = useExtracted();
+	const t = useExtracted();
 
-  const [state, action] = useActionState(verifyTwoFactorAction, createActionStateInitial());
+	const [state, action] = useActionState(verifyTwoFactorAction, createActionStateInitial());
 
-  return (
-    <Form action={action} className="flex flex-col gap-y-6" state={state}>
-      <FormStatus state={state} />
+	return (
+		<Form action={action} className="flex flex-col gap-y-6" state={state}>
+			<FormStatus state={state} />
 
-      <TextField autoComplete="one-time-code" autoFocus={true} isRequired={true} name="code">
-        <Label>{t("Code")}</Label>
-        <FieldError />
-        <Input />
-      </TextField>
+			<TextField autoComplete="one-time-code" autoFocus={true} isRequired={true} name="code">
+				<Label>{t("Code")}</Label>
+				<FieldError />
+				<Input />
+			</TextField>
 
-      <SubmitButton className="mbs-2">{t("Verify")}</SubmitButton>
-    </Form>
-  );
+			<SubmitButton className="mbs-2">{t("Verify")}</SubmitButton>
+		</Form>
+	);
 }

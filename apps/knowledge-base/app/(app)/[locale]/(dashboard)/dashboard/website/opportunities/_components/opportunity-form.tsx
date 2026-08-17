@@ -15,125 +15,125 @@ import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useActionState } from "react";
 
 import {
-  type ContentBlock,
-  ContentBlocks,
+	type ContentBlock,
+	ContentBlocks,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
 import {
-  FormLayout,
-  FormSection,
+	FormLayout,
+	FormSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface OpportunityFormProps {
-  contentBlocks?: Array<ContentBlock>;
-  opportunity?: Pick<schema.Opportunity, "id" | "duration" | "title" | "summary" | "website"> & {
-    entityVersion: {
-      entity: Pick<schema.Entity, "id">;
-      slug: Pick<schema.Slug, "value">;
-      status: Pick<schema.EntityStatus, "id" | "type">;
-    };
-    source: Pick<schema.OpportunitySource, "id" | "source">;
-  };
-  formAction: ServerAction;
-  sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
+	contentBlocks?: Array<ContentBlock>;
+	opportunity?: Pick<schema.Opportunity, "id" | "duration" | "title" | "summary" | "website"> & {
+		entityVersion: {
+			entity: Pick<schema.Entity, "id">;
+			slug: Pick<schema.Slug, "value">;
+			status: Pick<schema.EntityStatus, "id" | "type">;
+		};
+		source: Pick<schema.OpportunitySource, "id" | "source">;
+	};
+	formAction: ServerAction;
+	sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
 }
 
 export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNode {
-  const { contentBlocks, formAction, opportunity, sources } = props;
+	const { contentBlocks, formAction, opportunity, sources } = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
+	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
-  return (
-    <FormLayout>
-      <Form action={action} className="flex flex-col gap-y-6" state={state}>
-        <FormSection description={t("Enter the opportunity details.")} title={t("Details")}>
-          <TextField defaultValue={opportunity?.title} isRequired={true} name="title">
-            <Label>{t("Title")}</Label>
-            <Input />
-            <FieldError />
-          </TextField>
+	return (
+		<FormLayout>
+			<Form action={action} className="flex flex-col gap-y-6" state={state}>
+				<FormSection description={t("Enter the opportunity details.")} title={t("Details")}>
+					<TextField defaultValue={opportunity?.title} isRequired={true} name="title">
+						<Label>{t("Title")}</Label>
+						<Input />
+						<FieldError />
+					</TextField>
 
-          <Select
-            defaultValue={opportunity?.source.id ?? undefined}
-            isRequired={true}
-            name="sourceId"
-          >
-            <Label>{t("Source")}</Label>
-            <SelectTrigger />
-            <FieldError />
-            <SelectContent>
-              {sources.map((item) => (
-                <SelectItem key={item.id} id={item.id}>
-                  {item.source}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+					<Select
+						defaultValue={opportunity?.source.id ?? undefined}
+						isRequired={true}
+						name="sourceId"
+					>
+						<Label>{t("Source")}</Label>
+						<SelectTrigger />
+						<FieldError />
+						<SelectContent>
+							{sources.map((item) => (
+								<SelectItem key={item.id} id={item.id}>
+									{item.source}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 
-          <TextField defaultValue={opportunity?.summary ?? undefined} name="summary">
-            <Label>{t("Summary")}</Label>
-            <TextArea rows={5} />
-            <FieldError />
-          </TextField>
-          <DatePicker
-            defaultValue={
-              opportunity != null
-                ? new CalendarDate(
-                    opportunity.duration.start.getUTCFullYear(),
-                    opportunity.duration.start.getUTCMonth() + 1,
-                    opportunity.duration.start.getUTCDate(),
-                  )
-                : undefined
-            }
-            granularity="day"
-            isRequired={true}
-            name="duration.start"
-          >
-            <Label>{t("Start date")}</Label>
-            <DatePickerTrigger />
-          </DatePicker>
+					<TextField defaultValue={opportunity?.summary ?? undefined} name="summary">
+						<Label>{t("Summary")}</Label>
+						<TextArea rows={5} />
+						<FieldError />
+					</TextField>
+					<DatePicker
+						defaultValue={
+							opportunity != null
+								? new CalendarDate(
+										opportunity.duration.start.getUTCFullYear(),
+										opportunity.duration.start.getUTCMonth() + 1,
+										opportunity.duration.start.getUTCDate(),
+									)
+								: undefined
+						}
+						granularity="day"
+						isRequired={true}
+						name="duration.start"
+					>
+						<Label>{t("Start date")}</Label>
+						<DatePickerTrigger />
+					</DatePicker>
 
-          <DatePicker
-            defaultValue={
-              opportunity?.duration.end != null
-                ? new CalendarDate(
-                    opportunity.duration.end.getUTCFullYear(),
-                    opportunity.duration.end.getUTCMonth() + 1,
-                    opportunity.duration.end.getUTCDate(),
-                  )
-                : undefined
-            }
-            granularity="day"
-            name="duration.end"
-          >
-            <Label>{t("End date")}</Label>
-            <DatePickerTrigger />
-          </DatePicker>
-          <TextField defaultValue={opportunity?.website ?? undefined} name="website" type="url">
-            <Label>{t("Website")}</Label>
-            <Input placeholder="https://" />
-            <FieldError />
-          </TextField>
-        </FormSection>
+					<DatePicker
+						defaultValue={
+							opportunity?.duration.end != null
+								? new CalendarDate(
+										opportunity.duration.end.getUTCFullYear(),
+										opportunity.duration.end.getUTCMonth() + 1,
+										opportunity.duration.end.getUTCDate(),
+									)
+								: undefined
+						}
+						granularity="day"
+						name="duration.end"
+					>
+						<Label>{t("End date")}</Label>
+						<DatePickerTrigger />
+					</DatePicker>
+					<TextField defaultValue={opportunity?.website ?? undefined} name="website" type="url">
+						<Label>{t("Website")}</Label>
+						<Input placeholder="https://" />
+						<FieldError />
+					</TextField>
+				</FormSection>
 
-        <Separator className="my-6" />
+				<Separator className="my-6" />
 
-        <FormSection description={t("Add the content.")} title={t("Content")} variant="stacked">
-          <ContentBlocks items={contentBlocks ?? []} />
-        </FormSection>
+				<FormSection description={t("Add the content.")} title={t("Content")} variant="stacked">
+					<ContentBlocks items={contentBlocks ?? []} />
+				</FormSection>
 
-        {opportunity != null ? (
-          <Fragment>
-            <input name="id" type="hidden" value={opportunity.id} />
-            <input name="documentId" type="hidden" value={opportunity.entityVersion.entity.id} />
-          </Fragment>
-        ) : null}
+				{opportunity != null ? (
+					<Fragment>
+						<input name="id" type="hidden" value={opportunity.id} />
+						<input name="documentId" type="hidden" value={opportunity.entityVersion.entity.id} />
+					</Fragment>
+				) : null}
 
-        <EntityFormActions entityName={t("Opportunity")} isPending={isPending} state={state} />
-      </Form>
-    </FormLayout>
-  );
+				<EntityFormActions entityName={t("Opportunity")} isPending={isPending} state={state} />
+			</Form>
+		</FormLayout>
+	);
 }

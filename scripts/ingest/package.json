@@ -1,48 +1,48 @@
 {
-  "name": "@dariah-eric/ingest",
-  "private": true,
-  "license": "MIT",
-  "type": "module",
-  "sideEffects": false,
-  "imports": {
-    "#/*": "./*"
-  },
-  "exports": {
-    ".": "./dist/index.mjs"
-  },
-  "scripts": {
-    "data:ingest:search": "tsx ./scripts/ingest-search-index.ts",
-    "data:ingest:search:entities": "tsx ./scripts/ingest-search-index-entities.ts",
-    "data:ingest:search:resources": "tsx ./scripts/ingest-search-index-resources.ts",
-    "data:ingest:sshoc": "tsx ./scripts/ingest-sshoc-services.ts",
-    "format:check": "oxfmt --check",
-    "format:fix": "oxfmt --write",
-    "lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
-    "lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
-    "types:check": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@acdh-oeaw/lib": "catalog:",
-    "@dariah-eric/client-sshoc": "workspace:^",
-    "@dariah-eric/client-zenodo": "workspace:^",
-    "@dariah-eric/client-zotero": "workspace:^",
-    "@dariah-eric/configs": "workspace:^",
-    "@dariah-eric/database": "workspace:^",
-    "@dariah-eric/env": "workspace:^",
-    "@dariah-eric/request": "workspace:^",
-    "@dariah-eric/search": "workspace:^",
-    "@dariah-eric/search-resources": "workspace:^",
-    "@dariah-eric/search-website": "workspace:^",
-    "@dariah-eric/sshoc-services": "workspace:^",
-    "@dariah-eric/storage": "workspace:^",
-    "@types/node": "catalog:",
-    "better-result": "catalog:",
-    "remark-parse": "catalog:",
-    "remark-stringify": "catalog:",
-    "strip-markdown": "catalog:",
-    "tsx": "catalog:",
-    "typescript": "catalog:",
-    "unified": "catalog:",
-    "valibot": "catalog:"
-  }
+	"name": "@dariah-eric/ingest",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"imports": {
+		"#/*": "./*"
+	},
+	"exports": {
+		".": "./dist/index.mjs"
+	},
+	"scripts": {
+		"data:ingest:search": "tsx ./scripts/ingest-search-index.ts",
+		"data:ingest:search:entities": "tsx ./scripts/ingest-search-index-entities.ts",
+		"data:ingest:search:resources": "tsx ./scripts/ingest-search-index-resources.ts",
+		"data:ingest:sshoc": "tsx ./scripts/ingest-sshoc-services.ts",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@dariah-eric/client-sshoc": "workspace:^",
+		"@dariah-eric/client-zenodo": "workspace:^",
+		"@dariah-eric/client-zotero": "workspace:^",
+		"@dariah-eric/configs": "workspace:^",
+		"@dariah-eric/database": "workspace:^",
+		"@dariah-eric/env": "workspace:^",
+		"@dariah-eric/request": "workspace:^",
+		"@dariah-eric/search": "workspace:^",
+		"@dariah-eric/search-resources": "workspace:^",
+		"@dariah-eric/search-website": "workspace:^",
+		"@dariah-eric/sshoc-services": "workspace:^",
+		"@dariah-eric/storage": "workspace:^",
+		"@types/node": "catalog:",
+		"better-result": "catalog:",
+		"remark-parse": "catalog:",
+		"remark-stringify": "catalog:",
+		"strip-markdown": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"unified": "catalog:",
+		"valibot": "catalog:"
+	}
 }

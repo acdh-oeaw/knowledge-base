@@ -8,8 +8,8 @@ import { Fragment, type ReactNode } from "react";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContributionsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/contributions-section";
 import {
-  EntityEditTab,
-  EntityEditTabs,
+	EntityEditTab,
+	EntityEditTabs,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
@@ -21,90 +21,90 @@ import { updatePersonAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/a
 import type { ContributionRoleOption, PersonContribution } from "@/lib/data/contributions";
 
 interface PersonEditFormProps {
-  initialAssets: Array<{ key: string; label: string; url: string }>;
-  documentId: string;
-  hasDraftChanges: boolean;
-  isDefaultLocale: boolean;
-  isPublished: boolean;
-  locales: Array<{ code: string; name: string }>;
-  selectedLocaleCode: string;
-  person: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
-    biographyContentBlocks?: Array<ContentBlock>;
-    entityVersion: { entity: { id: string }; slug: { value: string } };
-  } & { image: { key: string; label: string; url: string } | null };
-  contributions: Array<PersonContribution>;
-  contributionRoleOptions: Array<ContributionRoleOption>;
-  initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
-  initialSocialMediaTotal: number;
-  selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
-  initialSocialMediaIds: Array<string>;
+	initialAssets: Array<{ key: string; label: string; url: string }>;
+	documentId: string;
+	hasDraftChanges: boolean;
+	isDefaultLocale: boolean;
+	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
+	person: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
+		biographyContentBlocks?: Array<ContentBlock>;
+		entityVersion: { entity: { id: string }; slug: { value: string } };
+	} & { image: { key: string; label: string; url: string } | null };
+	contributions: Array<PersonContribution>;
+	contributionRoleOptions: Array<ContributionRoleOption>;
+	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaTotal: number;
+	selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaIds: Array<string>;
 }
 
 export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode {
-  const {
-    initialAssets,
-    documentId,
-    hasDraftChanges,
-    isDefaultLocale,
-    isPublished,
-    locales,
-    selectedLocaleCode,
-    person,
-    contributions,
-    contributionRoleOptions,
-    initialSocialMediaIds,
-    initialSocialMediaItems,
-    initialSocialMediaTotal,
-  } = props;
+	const {
+		initialAssets,
+		documentId,
+		hasDraftChanges,
+		isDefaultLocale,
+		isPublished,
+		locales,
+		selectedLocaleCode,
+		person,
+		contributions,
+		contributionRoleOptions,
+		initialSocialMediaIds,
+		initialSocialMediaItems,
+		initialSocialMediaTotal,
+	} = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  return (
-    <Fragment>
-      <EntityFormHeader title={t("Edit person")} />
+	return (
+		<Fragment>
+			<EntityFormHeader title={t("Edit person")} />
 
-      <EntityEditTabs defaultTab="details">
-        <TabList aria-label={t("Edit person")}>
-          <EntityEditTab id="details">{t("Details")}</EntityEditTab>
-          <EntityEditTab id="contributions">{t("Contributions")}</EntityEditTab>
-        </TabList>
+			<EntityEditTabs defaultTab="details">
+				<TabList aria-label={t("Edit person")}>
+					<EntityEditTab id="details">{t("Details")}</EntityEditTab>
+					<EntityEditTab id="contributions">{t("Contributions")}</EntityEditTab>
+				</TabList>
 
-        <TabPanel
-          className="flex flex-col gap-y-(--layout-padding)"
-          id="details"
-          shouldPreserveState={true}
-        >
-          <div className="flex items-center justify-end gap-x-4">
-            <LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
-            <EntityLifecycleBar
-              discardDraftAction={discardPersonDraftAction}
-              documentId={documentId}
-              hasDraft={hasDraftChanges}
-              isPublished={isPublished}
-              publishAction={publishPersonAction}
-            />
-          </div>
+				<TabPanel
+					className="flex flex-col gap-y-(--layout-padding)"
+					id="details"
+					shouldPreserveState={true}
+				>
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+						<EntityLifecycleBar
+							discardDraftAction={discardPersonDraftAction}
+							documentId={documentId}
+							hasDraft={hasDraftChanges}
+							isPublished={isPublished}
+							publishAction={publishPersonAction}
+						/>
+					</div>
 
-          <PersonForm
-            key={person.id}
-            formAction={updatePersonAction}
-            initialAssets={initialAssets}
-            initialSocialMediaIds={initialSocialMediaIds}
-            initialSocialMediaItems={initialSocialMediaItems}
-            initialSocialMediaTotal={initialSocialMediaTotal}
-            isDefaultLocale={isDefaultLocale}
-            person={person}
-          />
-        </TabPanel>
+					<PersonForm
+						key={person.id}
+						formAction={updatePersonAction}
+						initialAssets={initialAssets}
+						initialSocialMediaIds={initialSocialMediaIds}
+						initialSocialMediaItems={initialSocialMediaItems}
+						initialSocialMediaTotal={initialSocialMediaTotal}
+						isDefaultLocale={isDefaultLocale}
+						person={person}
+					/>
+				</TabPanel>
 
-        <TabPanel id="contributions" shouldPreserveState={true}>
-          <ContributionsSection
-            contributions={contributions}
-            personDocumentId={documentId}
-            roleOptions={contributionRoleOptions}
-          />
-        </TabPanel>
-      </EntityEditTabs>
-    </Fragment>
-  );
+				<TabPanel id="contributions" shouldPreserveState={true}>
+					<ContributionsSection
+						contributions={contributions}
+						personDocumentId={documentId}
+						roleOptions={contributionRoleOptions}
+					/>
+				</TabPanel>
+			</EntityEditTabs>
+		</Fragment>
+	);
 }

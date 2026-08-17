@@ -11,32 +11,32 @@ import { and, eq } from "@/lib/db/sql";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function deleteSpotlightArticleContributorAction(
-  articleId: string,
-  personId: string,
+	articleId: string,
+	personId: string,
 ): Promise<void> {
-  const auditSession = await assertAdmin();
+	const auditSession = await assertAdmin();
 
-  // articleId and personId are document ids (entities.id); contributors are document-level.
-  await db
-    .delete(schema.spotlightArticlesToPersons)
-    .where(
-      and(
-        eq(schema.spotlightArticlesToPersons.spotlightArticleDocumentId, articleId),
-        eq(schema.spotlightArticlesToPersons.personDocumentId, personId),
-      ),
-    );
+	// articleId and personId are document ids (entities.id); contributors are document-level.
+	await db
+		.delete(schema.spotlightArticlesToPersons)
+		.where(
+			and(
+				eq(schema.spotlightArticlesToPersons.spotlightArticleDocumentId, articleId),
+				eq(schema.spotlightArticlesToPersons.personDocumentId, personId),
+			),
+		);
 
-  after(async () => {
-    await dispatchWebhook({ type: "spotlight-articles" });
-  });
+	after(async () => {
+		await dispatchWebhook({ type: "spotlight-articles" });
+	});
 
-  await recordAuditEvent(db, {
-    actorUserId: auditSession.user.id,
-    action: "delete",
-    subjectType: "spotlight_articles",
-    subjectId: articleId,
-    summary: { personId },
-  });
+	await recordAuditEvent(db, {
+		actorUserId: auditSession.user.id,
+		action: "delete",
+		subjectType: "spotlight_articles",
+		subjectId: articleId,
+		summary: { personId },
+	});
 
-  revalidatePath("/[locale]/dashboard/website/spotlight-articles", "layout");
+	revalidatePath("/[locale]/dashboard/website/spotlight-articles", "layout");
 }

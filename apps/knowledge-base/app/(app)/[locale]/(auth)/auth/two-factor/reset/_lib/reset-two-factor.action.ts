@@ -1,7 +1,7 @@
 "use server";
 
-import { createActionStateError } from "@dariah-eric/next-lib/actions";
 import { getFormDataValues } from "@acdh-oeaw/lib";
+import { createActionStateError } from "@dariah-eric/next-lib/actions";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
 
@@ -13,50 +13,50 @@ import { redirect } from "@/lib/navigation/navigation";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const resetTwoFactorAction = createServerAction(
-  async function resetTwoFactorAction(state, formData) {
-    const locale = await getLocale();
-    const t = await getExtracted();
+	async function resetTwoFactorAction(state, formData) {
+		const locale = await getLocale();
+		const t = await getExtracted();
 
-    const { session, user } = await getCurrentSession();
+		const { session, user } = await getCurrentSession();
 
-    if (session == null) {
-      return createActionStateError({ message: t("Not authenticated.") });
-    }
-    if (!user.isEmailVerified || !user.isTwoFactorRegistered || session.isTwoFactorVerified) {
-      return createActionStateError({ message: t("Forbidden.") });
-    }
-    if (!auth.recoveryCodeBucket.check(user.id, 1)) {
-      return createActionStateError({ message: t("Too many requests.") });
-    }
+		if (session == null) {
+			return createActionStateError({ message: t("Not authenticated.") });
+		}
+		if (!user.isEmailVerified || !user.isTwoFactorRegistered || session.isTwoFactorVerified) {
+			return createActionStateError({ message: t("Forbidden.") });
+		}
+		if (!auth.recoveryCodeBucket.check(user.id, 1)) {
+			return createActionStateError({ message: t("Too many requests.") });
+		}
 
-    const result = await v.safeParseAsync(
-      ResetTwoFactorActionInputSchema,
-      getFormDataValues(formData),
-      { lang: getIntlLanguage(locale) },
-    );
+		const result = await v.safeParseAsync(
+			ResetTwoFactorActionInputSchema,
+			getFormDataValues(formData),
+			{ lang: getIntlLanguage(locale) },
+		);
 
-    if (!result.success) {
-      const errors = v.flatten<typeof ResetTwoFactorActionInputSchema>(result.issues);
+		if (!result.success) {
+			const errors = v.flatten<typeof ResetTwoFactorActionInputSchema>(result.issues);
 
-      return createActionStateError({
-        message: errors.root ?? t("Invalid or missing fields."),
-        validationErrors: errors.nested,
-      });
-    }
+			return createActionStateError({
+				message: errors.root ?? t("Invalid or missing fields."),
+				validationErrors: errors.nested,
+			});
+		}
 
-    const { code } = result.output;
+		const { code } = result.output;
 
-    if (!auth.recoveryCodeBucket.consume(user.id, 1)) {
-      return createActionStateError({ message: t("Too many requests.") });
-    }
+		if (!auth.recoveryCodeBucket.consume(user.id, 1)) {
+			return createActionStateError({ message: t("Too many requests.") });
+		}
 
-    const valid = await auth.resetUserTwoFactorWithRecoveryCode(user.id, code);
-    if (!valid) {
-      return createActionStateError({ message: t("Invalid recovery code.") });
-    }
+		const valid = await auth.resetUserTwoFactorWithRecoveryCode(user.id, code);
+		if (!valid) {
+			return createActionStateError({ message: t("Invalid recovery code.") });
+		}
 
-    auth.recoveryCodeBucket.reset(user.id);
+		auth.recoveryCodeBucket.reset(user.id);
 
-    redirect({ href: "/auth/two-factor/setup", locale });
-  },
+		redirect({ href: "/auth/two-factor/setup", locale });
+	},
 );

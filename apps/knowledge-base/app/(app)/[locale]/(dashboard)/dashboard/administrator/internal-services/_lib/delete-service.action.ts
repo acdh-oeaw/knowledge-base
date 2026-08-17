@@ -9,17 +9,17 @@ import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 
 export async function deleteServiceAction(id: string): Promise<void> {
-  const auditSession = await assertAdmin();
+	const auditSession = await assertAdmin();
 
-  await db.delete(schema.services).where(eq(schema.services.id, id));
+	await db.delete(schema.services).where(eq(schema.services.id, id));
 
-  await recordAuditEvent(db, {
-    actorUserId: auditSession.user.id,
-    action: "delete",
-    subjectType: "internal_services",
-    subjectId: id,
-    summary: {},
-  });
+	await recordAuditEvent(db, {
+		actorUserId: auditSession.user.id,
+		action: "delete",
+		subjectType: "internal_services",
+		subjectId: id,
+		summary: {},
+	});
 
-  revalidatePath("/[locale]/dashboard/administrator/internal-services", "layout");
+	revalidatePath("/[locale]/dashboard/administrator/internal-services", "layout");
 }

@@ -14,36 +14,36 @@ import { createMetadata } from "@/lib/server/create-metadata";
 interface DashboardWebsiteDocumentsPoliciesPageProps extends PageProps<"/[locale]/dashboard/website/documents-policies"> {}
 
 export async function generateMetadata(
-  _props: Readonly<DashboardWebsiteDocumentsPoliciesPageProps>,
-  resolvingMetadata: ResolvingMetadata,
+	_props: Readonly<DashboardWebsiteDocumentsPoliciesPageProps>,
+	resolvingMetadata: ResolvingMetadata,
 ): Promise<Metadata> {
-  const t = await getExtracted();
+	const t = await getExtracted();
 
-  const metadata: Metadata = await createMetadata(resolvingMetadata, {
-    title: t("Website dashboard - Documents and policies"),
-  });
+	const metadata: Metadata = await createMetadata(resolvingMetadata, {
+		title: t("Website dashboard - Documents and policies"),
+	});
 
-  return metadata;
+	return metadata;
 }
 
 export default async function DashboardWebsiteDocumentsPoliciesPage(
-  _props: Readonly<DashboardWebsiteDocumentsPoliciesPageProps>,
+	_props: Readonly<DashboardWebsiteDocumentsPoliciesPageProps>,
 ): Promise<ReactNode> {
-  const [groups, documents, { items: initialAssets }] = await Promise.all([
-    db.query.documentPolicyGroups.findMany({
-      orderBy: { position: "asc" },
-    }),
-    db
-      .select({
-        id: schema.documentsPolicies.id,
-        title: schema.documentsPolicies.title,
-        summary: schema.documentsPolicies.summary,
-        url: schema.documentsPolicies.url,
-        groupId: schema.documentsPolicies.groupId,
-        position: schema.documentsPolicies.position,
-        entityId: schema.entityVersions.entityId,
-        slug: schema.slugs.value,
-        hasDraft: sql<boolean>`
+	const [groups, documents, { items: initialAssets }] = await Promise.all([
+		db.query.documentPolicyGroups.findMany({
+			orderBy: { position: "asc" },
+		}),
+		db
+			.select({
+				id: schema.documentsPolicies.id,
+				title: schema.documentsPolicies.title,
+				summary: schema.documentsPolicies.summary,
+				url: schema.documentsPolicies.url,
+				groupId: schema.documentsPolicies.groupId,
+				position: schema.documentsPolicies.position,
+				entityId: schema.entityVersions.entityId,
+				slug: schema.slugs.value,
+				hasDraft: sql<boolean>`
 					EXISTS (
 						SELECT
 							1
@@ -78,40 +78,40 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 							)
 					)
 				`,
-        isPublished: sql<boolean>`EXISTS (
+				isPublished: sql<boolean>`EXISTS (
 					SELECT 1 FROM "entity_versions" AS "published_versions"
 					INNER JOIN "entity_status" AS "published_status" ON "published_versions"."status_id" = "published_status"."id"
 					WHERE "published_versions"."entity_id" = ${schema.entityVersions.entityId}
 					AND "published_status"."type" = 'published'
 				)`,
-        document: { key: schema.assets.key, label: schema.assets.label },
-      })
-      .from(schema.documentsPolicies)
-      .innerJoin(schema.entityVersions, eq(schema.documentsPolicies.id, schema.entityVersions.id))
-      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-      .innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
-      .innerJoin(schema.assets, eq(schema.documentsPolicies.documentId, schema.assets.id))
-      .where(latestEditableEntityVersionWhere())
-      .orderBy(asc(schema.documentsPolicies.position)),
-    getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "documents" }),
-  ]);
+				document: { key: schema.assets.key, label: schema.assets.label },
+			})
+			.from(schema.documentsPolicies)
+			.innerJoin(schema.entityVersions, eq(schema.documentsPolicies.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.innerJoin(schema.assets, eq(schema.documentsPolicies.documentId, schema.assets.id))
+			.where(latestEditableEntityVersionWhere())
+			.orderBy(asc(schema.documentsPolicies.position)),
+		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "documents" }),
+	]);
 
-  const documentsShaped = documents.map(({ slug, entityId, ...rest }) => {
-    return { ...rest, entityVersion: { entity: { id: entityId }, slug: { value: slug } } };
-  });
-  const groupsWithDocuments = groups.map((group) => {
-    return {
-      ...group,
-      documentsPolicies: documentsShaped.filter((document) => document.groupId === group.id),
-    };
-  });
-  const ungrouped = documentsShaped.filter((document) => document.groupId == null);
+	const documentsShaped = documents.map(({ slug, entityId, ...rest }) => {
+		return { ...rest, entityVersion: { entity: { id: entityId }, slug: { value: slug } } };
+	});
+	const groupsWithDocuments = groups.map((group) => {
+		return {
+			...group,
+			documentsPolicies: documentsShaped.filter((document) => document.groupId === group.id),
+		};
+	});
+	const ungrouped = documentsShaped.filter((document) => document.groupId == null);
 
-  return (
-    <DocumentsPoliciesPage
-      groups={groupsWithDocuments}
-      initialAssets={initialAssets}
-      ungrouped={ungrouped}
-    />
-  );
+	return (
+		<DocumentsPoliciesPage
+			groups={groupsWithDocuments}
+			initialAssets={initialAssets}
+			ungrouped={ungrouped}
+		/>
+	);
 }

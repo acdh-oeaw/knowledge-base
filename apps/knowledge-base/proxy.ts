@@ -8,5 +8,5 @@ import { middleware as i18nMiddleware } from "@/lib/middlewares/i18n.middleware"
 export const proxy: NextProxy = composeMiddleware(csrfMiddleware, i18nMiddleware, authMiddleware);
 
 export const config: ProxyConfig = {
-  matcher: ["/", "/en/:path*", "/api/:path*"],
+	matcher: ["/", "/en/:path*", "/api/:path*"],
 };

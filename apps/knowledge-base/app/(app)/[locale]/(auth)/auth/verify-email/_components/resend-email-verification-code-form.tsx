@@ -10,20 +10,20 @@ import { type ReactNode, useActionState } from "react";
 import { resendEmailVerificationCodeAction } from "@/app/(app)/[locale]/(auth)/auth/verify-email/_lib/resend-email-verification-code.action";
 
 export function ResendEmailVerificationCodeForm(): ReactNode {
-  const t = useExtracted();
+	const t = useExtracted();
 
-  const [state, action] = useActionState(
-    resendEmailVerificationCodeAction,
-    createActionStateInitial(),
-  );
+	const [state, action] = useActionState(
+		resendEmailVerificationCodeAction,
+		createActionStateInitial(),
+	);
 
-  return (
-    <Form action={action} className="flex flex-col gap-y-6" state={state}>
-      <FormStatus state={state} />
+	return (
+		<Form action={action} className="flex flex-col gap-y-6" state={state}>
+			<FormStatus state={state} />
 
-      <SubmitButton className="mbs-2" intent="secondary">
-        {t("Resend verification code")}
-      </SubmitButton>
-    </Form>
-  );
+			<SubmitButton className="mbs-2" intent="secondary">
+				{t("Resend verification code")}
+			</SubmitButton>
+		</Form>
+	);
 }

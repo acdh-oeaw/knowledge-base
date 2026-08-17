@@ -10,15 +10,15 @@ import { sessions } from "@/config/auth.config";
  * override it. As such, we'll only extend the cookie expiration on GET requests.
  */
 export const middleware: Middleware = function middleware(request, response) {
-  if (request.method.toUpperCase() !== "GET") {
-    return response;
-  }
+	if (request.method.toUpperCase() !== "GET") {
+		return response;
+	}
 
-  const token = request.cookies.get(sessions.cookie.name)?.value ?? null;
+	const token = request.cookies.get(sessions.cookie.name)?.value ?? null;
 
-  if (token != null) {
-    response.cookies.set(sessions.cookie.name, token, sessions.cookie.options);
-  }
+	if (token != null) {
+		response.cookies.set(sessions.cookie.name, token, sessions.cookie.options);
+	}
 
-  return response;
+	return response;
 };

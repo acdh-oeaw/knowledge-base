@@ -15,63 +15,63 @@ import { createMetadata } from "@/lib/server/create-metadata";
 interface ResetPasswordPageProps extends PageProps<"/[locale]/auth/reset-password"> {}
 
 export async function generateMetadata(
-  _props: Readonly<ResetPasswordPageProps>,
-  resolvingMetadata: ResolvingMetadata,
+	_props: Readonly<ResetPasswordPageProps>,
+	resolvingMetadata: ResolvingMetadata,
 ): Promise<Metadata> {
-  const t = await getExtracted();
+	const t = await getExtracted();
 
-  const metadata: Metadata = await createMetadata(resolvingMetadata, {
-    title: t("Reset password"),
-  });
+	const metadata: Metadata = await createMetadata(resolvingMetadata, {
+		title: t("Reset password"),
+	});
 
-  return metadata;
+	return metadata;
 }
 
 export default async function ResetPasswordPage(
-  _props: Readonly<ResetPasswordPageProps>,
+	_props: Readonly<ResetPasswordPageProps>,
 ): Promise<ReactNode> {
-  const locale = await getLocale();
+	const locale = await getLocale();
 
-  const t = await getExtracted();
+	const t = await getExtracted();
 
-  if (!(await globalGetRequestRateLimit())) {
-    return t("Too many requests.");
-  }
+	if (!(await globalGetRequestRateLimit())) {
+		return t("Too many requests.");
+	}
 
-  const { session, user } = await auth.validatePasswordResetSessionFromRequest();
+	const { session, user } = await auth.validatePasswordResetSessionFromRequest();
 
-  if (session == null) {
-    redirect({ href: "/auth/forgot-password", locale });
-  }
+	if (session == null) {
+		redirect({ href: "/auth/forgot-password", locale });
+	}
 
-  if (!session.isEmailVerified) {
-    redirect({ href: "/auth/reset-password/verify-email", locale });
-  }
+	if (!session.isEmailVerified) {
+		redirect({ href: "/auth/reset-password/verify-email", locale });
+	}
 
-  if (user.isTwoFactorRegistered && !session.isTwoFactorVerified) {
-    redirect({ href: "/auth/reset-password/two-factor", locale });
-  }
+	if (user.isTwoFactorRegistered && !session.isTwoFactorVerified) {
+		redirect({ href: "/auth/reset-password/two-factor", locale });
+	}
 
-  return (
-    <Main className="min-block-full p-6 items-center justify-center flex flex-col">
-      <div className="inline-full max-inline-sm flex flex-col gap-y-4">
-        <Link aria-label={t("Home")} className="mbe-2 rounded-xs self-start inline-block" href="/">
-          <Avatar
-            className="dark:invert"
-            isSquare={true}
-            size="md"
-            src="/assets/images/logo-dariah.svg"
-          />
-        </Link>
+	return (
+		<Main className="min-block-full p-6 items-center justify-center flex flex-col">
+			<div className="inline-full max-inline-sm flex flex-col gap-y-4">
+				<Link aria-label={t("Home")} className="mbe-2 rounded-xs self-start inline-block" href="/">
+					<Avatar
+						className="dark:invert"
+						isSquare={true}
+						size="md"
+						src="/assets/images/logo-dariah.svg"
+					/>
+				</Link>
 
-        <div>
-          <h1 className="text-xl/10 font-semibold">{t("Reset password")}</h1>
+				<div>
+					<h1 className="text-xl/10 font-semibold">{t("Reset password")}</h1>
 
-          <Text>{t("Please provide a new password for your account.")}</Text>
-        </div>
+					<Text>{t("Please provide a new password for your account.")}</Text>
+				</div>
 
-        <ResetPasswordForm />
-      </div>
-    </Main>
-  );
+				<ResetPasswordForm />
+			</div>
+		</Main>
+	);
 }

@@ -9,17 +9,17 @@ import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 
 export async function deleteWorkingGroupReportAction(id: string): Promise<void> {
-  const auditSession = await assertAdmin();
+	const auditSession = await assertAdmin();
 
-  await db.delete(schema.workingGroupReports).where(eq(schema.workingGroupReports.id, id));
+	await db.delete(schema.workingGroupReports).where(eq(schema.workingGroupReports.id, id));
 
-  await recordAuditEvent(db, {
-    actorUserId: auditSession.user.id,
-    action: "delete",
-    subjectType: "working_group_reports",
-    subjectId: id,
-    summary: {},
-  });
+	await recordAuditEvent(db, {
+		actorUserId: auditSession.user.id,
+		action: "delete",
+		subjectType: "working_group_reports",
+		subjectId: id,
+		summary: {},
+	});
 
-  revalidatePath("/[locale]/dashboard/administrator/working-group-reports", "layout");
+	revalidatePath("/[locale]/dashboard/administrator/working-group-reports", "layout");
 }

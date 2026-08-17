@@ -9,23 +9,23 @@ import { SocialMediaForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/admi
 import { updateSocialMediaAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/social-media/_lib/update-social-media.action";
 
 interface SocialMediaEditFormProps {
-  socialMedia: Pick<schema.SocialMedia, "id" | "name" | "url"> & {
-    type: Pick<schema.SocialMediaType, "type">;
-    durationStart: string | null;
-    durationEnd: string | null;
-  };
+	socialMedia: Pick<schema.SocialMedia, "id" | "name" | "url"> & {
+		type: Pick<schema.SocialMediaType, "type">;
+		durationStart: string | null;
+		durationEnd: string | null;
+	};
 }
 
 export function SocialMediaEditForm(props: Readonly<SocialMediaEditFormProps>): ReactNode {
-  const { socialMedia } = props;
+	const { socialMedia } = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  return (
-    <Fragment>
-      <Heading>{t("Edit social media")}</Heading>
+	return (
+		<Fragment>
+			<Heading>{t("Edit social media")}</Heading>
 
-      <SocialMediaForm formAction={updateSocialMediaAction} socialMedia={socialMedia} />
-    </Fragment>
-  );
+			<SocialMediaForm formAction={updateSocialMediaAction} socialMedia={socialMedia} />
+		</Fragment>
+	);
 }

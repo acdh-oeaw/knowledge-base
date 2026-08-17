@@ -9,28 +9,28 @@ import { UserForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrat
 import { updateUserAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_lib/update-user.action";
 
 interface UserEditFormProps {
-  canCurrentUserManageAdmins: boolean;
-  user: Pick<schema.User, "id" | "name" | "email" | "role"> & {
-    canManageAdmins: boolean;
-    person: { id: string; name: string } | null;
-    organisationalUnit: { id: string; name: string } | null;
-  };
+	canCurrentUserManageAdmins: boolean;
+	user: Pick<schema.User, "id" | "name" | "email" | "role"> & {
+		canManageAdmins: boolean;
+		person: { id: string; name: string } | null;
+		organisationalUnit: { id: string; name: string } | null;
+	};
 }
 
 export function UserEditForm(props: Readonly<UserEditFormProps>): ReactNode {
-  const { canCurrentUserManageAdmins, user } = props;
+	const { canCurrentUserManageAdmins, user } = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  return (
-    <Fragment>
-      <Heading>{t("Edit user")}</Heading>
+	return (
+		<Fragment>
+			<Heading>{t("Edit user")}</Heading>
 
-      <UserForm
-        canCurrentUserManageAdmins={canCurrentUserManageAdmins}
-        formAction={updateUserAction}
-        user={user}
-      />
-    </Fragment>
-  );
+			<UserForm
+				canCurrentUserManageAdmins={canCurrentUserManageAdmins}
+				formAction={updateUserAction}
+				user={user}
+			/>
+		</Fragment>
+	);
 }

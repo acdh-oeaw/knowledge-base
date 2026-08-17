@@ -13,38 +13,38 @@ import { type ReactNode, useActionState } from "react";
 import { updatePasswordAction } from "@/app/(app)/[locale]/(auth)/auth/settings/_lib/update-password.action";
 
 export function UpdatePasswordForm(): ReactNode {
-  const t = useExtracted();
+	const t = useExtracted();
 
-  const [state, action] = useActionState(updatePasswordAction, createActionStateInitial());
+	const [state, action] = useActionState(updatePasswordAction, createActionStateInitial());
 
-  return (
-    <Form action={action} className="flex flex-col gap-y-6" state={state}>
-      <FormStatus state={state} />
+	return (
+		<Form action={action} className="flex flex-col gap-y-6" state={state}>
+			<FormStatus state={state} />
 
-      <TextField autoComplete="current-password" isRequired={true} name="password" type="password">
-        <Label>{t("Current password")}</Label>
-        <FieldError />
-        <Input />
-      </TextField>
+			<TextField autoComplete="current-password" isRequired={true} name="password" type="password">
+				<Label>{t("Current password")}</Label>
+				<FieldError />
+				<Input />
+			</TextField>
 
-      <TextField autoComplete="new-password" isRequired={true} name="new-password" type="password">
-        <Label>{t("New password")}</Label>
-        <FieldError />
-        <Input />
-      </TextField>
+			<TextField autoComplete="new-password" isRequired={true} name="new-password" type="password">
+				<Label>{t("New password")}</Label>
+				<FieldError />
+				<Input />
+			</TextField>
 
-      <TextField
-        autoComplete="new-password"
-        isRequired={true}
-        name="new-password-confirmation"
-        type="password"
-      >
-        <Label>{t("Confirm new password")}</Label>
-        <FieldError />
-        <Input />
-      </TextField>
+			<TextField
+				autoComplete="new-password"
+				isRequired={true}
+				name="new-password-confirmation"
+				type="password"
+			>
+				<Label>{t("Confirm new password")}</Label>
+				<FieldError />
+				<Input />
+			</TextField>
 
-      <SubmitButton className="mbs-2">{t("Update")}</SubmitButton>
-    </Form>
-  );
+			<SubmitButton className="mbs-2">{t("Update")}</SubmitButton>
+		</Form>
+	);
 }

@@ -9,27 +9,27 @@ import { ServiceForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administ
 import { createServiceAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_lib/create-service.action";
 
 interface ServiceCreateFormProps {
-  serviceTypes: Array<Pick<schema.ServiceType, "id" | "type">>;
-  serviceStatuses: Array<Pick<schema.ServiceStatus, "id" | "status">>;
-  initialOrganisationalUnitItems: Array<{ id: string; name: string }>;
-  initialOrganisationalUnitTotal: number;
+	serviceTypes: Array<Pick<schema.ServiceType, "id" | "type">>;
+	serviceStatuses: Array<Pick<schema.ServiceStatus, "id" | "status">>;
+	initialOrganisationalUnitItems: Array<{ id: string; name: string }>;
+	initialOrganisationalUnitTotal: number;
 }
 
 export function ServiceCreateForm(props: Readonly<ServiceCreateFormProps>): ReactNode {
-  const { serviceStatuses, initialOrganisationalUnitItems, initialOrganisationalUnitTotal } = props;
+	const { serviceStatuses, initialOrganisationalUnitItems, initialOrganisationalUnitTotal } = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  return (
-    <Fragment>
-      <EntityFormHeader title={t("New internal service")} />
+	return (
+		<Fragment>
+			<EntityFormHeader title={t("New internal service")} />
 
-      <ServiceForm
-        formAction={createServiceAction}
-        initialOrganisationalUnitItems={initialOrganisationalUnitItems}
-        initialOrganisationalUnitTotal={initialOrganisationalUnitTotal}
-        serviceStatuses={serviceStatuses}
-      />
-    </Fragment>
-  );
+			<ServiceForm
+				formAction={createServiceAction}
+				initialOrganisationalUnitItems={initialOrganisationalUnitItems}
+				initialOrganisationalUnitTotal={initialOrganisationalUnitTotal}
+				serviceStatuses={serviceStatuses}
+			/>
+		</Fragment>
+	);
 }

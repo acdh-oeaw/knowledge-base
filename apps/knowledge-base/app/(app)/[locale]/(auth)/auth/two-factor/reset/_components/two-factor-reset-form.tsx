@@ -13,21 +13,21 @@ import { type ReactNode, useActionState } from "react";
 import { resetTwoFactorAction } from "@/app/(app)/[locale]/(auth)/auth/two-factor/reset/_lib/reset-two-factor.action";
 
 export function TwoFactorResetForm(): ReactNode {
-  const t = useExtracted();
+	const t = useExtracted();
 
-  const [state, action] = useActionState(resetTwoFactorAction, createActionStateInitial());
+	const [state, action] = useActionState(resetTwoFactorAction, createActionStateInitial());
 
-  return (
-    <Form action={action} className="flex flex-col gap-y-6" state={state}>
-      <FormStatus state={state} />
+	return (
+		<Form action={action} className="flex flex-col gap-y-6" state={state}>
+			<FormStatus state={state} />
 
-      <TextField isRequired={true} name="code">
-        <Label>{t("Recovery code")}</Label>
-        <FieldError />
-        <Input />
-      </TextField>
+			<TextField isRequired={true} name="code">
+				<Label>{t("Recovery code")}</Label>
+				<FieldError />
+				<Input />
+			</TextField>
 
-      <SubmitButton className="mbs-2">{t("Verify")}</SubmitButton>
-    </Form>
-  );
+			<SubmitButton className="mbs-2">{t("Verify")}</SubmitButton>
+		</Form>
+	);
 }

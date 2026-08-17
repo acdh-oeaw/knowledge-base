@@ -13,11 +13,11 @@ import { type SQL, and, eq, inArray, or, sql } from "@/lib/db/sql";
  * `publishedEntityVersionWhere()` so an unpublished or draft-only target cannot be selected.
  */
 export function latestEditableEntityVersionWhere(): SQL | undefined {
-  return or(
-    eq(schema.entityStatus.type, "draft"),
-    and(
-      eq(schema.entityStatus.type, "published"),
-      sql`
+	return or(
+		eq(schema.entityStatus.type, "draft"),
+		and(
+			eq(schema.entityStatus.type, "published"),
+			sql`
 				NOT EXISTS (
 					SELECT
 						1
@@ -29,12 +29,12 @@ export function latestEditableEntityVersionWhere(): SQL | undefined {
 						AND "es2"."type" = 'draft'
 				)
 			`,
-    ),
-  );
+		),
+	);
 }
 
 export function publishedEntityVersionWhere(): SQL | undefined {
-  return eq(schema.entityStatus.type, "published");
+	return eq(schema.entityStatus.type, "published");
 }
 
 /**
@@ -44,7 +44,7 @@ export function publishedEntityVersionWhere(): SQL | undefined {
  * locale.
  */
 export function defaultLocaleEntityVersionWhere(): SQL {
-  return sql`
+	return sql`
 		${schema.entityVersions.localeId} = (
 			SELECT ${schema.locales.id} FROM ${schema.locales} WHERE ${schema.locales.isDefault} = true
 		)
@@ -57,14 +57,14 @@ export function defaultLocaleEntityVersionWhere(): SQL {
  * table name, which an aliased column doesn't structurally match.
  */
 export function localeMatch(localeColumn: unknown, localeId: string | undefined): SQL {
-  return localeId != null
-    ? sql`${localeColumn} = ${localeId}`
-    : sql`${localeColumn} = (SELECT ${schema.locales.id} FROM ${schema.locales} WHERE ${schema.locales.isDefault} = true)`;
+	return localeId != null
+		? sql`${localeColumn} = ${localeId}`
+		: sql`${localeColumn} = (SELECT ${schema.locales.id} FROM ${schema.locales} WHERE ${schema.locales.isDefault} = true)`;
 }
 
 /** Status filter for an aliased `entity_versions` row, by status type. */
 export function statusMatch(statusColumn: unknown, type: "draft" | "published"): SQL {
-  return sql`${statusColumn} = (SELECT ${schema.entityStatus.id} FROM ${schema.entityStatus} WHERE ${schema.entityStatus.type} = ${type})`;
+	return sql`${statusColumn} = (SELECT ${schema.entityStatus.id} FROM ${schema.entityStatus} WHERE ${schema.entityStatus.type} = ${type})`;
 }
 
 /**
@@ -72,48 +72,48 @@ export function statusMatch(statusColumn: unknown, type: "draft" | "published"):
  * reject insertions that would link to a draft.
  */
 export async function isPublishedEntityVersions(
-  tx: Database | Transaction,
-  entityVersionIds: ReadonlyArray<string>,
+	tx: Database | Transaction,
+	entityVersionIds: ReadonlyArray<string>,
 ): Promise<boolean> {
-  if (entityVersionIds.length === 0) {
-    return true;
-  }
+	if (entityVersionIds.length === 0) {
+		return true;
+	}
 
-  const rows = await tx
-    .select({ id: schema.entityVersions.id })
-    .from(schema.entityVersions)
-    .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-    .where(
-      and(
-        eq(schema.entityStatus.type, "published"),
-        inArray(schema.entityVersions.id, [...entityVersionIds]),
-      ),
-    );
+	const rows = await tx
+		.select({ id: schema.entityVersions.id })
+		.from(schema.entityVersions)
+		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+		.where(
+			and(
+				eq(schema.entityStatus.type, "published"),
+				inArray(schema.entityVersions.id, [...entityVersionIds]),
+			),
+		);
 
-  return rows.length === entityVersionIds.length;
+	return rows.length === entityVersionIds.length;
 }
 
 /** True when every document has at least one published version. */
 export async function arePublishedEntityDocuments(
-  tx: Database | Transaction,
-  documentIds: ReadonlyArray<string>,
+	tx: Database | Transaction,
+	documentIds: ReadonlyArray<string>,
 ): Promise<boolean> {
-  const uniqueDocumentIds = [...new Set(documentIds)];
+	const uniqueDocumentIds = [...new Set(documentIds)];
 
-  if (uniqueDocumentIds.length === 0) {
-    return true;
-  }
+	if (uniqueDocumentIds.length === 0) {
+		return true;
+	}
 
-  const rows = await tx
-    .selectDistinct({ id: schema.entityVersions.entityId })
-    .from(schema.entityVersions)
-    .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-    .where(
-      and(
-        eq(schema.entityStatus.type, "published"),
-        inArray(schema.entityVersions.entityId, uniqueDocumentIds),
-      ),
-    );
+	const rows = await tx
+		.selectDistinct({ id: schema.entityVersions.entityId })
+		.from(schema.entityVersions)
+		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+		.where(
+			and(
+				eq(schema.entityStatus.type, "published"),
+				inArray(schema.entityVersions.entityId, uniqueDocumentIds),
+			),
+		);
 
-  return rows.length === uniqueDocumentIds.length;
+	return rows.length === uniqueDocumentIds.length;
 }

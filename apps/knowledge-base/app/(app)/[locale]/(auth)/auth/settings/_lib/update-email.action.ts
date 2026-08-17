@@ -1,8 +1,8 @@
 "use server";
 
+import { getFormDataValues } from "@acdh-oeaw/lib";
 import { createActionStateError } from "@dariah-eric/next-lib/actions";
 import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
-import { getFormDataValues } from "@acdh-oeaw/lib";
 import { getExtracted, getLocale } from "next-intl/server";
 import * as v from "valibot";
 
@@ -14,58 +14,58 @@ import { redirect } from "@/lib/navigation/navigation";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const updateEmailAction = createServerAction(
-  async function updateEmailAction(state, formData) {
-    const locale = await getLocale();
-    const t = await getExtracted();
+	async function updateEmailAction(state, formData) {
+		const locale = await getLocale();
+		const t = await getExtracted();
 
-    if (!(await globalPostRequestRateLimit())) {
-      return createActionStateError({ message: t("Too many requests.") });
-    }
+		if (!(await globalPostRequestRateLimit())) {
+			return createActionStateError({ message: t("Too many requests.") });
+		}
 
-    const { session, user } = await getCurrentSession();
+		const { session, user } = await getCurrentSession();
 
-    if (session == null) {
-      return createActionStateError({ message: t("Not authenticated.") });
-    }
-    if (user.isTwoFactorRegistered && !session.isTwoFactorVerified) {
-      return createActionStateError({ message: t("Forbidden.") });
-    }
-    if (!auth.sendVerificationEmailBucket.check(user.id, 1)) {
-      return createActionStateError({ message: t("Too many requests.") });
-    }
+		if (session == null) {
+			return createActionStateError({ message: t("Not authenticated.") });
+		}
+		if (user.isTwoFactorRegistered && !session.isTwoFactorVerified) {
+			return createActionStateError({ message: t("Forbidden.") });
+		}
+		if (!auth.sendVerificationEmailBucket.check(user.id, 1)) {
+			return createActionStateError({ message: t("Too many requests.") });
+		}
 
-    const result = await v.safeParseAsync(
-      UpdateEmailActionInputSchema,
-      getFormDataValues(formData),
-      { lang: getIntlLanguage(locale) },
-    );
+		const result = await v.safeParseAsync(
+			UpdateEmailActionInputSchema,
+			getFormDataValues(formData),
+			{ lang: getIntlLanguage(locale) },
+		);
 
-    if (!result.success) {
-      const errors = v.flatten<typeof UpdateEmailActionInputSchema>(result.issues);
+		if (!result.success) {
+			const errors = v.flatten<typeof UpdateEmailActionInputSchema>(result.issues);
 
-      return createActionStateError({
-        message: errors.root ?? t("Invalid or missing fields."),
-        validationErrors: errors.nested,
-      });
-    }
+			return createActionStateError({
+				message: errors.root ?? t("Invalid or missing fields."),
+				validationErrors: errors.nested,
+			});
+		}
 
-    const { email } = result.output;
+		const { email } = result.output;
 
-    const emailAvailable = await auth.isEmailAvailable(email);
-    if (!emailAvailable) {
-      return createActionStateError({ message: t("Email is already used.") });
-    }
-    if (!auth.sendVerificationEmailBucket.consume(user.id, 1)) {
-      return createActionStateError({ message: t("Too many requests.") });
-    }
+		const emailAvailable = await auth.isEmailAvailable(email);
+		if (!emailAvailable) {
+			return createActionStateError({ message: t("Email is already used.") });
+		}
+		if (!auth.sendVerificationEmailBucket.consume(user.id, 1)) {
+			return createActionStateError({ message: t("Too many requests.") });
+		}
 
-    const verificationRequest = await auth.createEmailVerificationRequest(user.id, email);
-    await auth.sendVerificationEmail(verificationRequest.email, verificationRequest.code);
-    await auth.setEmailVerificationRequestCookie(
-      verificationRequest.token,
-      verificationRequest.expiresAt,
-    );
+		const verificationRequest = await auth.createEmailVerificationRequest(user.id, email);
+		await auth.sendVerificationEmail(verificationRequest.email, verificationRequest.code);
+		await auth.setEmailVerificationRequestCookie(
+			verificationRequest.token,
+			verificationRequest.expiresAt,
+		);
 
-    redirect({ href: "/auth/verify-email", locale });
-  },
+		redirect({ href: "/auth/verify-email", locale });
+	},
 );

@@ -13,64 +13,64 @@ import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 
 interface CountryReportProjectsScreenProps {
-  reportId: string;
+	reportId: string;
 }
 
 /** Shared "projects" screen. See {@link getAuthorizedCountryReportForUser} for authorization. */
 export async function CountryReportProjectsScreen(
-  props: Readonly<CountryReportProjectsScreenProps>,
+	props: Readonly<CountryReportProjectsScreenProps>,
 ): Promise<ReactNode> {
-  const { reportId } = props;
+	const { reportId } = props;
 
-  const { user } = await assertAuthenticated();
-  const [result, allProjects] = await Promise.all([
-    getAuthorizedCountryReportForUser(
-      user,
-      reportId,
-      (id) =>
-        db.query.countryReports.findFirst({
-          where: { id },
-          columns: { id: true },
-          with: {
-            projectContributions: {
-              columns: { id: true, amountEuros: true, projectDocumentId: true },
-              with: {
-                project: { columns: { name: true } },
-              },
-            },
-          },
-        }),
-      "update",
-    ),
-    db
-      // `id` is the project document id (entities.id) so it lines up with the document-level
-      // project_document_id stored on the contribution.
-      .select({ id: schema.entityVersions.entityId, name: schema.projects.name })
-      .from(schema.projects)
-      .innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
-      .innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-      .where(publishedEntityVersionWhere())
-      .orderBy(schema.projects.name),
-  ]);
+	const { user } = await assertAuthenticated();
+	const [result, allProjects] = await Promise.all([
+		getAuthorizedCountryReportForUser(
+			user,
+			reportId,
+			(id) =>
+				db.query.countryReports.findFirst({
+					where: { id },
+					columns: { id: true },
+					with: {
+						projectContributions: {
+							columns: { id: true, amountEuros: true, projectDocumentId: true },
+							with: {
+								project: { columns: { name: true } },
+							},
+						},
+					},
+				}),
+			"update",
+		),
+		db
+			// `id` is the project document id (entities.id) so it lines up with the document-level
+			// project_document_id stored on the contribution.
+			.select({ id: schema.entityVersions.entityId, name: schema.projects.name })
+			.from(schema.projects)
+			.innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(publishedEntityVersionWhere())
+			.orderBy(schema.projects.name),
+	]);
 
-  if (result.status !== "ok") {
-    notFound();
-  }
-  const report = result.data;
-  if (report == null) {
-    notFound();
-  }
+	if (result.status !== "ok") {
+		notFound();
+	}
+	const report = result.data;
+	if (report == null) {
+		notFound();
+	}
 
-  return (
-    <div className="flex flex-col gap-y-12">
-      <CountryReportProjectsForm
-        addAction={createCountryReportProjectContributionAction}
-        allProjects={allProjects}
-        deleteAction={deleteCountryReportProjectContributionAction}
-        report={report}
-      />
+	return (
+		<div className="flex flex-col gap-y-12">
+			<CountryReportProjectsForm
+				addAction={createCountryReportProjectContributionAction}
+				allProjects={allProjects}
+				deleteAction={deleteCountryReportProjectContributionAction}
+				report={report}
+			/>
 
-      <ReportScreenCommentSection reportId={report.id} reportType="country" screenKey="projects" />
-    </div>
-  );
+			<ReportScreenCommentSection reportId={report.id} reportType="country" screenKey="projects" />
+		</div>
+	);
 }

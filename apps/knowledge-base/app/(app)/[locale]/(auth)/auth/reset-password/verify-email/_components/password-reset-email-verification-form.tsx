@@ -13,24 +13,24 @@ import { type ReactNode, useActionState } from "react";
 import { verifyPasswordResetEmailAction } from "@/app/(app)/[locale]/(auth)/auth/reset-password/verify-email/_lib/verify-password-reset-email.action";
 
 export function PasswordResetEmailVerificationForm(): ReactNode {
-  const t = useExtracted();
+	const t = useExtracted();
 
-  const [state, action] = useActionState(
-    verifyPasswordResetEmailAction,
-    createActionStateInitial(),
-  );
+	const [state, action] = useActionState(
+		verifyPasswordResetEmailAction,
+		createActionStateInitial(),
+	);
 
-  return (
-    <Form action={action} className="flex flex-col gap-y-6" state={state}>
-      <FormStatus state={state} />
+	return (
+		<Form action={action} className="flex flex-col gap-y-6" state={state}>
+			<FormStatus state={state} />
 
-      <TextField isRequired={true} name="code">
-        <Label>{t("Code")}</Label>
-        <FieldError />
-        <Input />
-      </TextField>
+			<TextField isRequired={true} name="code">
+				<Label>{t("Code")}</Label>
+				<FieldError />
+				<Input />
+			</TextField>
 
-      <SubmitButton className="mbs-2">{t("Verify")}</SubmitButton>
-    </Form>
-  );
+			<SubmitButton className="mbs-2">{t("Verify")}</SubmitButton>
+		</Form>
+	);
 }

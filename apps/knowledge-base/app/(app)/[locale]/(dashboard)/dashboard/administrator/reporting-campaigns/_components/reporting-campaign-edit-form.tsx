@@ -9,21 +9,21 @@ import { ReportingCampaignForm } from "@/app/(app)/[locale]/(dashboard)/dashboar
 import { updateReportingCampaignAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/reporting-campaigns/_lib/update-reporting-campaign.action";
 
 interface ReportingCampaignEditFormProps {
-  campaign: Pick<schema.ReportingCampaign, "id" | "year" | "status">;
+	campaign: Pick<schema.ReportingCampaign, "id" | "year" | "status">;
 }
 
 export function ReportingCampaignEditForm(
-  props: Readonly<ReportingCampaignEditFormProps>,
+	props: Readonly<ReportingCampaignEditFormProps>,
 ): ReactNode {
-  const { campaign } = props;
+	const { campaign } = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  return (
-    <Fragment>
-      <Heading>{t("Edit reporting campaign")}</Heading>
+	return (
+		<Fragment>
+			<Heading>{t("Edit reporting campaign")}</Heading>
 
-      <ReportingCampaignForm campaign={campaign} formAction={updateReportingCampaignAction} />
-    </Fragment>
-  );
+			<ReportingCampaignForm campaign={campaign} formAction={updateReportingCampaignAction} />
+		</Fragment>
+	);
 }

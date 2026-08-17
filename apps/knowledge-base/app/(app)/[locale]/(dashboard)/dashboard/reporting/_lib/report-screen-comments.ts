@@ -8,51 +8,51 @@ export type ReportScreenCommentType = (typeof schema.reportScreenCommentTypeEnum
 export type ReportScreenCommentKey = (typeof schema.reportScreenCommentKeyEnum)[number];
 
 export async function getReportScreenComment(
-  reportType: ReportScreenCommentType,
-  reportId: string,
-  screenKey: ReportScreenCommentKey,
+	reportType: ReportScreenCommentType,
+	reportId: string,
+	screenKey: ReportScreenCommentKey,
 ): Promise<JSONContent | null> {
-  const row = await db
-    .select({ comment: schema.reportScreenComments.comment })
-    .from(schema.reportScreenComments)
-    .where(
-      and(
-        eq(schema.reportScreenComments.reportType, reportType),
-        eq(schema.reportScreenComments.reportId, reportId),
-        eq(schema.reportScreenComments.screenKey, screenKey),
-      ),
-    )
-    .limit(1);
+	const row = await db
+		.select({ comment: schema.reportScreenComments.comment })
+		.from(schema.reportScreenComments)
+		.where(
+			and(
+				eq(schema.reportScreenComments.reportType, reportType),
+				eq(schema.reportScreenComments.reportId, reportId),
+				eq(schema.reportScreenComments.screenKey, screenKey),
+			),
+		)
+		.limit(1);
 
-  return row[0]?.comment ?? null;
+	return row[0]?.comment ?? null;
 }
 
 export function isEmptyRichTextDocument(content: JSONContent | null | undefined): boolean {
-  if (content == null) {
-    return true;
-  }
-  if (content.type !== "doc") {
-    return false;
-  }
+	if (content == null) {
+		return true;
+	}
+	if (content.type !== "doc") {
+		return false;
+	}
 
-  const nodes = content.content ?? [];
+	const nodes = content.content ?? [];
 
-  if (nodes.length === 0) {
-    return true;
-  }
+	if (nodes.length === 0) {
+		return true;
+	}
 
-  return nodes.every((node) => {
-    if (node.type === "paragraph") {
-      const paragraphContent = node.content ?? [];
-      if (paragraphContent.length === 0) {
-        return true;
-      }
+	return nodes.every((node) => {
+		if (node.type === "paragraph") {
+			const paragraphContent = node.content ?? [];
+			if (paragraphContent.length === 0) {
+				return true;
+			}
 
-      return paragraphContent.every(
-        (child) => child.type === "text" && (child.text ?? "").trim() === "",
-      );
-    }
+			return paragraphContent.every(
+				(child) => child.type === "text" && (child.text ?? "").trim() === "",
+			);
+		}
 
-    return false;
-  });
+		return false;
+	});
 }

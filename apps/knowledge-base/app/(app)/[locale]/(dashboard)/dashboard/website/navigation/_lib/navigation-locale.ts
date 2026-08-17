@@ -11,16 +11,16 @@ import { type SQL, sql } from "@/lib/db/sql";
  * `NULL` whenever that value happens to be the default locale.
  */
 export function navigationItemLocaleWhere(localeId: string | null): SQL {
-  if (localeId == null) {
-    return sql`(
+	if (localeId == null) {
+		return sql`(
 			${schema.navigationItems.localeId} IS NULL
 			OR ${schema.navigationItems.localeId} = (
 				SELECT ${schema.locales.id} FROM ${schema.locales} WHERE ${schema.locales.isDefault} = true
 			)
 		)`;
-  }
+	}
 
-  return sql`(
+	return sql`(
 		${schema.navigationItems.localeId} = ${localeId}
 		OR (
 			${schema.navigationItems.localeId} IS NULL

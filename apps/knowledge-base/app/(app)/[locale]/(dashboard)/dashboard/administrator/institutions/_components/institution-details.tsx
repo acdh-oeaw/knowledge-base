@@ -2,9 +2,9 @@
 
 import type * as schema from "@dariah-eric/database/schema";
 import {
-  DescriptionDetails,
-  DescriptionList,
-  DescriptionTerm,
+	DescriptionDetails,
+	DescriptionList,
+	DescriptionTerm,
 } from "@dariah-eric/ui/description-list";
 import { Note } from "@dariah-eric/ui/note";
 import { useExtracted, useFormatter } from "next-intl";
@@ -25,286 +25,286 @@ import { getEntityDetailHref, getOrganisationalUnitDetailHref } from "@/lib/enti
 import { formatRoleType } from "@/lib/format-role-type";
 
 interface InstitutionDetailsProps {
-  documentId: string;
-  hasDraft: boolean;
-  isLocaleFallback: boolean;
-  isPublished: boolean;
-  locales: Array<{ code: string; name: string }>;
-  selectedLocaleCode: string;
-  selectedVersion: "draft" | "published";
-  institution: Pick<
-    schema.OrganisationalUnit,
-    "acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
-  > & {
-    descriptionContentBlocks: Array<ContentBlock>;
-    entityVersion: { entity: { id: string }; slug: { value: string } };
-  } & { image: { key: string; label: string; url: string } | null };
-  selectedRelatedEntities: Array<{
-    id: string;
-    name: string;
-    description?: string;
-    slug: string;
-    entityType: string;
-    unitType: string | null;
-  }>;
-  selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
-  selectedSocialMediaItems: Array<{
-    id: string;
-    name: string;
-    type?: string;
-    url?: string;
-    description?: string;
-  }>;
-  personRelations: Array<PersonRelation>;
-  projectPartnerships: Array<UnitProjectPartnership>;
-  relations: Array<UnitRelation>;
+	documentId: string;
+	hasDraft: boolean;
+	isLocaleFallback: boolean;
+	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
+	selectedVersion: "draft" | "published";
+	institution: Pick<
+		schema.OrganisationalUnit,
+		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
+	> & {
+		descriptionContentBlocks: Array<ContentBlock>;
+		entityVersion: { entity: { id: string }; slug: { value: string } };
+	} & { image: { key: string; label: string; url: string } | null };
+	selectedRelatedEntities: Array<{
+		id: string;
+		name: string;
+		description?: string;
+		slug: string;
+		entityType: string;
+		unitType: string | null;
+	}>;
+	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
+	selectedSocialMediaItems: Array<{
+		id: string;
+		name: string;
+		type?: string;
+		url?: string;
+		description?: string;
+	}>;
+	personRelations: Array<PersonRelation>;
+	projectPartnerships: Array<UnitProjectPartnership>;
+	relations: Array<UnitRelation>;
 
-  publishAction: (documentId: string) => Promise<unknown>;
-  discardDraftAction?: (documentId: string) => Promise<unknown>;
+	publishAction: (documentId: string) => Promise<unknown>;
+	discardDraftAction?: (documentId: string) => Promise<unknown>;
 }
 
 export function InstitutionDetails(props: Readonly<InstitutionDetailsProps>): ReactNode {
-  const {
-    documentId,
-    hasDraft,
-    isLocaleFallback,
-    isPublished,
-    institution,
-    locales,
-    personRelations,
-    projectPartnerships,
-    relations,
-    publishAction,
-    discardDraftAction,
-    selectedLocaleCode,
-    selectedRelatedEntities,
-    selectedRelatedResources,
-    selectedSocialMediaItems,
-    selectedVersion,
-  } = props;
+	const {
+		documentId,
+		hasDraft,
+		isLocaleFallback,
+		isPublished,
+		institution,
+		locales,
+		personRelations,
+		projectPartnerships,
+		relations,
+		publishAction,
+		discardDraftAction,
+		selectedLocaleCode,
+		selectedRelatedEntities,
+		selectedRelatedResources,
+		selectedSocialMediaItems,
+		selectedVersion,
+	} = props;
 
-  const t = useExtracted();
-  const format = useFormatter();
+	const t = useExtracted();
+	const format = useFormatter();
 
-  return (
-    <Fragment>
-      {isLocaleFallback ? (
-        <Note intent="info">
-          {t("Not yet translated in the selected language — showing the default language.")}
-        </Note>
-      ) : null}
-      <div className="flex items-center justify-between">
-        <VersionSelector
-          draftHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/details`}
-          hasDraft={hasDraft}
-          isPublished={isPublished}
-          publishedHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/details?version=published`}
-          selectedVersion={selectedVersion}
-        />
-        <div className="flex items-center gap-x-4">
-          <EntityLifecycleBar
-            discardDraftAction={discardDraftAction}
-            documentId={documentId}
-            editHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/edit`}
-            hasDraft={hasDraft}
-            isPublished={isPublished}
-            publishAction={publishAction}
-          />
-          <LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
-        </div>
-      </div>
-      <DescriptionList>
-        <DescriptionTerm>{t("Name")}</DescriptionTerm>
-        <DescriptionDetails>{institution.name}</DescriptionDetails>
+	return (
+		<Fragment>
+			{isLocaleFallback ? (
+				<Note intent="info">
+					{t("Not yet translated in the selected language — showing the default language.")}
+				</Note>
+			) : null}
+			<div className="flex items-center justify-between">
+				<VersionSelector
+					draftHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/details`}
+					hasDraft={hasDraft}
+					isPublished={isPublished}
+					publishedHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/details?version=published`}
+					selectedVersion={selectedVersion}
+				/>
+				<div className="flex items-center gap-x-4">
+					<EntityLifecycleBar
+						discardDraftAction={discardDraftAction}
+						documentId={documentId}
+						editHref={`/dashboard/administrator/institutions/${institution.entityVersion.slug.value}/edit`}
+						hasDraft={hasDraft}
+						isPublished={isPublished}
+						publishAction={publishAction}
+					/>
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+				</div>
+			</div>
+			<DescriptionList>
+				<DescriptionTerm>{t("Name")}</DescriptionTerm>
+				<DescriptionDetails>{institution.name}</DescriptionDetails>
 
-        <DescriptionTerm>{t("Slug")}</DescriptionTerm>
-        <DescriptionDetails>{institution.entityVersion.slug.value}</DescriptionDetails>
+				<DescriptionTerm>{t("Slug")}</DescriptionTerm>
+				<DescriptionDetails>{institution.entityVersion.slug.value}</DescriptionDetails>
 
-        <DescriptionTerm>{t("Acronym")}</DescriptionTerm>
-        <DescriptionDetails>{institution.acronym}</DescriptionDetails>
+				<DescriptionTerm>{t("Acronym")}</DescriptionTerm>
+				<DescriptionDetails>{institution.acronym}</DescriptionDetails>
 
-        <DescriptionTerm>{t("ROR")}</DescriptionTerm>
-        <DescriptionDetails>{institution.ror}</DescriptionDetails>
+				<DescriptionTerm>{t("ROR")}</DescriptionTerm>
+				<DescriptionDetails>{institution.ror}</DescriptionDetails>
 
-        <DescriptionTerm>{t("SSHOC actor ID")}</DescriptionTerm>
-        <DescriptionDetails>{institution.sshocMarketplaceActorId}</DescriptionDetails>
+				<DescriptionTerm>{t("SSHOC actor ID")}</DescriptionTerm>
+				<DescriptionDetails>{institution.sshocMarketplaceActorId}</DescriptionDetails>
 
-        <DescriptionTerm>{t("Summary")}</DescriptionTerm>
-        <DescriptionDetails>{institution.summary}</DescriptionDetails>
+				<DescriptionTerm>{t("Summary")}</DescriptionTerm>
+				<DescriptionDetails>{institution.summary}</DescriptionDetails>
 
-        <DescriptionTerm>{t("Image")}</DescriptionTerm>
-        <DescriptionDetails>
-          {institution.image != null ? (
-            <img
-              alt=""
-              className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-              src={institution.image.url}
-            />
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("Image")}</DescriptionTerm>
+				<DescriptionDetails>
+					{institution.image != null ? (
+						<img
+							alt=""
+							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
+							src={institution.image.url}
+						/>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("Description")}</DescriptionTerm>
-        <DescriptionDetails>
-          {institution.descriptionContentBlocks.length > 0 ? (
-            <ContentBlocksView
-              key={selectedVersion}
-              contentBlocks={institution.descriptionContentBlocks}
-            />
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("Description")}</DescriptionTerm>
+				<DescriptionDetails>
+					{institution.descriptionContentBlocks.length > 0 ? (
+						<ContentBlocksView
+							key={selectedVersion}
+							contentBlocks={institution.descriptionContentBlocks}
+						/>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("Social Media")}</DescriptionTerm>
-        <DescriptionDetails>
-          {selectedSocialMediaItems.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {selectedSocialMediaItems.map((socialMediaItem) => (
-                <li key={socialMediaItem.id} className="text-sm">
-                  <span className="font-medium">{socialMediaItem.name}</span>
-                  {socialMediaItem.type != null ? (
-                    <Fragment>
-                      {" · "}
-                      <span className="text-muted-fg">{socialMediaItem.type}</span>
-                    </Fragment>
-                  ) : null}
-                  {socialMediaItem.url != null ? (
-                    <Fragment>
-                      {" · "}
-                      <a
-                        className="underline"
-                        href={socialMediaItem.url}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        {socialMediaItem.url}
-                      </a>
-                    </Fragment>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("Social Media")}</DescriptionTerm>
+				<DescriptionDetails>
+					{selectedSocialMediaItems.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{selectedSocialMediaItems.map((socialMediaItem) => (
+								<li key={socialMediaItem.id} className="text-sm">
+									<span className="font-medium">{socialMediaItem.name}</span>
+									{socialMediaItem.type != null ? (
+										<Fragment>
+											{" · "}
+											<span className="text-muted-fg">{socialMediaItem.type}</span>
+										</Fragment>
+									) : null}
+									{socialMediaItem.url != null ? (
+										<Fragment>
+											{" · "}
+											<a
+												className="underline"
+												href={socialMediaItem.url}
+												rel="noreferrer"
+												target="_blank"
+											>
+												{socialMediaItem.url}
+											</a>
+										</Fragment>
+									) : null}
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("Related entities")}</DescriptionTerm>
-        <DescriptionDetails>
-          {selectedRelatedEntities.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {selectedRelatedEntities.map((relatedEntity) => (
-                <li key={relatedEntity.id} className="text-sm">
-                  <RelationLink
-                    className="font-medium"
-                    href={getEntityDetailHref({
-                      entityType: relatedEntity.entityType,
-                      slug: relatedEntity.slug,
-                      unitType: relatedEntity.unitType,
-                    })}
-                  >
-                    {relatedEntity.name}
-                  </RelationLink>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("Related entities")}</DescriptionTerm>
+				<DescriptionDetails>
+					{selectedRelatedEntities.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{selectedRelatedEntities.map((relatedEntity) => (
+								<li key={relatedEntity.id} className="text-sm">
+									<RelationLink
+										className="font-medium"
+										href={getEntityDetailHref({
+											entityType: relatedEntity.entityType,
+											slug: relatedEntity.slug,
+											unitType: relatedEntity.unitType,
+										})}
+									>
+										{relatedEntity.name}
+									</RelationLink>
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("Related resources")}</DescriptionTerm>
-        <DescriptionDetails>
-          {selectedRelatedResources.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {selectedRelatedResources.map((relatedResource) => (
-                <li key={relatedResource.id} className="text-sm">
-                  <span className="font-medium">{relatedResource.name}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("Related resources")}</DescriptionTerm>
+				<DescriptionDetails>
+					{selectedRelatedResources.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{selectedRelatedResources.map((relatedResource) => (
+								<li key={relatedResource.id} className="text-sm">
+									<span className="font-medium">{relatedResource.name}</span>
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("People")}</DescriptionTerm>
-        <DescriptionDetails>
-          {personRelations.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {personRelations.map((relation) => (
-                <RelationStatement
-                  key={relation.id}
-                  source={relation.personName}
-                  sourceHref={getEntityDetailHref({
-                    entityType: "persons",
-                    slug: relation.personSlug,
-                  })}
-                  relation={formatRoleType(relation.roleType)}
-                  target={institution.name}
-                  targetType={formatRoleType(relation.targetUnitType)}
-                  duration={relation.duration}
-                />
-              ))}
-            </ul>
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("People")}</DescriptionTerm>
+				<DescriptionDetails>
+					{personRelations.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{personRelations.map((relation) => (
+								<RelationStatement
+									key={relation.id}
+									source={relation.personName}
+									sourceHref={getEntityDetailHref({
+										entityType: "persons",
+										slug: relation.personSlug,
+									})}
+									relation={formatRoleType(relation.roleType)}
+									target={institution.name}
+									targetType={formatRoleType(relation.targetUnitType)}
+									duration={relation.duration}
+								/>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("Relations")}</DescriptionTerm>
-        <DescriptionDetails>
-          {relations.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {relations.map((relation) => (
-                <RelationStatement
-                  key={relation.id}
-                  source={institution.name}
-                  relation={formatRoleType(relation.statusType)}
-                  target={
-                    <Fragment>
-                      {relation.relatedUnitName}
-                      {relation.relatedUnitIsLocaleFallback ? <LocaleFallbackMark /> : null}
-                    </Fragment>
-                  }
-                  targetHref={getOrganisationalUnitDetailHref(
-                    relation.relatedUnitType,
-                    relation.relatedUnitSlug,
-                  )}
-                  targetType={formatRoleType(relation.relatedUnitType)}
-                  duration={relation.duration}
-                />
-              ))}
-            </ul>
-          ) : null}
-        </DescriptionDetails>
+				<DescriptionTerm>{t("Relations")}</DescriptionTerm>
+				<DescriptionDetails>
+					{relations.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{relations.map((relation) => (
+								<RelationStatement
+									key={relation.id}
+									source={institution.name}
+									relation={formatRoleType(relation.statusType)}
+									target={
+										<Fragment>
+											{relation.relatedUnitName}
+											{relation.relatedUnitIsLocaleFallback ? <LocaleFallbackMark /> : null}
+										</Fragment>
+									}
+									targetHref={getOrganisationalUnitDetailHref(
+										relation.relatedUnitType,
+										relation.relatedUnitSlug,
+									)}
+									targetType={formatRoleType(relation.relatedUnitType)}
+									duration={relation.duration}
+								/>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
 
-        <DescriptionTerm>{t("Projects")}</DescriptionTerm>
-        <DescriptionDetails>
-          {projectPartnerships.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {projectPartnerships.map((partnership) => (
-                <li key={partnership.id} className="text-sm">
-                  <RelationLink
-                    className="font-medium"
-                    href={getEntityDetailHref({
-                      entityType: "projects",
-                      slug: partnership.projectSlug,
-                    })}
-                  >
-                    {partnership.projectAcronym ?? partnership.projectName}
-                  </RelationLink>
-                  {partnership.projectIsLocaleFallback ? <LocaleFallbackMark /> : null}
-                  {" · "}
-                  <span className="text-muted-fg">{partnership.roleType}</span>
-                  {partnership.duration != null ? (
-                    <span className="text-muted-fg">
-                      {" · "}
-                      {partnership.duration.end
-                        ? format.dateTimeRange(
-                            partnership.duration.start,
-                            partnership.duration.end,
-                            { dateStyle: "short" },
-                          )
-                        : format.dateTime(partnership.duration.start, { dateStyle: "short" })}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </DescriptionDetails>
-      </DescriptionList>
-    </Fragment>
-  );
+				<DescriptionTerm>{t("Projects")}</DescriptionTerm>
+				<DescriptionDetails>
+					{projectPartnerships.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{projectPartnerships.map((partnership) => (
+								<li key={partnership.id} className="text-sm">
+									<RelationLink
+										className="font-medium"
+										href={getEntityDetailHref({
+											entityType: "projects",
+											slug: partnership.projectSlug,
+										})}
+									>
+										{partnership.projectAcronym ?? partnership.projectName}
+									</RelationLink>
+									{partnership.projectIsLocaleFallback ? <LocaleFallbackMark /> : null}
+									{" · "}
+									<span className="text-muted-fg">{partnership.roleType}</span>
+									{partnership.duration != null ? (
+										<span className="text-muted-fg">
+											{" · "}
+											{partnership.duration.end
+												? format.dateTimeRange(
+														partnership.duration.start,
+														partnership.duration.end,
+														{ dateStyle: "short" },
+													)
+												: format.dateTime(partnership.duration.start, { dateStyle: "short" })}
+										</span>
+									) : null}
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
+			</DescriptionList>
+		</Fragment>
+	);
 }

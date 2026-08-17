@@ -7,18 +7,18 @@ import { eq } from "@/lib/db/sql";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 export const updateCountryReportAction = createMutationAction({
-  schema: UpdateCountryReportActionInputSchema,
-  requireAdmin: true,
-  audit: { action: "update", subjectType: "country_reports" },
-  revalidate: "/[locale]/dashboard/administrator/country-reports",
-  redirect: "/dashboard/administrator/country-reports",
+	schema: UpdateCountryReportActionInputSchema,
+	requireAdmin: true,
+	audit: { action: "update", subjectType: "country_reports" },
+	revalidate: "/[locale]/dashboard/administrator/country-reports",
+	redirect: "/dashboard/administrator/country-reports",
 
-  async mutate(tx, input) {
-    await tx
-      .update(schema.countryReports)
-      .set({ status: input.status })
-      .where(eq(schema.countryReports.id, input.id));
+	async mutate(tx, input) {
+		await tx
+			.update(schema.countryReports)
+			.set({ status: input.status })
+			.where(eq(schema.countryReports.id, input.id));
 
-    return { subjectId: input.id };
-  },
+		return { subjectId: input.id };
+	},
 });

@@ -9,26 +9,26 @@ import { DocumentOrPolicyForm } from "@/app/(app)/[locale]/(dashboard)/dashboard
 import { createDocumentOrPolicyAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/create-document-or-policy.action";
 
 interface DocumentOrPolicyCreateFormProps {
-  initialAssets: Array<{ key: string; label: string; url: string }>;
-  groups: Array<Pick<schema.DocumentPolicyGroup, "id" | "label">>;
+	initialAssets: Array<{ key: string; label: string; url: string }>;
+	groups: Array<Pick<schema.DocumentPolicyGroup, "id" | "label">>;
 }
 
 export function DocumentOrPolicyCreateForm(
-  props: Readonly<DocumentOrPolicyCreateFormProps>,
+	props: Readonly<DocumentOrPolicyCreateFormProps>,
 ): ReactNode {
-  const { initialAssets, groups } = props;
+	const { initialAssets, groups } = props;
 
-  const t = useExtracted();
+	const t = useExtracted();
 
-  return (
-    <Fragment>
-      <EntityFormHeader title={t("New document or policy")} />
+	return (
+		<Fragment>
+			<EntityFormHeader title={t("New document or policy")} />
 
-      <DocumentOrPolicyForm
-        formAction={createDocumentOrPolicyAction}
-        groups={groups}
-        initialAssets={initialAssets}
-      />
-    </Fragment>
-  );
+			<DocumentOrPolicyForm
+				formAction={createDocumentOrPolicyAction}
+				groups={groups}
+				initialAssets={initialAssets}
+			/>
+		</Fragment>
+	);
 }

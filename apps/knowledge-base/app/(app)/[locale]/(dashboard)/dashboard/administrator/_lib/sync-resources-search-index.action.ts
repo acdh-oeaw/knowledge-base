@@ -12,44 +12,44 @@ import { db } from "@/lib/db";
 import { createServerAction } from "@/lib/server/create-server-action";
 
 export const syncResourcesSearchIndexAction = createServerAction(
-  async function syncResourcesSearchIndexAction() {
-    const t = await getExtracted();
+	async function syncResourcesSearchIndexAction() {
+		const t = await getExtracted();
 
-    const auditSession = await assertAdmin();
-    const actorUserId = auditSession.user.id;
+		const auditSession = await assertAdmin();
+		const actorUserId = auditSession.user.id;
 
-    const outcome = await runBackgroundJob({
-      kind: "sync_resources_search_index",
-      triggeredByUserId: actorUserId,
-      run: async () => {
-        const result = await syncResourcesSearchIndex();
+		const outcome = await runBackgroundJob({
+			kind: "sync_resources_search_index",
+			triggeredByUserId: actorUserId,
+			run: async () => {
+				const result = await syncResourcesSearchIndex();
 
-        await recordAuditEvent(db, {
-          actorUserId,
-          action: "sync",
-          subjectType: "resources_search_index",
-          subjectId: "all",
-          summary: {
-            count: result.count,
-            failedCount: result.failedCount,
-            websiteCount: result.websiteCount,
-          },
-        });
+				await recordAuditEvent(db, {
+					actorUserId,
+					action: "sync",
+					subjectType: "resources_search_index",
+					subjectId: "all",
+					summary: {
+						count: result.count,
+						failedCount: result.failedCount,
+						websiteCount: result.websiteCount,
+					},
+				});
 
-        revalidatePath("/[locale]/dashboard/administrator", "layout");
+				revalidatePath("/[locale]/dashboard/administrator", "layout");
 
-        return result;
-      },
-    });
+				return result;
+			},
+		});
 
-    if (outcome.status === "already_running") {
-      return createActionStateError({
-        message: t("A re-sync of the resources search index is already running."),
-      });
-    }
+		if (outcome.status === "already_running") {
+			return createActionStateError({
+				message: t("A re-sync of the resources search index is already running."),
+			});
+		}
 
-    return createActionStateSuccess({
-      message: t("Started re-syncing the resources search index in the background."),
-    });
-  },
+		return createActionStateSuccess({
+			message: t("Started re-syncing the resources search index in the background."),
+		});
+	},
 );

@@ -13,32 +13,32 @@ import { eq } from "@/lib/db/sql";
 import { redirect } from "@/lib/navigation/navigation";
 
 export async function confirmWorkingGroupReportAction(formData: FormData): Promise<void> {
-  const id = formData.get("id");
-  if (typeof id !== "string") {
-    return;
-  }
+	const id = formData.get("id");
+	if (typeof id !== "string") {
+		return;
+	}
 
-  const locale = await getLocale();
-  const { user } = await assertAuthenticated();
-  await assertCan(user, "confirm", { type: "working_group_report", id });
+	const locale = await getLocale();
+	const { user } = await assertAuthenticated();
+	await assertCan(user, "confirm", { type: "working_group_report", id });
 
-  await db
-    .update(schema.workingGroupReports)
-    .set({ status: "accepted" })
-    .where(eq(schema.workingGroupReports.id, id));
+	await db
+		.update(schema.workingGroupReports)
+		.set({ status: "accepted" })
+		.where(eq(schema.workingGroupReports.id, id));
 
-  await recordAuditEvent(db, {
-    actorUserId: user.id,
-    action: "update",
-    subjectType: "working_group_report",
-    subjectId: id,
-    summary: {
-      ...getAuditSummaryFromFormData(formData),
-      status: "confirmed",
-    },
-  });
+	await recordAuditEvent(db, {
+		actorUserId: user.id,
+		action: "update",
+		subjectType: "working_group_report",
+		subjectId: id,
+		summary: {
+			...getAuditSummaryFromFormData(formData),
+			status: "confirmed",
+		},
+	});
 
-  revalidatePath("/[locale]/dashboard/reporting", "layout");
+	revalidatePath("/[locale]/dashboard/reporting", "layout");
 
-  redirect({ href: await getWorkingGroupReportEditHrefById(id, "confirm"), locale });
+	redirect({ href: await getWorkingGroupReportEditHrefById(id, "confirm"), locale });
 }

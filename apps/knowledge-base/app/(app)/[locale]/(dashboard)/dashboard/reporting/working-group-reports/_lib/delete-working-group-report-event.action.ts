@@ -12,32 +12,32 @@ import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 
 export async function deleteWorkingGroupReportEventAction(formData: FormData): Promise<void> {
-  if (!(await globalPostRequestRateLimit())) {
-    return;
-  }
+	if (!(await globalPostRequestRateLimit())) {
+		return;
+	}
 
-  const eventId = formData.get("eventId");
-  const workingGroupReportId = formData.get("workingGroupReportId");
-  if (typeof eventId !== "string" || typeof workingGroupReportId !== "string") {
-    return;
-  }
+	const eventId = formData.get("eventId");
+	const workingGroupReportId = formData.get("workingGroupReportId");
+	if (typeof eventId !== "string" || typeof workingGroupReportId !== "string") {
+		return;
+	}
 
-  const { user } = await assertAuthenticated();
-  await assertCan(user, "update", { type: "working_group_report", id: workingGroupReportId });
+	const { user } = await assertAuthenticated();
+	await assertCan(user, "update", { type: "working_group_report", id: workingGroupReportId });
 
-  await db
-    .delete(schema.workingGroupReportEvents)
-    .where(eq(schema.workingGroupReportEvents.id, eventId));
+	await db
+		.delete(schema.workingGroupReportEvents)
+		.where(eq(schema.workingGroupReportEvents.id, eventId));
 
-  await recordAuditEvent(db, {
-    actorUserId: user.id,
-    action: "delete",
-    subjectType: "working_group_report",
-    subjectId: workingGroupReportId,
-    summary: getAuditSummaryFromFormData(formData),
-  });
+	await recordAuditEvent(db, {
+		actorUserId: user.id,
+		action: "delete",
+		subjectType: "working_group_report",
+		subjectId: workingGroupReportId,
+		summary: getAuditSummaryFromFormData(formData),
+	});
 
-  for (const path of workingGroupReportRevalidatePaths) {
-    revalidatePath(path, "layout");
-  }
+	for (const path of workingGroupReportRevalidatePaths) {
+		revalidatePath(path, "layout");
+	}
 }

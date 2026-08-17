@@ -12,7 +12,7 @@ import { db } from "@/lib/db";
 import { inArray, sql } from "@/lib/db/sql";
 
 interface CountryReportInstitutionsScreenProps {
-  reportId: string;
+	reportId: string;
 }
 
 /**
@@ -26,99 +26,99 @@ interface CountryReportInstitutionsScreenProps {
  * mutation here is "refresh", which re-captures the snapshot from those relations.
  */
 export async function CountryReportInstitutionsScreen(
-  props: Readonly<CountryReportInstitutionsScreenProps>,
+	props: Readonly<CountryReportInstitutionsScreenProps>,
 ): Promise<ReactNode> {
-  const { reportId } = props;
+	const { reportId } = props;
 
-  const { user } = await assertAuthenticated();
-  const result = await getAuthorizedCountryReportForUser(
-    user,
-    reportId,
-    (id) =>
-      db.query.countryReports.findFirst({
-        where: { id },
-        columns: { id: true, countryDocumentId: true },
-        with: {
-          campaign: { columns: { year: true } },
-          institutions: {
-            columns: { id: true, organisationalUnitDocumentId: true, representationType: true },
-            with: {
-              organisationalUnit: { columns: { name: true, acronym: true } },
-            },
-          },
-        },
-      }),
-    "update",
-  );
+	const { user } = await assertAuthenticated();
+	const result = await getAuthorizedCountryReportForUser(
+		user,
+		reportId,
+		(id) =>
+			db.query.countryReports.findFirst({
+				where: { id },
+				columns: { id: true, countryDocumentId: true },
+				with: {
+					campaign: { columns: { year: true } },
+					institutions: {
+						columns: { id: true, organisationalUnitDocumentId: true, representationType: true },
+						with: {
+							organisationalUnit: { columns: { name: true, acronym: true } },
+						},
+					},
+				},
+			}),
+		"update",
+	);
 
-  if (result.status !== "ok") {
-    notFound();
-  }
-  const report = result.data;
-  if (report == null) {
-    notFound();
-  }
+	if (result.status !== "ok") {
+		notFound();
+	}
+	const report = result.data;
+	if (report == null) {
+		notFound();
+	}
 
-  const { year } = report.campaign;
+	const { year } = report.campaign;
 
-  // The country's current partner institutions for the reporting year — the truth the snapshot is
-  // reviewed against.
-  const currentPartners = await getCurrentPartnerInstitutions(report.countryDocumentId, year);
-  const currentByDocumentId = new Map(
-    currentPartners.map((partner) => [partner.institutionDocumentId, partner] as const),
-  );
+	// The country's current partner institutions for the reporting year — the truth the snapshot is
+	// reviewed against.
+	const currentPartners = await getCurrentPartnerInstitutions(report.countryDocumentId, year);
+	const currentByDocumentId = new Map(
+		currentPartners.map((partner) => [partner.institutionDocumentId, partner] as const),
+	);
 
-  // Resolve slugs for the snapshot institutions (for the "edit on the institution" links).
-  const snapshotDocumentIds = report.institutions.map((i) => i.organisationalUnitDocumentId);
-  const slugRows =
-    snapshotDocumentIds.length > 0
-      ? await db
-          .select({ id: schema.documentLifecycle.documentId, slug: schema.slugs.value })
-          .from(schema.documentLifecycle)
-          .innerJoin(
-            schema.slugs,
-            sql`${schema.slugs.entityVersionId} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
-          )
-          .where(inArray(schema.documentLifecycle.documentId, snapshotDocumentIds))
-      : [];
-  const slugByDocumentId = new Map(slugRows.map((row) => [row.id, row.slug] as const));
+	// Resolve slugs for the snapshot institutions (for the "edit on the institution" links).
+	const snapshotDocumentIds = report.institutions.map((i) => i.organisationalUnitDocumentId);
+	const slugRows =
+		snapshotDocumentIds.length > 0
+			? await db
+					.select({ id: schema.documentLifecycle.documentId, slug: schema.slugs.value })
+					.from(schema.documentLifecycle)
+					.innerJoin(
+						schema.slugs,
+						sql`${schema.slugs.entityVersionId} = COALESCE(${schema.documentLifecycle.publishedId}, ${schema.documentLifecycle.draftId})`,
+					)
+					.where(inArray(schema.documentLifecycle.documentId, snapshotDocumentIds))
+			: [];
+	const slugByDocumentId = new Map(slugRows.map((row) => [row.id, row.slug] as const));
 
-  const institutions = report.institutions.map((institution) => {
-    const current = currentByDocumentId.get(institution.organisationalUnitDocumentId) ?? null;
+	const institutions = report.institutions.map((institution) => {
+		const current = currentByDocumentId.get(institution.organisationalUnitDocumentId) ?? null;
 
-    return {
-      id: institution.id,
-      documentId: institution.organisationalUnitDocumentId,
-      name: institution.organisationalUnit?.name ?? current?.name ?? "",
-      acronym: institution.organisationalUnit?.acronym ?? current?.acronym ?? null,
-      slug: slugByDocumentId.get(institution.organisationalUnitDocumentId) ?? current?.slug ?? null,
-      // Frozen at capture; may be null for rows captured before representation type was tracked.
-      representationType: institution.representationType,
-      isCurrent: current != null,
-      currentRepresentationType: current?.representationType ?? null,
-    };
-  });
+		return {
+			id: institution.id,
+			documentId: institution.organisationalUnitDocumentId,
+			name: institution.organisationalUnit?.name ?? current?.name ?? "",
+			acronym: institution.organisationalUnit?.acronym ?? current?.acronym ?? null,
+			slug: slugByDocumentId.get(institution.organisationalUnitDocumentId) ?? current?.slug ?? null,
+			// Frozen at capture; may be null for rows captured before representation type was tracked.
+			representationType: institution.representationType,
+			isCurrent: current != null,
+			currentRepresentationType: current?.representationType ?? null,
+		};
+	});
 
-  const snapshotDocumentIdSet = new Set(snapshotDocumentIds);
-  const missing = currentPartners.filter(
-    (partner) => !snapshotDocumentIdSet.has(partner.institutionDocumentId),
-  );
+	const snapshotDocumentIdSet = new Set(snapshotDocumentIds);
+	const missing = currentPartners.filter(
+		(partner) => !snapshotDocumentIdSet.has(partner.institutionDocumentId),
+	);
 
-  return (
-    <div className="flex flex-col gap-y-12">
-      <CountryReportInstitutionsForm
-        canManageRelations={user.role === "admin"}
-        countryReportId={report.id}
-        institutions={institutions}
-        missing={missing}
-        refreshAction={refreshCountryReportInstitutionsAction}
-      />
+	return (
+		<div className="flex flex-col gap-y-12">
+			<CountryReportInstitutionsForm
+				canManageRelations={user.role === "admin"}
+				countryReportId={report.id}
+				institutions={institutions}
+				missing={missing}
+				refreshAction={refreshCountryReportInstitutionsAction}
+			/>
 
-      <ReportScreenCommentSection
-        reportId={report.id}
-        reportType="country"
-        screenKey="institutions"
-      />
-    </div>
-  );
+			<ReportScreenCommentSection
+				reportId={report.id}
+				reportType="country"
+				screenKey="institutions"
+			/>
+		</div>
+	);
 }

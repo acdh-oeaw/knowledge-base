@@ -13,32 +13,32 @@ import { eq } from "@/lib/db/sql";
 import { redirect } from "@/lib/navigation/navigation";
 
 export async function submitCountryReportAction(formData: FormData): Promise<void> {
-  const id = formData.get("id");
-  if (typeof id !== "string") {
-    return;
-  }
+	const id = formData.get("id");
+	if (typeof id !== "string") {
+		return;
+	}
 
-  const locale = await getLocale();
-  const { user } = await assertAuthenticated();
-  await assertCan(user, "update", { type: "country_report", id });
+	const locale = await getLocale();
+	const { user } = await assertAuthenticated();
+	await assertCan(user, "update", { type: "country_report", id });
 
-  await db
-    .update(schema.countryReports)
-    .set({ status: "submitted" })
-    .where(eq(schema.countryReports.id, id));
+	await db
+		.update(schema.countryReports)
+		.set({ status: "submitted" })
+		.where(eq(schema.countryReports.id, id));
 
-  await recordAuditEvent(db, {
-    actorUserId: user.id,
-    action: "update",
-    subjectType: "country_report",
-    subjectId: id,
-    summary: {
-      ...getAuditSummaryFromFormData(formData),
-      status: "submitted",
-    },
-  });
+	await recordAuditEvent(db, {
+		actorUserId: user.id,
+		action: "update",
+		subjectType: "country_report",
+		subjectId: id,
+		summary: {
+			...getAuditSummaryFromFormData(formData),
+			status: "submitted",
+		},
+	});
 
-  revalidatePath("/[locale]/dashboard/reporting", "layout");
+	revalidatePath("/[locale]/dashboard/reporting", "layout");
 
-  redirect({ href: await getCountryReportEditHrefById(id, "confirm"), locale });
+	redirect({ href: await getCountryReportEditHrefById(id, "confirm"), locale });
 }
