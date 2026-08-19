@@ -30,26 +30,48 @@ export const GetAssetDownload = {
  * imgproxy's. Restricting width and aspect ratio to allowlists bounds the number of distinct
  * renditions per asset instead, so a caller hammering the endpoint gets cache hits rather than new
  * work once it has walked the grid.
+ *
+ * The width is optional, which adds exactly one rendition per asset — the source as stored. That
+ * costs nothing the allowlists were guarding: the source's own resolution is capped at upload
+ * (`imageMaxResolution`), and its bytes are already served unauthenticated by the sibling
+ * `/download` route.
  */
 export const GetAssetImage = {
 	ParamsSchema: v.object({
 		...KeyParamsSchema.entries,
 		version: v.literal(imageVariantVersion),
 	}),
-	QuerySchema: v.object({
-		w: v.pipe(
-			v.string(),
-			v.toNumber(),
-			v.picklist(imageVariantWidths as unknown as Array<number>),
-			v.description("Rendered width in pixels; must be one of the supported widths"),
-		),
-		ar: v.optional(
-			v.pipe(
-				v.picklist(
-					Object.keys(imageVariantAspectRatios) as Array<keyof typeof imageVariantAspectRatios>,
+	QuerySchema: v.pipe(
+		v.object({
+			w: v.optional(
+				v.pipe(
+					v.string(),
+					v.toNumber(),
+					v.picklist(imageVariantWidths as unknown as Array<number>),
+					v.description(
+						"Rendered width in pixels; must be one of the supported widths. Omit to serve the source as stored, unresized",
+					),
 				),
-				v.description("Aspect ratio to crop to; omit to scale to width without cropping"),
 			),
+			ar: v.optional(
+				v.pipe(
+					v.picklist(
+						Object.keys(imageVariantAspectRatios) as Array<keyof typeof imageVariantAspectRatios>,
+					),
+					v.description(
+						"Aspect ratio to crop to; omit to scale to width without cropping. Requires a width to crop against",
+					),
+				),
+			),
+		}),
+		/**
+		 * A crop needs a target height, and the only thing to derive one from is the width. Refused
+		 * rather than ignored: a silently uncropped rendition is indistinguishable from a cropped one
+		 * until it is on the page in the wrong shape.
+		 */
+		v.check(
+			(query) => query.ar == null || query.w != null,
+			"An aspect ratio needs a width to crop against.",
 		),
-	}),
+	),
 };

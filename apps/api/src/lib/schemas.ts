@@ -31,7 +31,12 @@ export const LicenseSchema = v.object({
 	url: v.string(),
 });
 
-export const ImageSchema = v.object({
+/**
+ * The image entries on their own, unpiped, so a placement that serves a subset can derive one with
+ * `v.omit` — which takes an object schema, while {@link ImageSchema} is a pipe carrying the
+ * `$ref`.
+ */
+export const ImageObjectSchema = v.object({
 	url: v.pipe(v.string(), v.description("Default rendition, sized for this placement")),
 	srcUrl: v.pipe(
 		v.string(),
@@ -53,6 +58,20 @@ export const ImageSchema = v.object({
 	caption: v.nullable(v.any()),
 	license: v.nullable(LicenseSchema),
 });
+
+/**
+ * Referenced rather than inlined, so that every placement serving an image points at one definition
+ * in the spec. Inlined, a placement that spells its own image out reads as just another object and
+ * drifts unnoticed — which is how the content blocks went on serving `url`/`alt`/`license` after
+ * this schema grew `srcUrl`, `width` and `height`.
+ */
+export const ImageSchema = v.pipe(
+	ImageObjectSchema,
+	v.description(
+		"An image asset: the rendition chosen for this placement, the variant endpoint to request others from, and the source dimensions that bound them",
+	),
+	v.metadata({ ref: "Image" }),
+);
 
 export const PaginationQuerySchema = v.object({
 	limit: v.pipe(

@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 
 import { assert } from "@acdh-oeaw/lib";
+import type { ImageUrlOptions } from "@dariah-eric/images";
 import { describeRoute } from "hono-openapi";
 import { rateLimiter } from "hono-rate-limiter";
 
@@ -11,8 +12,44 @@ import { validator } from "@/lib/openapi/validator";
 import { GetAssetDownload, GetAssetImage } from "@/routes/assets/schemas";
 import { getAssetByKey } from "@/routes/assets/service";
 import { images } from "@/services/images";
-import { imageVariantAspectRatios } from "~/config/api.config";
+import { type ImageVariantAspectRatio, imageVariantAspectRatios } from "~/config/api.config";
 import { assetConfig } from "~/config/rate-limiter.config";
+
+/**
+ * The imgproxy processing options for one rendition request.
+ *
+ * Cropping is opt-in. Without a ratio the image is scaled to width and keeps its own shape, which
+ * is what a letterboxed slot and a full-size link need; with one, imgproxy does the crop that the
+ * consumer would otherwise be asking a browser to do with `object-cover` after downloading the
+ * pixels it then throws away.
+ *
+ * No width at all means no processing options, so imgproxy serves the source as it is stored. That
+ * is the only rendition a vector has: imgproxy skips processing for an svg source, so every rung on
+ * the ladder returns the same bytes under a different url and a different cache entry. It is also
+ * what makes the `srcUrl` this api hands out fetchable on its own, which a consumer needs wherever
+ * it has no width to ask for — `next/image` with `unoptimized`, or a "view full size" link.
+ */
+function getImageOptions(params: {
+	ar?: ImageVariantAspectRatio;
+	width?: number;
+}): ImageUrlOptions {
+	const { ar, width } = params;
+
+	if (width == null) {
+		return {};
+	}
+
+	if (ar == null) {
+		return { width };
+	}
+
+	return {
+		width,
+		height: Math.round(width / imageVariantAspectRatios[ar]),
+		resizing_type: "fill",
+		gravity: { type: "ce" },
+	};
+}
 
 /**
  * Serving an asset by its storage key, for the rich-text link targets that reference one (see
@@ -35,7 +72,7 @@ export const router = createRouter()
 			tags: ["assets"],
 			summary: "Redirect to a rendered image variant",
 			description:
-				"Sign an imgproxy rendition of an image asset and redirect to it, by storage key. Widths and aspect ratios are restricted to the supported sets.",
+				"Sign an imgproxy rendition of an image asset and redirect to it, by storage key. Widths and aspect ratios are restricted to the supported sets. Omitting the width serves the source as stored, which is the only rendition a vector image has.",
 			operationId: "getAssetImage",
 			responses: {
 				302: {
@@ -50,23 +87,10 @@ export const router = createRouter()
 			const { prefix, name } = c.req.valid("param");
 			const { w: width, ar } = c.req.valid("query");
 
-			/**
-			 * Cropping is opt-in. Without a ratio the image is scaled to width and keeps its own shape,
-			 * which is what a letterboxed slot and a full-size link need; with one, imgproxy does the
-			 * crop that the consumer would otherwise be asking a browser to do with `object-cover` after
-			 * downloading the pixels it then throws away.
-			 */
-			const options =
-				ar != null
-					? {
-							width,
-							height: Math.round(width / imageVariantAspectRatios[ar]),
-							resizing_type: "fill" as const,
-							gravity: { type: "ce" as const },
-						}
-					: { width };
-
-			const { url } = images.generateSignedImageUrl({ key: `${prefix}/${name}`, options });
+			const { url } = images.generateSignedImageUrl({
+				key: `${prefix}/${name}`,
+				options: getImageOptions({ ar, width }),
+			});
 
 			/**
 			 * A redirect rather than a proxied stream, so the bytes never traverse this process and the

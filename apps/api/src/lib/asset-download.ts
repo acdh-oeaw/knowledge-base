@@ -28,6 +28,9 @@ export function getAssetDownloadUrl(key: string): string {
  * Emitted rather than the bare key so that the route shape and the signing version stay this api's
  * concern: a consumer appends `?w=`/`&ar=` and never has to know how the path is spelled, and a key
  * rotation that bumps {@link imageVariantVersion} propagates on its own.
+ *
+ * Fetchable as it stands, without a query: bare, it serves the source as stored. A consumer that
+ * has no width to ask for therefore has a url to point at, rather than having to invent a rung.
  */
 export function getAssetImageUrl(key: string): string {
 	return new URL(`/api/v1/assets/${toKeyPath(key)}/image/${imageVariantVersion}`, env.API_BASE_URL)

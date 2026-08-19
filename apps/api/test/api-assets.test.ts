@@ -261,6 +261,187 @@ describe("assets", () => {
 		});
 	});
 
+	describe("GET /api/assets/:prefix/:name/image/:version", () => {
+		/** The `Location` of a successful variant request, asserted to be a redirect on the way. */
+		async function getVariantLocation(
+			db: Database,
+			params: { name: string; w?: number; ar?: "1x1" | "3x2" | "16x9" | "21x9" },
+		) {
+			const { name, w, ar } = params;
+
+			const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+				":name"
+			].image[":version"].$get({
+				param: { prefix: "images", name, version: "v1" },
+				query: { ...(w != null ? { w: String(w) } : {}), ...(ar != null ? { ar } : {}) },
+			});
+
+			expect(response.status).toBe(302);
+
+			const location = response.headers.get("Location");
+			assert(location, "Variant response carries no `Location`.");
+
+			return { location, response };
+		}
+
+		it("should redirect to a signed imgproxy url, cached permanently", async () => {
+			await withTransaction(async (db) => {
+				const { location, response } = await getVariantLocation(db, { name: uuidv7(), w: 1280 });
+
+				// Storage keys are content-addressed and nothing rewrites an object in place, so a key and
+				// rendition always denote the same pixels; the version segment is the only escape hatch.
+				expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+				expect(() => new URL(location)).not.toThrow();
+				// Signature plus processing options plus the encoded source, at minimum.
+				expect(new URL(location).pathname.split("/").filter(Boolean).length).toBeGreaterThan(1);
+			});
+		});
+
+		it("should render a different url per width, so each rung is its own cache entry", async () => {
+			await withTransaction(async (db) => {
+				const name = uuidv7();
+				const narrow = await getVariantLocation(db, { name, w: 640 });
+				const wide = await getVariantLocation(db, { name, w: 2560 });
+
+				expect(narrow.location).not.toBe(wide.location);
+			});
+		});
+
+		it("should crop only when an aspect ratio is asked for", async () => {
+			await withTransaction(async (db) => {
+				const name = uuidv7();
+				// Without `ar` the image is scaled to width and keeps its own shape — what a letterboxed
+				// slot and a full-size link both need. With one, imgproxy does the crop.
+				const uncropped = await getVariantLocation(db, { name, w: 1280 });
+				const cropped = await getVariantLocation(db, { name, w: 1280, ar: "16x9" });
+
+				expect(uncropped.location).not.toBe(cropped.location);
+			});
+		});
+
+		it("should render a different url per aspect ratio at the same width", async () => {
+			await withTransaction(async (db) => {
+				const name = uuidv7();
+				const wide = await getVariantLocation(db, { name, w: 1280, ar: "21x9" });
+				const square = await getVariantLocation(db, { name, w: 1280, ar: "1x1" });
+
+				expect(wide.location).not.toBe(square.location);
+			});
+		});
+
+		/**
+		 * The allowlists are what actually bound imgproxy's work here: the endpoint is unauthenticated
+		 * because its urls are fetched by browsers, and the handler itself only signs and redirects, so
+		 * rate limiting cannot cap render cost. Capping the number of reachable renditions per asset
+		 * can, but only while every off-list value is refused.
+		 */
+		it("should refuse a width that is not on the ladder", async () => {
+			await withTransaction(async (db) => {
+				const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+					":name"
+				].image[":version"].$get({
+					param: { prefix: "images", name: uuidv7(), version: "v1" },
+					query: { w: "1281" },
+				});
+
+				expect(response.status).toBe(400);
+			});
+		});
+
+		it("should refuse an aspect ratio that is not in the set", async () => {
+			await withTransaction(async (db) => {
+				const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+					":name"
+				].image[":version"].$get({
+					param: { prefix: "images", name: uuidv7(), version: "v1" },
+					query: { w: "1280", ar: "4x3" as unknown as "16x9" },
+				});
+
+				expect(response.status).toBe(400);
+			});
+		});
+
+		/**
+		 * The rendition a vector has, and the only one it has: imgproxy skips processing for an svg
+		 * source, so every rung would redirect to the same bytes under a different url. Consumers that
+		 * cannot size an image — `next/image` with `unoptimized`, a "view full size" link — fetch the
+		 * `srcUrl` bare and land here.
+		 */
+		it("should serve the source as stored when no width is asked for", async () => {
+			await withTransaction(async (db) => {
+				const name = uuidv7();
+				const source = await getVariantLocation(db, { name });
+				const scaled = await getVariantLocation(db, { name, w: 1280 });
+
+				expect(source.response.status).toBe(302);
+				// No processing options at all, so the signed url carries only the encoded source.
+				expect(new URL(source.location).pathname.split("/").filter(Boolean)).toHaveLength(2);
+				expect(source.location).not.toBe(scaled.location);
+			});
+		});
+
+		it("should refuse an aspect ratio with no width to crop against", async () => {
+			await withTransaction(async (db) => {
+				const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+					":name"
+				].image[":version"].$get({
+					// A crop needs a target height, and the width is the only thing to derive one from.
+					// Ignoring the ratio instead would serve an uncropped image that looks like a cropped
+					// one until it is on the page in the wrong shape.
+					param: { prefix: "images", name: uuidv7(), version: "v1" },
+					query: { ar: "16x9" } as unknown as { w: string },
+				});
+
+				expect(response.status).toBe(400);
+			});
+		});
+
+		it("should refuse a signing version it does not issue", async () => {
+			await withTransaction(async (db) => {
+				const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+					":name"
+				].image[":version"].$get({
+					// A stale version must not be honoured: it is the one lever that invalidates urls a
+					// browser has cached permanently, so serving it would defeat a key rotation.
+					param: { prefix: "images", name: uuidv7(), version: "v0" as unknown as "v1" },
+					query: { w: "1280" },
+				});
+
+				expect(response.status).toBe(400);
+			});
+		});
+
+		it("should refuse an unknown storage prefix", async () => {
+			await withTransaction(async (db) => {
+				const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+					":name"
+				].image[":version"].$get({
+					param: {
+						prefix: "secrets" as unknown as "images",
+						name: uuidv7(),
+						version: "v1",
+					},
+					query: { w: "1280" },
+				});
+
+				expect(response.status).toBe(400);
+			});
+		});
+
+		/**
+		 * Deliberately no database lookup: this is a hot path fetched once per image per `srcset`
+		 * candidate, and imgproxy already renders any key it is given a valid signature for. Adding a
+		 * query per request would buy nothing — a key that no asset claims 404s at imgproxy anyway.
+		 */
+		it("should sign a key without checking that an asset claims it", async () => {
+			await withTransaction(async (db) => {
+				const { response } = await getVariantLocation(db, { name: uuidv7(), w: 960 });
+
+				expect(response.status).toBe(302);
+			});
+		});
+	});
+
 	describe("asset-targeted links in content blocks", () => {
 		function documentWithLink(attrs: Record<string, unknown>): JSONContent {
 			return {

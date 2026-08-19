@@ -19,10 +19,31 @@ import { getAssetDownloadUrl, getDownloadFilename } from "@/lib/asset-download";
 import { getEmbedUrl } from "@/lib/embed-url";
 import { generateImageUrl, toImageAsset } from "@/lib/images";
 import { getEntityRefsByDocumentId } from "@/lib/relations";
-import { LicenseSchema } from "@/lib/schemas";
+import { ImageObjectSchema } from "@/lib/schemas";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, eq, inArray } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
+
+/**
+ * The image on a content block: {@link ImageSchema} without its caption.
+ *
+ * Blocks resolve the caption for their own placement and report it next to the block, so carrying
+ * the asset's own caption inside the image too would contradict the resolved one (see
+ * `resolveImageCaption`).
+ *
+ * Derived from {@link ImageSchema} rather than spelled out, which is what these four blocks used to
+ * do. Responses are parsed through these schemas before they are sent (see `validate` in every
+ * route), so a field the schema does not declare is not merely undocumented — it is stripped. The
+ * inline objects kept serving `url`/`alt`/`license` after `srcUrl`, `width` and `height` were added
+ * to every other image in the api, and nothing failed to say so.
+ */
+const BlockImageSchema = v.pipe(
+	v.omit(ImageObjectSchema, ["caption"]),
+	v.description(
+		"An image on a content block: the same shape as `Image`, without the caption the block reports itself",
+	),
+	v.metadata({ ref: "BlockImage" }),
+);
 
 export const RichTextContentBlockSchema = v.object({
 	type: v.literal("rich_text"),
@@ -47,11 +68,7 @@ export const EmbedContentBlockSchema = v.object({
 
 export const ImageContentBlockSchema = v.object({
 	type: v.literal("image"),
-	image: v.object({
-		url: v.string(),
-		alt: v.nullable(v.string()),
-		license: v.nullable(LicenseSchema),
-	}),
+	image: BlockImageSchema,
 	caption: v.nullable(v.any()),
 	captionSource: v.nullable(v.picklist(["asset", "block"])),
 	layout: v.picklist(schema.imageLayoutEnum),
@@ -67,13 +84,7 @@ export const HeroContentBlockSchema = v.object({
 	type: v.literal("hero"),
 	title: v.string(),
 	eyebrow: v.nullable(v.string()),
-	image: v.nullable(
-		v.object({
-			url: v.string(),
-			alt: v.nullable(v.string()),
-			license: v.nullable(LicenseSchema),
-		}),
-	),
+	image: v.nullable(BlockImageSchema),
 	caption: v.nullable(v.any()),
 	captionSource: v.nullable(v.picklist(["asset", "block"])),
 	ctas: v.nullable(v.array(v.object({ label: v.string(), url: v.string() }))),
@@ -81,11 +92,7 @@ export const HeroContentBlockSchema = v.object({
 
 export const MediaTextContentBlockSchema = v.object({
 	type: v.literal("media_text"),
-	image: v.object({
-		url: v.string(),
-		alt: v.nullable(v.string()),
-		license: v.nullable(LicenseSchema),
-	}),
+	image: BlockImageSchema,
 	side: v.picklist(schema.mediaTextSideEnum),
 	content: v.any(),
 	caption: v.nullable(v.any()),
@@ -99,11 +106,7 @@ export const GalleryContentBlockSchema = v.object({
 	caption: v.nullable(v.any()),
 	items: v.array(
 		v.object({
-			image: v.object({
-				url: v.string(),
-				alt: v.nullable(v.string()),
-				license: v.nullable(LicenseSchema),
-			}),
+			image: BlockImageSchema,
 			caption: v.nullable(v.any()),
 			captionSource: v.nullable(v.picklist(["asset", "block"])),
 		}),

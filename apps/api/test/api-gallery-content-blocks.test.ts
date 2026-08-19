@@ -22,7 +22,12 @@ function paragraph(text: string): JSONContent {
 	return { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] };
 }
 
-async function seedAsset(db: Database, label: string, caption?: JSONContent) {
+async function seedAsset(
+	db: Database,
+	label: string,
+	caption?: JSONContent,
+	dimensions?: { width: number; height: number },
+) {
 	const id = uuidv7();
 
 	await db.insert(schema.assets).values({
@@ -30,6 +35,8 @@ async function seedAsset(db: Database, label: string, caption?: JSONContent) {
 		key: `images/${uuidv7()}`,
 		label,
 		caption,
+		width: dimensions?.width,
+		height: dimensions?.height,
 		mimeType: "image/jpeg",
 	});
 
@@ -247,6 +254,43 @@ describe("gallery content blocks", () => {
 				"from the item",
 			]);
 			expect(items.map((item) => item.captionSource)).toStrictEqual(["asset", "block"]);
+		});
+	});
+
+	/**
+	 * Every image in the api is serialized through one schema, and these blocks used to spell theirs
+	 * out instead. Responses are parsed before they are sent, so a field the block schema does not
+	 * declare is stripped rather than reported — which is how `srcUrl`, `width` and `height` reached
+	 * every other image and none of the ones on a block. Asserted on the gallery because all four
+	 * block schemas now share the one image schema.
+	 */
+	it("should carry the variant endpoint url and the source dimensions on an item's image", async () => {
+		await withTransaction(async (db) => {
+			const assetId = await seedAsset(db, "wide.jpg", undefined, { width: 1600, height: 900 });
+
+			const { slug } = await seedNewsItemWithBlocks(db, [
+				{ type: "gallery", items: [{ assetId }] },
+			]);
+
+			const client = createTestClient(db);
+			const response = await client.news.slugs[":slug"].$get({ param: { slug }, query: {} });
+
+			expect(response.status).toBe(200);
+
+			const body = (await response.json()) as {
+				content: Array<{
+					items?: Array<{
+						image: { srcUrl?: string; width?: number | null; height?: number | null };
+					}>;
+				}>;
+			};
+			const image = body.content[0]?.items?.[0]?.image;
+
+			assert(image);
+			// The base url a consumer appends `?w=`/`&ar=` to, and the ceiling it must not ask above.
+			expect(image.srcUrl).toContain("/image/v1");
+			expect(image.width).toBe(1600);
+			expect(image.height).toBe(900);
 		});
 	});
 

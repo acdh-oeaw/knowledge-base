@@ -47,6 +47,9 @@ export interface Image {
 	 * Base url of the variant endpoint for this asset, for consumers that size their own images.
 	 * Append `?w=` and optionally `&ar=` to get a rendition; see `GetAssetImage` for the supported
 	 * values. Absolute and version-bearing, so the route shape stays this api's concern.
+	 *
+	 * Serves the source as stored when fetched bare, which is what a vector wants — see {@link width}
+	 * — and what a consumer without a width to ask for can use directly.
 	 */
 	srcUrl: string;
 	/**
