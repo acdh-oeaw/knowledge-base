@@ -21,6 +21,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -73,7 +74,7 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 		<Fragment>
 			<EntityListHeader
 				title={t("Projects")}
-				description={t("Manage all projects in the knowledge base.")}
+				description={t("Manage all projects in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -103,13 +104,13 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 						{t("Scope")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow href={`/dashboard/administrator/projects/${item.slug}/details`}>
 							<TableCell>
-								<div className="max-inline-64 truncate">{item.name}</div>
+								<EntityListTitle title={item.name} />
 							</TableCell>
 							<TableCell>{item.acronym}</TableCell>
 							<TableCell>
@@ -143,7 +144,7 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/projects/${item.slug}/details`}

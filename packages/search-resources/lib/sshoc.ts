@@ -29,15 +29,14 @@ export function createSshocItem(
 		}
 	}
 
-	const links = [
-		String(
-			createUrl({
-				baseUrl: marketplaceBaseUrl,
-				pathname: `/${item.category}/${item.persistentId}`,
-			}),
-		),
-		...(item.accessibleAt ?? []),
-	];
+	const sourceUrl = String(
+		createUrl({
+			baseUrl: marketplaceBaseUrl,
+			pathname: `/${item.category}/${item.persistentId}`,
+		}),
+	);
+
+	const links = [...(item.accessibleAt ?? [])];
 
 	const source = "ssh-open-marketplace";
 	const sourceId = item.persistentId;
@@ -92,6 +91,7 @@ export function createSshocItem(
 					label,
 					description,
 					keywords,
+					source_url: sourceUrl,
 					links,
 					national_consortia,
 					working_groups,
@@ -114,6 +114,7 @@ export function createSshocItem(
 				label,
 				description,
 				keywords,
+				source_url: sourceUrl,
 				links,
 				national_consortia,
 				working_groups,
@@ -137,6 +138,7 @@ export function createSshocItem(
 				label,
 				description,
 				keywords,
+				source_url: sourceUrl,
 				links,
 				national_consortia,
 				working_groups,
@@ -160,6 +162,7 @@ export function createSshocItem(
 				label,
 				description,
 				keywords,
+				source_url: sourceUrl,
 				links,
 				national_consortia,
 				working_groups,

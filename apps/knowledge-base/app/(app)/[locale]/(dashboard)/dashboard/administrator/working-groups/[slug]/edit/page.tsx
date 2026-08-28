@@ -24,10 +24,14 @@ import {
 	getResourceRelationOptions,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { getUnitRelationStatusOptions, getUnitRelations } from "@/lib/data/unit-relations";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorEditWorkingGroupPageProps extends PageProps<"/[locale]/dashboard/administrator/working-groups/[slug]/edit"> {}
@@ -113,7 +117,9 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 			where: { id: draftVersionId },
 			columns: {
 				acronym: true,
+				email: true,
 				id: true,
+				mailingList: true,
 				name: true,
 				sshocMarketplaceActorId: true,
 				summary: true,
@@ -135,10 +141,8 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-						label: true,
-					},
+					columns: selectedImageColumns,
+					with: selectedImageWith,
 				},
 			},
 		}),
@@ -169,6 +173,7 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 		getEntityContentBlocks(workingGroup.id, "description"),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: workingGroup.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
 	]);
@@ -185,15 +190,7 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 		]);
 
 	const image =
-		workingGroup.image != null
-			? {
-					...workingGroup.image,
-					url: images.generateSignedImageUrl({
-						key: workingGroup.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
-			: null;
+		workingGroup.image != null ? toSelectedImage(workingGroup.image, imageGridOptions) : null;
 
 	return (
 		<WorkingGroupEditForm

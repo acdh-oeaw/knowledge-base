@@ -26,6 +26,7 @@
 		"@dariah-eric/request": "workspace:^",
 		"@dariah-eric/search": "workspace:^",
 		"@dariah-eric/storage": "workspace:^",
+		"@dariah-eric/website-routes": "workspace:^",
 		"@hono/node-server": "catalog:",
 		"@hono/standard-validator": "catalog:",
 		"@hono/swagger-ui": "catalog:",
@@ -49,13 +50,13 @@
 		"@sindresorhus/slugify": "catalog:",
 		"@tiptap/core": "catalog:",
 		"@types/node": "catalog:",
+		"is-in-ci": "catalog:",
 		"openapi-types": "catalog:",
 		"pino-pretty": "catalog:",
 		"tsdown": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
 		"uuid": "catalog:",
-		"vite-tsconfig-paths": "catalog:",
 		"vitest": "catalog:"
 	},
 	"engines": {

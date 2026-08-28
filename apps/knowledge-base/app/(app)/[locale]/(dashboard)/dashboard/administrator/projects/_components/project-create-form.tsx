@@ -15,6 +15,10 @@ interface ProjectCreateFormProps {
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
+	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedEntityTotal: number;
+	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedResourceTotal: number;
 }
 
 export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): ReactNode {
@@ -24,6 +28,10 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 		scopes,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
+		initialRelatedEntityItems,
+		initialRelatedEntityTotal,
+		initialRelatedResourceItems,
+		initialRelatedResourceTotal,
 	} = props;
 
 	const t = useExtracted();
@@ -31,7 +39,6 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("New project")} />
-
 			<Note intent="info">
 				{t(
 					"This project will be created in the default locale ({locale}). You can add translations after saving.",
@@ -42,6 +49,10 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 			<ProjectForm
 				formAction={createProjectAction}
 				initialAssets={initialAssets}
+				initialRelatedEntityItems={initialRelatedEntityItems}
+				initialRelatedEntityTotal={initialRelatedEntityTotal}
+				initialRelatedResourceItems={initialRelatedResourceItems}
+				initialRelatedResourceTotal={initialRelatedResourceTotal}
 				initialSocialMediaItems={initialSocialMediaItems}
 				initialSocialMediaTotal={initialSocialMediaTotal}
 				scopes={scopes}

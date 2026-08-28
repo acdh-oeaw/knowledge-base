@@ -58,6 +58,11 @@ export const relations = defineRelations(schema, (r) => {
 			}),
 		},
 		contentBlocks: {
+			calloutContentBlock: r.one.calloutContentBlocks({
+				from: r.contentBlocks.id,
+				to: r.calloutContentBlocks.id,
+				optional: true,
+			}),
 			field: r.one.fields({
 				from: r.contentBlocks.fieldId,
 				to: r.fields.id,
@@ -102,6 +107,27 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.contentBlocks.id,
 				to: r.accordionContentBlocks.id,
 				optional: true,
+			}),
+			accordionItemContentBlock: r.one.accordionItemContentBlocks({
+				from: r.contentBlocks.id,
+				to: r.accordionItemContentBlocks.id,
+				optional: true,
+			}),
+			parent: r.one.contentBlocks({
+				from: r.contentBlocks.parentBlockId,
+				to: r.contentBlocks.id,
+				optional: true,
+			}),
+			children: r.many.contentBlocks({
+				from: r.contentBlocks.id,
+				to: r.contentBlocks.parentBlockId,
+			}),
+		},
+		calloutContentBlocks: {
+			contentBlock: r.one.contentBlocks({
+				from: r.calloutContentBlocks.id,
+				to: r.contentBlocks.id,
+				optional: false,
 			}),
 		},
 		dataContentBlocks: {
@@ -319,10 +345,6 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.dariahProjects.id,
 				to: r.projectsToOrganisationalUnits.projectDocumentId,
 			}),
-			projectsToPersons: r.many.projectsToPersons({
-				from: r.dariahProjects.id,
-				to: r.projectsToPersons.projectDocumentId,
-			}),
 			scope: r.one.projectScopes({
 				from: r.dariahProjects.scopeId,
 				to: r.projectScopes.id,
@@ -337,6 +359,11 @@ export const relations = defineRelations(schema, (r) => {
 			entityVersion: r.one.entityVersions({
 				from: r.fundingCalls.id,
 				to: r.entityVersions.id,
+				optional: false,
+			}),
+			image: r.one.assets({
+				from: r.fundingCalls.imageId,
+				to: r.assets.id,
 				optional: false,
 			}),
 		},
@@ -366,6 +393,11 @@ export const relations = defineRelations(schema, (r) => {
 			source: r.one.opportunitySources({
 				from: r.opportunities.sourceId,
 				to: r.opportunitySources.id,
+				optional: false,
+			}),
+			image: r.one.assets({
+				from: r.opportunities.imageId,
+				to: r.assets.id,
 				optional: false,
 			}),
 		},
@@ -442,10 +474,6 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.projects.id.through(r.projectsToOrganisationalUnits.projectDocumentId),
 				to: r.organisationalUnits.id.through(r.projectsToOrganisationalUnits.unitDocumentId),
 			}),
-			persons: r.many.persons({
-				from: r.projects.id.through(r.projectsToPersons.projectDocumentId),
-				to: r.persons.id.through(r.projectsToPersons.personDocumentId),
-			}),
 			scope: r.one.projectScopes({
 				from: r.projects.scopeId,
 				to: r.projectScopes.id,
@@ -458,10 +486,6 @@ export const relations = defineRelations(schema, (r) => {
 			projectsToOrganisationalUnits: r.many.projectsToOrganisationalUnits({
 				from: r.projects.id,
 				to: r.projectsToOrganisationalUnits.projectDocumentId,
-			}),
-			projectsToPersons: r.many.projectsToPersons({
-				from: r.projects.id,
-				to: r.projectsToPersons.projectDocumentId,
 			}),
 		},
 		projectsToOrganisationalUnits: {
@@ -477,23 +501,6 @@ export const relations = defineRelations(schema, (r) => {
 			}),
 			role: r.one.projectRoles({
 				from: r.projectsToOrganisationalUnits.roleId,
-				to: r.projectRoles.id,
-				optional: false,
-			}),
-		},
-		projectsToPersons: {
-			projectEntity: r.one.entities({
-				from: r.projectsToPersons.projectDocumentId,
-				to: r.entities.id,
-				optional: false,
-			}),
-			personEntity: r.one.entities({
-				from: r.projectsToPersons.personDocumentId,
-				to: r.entities.id,
-				optional: false,
-			}),
-			role: r.one.projectRoles({
-				from: r.projectsToPersons.roleId,
 				to: r.projectRoles.id,
 				optional: false,
 			}),
@@ -519,9 +526,21 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.persons.imageId,
 				to: r.assets.id,
 			}),
-			socialMedia: r.many.socialMedia({
-				from: r.persons.id.through(r.personsToSocialMedia.personId),
-				to: r.socialMedia.id.through(r.personsToSocialMedia.socialMediaId),
+			socialMedia: r.many.personSocialMedia({
+				from: r.persons.id,
+				to: r.personSocialMedia.personId,
+			}),
+		},
+		personSocialMedia: {
+			person: r.one.persons({
+				from: r.personSocialMedia.personId,
+				to: r.persons.id,
+				optional: false,
+			}),
+			type: r.one.personSocialMediaTypes({
+				from: r.personSocialMedia.typeId,
+				to: r.personSocialMediaTypes.id,
+				optional: false,
 			}),
 		},
 		personsToOrganisationalUnits: {
@@ -567,6 +586,13 @@ export const relations = defineRelations(schema, (r) => {
 		accordionContentBlocks: {
 			contentBlock: r.one.contentBlocks({
 				from: r.accordionContentBlocks.id,
+				to: r.contentBlocks.id,
+				optional: false,
+			}),
+		},
+		accordionItemContentBlocks: {
+			contentBlock: r.one.contentBlocks({
+				from: r.accordionItemContentBlocks.id,
 				to: r.contentBlocks.id,
 				optional: false,
 			}),
@@ -641,18 +667,6 @@ export const relations = defineRelations(schema, (r) => {
 			services: r.many.services({
 				from: r.socialMedia.id.through(r.servicesToSocialMedia.socialMediaId),
 				to: r.services.id.through(r.servicesToSocialMedia.serviceId),
-			}),
-		},
-		personsToSocialMedia: {
-			person: r.one.persons({
-				from: r.personsToSocialMedia.personId,
-				to: r.persons.id,
-				optional: false,
-			}),
-			socialMedia: r.one.socialMedia({
-				from: r.personsToSocialMedia.socialMediaId,
-				to: r.socialMedia.id,
-				optional: false,
 			}),
 		},
 		projectsToSocialMedia: {
@@ -748,6 +762,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.countryReports.id,
 				to: r.countryReportContributions.countryReportId,
 			}),
+			socialMedia: r.many.countryReportSocialMedia({
+				from: r.countryReports.id,
+				to: r.countryReportSocialMedia.countryReportId,
+			}),
 			socialMediaKpis: r.many.countryReportSocialMediaKpis({
 				from: r.countryReports.id,
 				to: r.countryReportSocialMediaKpis.countryReportId,
@@ -756,6 +774,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.countryReports.id,
 				to: r.countryReportServiceKpis.countryReportId,
 			}),
+			services: r.many.countryReportServices({
+				from: r.countryReports.id,
+				to: r.countryReportServices.countryReportId,
+			}),
 			projectContributions: r.many.countryReportProjectContributions({
 				from: r.countryReports.id,
 				to: r.countryReportProjectContributions.countryReportId,
@@ -763,6 +785,10 @@ export const relations = defineRelations(schema, (r) => {
 			institutions: r.many.countryReportInstitutions({
 				from: r.countryReports.id,
 				to: r.countryReportInstitutions.countryReportId,
+			}),
+			externalResourceSnapshots: r.many.reportExternalResourceSnapshots({
+				from: r.countryReports.id,
+				to: r.reportExternalResourceSnapshots.countryReportId,
 			}),
 		},
 		countryReportContributions: {
@@ -774,6 +800,18 @@ export const relations = defineRelations(schema, (r) => {
 			personToOrgUnit: r.one.personsToOrganisationalUnits({
 				from: r.countryReportContributions.personToOrgUnitId,
 				to: r.personsToOrganisationalUnits.id,
+				optional: false,
+			}),
+		},
+		countryReportSocialMedia: {
+			countryReport: r.one.countryReports({
+				from: r.countryReportSocialMedia.countryReportId,
+				to: r.countryReports.id,
+				optional: false,
+			}),
+			socialMedia: r.one.socialMedia({
+				from: r.countryReportSocialMedia.socialMediaId,
+				to: r.socialMedia.id,
 				optional: false,
 			}),
 		},
@@ -797,6 +835,18 @@ export const relations = defineRelations(schema, (r) => {
 			}),
 			service: r.one.services({
 				from: r.countryReportServiceKpis.serviceId,
+				to: r.services.id,
+				optional: false,
+			}),
+		},
+		countryReportServices: {
+			countryReport: r.one.countryReports({
+				from: r.countryReportServices.countryReportId,
+				to: r.countryReports.id,
+				optional: false,
+			}),
+			service: r.one.services({
+				from: r.countryReportServices.serviceId,
 				to: r.services.id,
 				optional: false,
 			}),
@@ -844,6 +894,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.workingGroupReports.id,
 				to: r.workingGroupReportSocialMedia.workingGroupReportId,
 			}),
+			chairs: r.many.workingGroupReportChairs({
+				from: r.workingGroupReports.id,
+				to: r.workingGroupReportChairs.workingGroupReportId,
+			}),
 			events: r.many.workingGroupReportEvents({
 				from: r.workingGroupReports.id,
 				to: r.workingGroupReportEvents.workingGroupReportId,
@@ -851,6 +905,38 @@ export const relations = defineRelations(schema, (r) => {
 			answers: r.many.workingGroupReportAnswers({
 				from: r.workingGroupReports.id,
 				to: r.workingGroupReportAnswers.workingGroupReportId,
+			}),
+			externalResourceSnapshots: r.many.reportExternalResourceSnapshots({
+				from: r.workingGroupReports.id,
+				to: r.reportExternalResourceSnapshots.workingGroupReportId,
+			}),
+		},
+		reportExternalResourceSnapshots: {
+			countryReport: r.one.countryReports({
+				from: r.reportExternalResourceSnapshots.countryReportId,
+				to: r.countryReports.id,
+				optional: true,
+			}),
+			workingGroupReport: r.one.workingGroupReports({
+				from: r.reportExternalResourceSnapshots.workingGroupReportId,
+				to: r.workingGroupReports.id,
+				optional: true,
+			}),
+			capturedByUser: r.one.users({
+				from: r.reportExternalResourceSnapshots.capturedByUserId,
+				to: r.users.id,
+				optional: true,
+			}),
+			items: r.many.reportExternalResourceSnapshotItems({
+				from: r.reportExternalResourceSnapshots.id,
+				to: r.reportExternalResourceSnapshotItems.snapshotId,
+			}),
+		},
+		reportExternalResourceSnapshotItems: {
+			snapshot: r.one.reportExternalResourceSnapshots({
+				from: r.reportExternalResourceSnapshotItems.snapshotId,
+				to: r.reportExternalResourceSnapshots.id,
+				optional: false,
 			}),
 		},
 		workingGroupReportSocialMedia: {
@@ -862,6 +948,18 @@ export const relations = defineRelations(schema, (r) => {
 			socialMedia: r.one.socialMedia({
 				from: r.workingGroupReportSocialMedia.socialMediaId,
 				to: r.socialMedia.id,
+				optional: false,
+			}),
+		},
+		workingGroupReportChairs: {
+			workingGroupReport: r.one.workingGroupReports({
+				from: r.workingGroupReportChairs.workingGroupReportId,
+				to: r.workingGroupReports.id,
+				optional: false,
+			}),
+			personToOrgUnit: r.one.personsToOrganisationalUnits({
+				from: r.workingGroupReportChairs.personToOrgUnitId,
+				to: r.personsToOrganisationalUnits.id,
 				optional: false,
 			}),
 		},

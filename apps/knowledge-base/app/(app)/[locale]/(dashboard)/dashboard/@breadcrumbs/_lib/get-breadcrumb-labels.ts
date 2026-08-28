@@ -75,9 +75,10 @@ async function getCountryReportLabelByRoute(year: string, slug: string): Promise
 			schema.reportingCampaigns,
 			eq(schema.reportingCampaigns.id, schema.countryReports.campaignId),
 		)
+		.innerJoin(schema.entities, eq(schema.entities.id, schema.countryReports.countryDocumentId))
 		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.countryReports.countryDocumentId),
+			eq(schema.documentLifecycle.documentId, schema.entities.id),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
@@ -108,8 +109,12 @@ async function getWorkingGroupReportLabelByRoute(
 			eq(schema.reportingCampaigns.id, schema.workingGroupReports.campaignId),
 		)
 		.innerJoin(
+			schema.entities,
+			eq(schema.entities.id, schema.workingGroupReports.workingGroupDocumentId),
+		)
+		.innerJoin(
 			schema.documentLifecycle,
-			eq(schema.documentLifecycle.documentId, schema.workingGroupReports.workingGroupDocumentId),
+			eq(schema.documentLifecycle.documentId, schema.entities.id),
 		)
 		.innerJoin(
 			schema.organisationalUnits,
@@ -120,6 +125,32 @@ async function getWorkingGroupReportLabelByRoute(
 		.limit(1);
 
 	return report[0]?.name ?? null;
+}
+
+async function getOrganisationalUnitLabelByRoute(
+	slug: string,
+	type: "country" | "working_group",
+): Promise<string | null> {
+	const unit = await db
+		.select({ name: schema.organisationalUnits.name })
+		.from(schema.entities)
+		.innerJoin(
+			schema.documentLifecycle,
+			eq(schema.documentLifecycle.documentId, schema.entities.id),
+		)
+		.innerJoin(
+			schema.organisationalUnits,
+			sql`${schema.organisationalUnits.id} = COALESCE(${schema.documentLifecycle.draftId}, ${schema.documentLifecycle.publishedId})`,
+		)
+		.innerJoin(
+			schema.organisationalUnitTypes,
+			eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
+		.where(and(eq(schema.slugs.value, slug), eq(schema.organisationalUnitTypes.type, type)))
+		.limit(1);
+
+	return unit[0]?.name ?? null;
 }
 
 function getDynamicBreadcrumbResolver(
@@ -153,6 +184,14 @@ function getDynamicBreadcrumbResolver(
 export async function getBreadcrumbLabels(
 	segments: BreadcrumbSegments,
 ): Promise<Record<string, string>> {
+	if ((segments[0] === "countries" || segments[0] === "working-groups") && segments[1] != null) {
+		const label = await getOrganisationalUnitLabelByRoute(
+			segments[1],
+			segments[0] === "countries" ? "country" : "working_group",
+		);
+		return label == null ? {} : { [segments[1]]: label };
+	}
+
 	if (
 		segments[0] === "reporting" &&
 		segments[1] === "country-reports" &&

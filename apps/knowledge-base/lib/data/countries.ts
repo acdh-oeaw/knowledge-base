@@ -3,7 +3,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 
 export type CountryMemberObserverStatus = "is_member_of" | "is_observer_of" | null;
@@ -21,6 +21,7 @@ interface GetCountriesParams {
 export interface CountriesResult {
 	data: Array<
 		Pick<schema.OrganisationalUnit, "id" | "name"> & {
+			documentId: string;
 			memberObserverFrom: Date | null;
 			memberObserverStatus: CountryMemberObserverStatus;
 			memberObserverUntil: Date | null;
@@ -75,7 +76,11 @@ export async function getCountries(params: Readonly<GetCountriesParams>): Promis
 		query != null && query !== ""
 			? and(
 					eq(schema.organisationalUnitTypes.type, countryType),
-					unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
+					matchesAllTerms(
+						query,
+						schema.organisationalUnits.name,
+						schema.organisationalUnits.acronym,
+					),
 				)
 			: eq(schema.organisationalUnitTypes.type, countryType);
 	const nameOrderBy =
@@ -87,6 +92,9 @@ export async function getCountries(params: Readonly<GetCountriesParams>): Promis
 
 	const baseItemsQuery = db
 		.select({
+			// `id` is the picked *version* id (organisational_units is keyed by entity_versions.id); the
+			// document id is what mutations operate on.
+			documentId: schema.entities.id,
 			id: schema.organisationalUnits.id,
 			name: schema.organisationalUnits.name,
 			slug: schema.slugs.value,
@@ -196,6 +204,7 @@ export async function getCountries(params: Readonly<GetCountriesParams>): Promis
 		const relation = relationByCountryId.get(item.id);
 
 		return {
+			documentId: item.documentId,
 			entity: { slug: item.slug },
 			id: item.id,
 			memberObserverFrom: relation?.from ?? null,

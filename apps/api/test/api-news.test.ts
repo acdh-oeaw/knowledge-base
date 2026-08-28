@@ -32,6 +32,7 @@ function createItems(count: number) {
 				id: versionId,
 				title,
 				summary: f.lorem.paragraph(),
+				publicationDate: f.date.past(),
 			};
 
 			return { entity, version, newsItem };

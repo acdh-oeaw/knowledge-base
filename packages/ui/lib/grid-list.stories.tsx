@@ -40,7 +40,7 @@ export const Default: Story = {
 					{members.map((member) => (
 						<GridListItem key={member.id} id={member.id} textValue={member.name}>
 							<GridListStart>
-								<UserCircleIcon className="block-8 inline-8 text-muted-fg" />
+								<UserCircleIcon className="text-muted-fg block-8 inline-8" />
 								<div>
 									<GridListLabel>{member.name}</GridListLabel>
 									<GridListDescription>{member.role}</GridListDescription>

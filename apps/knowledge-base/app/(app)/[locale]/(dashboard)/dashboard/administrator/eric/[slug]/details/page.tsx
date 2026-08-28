@@ -9,6 +9,7 @@ import { EricDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administ
 import { publishEricAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_lib/publish-eric.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
+import { resolvePlaceholderValuesInContentBlocks } from "@/lib/content-blocks-service";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getEricReverseRelationGroups } from "@/lib/data/eric";
@@ -125,6 +126,9 @@ export default async function DashboardAdministratorEricDetailsPage(
 
 	assert(eric.entityVersion.slug, `Slug missing for entity version "${eric.entityVersion.id}".`);
 	const entityVersionSlug = eric.entityVersion.slug;
+	const descriptionContentBlocks = await resolvePlaceholderValuesInContentBlocks(
+		eric.descriptionContentBlocks,
+	);
 
 	const image =
 		eric.image != null
@@ -143,6 +147,7 @@ export default async function DashboardAdministratorEricDetailsPage(
 			eric={{
 				...eric,
 				entityVersion: { ...eric.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
 				image,
 			}}
 			hasDraft={hasDraftChanges}

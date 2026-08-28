@@ -12,6 +12,11 @@ import {
 	HeaderDescription,
 	HeaderTitle,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/header";
+import {
+	ReportCommentsSection,
+	reportCommentsSectionId,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_components/report-comments-section";
+import { getReportScreenComments } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_lib/report-screen-comments";
 import { CountryReportSummary } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-summary";
 import { getCountryReportDataForUser } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/get-country-report-summary-data";
 import { assertAuthenticated } from "@/lib/auth/session";
@@ -56,6 +61,9 @@ export default async function DashboardReportingCountryReportPage(
 	const report = result.data;
 
 	const t = await getExtracted();
+	const comments = await getReportScreenComments("country", report.id);
+	const commentSectionLinks =
+		comments.length > 0 ? [{ id: reportCommentsSectionId, label: t("Comments") }] : [];
 
 	return (
 		<div>
@@ -71,6 +79,14 @@ export default async function DashboardReportingCountryReportPage(
 				<HeaderAction>
 					<a
 						className={buttonStyles({ intent: "secondary", size: "sm" })}
+						download={`country-report-${id}.pdf`}
+						href={`/api/reporting/country-reports/${id}/download.pdf`}
+					>
+						<ArrowDownTrayIcon className="me-2 block-4 inline-4" />
+						{t("Download PDF")}
+					</a>
+					<a
+						className={buttonStyles({ intent: "secondary", size: "sm" })}
 						download={`country-report-${id}.json`}
 						href={`/api/reporting/country-reports/${id}/download`}
 					>
@@ -80,8 +96,9 @@ export default async function DashboardReportingCountryReportPage(
 				</HeaderAction>
 			</Header>
 
-			<div className="mbs-8 px-(--layout-padding)">
-				<CountryReportSummary data={report.summary} />
+			<div className="mbs-8 flex flex-col gap-y-10 px-(--layout-padding) max-inline-4xl">
+				<CountryReportSummary data={report.summary} extraSectionLinks={commentSectionLinks} />
+				<ReportCommentsSection comments={comments} />
 			</div>
 		</div>
 	);

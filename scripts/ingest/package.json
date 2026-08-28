@@ -23,6 +23,10 @@
 	},
 	"devDependencies": {
 		"@acdh-oeaw/lib": "catalog:",
+		"@dariah-eric/client-campus": "workspace:^",
+		"@dariah-eric/client-episciences": "workspace:^",
+		"@dariah-eric/client-hal": "workspace:^",
+		"@dariah-eric/client-openaire": "workspace:^",
 		"@dariah-eric/client-sshoc": "workspace:^",
 		"@dariah-eric/client-zenodo": "workspace:^",
 		"@dariah-eric/client-zotero": "workspace:^",

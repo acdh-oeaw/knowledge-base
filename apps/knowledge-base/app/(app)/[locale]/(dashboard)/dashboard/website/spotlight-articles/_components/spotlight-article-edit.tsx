@@ -1,7 +1,9 @@
 "use client";
 
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { TabList, TabPanel } from "@dariah-eric/ui/tabs";
+import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,6 +14,8 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ArticleContributorsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/_components/article-contributors-section";
 import { SpotlightArticleForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_components/spotlight-article-form";
 import { createSpotlightArticleContributorAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_lib/create-spotlight-article-contributor.action";
@@ -27,9 +31,18 @@ interface SpotlightArticleEditFormProps {
 	documentId: string;
 	hasDraftChanges: boolean;
 	isPublished: boolean;
-	spotlightArticle: Pick<schema.SpotlightArticle, "id" | "title" | "summary"> & {
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
+	spotlightArticle: Pick<
+		schema.SpotlightArticle,
+		"id" | "publicationDate" | "title" | "summary"
+	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } };
+	} & {
+		image: SelectedImage;
+		imageCaption: JSONContent | null;
+		imageCaptionMode: ImageCaptionMode;
+	};
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -52,6 +65,8 @@ export function SpotlightArticleEditForm(
 		documentId,
 		hasDraftChanges,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		spotlightArticle,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -84,7 +99,8 @@ export function SpotlightArticleEditForm(
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardSpotlightArticleDraftAction}
 							documentId={documentId}
@@ -96,6 +112,7 @@ export function SpotlightArticleEditForm(
 
 					<SpotlightArticleForm
 						contentBlocks={contentBlocks}
+						isPublished={isPublished}
 						formAction={updateSpotlightArticleAction}
 						formId={formId}
 						initialAssets={initialAssets}

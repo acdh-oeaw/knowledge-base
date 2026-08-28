@@ -58,9 +58,13 @@ async function seedDraftNews(
 
 	const { documentId, versionId } = await createDraftDocument(tx, type.id, slug);
 
-	await tx
-		.insert(schema.news)
-		.values({ id: versionId, title, summary: f.lorem.paragraph(), imageId: asset.id });
+	await tx.insert(schema.news).values({
+		id: versionId,
+		title,
+		summary: f.lorem.paragraph(),
+		publicationDate: new Date("2025-01-15T00:00:00.000Z"),
+		imageId: asset.id,
+	});
 
 	return { documentId, versionId, title, slug };
 }

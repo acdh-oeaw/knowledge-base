@@ -33,7 +33,7 @@ export default async function DashboardAdministratorEditServicePage(
 	const { user } = await assertAuthenticated();
 	const serviceData = await getServiceForAdmin(user, id);
 
-	if (serviceData == null) {
+	if (serviceData == null || serviceData.service.sshocMarketplaceId != null) {
 		notFound();
 	}
 
@@ -44,6 +44,7 @@ export default async function DashboardAdministratorEditServicePage(
 			selectedOrganisationalUnits={serviceData.selectedOrganisationalUnits}
 			service={serviceData.service}
 			serviceStatuses={serviceData.serviceStatuses}
+			serviceTypes={serviceData.serviceTypes}
 		/>
 	);
 }

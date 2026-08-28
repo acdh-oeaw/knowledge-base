@@ -17,11 +17,16 @@ export async function assertAuthenticated() {
 		redirect({ href: "/auth/sign-in", locale });
 	}
 
-	if (!result.user.isEmailVerified) {
+	/**
+	 * Gated on `realUser`, never on the effective user. Checking the impersonated user would walk an
+	 * admin acting as someone who has not set up two-factor into `/auth/two-factor/setup`, and enroll
+	 * a TOTP key on that person's account.
+	 */
+	if (!result.realUser.isEmailVerified) {
 		redirect({ href: "/auth/verify-email", locale });
 	}
 
-	if (!result.user.isTwoFactorRegistered) {
+	if (!result.realUser.isTwoFactorRegistered) {
 		redirect({ href: "/auth/two-factor/setup", locale });
 	}
 
@@ -32,6 +37,30 @@ export async function assertAuthenticated() {
 	return result;
 }
 
+/**
+ * Guards anything that mutates the credential behind a session -- account settings, two-factor,
+ * recovery codes, email verification. `assertAuthenticated` alone is not enough for those: while
+ * impersonating, the effective user is someone else, so the mutation would land on their account.
+ *
+ * Layouts do not protect server actions, so route-level use of this must be paired with the
+ * `requireNoImpersonation` option on the action factories.
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export async function assertNotImpersonating() {
+	const result = await assertAuthenticated();
+
+	if (result.isImpersonating) {
+		forbidden();
+	}
+
+	return result;
+}
+
+/**
+ * Reads the _effective_ role, so an admin impersonating a non-admin loses the admin routes for the
+ * duration. That is the point of the feature rather than a limitation of it: they are meant to see
+ * what the person they are helping sees.
+ */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function assertAdmin() {
 	const result = await assertAuthenticated();

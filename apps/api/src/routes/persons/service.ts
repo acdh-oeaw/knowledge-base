@@ -5,11 +5,21 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
-import { getPersonPositions } from "@/lib/persons";
+import {
+	getPersonArticles,
+	getPersonPositions,
+	mapPersonSocialMedia,
+	personSocialMediaQuery,
+} from "@/lib/persons";
 import type { Database, Transaction } from "@/middlewares/db";
-import { alias, and, count, desc, eq, sql } from "@/services/db/sql";
+import { alias, and, count, desc, eq, inArray, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
 
 /**
@@ -45,6 +55,47 @@ async function resolvePublishedPersonsLookup(
 	};
 }
 
+/**
+ * Batched, per-person-version social media lookup — persons are a to-many relation, so this can't
+ * be folded into the flat row select above without fanning it out.
+ */
+async function getPersonSocialMediaByPersonIds(
+	db: Database | Transaction,
+	personIds: Array<string>,
+) {
+	const map = new Map<
+		string,
+		Array<{ type: { type: string }; url: string; label: string | null }>
+	>();
+
+	if (personIds.length === 0) {
+		return map;
+	}
+
+	const rows = await db
+		.select({
+			personId: schema.personSocialMedia.personId,
+			url: schema.personSocialMedia.url,
+			label: schema.personSocialMedia.label,
+			type: schema.personSocialMediaTypes.type,
+		})
+		.from(schema.personSocialMedia)
+		.innerJoin(
+			schema.personSocialMediaTypes,
+			eq(schema.personSocialMediaTypes.id, schema.personSocialMedia.typeId),
+		)
+		.where(inArray(schema.personSocialMedia.personId, personIds))
+		.orderBy(schema.personSocialMedia.position);
+
+	for (const row of rows) {
+		const items = map.get(row.personId) ?? [];
+		items.push({ type: { type: row.type }, url: row.url, label: row.label });
+		map.set(row.personId, items);
+	}
+
+	return map;
+}
+
 interface GetPersonsParams {
 	/** @default 10 */
 	limit?: number;
@@ -70,7 +121,11 @@ export async function getPersons(db: Database | Transaction, params: GetPersonsP
 				slug: schema.slugs.value,
 				imageKey: schema.assets.key,
 				imageAlt: schema.assets.alt,
-				imageCaption: schema.assets.caption,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
+				assetCaption: schema.assets.caption,
+				imageCaption: schema.persons.imageCaption,
+				imageCaptionMode: schema.persons.imageCaptionMode,
 				licenseName: schema.licenses.name,
 				licenseUrl: schema.licenses.url,
 			})
@@ -114,20 +169,31 @@ export async function getPersons(db: Database | Transaction, params: GetPersonsP
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
-	const positions = await getPersonPositions(
-		db,
-		items.map((item) => item.id),
-	);
+	const [positions, socialMediaMap] = await Promise.all([
+		getPersonPositions(
+			db,
+			items.map((item) => item.id),
+		),
+		getPersonSocialMediaByPersonIds(
+			db,
+			items.map((item) => item.id),
+		),
+	]);
 
 	const data = items.map((item) => {
 		const image = generateImageUrl(
-			toImageAsset({
-				key: item.imageKey,
-				alt: item.imageAlt,
-				caption: item.imageCaption,
-				licenseName: item.licenseName,
-				licenseUrl: item.licenseUrl,
-			}),
+			withResolvedCaption(
+				toImageAsset({
+					key: item.imageKey,
+					alt: item.imageAlt,
+					caption: item.assetCaption,
+					width: item.imageWidth,
+					height: item.imageHeight,
+					licenseName: item.licenseName,
+					licenseUrl: item.licenseUrl,
+				}),
+				{ imageCaption: item.imageCaption, imageCaptionMode: item.imageCaptionMode },
+			),
 			imageWidth.avatar,
 		);
 
@@ -139,8 +205,9 @@ export async function getPersons(db: Database | Transaction, params: GetPersonsP
 			orcid: item.orcid,
 			entity: { slug: item.slug },
 			publishedAt: item.updatedAt.toISOString(),
-			position: positions.get(item.id) ?? null,
+			positions: positions.get(item.id) ?? null,
 			image,
+			socialMedia: mapPersonSocialMedia(socialMediaMap.get(item.id) ?? []),
 		};
 	});
 
@@ -156,7 +223,7 @@ interface GetPersonByIdParams {
 export async function getPersonById(db: Database | Transaction, params: GetPersonByIdParams) {
 	const { id } = params;
 
-	const [item, fields] = await Promise.all([
+	const [item, fields, articles] = await Promise.all([
 		db.query.persons.findFirst({
 			where: {
 				id,
@@ -167,6 +234,8 @@ export async function getPersonById(db: Database | Transaction, params: GetPerso
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
 				name: true,
 				sortName: true,
@@ -182,39 +251,33 @@ export async function getPersonById(db: Database | Transaction, params: GetPerso
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
+				socialMedia: personSocialMediaQuery,
 			},
 		}),
 		getContentBlocks(db, id),
+		getPersonArticles(db, id),
 	]);
 
 	if (item == null) {
 		return null;
 	}
 
-	const positions = await getPersonPositions(db, [item.id]);
+	const [positions, formerPositions] = await Promise.all([
+		getPersonPositions(db, [item.id]),
+		getPersonPositions(db, [item.id], { when: "former" }),
+	]);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
 	return {
 		...flattenEntityVersion(item),
-		position: positions.get(item.id) ?? null,
+		positions: positions.get(item.id) ?? null,
+		formerPositions: formerPositions.get(item.id) ?? null,
 		image,
+		socialMedia: mapPersonSocialMedia(item.socialMedia),
 		...fields,
+		articles,
 	};
 }
 
@@ -308,6 +371,8 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			name: true,
 			sortName: true,
@@ -323,21 +388,8 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
+			socialMedia: personSocialMediaQuery,
 		},
 	});
 
@@ -345,16 +397,22 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 		return null;
 	}
 
-	const positions = await getPersonPositions(db, [item.id]);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
-
-	const fields = await getContentBlocks(db, item.id);
+	const [positions, formerPositions, fields, articles] = await Promise.all([
+		getPersonPositions(db, [item.id]),
+		getPersonPositions(db, [item.id], { when: "former" }),
+		getContentBlocks(db, item.id),
+		getPersonArticles(db, item.id),
+	]);
 
 	return {
 		...flattenEntityVersion(item),
-		position: positions.get(item.id) ?? null,
+		positions: positions.get(item.id) ?? null,
+		formerPositions: formerPositions.get(item.id) ?? null,
 		image,
+		socialMedia: mapPersonSocialMedia(item.socialMedia),
 		...fields,
+		articles,
 	};
 }

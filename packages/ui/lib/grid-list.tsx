@@ -55,7 +55,7 @@ export function GridListHeader({
 }: Readonly<ComponentProps<typeof GridListHeaderPrimitive>>): ReactNode {
 	return (
 		<GridListHeaderPrimitive
-			className={twMerge("mbe-2 font-semibold text-sm/6", className)}
+			className={twMerge("mbe-2 text-sm/6 font-semibold", className)}
 			data-slot="grid-list-header"
 			{...props}
 		/>
@@ -80,13 +80,13 @@ export function GridListItem({
 				(className, { isHovered, isFocusVisible, isSelected }) =>
 					twMerge(
 						"[--grid-list-item-bg-active:var(--color-primary-subtle)] [--grid-list-item-text-active:var(--color-primary-subtle-fg)]",
-						"group inset-ring inset-ring-border rounded-lg px-3 py-2.5",
-						"relative min-inline-0 outline-hidden [--mr-icon:--spacing(2)]",
-						"flex min-inline-0 cursor-default items-center gap-2 sm:gap-2.5",
+						"group rounded-lg px-3 py-2.5 inset-ring inset-ring-border",
+						"relative outline-hidden [--mr-icon:--spacing(2)] min-inline-0",
+						"flex cursor-default items-center gap-2 min-inline-0 sm:gap-2.5",
 						"dragging:cursor-grab dragging:opacity-70 dragging:**:[[slot=drag]]:text-(--grid-list-item-text-active)",
-						"**:data-[slot=icon]:block-5 **:data-[slot=icon]:inline-5 **:data-[slot=icon]:shrink-0 **:data-[slot=icon]:text-muted-fg sm:**:data-[slot=icon]:block-4 sm:**:data-[slot=icon]:inline-4",
+						"**:data-[slot=icon]:shrink-0 **:data-[slot=icon]:text-muted-fg **:data-[slot=icon]:block-5 **:data-[slot=icon]:inline-5 sm:**:data-[slot=icon]:block-4 sm:**:data-[slot=icon]:inline-4",
 						(isSelected || isHovered || isFocusVisible) &&
-							"inset-ring-ring/70 bg-(--grid-list-item-bg-active) text-(--grid-list-item-text-active) **:[.text-muted-fg]:text-(--grid-list-item-text-active)/60",
+							"bg-(--grid-list-item-bg-active) text-(--grid-list-item-text-active) inset-ring-ring/70 **:[.text-muted-fg]:text-(--grid-list-item-text-active)/60",
 						"href" in props && "cursor-pointer",
 						className,
 					),
@@ -97,7 +97,7 @@ export function GridListItem({
 					{values.allowsDragging === true && (
 						<Button aria-label={t("Reorder item")} slot="drag">
 							<svg
-								className="block-5 inline-5 text-muted-fg sm:block-4 sm:inline-4"
+								className="text-muted-fg block-5 inline-5 sm:block-4 sm:inline-4"
 								data-slot="drag-icon"
 								fill="none"
 								viewBox="0 0 24 24"
@@ -188,7 +188,7 @@ export function GridListDescription({
 }: Readonly<GridListTextProps>): ReactNode {
 	return (
 		<Text
-			className={twMerge("font-normal text-muted-fg text-sm", className)}
+			className={twMerge("text-sm font-normal text-muted-fg", className)}
 			slot="description"
 			{...props}
 		/>

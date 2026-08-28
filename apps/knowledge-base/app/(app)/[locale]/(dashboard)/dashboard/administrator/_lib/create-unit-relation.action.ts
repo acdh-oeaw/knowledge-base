@@ -36,7 +36,8 @@ export const createUnitRelationAction = createServerAction(
 			});
 		}
 
-		const { unitDocumentId, statusId, relatedUnitDocumentId, duration } = result.output;
+		const { unitDocumentId, statusId, relatedUnitDocumentId, duration, description } =
+			result.output;
 
 		try {
 			const returned = await db.transaction(async (tx) => {
@@ -67,6 +68,7 @@ export const createUnitRelationAction = createServerAction(
 						relatedUnitDocumentId,
 						status: statusId,
 						duration,
+						description,
 					})
 					.returning({ id: schema.organisationalUnitsRelations.id })
 					.then((rows) => rows[0]!);
@@ -93,6 +95,7 @@ export const createUnitRelationAction = createServerAction(
 					id: returned.row.id,
 					durationStart: duration.start.toISOString(),
 					durationEnd: duration.end?.toISOString() ?? null,
+					description,
 					relatedUnitType: returned.relatedUnitType,
 					relatedUnitSlug: returned.relatedUnitSlug,
 				},

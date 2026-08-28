@@ -5,7 +5,12 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPersonPositions } from "@/lib/persons";
 import { getRelatedEntities, getRelatedResources, resolveDocumentId } from "@/lib/relations";
@@ -71,11 +76,15 @@ export async function getSpotlightArticles(
 				id: schema.spotlightArticles.id,
 				title: schema.spotlightArticles.title,
 				summary: schema.spotlightArticles.summary,
-				updatedAt: schema.entityVersions.updatedAt,
+				publicationDate: schema.spotlightArticles.publicationDate,
 				slug: schema.slugs.value,
 				imageKey: schema.assets.key,
 				imageAlt: schema.assets.alt,
-				imageCaption: schema.assets.caption,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
+				assetCaption: schema.assets.caption,
+				imageCaption: schema.spotlightArticles.imageCaption,
+				imageCaptionMode: schema.spotlightArticles.imageCaptionMode,
 				licenseName: schema.licenses.name,
 				licenseUrl: schema.licenses.url,
 			})
@@ -108,7 +117,10 @@ export async function getSpotlightArticles(
 			.leftJoin(schema.assets, eq(schema.spotlightArticles.imageId, schema.assets.id))
 			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 			.where(eq(schema.entities.typeId, typeId))
-			.orderBy(desc(schema.entityVersions.updatedAt))
+			.orderBy(
+				desc(schema.spotlightArticles.publicationDate),
+				desc(schema.entityVersions.updatedAt),
+			)
 			.limit(limit)
 			.offset(offset),
 		db
@@ -125,13 +137,18 @@ export async function getSpotlightArticles(
 
 	const data = items.map((item) => {
 		const image = generateImageUrl(
-			toImageAsset({
-				key: item.imageKey,
-				alt: item.imageAlt,
-				caption: item.imageCaption,
-				licenseName: item.licenseName,
-				licenseUrl: item.licenseUrl,
-			}),
+			withResolvedCaption(
+				toImageAsset({
+					key: item.imageKey,
+					alt: item.imageAlt,
+					caption: item.assetCaption,
+					width: item.imageWidth,
+					height: item.imageHeight,
+					licenseName: item.licenseName,
+					licenseUrl: item.licenseUrl,
+				}),
+				{ imageCaption: item.imageCaption, imageCaptionMode: item.imageCaptionMode },
+			),
 			imageWidth.preview,
 		);
 
@@ -140,7 +157,7 @@ export async function getSpotlightArticles(
 			title: item.title,
 			summary: item.summary,
 			entity: { slug: item.slug },
-			publishedAt: item.updatedAt.toISOString(),
+			publishedAt: item.publicationDate.toISOString(),
 			image,
 		};
 	});
@@ -165,8 +182,12 @@ async function getContributors(db: Database | Transaction, spotlightArticleId: s
 			name: schema.persons.name,
 			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
+			personImageCaption: schema.persons.imageCaption,
+			personImageCaptionMode: schema.persons.imageCaptionMode,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			role: schema.spotlightArticlesToPersons.role,
@@ -189,22 +210,40 @@ async function getContributors(db: Database | Transaction, spotlightArticleId: s
 		rows.map((row) => row.id),
 	);
 
-	return rows.map(({ imageKey, imageAlt, imageCaption, licenseName, licenseUrl, ...row }) => {
-		return {
-			...row,
-			position: positions.get(row.id) ?? null,
-			image: generateImageUrl(
-				toImageAsset({
-					key: imageKey,
-					alt: imageAlt,
-					caption: imageCaption,
-					licenseName,
-					licenseUrl,
-				}),
-				imageWidth.avatar,
-			),
-		};
-	});
+	return rows.map(
+		({
+			imageKey,
+			imageAlt,
+			imageCaption,
+			imageWidth: imageSourceWidth,
+			imageHeight: imageSourceHeight,
+			personImageCaption,
+			personImageCaptionMode,
+			licenseName,
+			licenseUrl,
+			...row
+		}) => {
+			return {
+				...row,
+				positions: positions.get(row.id) ?? null,
+				image: generateImageUrl(
+					withResolvedCaption(
+						toImageAsset({
+							key: imageKey,
+							alt: imageAlt,
+							caption: imageCaption,
+							width: imageSourceWidth,
+							height: imageSourceHeight,
+							licenseName,
+							licenseUrl,
+						}),
+						{ imageCaption: personImageCaption, imageCaptionMode: personImageCaptionMode },
+					),
+					imageWidth.avatar,
+				),
+			};
+		},
+	);
 }
 
 //
@@ -226,7 +265,10 @@ export async function getSpotlightArticleById(
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
+				publicationDate: true,
 				title: true,
 				summary: true,
 			},
@@ -239,21 +281,7 @@ export async function getSpotlightArticleById(
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 			},
 		}),
 		getContentBlocks(db, id),
@@ -269,12 +297,14 @@ export async function getSpotlightArticleById(
 		getRelatedResources(db, id),
 	]);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
+	const { publicationDate, ...data } = flattenEntityVersion(item);
 
 	return {
-		...flattenEntityVersion(item),
+		...data,
 		contributors,
 		image,
+		publishedAt: publicationDate.toISOString(),
 		...fields,
 		relatedEntities,
 		relatedResources,
@@ -332,7 +362,10 @@ export async function getSpotlightArticleSlugs(
 			)
 			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(eq(schema.entities.typeId, typeId))
-			.orderBy(desc(schema.entityVersions.updatedAt))
+			.orderBy(
+				desc(schema.spotlightArticles.publicationDate),
+				desc(schema.entityVersions.updatedAt),
+			)
 			.limit(limit)
 			.offset(offset),
 		db
@@ -380,7 +413,10 @@ export async function getSpotlightArticleBySlug(
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
+			publicationDate: true,
 			title: true,
 			summary: true,
 		},
@@ -393,21 +429,7 @@ export async function getSpotlightArticleBySlug(
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 		},
 	});
 
@@ -417,7 +439,8 @@ export async function getSpotlightArticleBySlug(
 
 	const contributors = await getContributors(db, item.id);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
+	const { publicationDate, ...data } = flattenEntityVersion(item);
 
 	const [fields, relatedEntities, relatedResources] = await Promise.all([
 		getContentBlocks(db, item.id),
@@ -426,9 +449,10 @@ export async function getSpotlightArticleBySlug(
 	]);
 
 	return {
-		...flattenEntityVersion(item),
+		...data,
 		contributors,
 		image,
+		publishedAt: publicationDate.toISOString(),
 		...fields,
 		relatedEntities,
 		relatedResources,

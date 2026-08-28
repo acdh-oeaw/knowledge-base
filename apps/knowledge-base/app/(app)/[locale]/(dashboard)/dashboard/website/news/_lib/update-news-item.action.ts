@@ -1,19 +1,28 @@
 "use server";
 
-import { assert, keyBy } from "@acdh-oeaw/lib";
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateNewsItemActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/update-news-item.schema";
-import { upsertTypedContentBlock } from "@/lib/content-blocks-service";
-import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";
-import { ensureEntityVersionField } from "@/lib/data/entity-version-fields";
+import {
+	ensureDraftVersion,
+	getDocumentSlug,
+	publishVersion,
+	touchVersion,
+	updateDraftDocumentSlug,
+} from "@/lib/data/entity-lifecycle";
+import {
+	deleteFieldContentBlocks,
+	ensureEntityVersionField,
+	insertContentBlockTree,
+} from "@/lib/data/entity-version-fields";
 import { newsLifecycleAdapter } from "@/lib/data/news.lifecycle-adapter";
 import { syncEntityRelations } from "@/lib/data/relations";
-import { db } from "@/lib/db";
-import { eq, inArray } from "@/lib/db/sql";
+import { eq } from "@/lib/db/sql";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateNewsItemAction = createMutationAction({
@@ -21,10 +30,17 @@ export const updateNewsItemAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "news" },
 	revalidate: "/[locale]/dashboard/website/news",
-	redirect: "/dashboard/website/news",
+	redirect: ({ result }) => `/dashboard/website/news/${getResultSlug(result)}/details`,
 
 	async mutate(tx, input, { formData }) {
 		const draftVersionId = await ensureDraftVersion(tx, input.documentId, newsLifecycleAdapter);
+
+		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
+		// re-checks that server-side, so a forged submission cannot rename a published page.
+		const requestedSlug = getRequestedSlug(input.slug);
+		if (requestedSlug != null) {
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+		}
 
 		const asset = await tx.query.assets.findFirst({
 			where: { key: input.imageKey },
@@ -34,44 +50,21 @@ export const updateNewsItemAction = createMutationAction({
 
 		await tx
 			.update(schema.news)
-			.set({ imageId: asset.id, title: input.title, summary: input.summary })
+			.set({
+				imageId: asset.id,
+				imageCaption: input.imageCaption,
+				imageCaptionMode: input.imageCaptionMode,
+				publicationDate: input.publicationDate,
+				title: input.title,
+				summary: input.summary,
+			})
 			.where(eq(schema.news.id, draftVersionId));
 
 		const contentField = await ensureEntityVersionField(tx, draftVersionId, "content");
 
-		const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-		const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
+		await deleteFieldContentBlocks(tx, contentField.id);
 
-		const existingBlocks = await tx.query.contentBlocks.findMany({
-			where: { fieldId: contentField.id },
-			columns: { id: true },
-		});
-
-		if (existingBlocks.length > 0) {
-			await tx.delete(schema.contentBlocks).where(
-				inArray(
-					schema.contentBlocks.id,
-					existingBlocks.map((b) => b.id),
-				),
-			);
-		}
-
-		await Promise.all(
-			input.contentBlocks.map(async (contentBlock, index) => {
-				const [added] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						fieldId: contentField.id,
-						typeId: contentBlockTypesByType[contentBlock.type].id,
-						position: index,
-					})
-					.returning({ id: schema.contentBlocks.id });
-
-				assert(added);
-
-				await upsertTypedContentBlock(tx, contentBlock, added.id, true);
-			}),
-		);
+		await insertContentBlockTree(tx, contentField.id, input.contentBlocks);
 
 		await syncEntityRelations(
 			tx,
@@ -87,6 +80,7 @@ export const updateNewsItemAction = createMutationAction({
 
 		return {
 			subjectId: input.documentId,
+			subjectSlug: await getDocumentSlug(tx, input.documentId),
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

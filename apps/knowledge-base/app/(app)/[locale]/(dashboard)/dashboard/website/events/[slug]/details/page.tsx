@@ -9,7 +9,7 @@ import { EventDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/website
 import { discardEventDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/discard-event-draft.action";
 import { publishEventAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/events/_lib/publish-event.action";
 import { imageGridOptions } from "@/config/assets.config";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import {
@@ -17,8 +17,12 @@ import {
 	getEntityRelations,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteEventDetailsPageProps extends PageProps<"/[locale]/dashboard/website/events/[slug]/details"> {}
@@ -98,8 +102,11 @@ export default async function DashboardWebsiteEventDetailsPage(
 	const event = await db.query.events.findFirst({
 		where: { id: versionId },
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			duration: true,
+			isFullDay: true,
 			location: true,
 			title: true,
 			summary: true,
@@ -128,10 +135,8 @@ export default async function DashboardWebsiteEventDetailsPage(
 				},
 			},
 			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -143,12 +148,9 @@ export default async function DashboardWebsiteEventDetailsPage(
 	assert(event.entityVersion.slug, `Slug missing for entity version "${event.entityVersion.id}".`);
 	const entityVersionSlug = event.entityVersion.slug;
 
-	const image = images.generateSignedImageUrl({
-		key: event.image.key,
-		options: imageGridOptions,
-	});
+	const image = toSelectedImage(event.image, imageGridOptions);
 
-	const contentBlocks = await getEntityContentBlocks(event.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(event.id, "content");
 
 	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(doc.id);
 
@@ -167,7 +169,7 @@ export default async function DashboardWebsiteEventDetailsPage(
 			event={{
 				...event,
 				entityVersion: { ...event.entityVersion, slug: entityVersionSlug },
-				image: { ...event.image, url: image.url },
+				image,
 			}}
 			hasDraft={hasDraftChanges}
 			isLocaleFallback={isLocaleFallback}

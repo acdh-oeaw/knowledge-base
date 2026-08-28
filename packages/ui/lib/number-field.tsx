@@ -49,7 +49,7 @@ export function NumberInput({ className, ...props }: Readonly<NumberInputProps>)
 				className={twJoin(
 					"grid shrink-0 place-content-center border-e border-input",
 					"px-3 py-2.5 sm:px-2.5 sm:py-1.5",
-					"text-muted-fg pressed:text-fg hover:text-fg",
+					"text-muted-fg hover:text-fg pressed:text-fg",
 					"forced-colors:border-[ButtonBorder]",
 				)}
 				slot="decrement"
@@ -59,7 +59,7 @@ export function NumberInput({ className, ...props }: Readonly<NumberInputProps>)
 			<AriaInput
 				{...props}
 				className={cx(
-					"min-inline-0 flex-1 appearance-none bg-transparent",
+					"flex-1 appearance-none bg-transparent min-inline-0",
 					"px-3 py-[calc(--spacing(2.5)-1px)] sm:py-[calc(--spacing(1.5)-1px)]",
 					"text-center text-base/6 text-fg placeholder:text-muted-fg sm:text-sm/6",
 					"focus:outline-hidden",
@@ -71,7 +71,7 @@ export function NumberInput({ className, ...props }: Readonly<NumberInputProps>)
 				className={twJoin(
 					"grid shrink-0 place-content-center border-s border-input",
 					"px-3 py-2.5 sm:px-2.5 sm:py-1.5",
-					"text-muted-fg pressed:text-fg hover:text-fg",
+					"text-muted-fg hover:text-fg pressed:text-fg",
 					"forced-colors:border-[ButtonBorder]",
 				)}
 				slot="increment"

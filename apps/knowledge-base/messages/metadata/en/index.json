@@ -14,6 +14,11 @@
 			"href": "https://bsky.app/profile/dariaheu.bsky.social"
 		},
 		{
+			"kind": "email",
+			"label": "Email",
+			"href": "info@dariah.eu"
+		},
+		{
 			"kind": "flickr",
 			"label": "Flickr",
 			"href": "https://www.flickr.com/photos/142235661@N08/albums/with/72157695786965901"

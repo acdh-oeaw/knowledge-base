@@ -103,7 +103,7 @@ export const Controlled: Story = {
 						aria-label={"Frameworks"}
 						{...props}
 						onChange={(next) => {
-							setValue(next as Array<string | number>);
+							setValue(next);
 						}}
 						value={value}
 					>
@@ -112,7 +112,7 @@ export const Controlled: Story = {
 							{(item) => <MultipleSelectItem id={item.id}>{item.name}</MultipleSelectItem>}
 						</MultipleSelectContent>
 					</MultipleSelect>
-					<p className="mbs-2 text-muted-fg text-sm">
+					<p className="mbs-2 text-sm text-muted-fg">
 						{"Selected: "}
 						{value.join(", ") || "none"}
 					</p>

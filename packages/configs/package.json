@@ -5,6 +5,7 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
+		"./nextjs/react-aria-optimize-locales": "./lib/nextjs/react-aria-optimize-locales.ts",
 		"./oxfmt/base": "./lib/oxfmt/base.ts",
 		"./oxlint/base": "./lib/oxlint/base.ts",
 		"./oxlint/drizzle": "./lib/oxlint/drizzle.ts",

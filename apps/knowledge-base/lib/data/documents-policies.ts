@@ -3,9 +3,13 @@
 import * as schema from "@dariah-eric/database/schema";
 
 import { imageGridOptions } from "@/config/assets.config";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
 import { count, eq } from "@/lib/db/sql";
-import { images } from "@/lib/images";
 
 interface GetDocumentsPoliciesParams {
 	/** @default 10 */
@@ -79,10 +83,8 @@ export async function getDocumentOrPolicyById(params: GetDocumentOrPolicyByIdPar
 				},
 			},
 			document: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -91,16 +93,11 @@ export async function getDocumentOrPolicyById(params: GetDocumentOrPolicyByIdPar
 		return null;
 	}
 
-	const document = images.generateSignedImageUrl({
-		key: item.document.key,
-		options: imageGridOptions,
-	});
-
 	const { entityVersion, ...rest } = item;
 	const data = {
 		...rest,
 		entity: { slug: entityVersion.slug?.value ?? "" },
-		document: { ...item.document, url: document.url },
+		document: toSelectedImage(item.document, imageGridOptions),
 	};
 
 	return data;

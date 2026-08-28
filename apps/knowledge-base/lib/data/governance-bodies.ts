@@ -3,8 +3,8 @@ import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { and, count, desc, eq, or, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { and, count, desc, eq, sql } from "@/lib/db/sql";
 
 export type GovernanceBodiesSort = "acronym" | "name";
 
@@ -48,9 +48,10 @@ export async function getGovernanceBodies(
 		query != null && query !== ""
 			? and(
 					eq(schema.organisationalUnitTypes.type, governanceBodyType),
-					or(
-						unaccentIlike(schema.organisationalUnits.acronym, `%${query}%`),
-						unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
+					matchesAllTerms(
+						query,
+						schema.organisationalUnits.acronym,
+						schema.organisationalUnits.name,
 					),
 				)
 			: eq(schema.organisationalUnitTypes.type, governanceBodyType);
@@ -71,7 +72,7 @@ export async function getGovernanceBodies(
 		db
 			.select({
 				acronym: schema.organisationalUnits.acronym,
-				documentId: schema.entityVersions.entityId,
+				documentId: schema.entities.id,
 				id: schema.organisationalUnits.id,
 				name: schema.organisationalUnits.name,
 				slug: schema.slugs.value,

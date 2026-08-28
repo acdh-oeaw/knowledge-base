@@ -20,7 +20,12 @@ function createItems(count: number) {
 
 			const entity = { id: entityId, slug };
 			const version = { id: versionId, entityId };
-			const page = { id: versionId, title, summary: f.lorem.paragraph() };
+			const page = {
+				id: versionId,
+				title,
+				summary: f.lorem.paragraph(),
+				publicationDate: f.date.past(),
+			};
 
 			return { entity, version, page };
 		},

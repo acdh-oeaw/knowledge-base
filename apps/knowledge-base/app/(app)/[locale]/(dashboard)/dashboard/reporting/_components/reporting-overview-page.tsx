@@ -87,7 +87,7 @@ export async function ReportingOverviewPage(
 				<div className="flex flex-col gap-y-10 px-(--layout-padding)">
 					<div className="grid gap-4 md:grid-cols-3">
 						<section className="rounded-lg border bg-bg p-4">
-							<p className="text-xs font-medium uppercase tracking-wide text-muted-fg">
+							<p className="text-xs font-medium tracking-wide text-muted-fg uppercase">
 								{t("Campaign")}
 							</p>
 							<p className="mbs-2 text-2xl font-semibold text-fg">{scope.campaignYear ?? "—"}</p>
@@ -95,7 +95,7 @@ export async function ReportingOverviewPage(
 						</section>
 
 						<section className="rounded-lg border bg-bg p-4">
-							<p className="text-xs font-medium uppercase tracking-wide text-muted-fg">
+							<p className="text-xs font-medium tracking-wide text-muted-fg uppercase">
 								{t("Country reports")}
 							</p>
 							<p className="mbs-2 text-2xl font-semibold text-fg">
@@ -111,7 +111,7 @@ export async function ReportingOverviewPage(
 						</section>
 
 						<section className="rounded-lg border bg-bg p-4">
-							<p className="text-xs font-medium uppercase tracking-wide text-muted-fg">
+							<p className="text-xs font-medium tracking-wide text-muted-fg uppercase">
 								{t("Working group reports")}
 							</p>
 							<p className="mbs-2 text-2xl font-semibold text-fg">

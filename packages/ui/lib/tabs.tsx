@@ -22,7 +22,7 @@ import { cx } from "@/lib/primitive";
 import { UiContext } from "./ui-provider";
 
 export interface TabsProps extends TabsPrimitiveProps {
-	ref?: React.RefObject<HTMLDivElement>;
+	ref?: RefObject<HTMLDivElement>;
 }
 
 export function Tabs(props: Readonly<TabsProps>): ReactNode {
@@ -34,7 +34,7 @@ export function Tabs(props: Readonly<TabsProps>): ReactNode {
 				{...rest}
 				ref={ref}
 				className={cx(
-					orientation === "vertical" ? "inline-full flex-row" : "flex-col",
+					orientation === "vertical" ? "flex-row inline-full" : "flex-col",
 					"group/tabs flex gap-4 forced-color-adjust-none",
 					className,
 				)}
@@ -45,7 +45,7 @@ export function Tabs(props: Readonly<TabsProps>): ReactNode {
 }
 
 export interface TabListProps<T extends object> extends TabListPrimitiveProps<T> {
-	ref?: React.RefObject<HTMLDivElement>;
+	ref?: RefObject<HTMLDivElement>;
 }
 
 export function TabList<T extends object>(props: Readonly<TabListProps<T>>): ReactNode {
@@ -62,7 +62,7 @@ export function TabList<T extends object>(props: Readonly<TabListProps<T>>): Rea
 					orientation === "horizontal" &&
 						"flex-row gap-x-(--tab-list-gutter) rounded-(--tab-list-rounded) border-be py-(--tab-list-gutter)",
 					orientation === "vertical" &&
-						"min-inline-56 shrink-0 flex-col items-start gap-y-(--tab-list-gutter) border-s px-(--tab-list-gutter) [--tab-list-gutter:--spacing(2)]",
+						"shrink-0 flex-col items-start gap-y-(--tab-list-gutter) border-s px-(--tab-list-gutter) [--tab-list-gutter:--spacing(2)] min-inline-56",
 					className,
 				]),
 			)}
@@ -89,11 +89,11 @@ export function Tab(props: Readonly<TabProps>): ReactNode {
 				"group/tab rounded-lg [--tab-gutter:var(--tab-gutter-x)]",
 				orientation === "horizontal"
 					? "[--tab-gutter-x:--spacing(2.5)] [--tab-gutter-y:--spacing(1)] first:-ms-(--tab-gutter) last:-me-(--tab-gutter)"
-					: "inline-full justify-start [--tab-gutter-x:--spacing(4)] [--tab-gutter-y:--spacing(1.5)]",
-				"relative isolate flex cursor-default items-center whitespace-nowrap font-medium text-sm/6 outline-hidden transition",
+					: "justify-start [--tab-gutter-x:--spacing(4)] [--tab-gutter-y:--spacing(1.5)] inline-full",
+				"relative isolate flex cursor-default items-center text-sm/6 font-medium whitespace-nowrap outline-hidden transition",
 				"px-(--tab-gutter-x) py-(--tab-gutter-y)",
-				"*:data-[slot=icon]:me-2 *:data-[slot=icon]:-ms-0.5 *:data-[slot=icon]:block-4 *:data-[slot=icon]:inline-4 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-muted-fg selected:*:data-[slot=icon]:text-primary-subtle-fg",
-				"text-muted-fg selected:text-primary-subtle-fg selected:hover:bg-primary-subtle selected:hover:text-primary-subtle-fg hover:bg-secondary hover:text-fg focus:ring-0",
+				"*:data-[slot=icon]:-ms-0.5 *:data-[slot=icon]:me-2 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-muted-fg *:data-[slot=icon]:block-4 *:data-[slot=icon]:inline-4 selected:*:data-[slot=icon]:text-primary-subtle-fg",
+				"text-muted-fg hover:bg-secondary hover:text-fg focus:ring-0 selected:text-primary-subtle-fg selected:hover:bg-primary-subtle selected:hover:text-primary-subtle-fg",
 				"disabled:opacity-50",
 				"href" in props ? "cursor-pointer" : "cursor-default",
 				className,
@@ -157,7 +157,7 @@ export function TabPanel(props: Readonly<TabPanelProps>): ReactNode {
 			id={id}
 			ref={ref}
 			className={cx(
-				"flex-1 text-fg text-sm/6 focus-visible:outline-hidden",
+				"flex-1 text-sm/6 text-fg focus-visible:outline-hidden",
 				// When state is preserved the inactive panel stays mounted (so its in-progress, uncontrolled
 				// form fields keep their values across tab switches) but must be hidden visually. Hide it
 				// with CSS `display: none` (react-aria marks inactive panels with `data-inert`) rather than

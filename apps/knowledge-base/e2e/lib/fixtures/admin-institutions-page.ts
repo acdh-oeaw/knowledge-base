@@ -3,7 +3,9 @@ import type { Locator, Page } from "@playwright/test";
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
 import { E2E_TEST_ASSET_KEY } from "@/e2e/lib/fixtures/database-service";
+import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
+import { createSocialMediaInForm } from "@/e2e/lib/fixtures/social-media-form";
 
 const BASE_PATH = "/en/dashboard/administrator/institutions";
 
@@ -70,14 +72,19 @@ export class AdminInstitutionsPage {
 		await this.page.keyboard.type(text);
 	}
 
+	async createSocialMediaInForm(name: string, url: string): Promise<void> {
+		await createSocialMediaInForm(this.page, name, url);
+	}
+
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -135,8 +142,13 @@ export class AdminInstitutionsPage {
 
 	async selectFirstRelatedUnit(): Promise<void> {
 		await this.page.getByRole("button", { name: "No related unit selected" }).click();
-		await this.page.getByRole("option").first().waitFor({ state: "visible" });
-		await this.page.getByRole("option").first().click();
+		await firstSeededOption(this.page).waitFor({ state: "visible" });
+		await firstSeededOption(this.page).click();
+		// Wait for the selection to commit so a later submit isn't blocked by an empty required field
+		// (which would fire no POST and time out `waitForActionSuccess`).
+		await this.page
+			.getByRole("button", { name: "No related unit selected" })
+			.waitFor({ state: "hidden" });
 	}
 
 	async fillRelationDatePicker(
@@ -207,7 +219,7 @@ export class AdminInstitutionsPage {
 	}
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

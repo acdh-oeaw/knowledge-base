@@ -11,9 +11,22 @@
 	"sideEffects": false,
 	"exports": {
 		".": "./dist/index.mjs",
+		"./asset-cleanup-service": "./dist/asset-cleanup-service.mjs",
+		"./placeholder-values": "./dist/placeholder-values.mjs",
+		"./placeholder-values-service": "./dist/placeholder-values-service.mjs",
 		"./client": "./dist/client.mjs",
+		"./content-block-cleanup-service": "./dist/content-block-cleanup-service.mjs",
+		"./social-media-cleanup-service": "./dist/social-media-cleanup-service.mjs",
 		"./errors": "./dist/errors.mjs",
+		"./image-captions": "./dist/image-captions.mjs",
+		"./integrity-service": "./dist/integrity-service.mjs",
+		"./link-targets": "./dist/link-targets.mjs",
+		"./link-targets-service": "./dist/link-targets-service.mjs",
 		"./relations": "./dist/relations.mjs",
+		"./rich-text": "./dist/rich-text.mjs",
+		"./rich-text-normalize": "./dist/rich-text-normalize.mjs",
+		"./richtext-cleanup-service": "./dist/richtext-cleanup-service.mjs",
+		"./richtext-link-cleanup-service": "./dist/richtext-link-cleanup-service.mjs",
 		"./schema": "./dist/schema.mjs",
 		"./sql": "./dist/sql.mjs"
 	},
@@ -31,11 +44,13 @@
 		"generate:dbml-schema": "tsx ./scripts/generate-dbml-schema.ts",
 		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
 		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"test": "vitest run",
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@acdh-oeaw/lib": "catalog:",
 		"@dariah-eric/env": "workspace:^",
+		"@dariah-eric/website-routes": "workspace:^",
 		"@tiptap/core": "catalog:",
 		"better-result": "catalog:",
 		"drizzle-orm": "catalog:",
@@ -54,7 +69,8 @@
 		"drizzle-seed": "catalog:",
 		"tsdown": "catalog:",
 		"tsx": "catalog:",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	},
 	"engines": {
 		"node": "24.x"

@@ -3,6 +3,7 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
+import { resolveEntityDocumentLabel } from "@/lib/data/audit-log";
 import { getDocumentVersions } from "@/lib/data/entity-lifecycle";
 import { eventsLifecycleAdapter } from "@/lib/data/events.lifecycle-adapter";
 import { eq, inArray, or } from "@/lib/db/sql";
@@ -24,6 +25,9 @@ export const deleteEventAction = createCommandAction({
 			columns: { id: true },
 		});
 		assert(entity, "Document not found.");
+
+		// Snapshot the label before deletion so the audit log doesn't fall back to the uuid.
+		const subjectLabel = await resolveEntityDocumentLabel(tx, documentId);
 
 		const descriptor = await getWebsiteDocumentDescriptorByEntityId(documentId);
 
@@ -71,6 +75,7 @@ export const deleteEventAction = createCommandAction({
 
 		return {
 			subjectId: documentId,
+			subjectLabel,
 			descriptor,
 		};
 	},

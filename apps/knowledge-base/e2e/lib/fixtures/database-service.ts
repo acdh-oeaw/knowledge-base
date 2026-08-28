@@ -1,6 +1,6 @@
 import { type Transaction, createDatabaseService } from "@dariah-eric/database";
 import * as schema from "@dariah-eric/database/schema";
-import { and, eq, inArray, or, sql } from "@dariah-eric/database/sql";
+import { and, eq, exists, inArray, notExists, or, sql } from "@dariah-eric/database/sql";
 import type { InferOk } from "better-result";
 
 import { env } from "../../../config/env.config";
@@ -8,7 +8,22 @@ import { env } from "../../../config/env.config";
 export const E2E_TEST_ASSET_KEY = "images/e2e-test-asset";
 export const E2E_TEST_ASSET_LABEL = "E2E Test Asset";
 
+/** Matches the `[e2e-worker-N] …` names every worker gives the fixtures it creates. */
+const WORKER_FIXTURE_NAME_PATTERN = "[e2e-worker-%";
+
 type Database = InferOk<ReturnType<typeof createDatabaseService>>;
+
+interface WorkingGroupVersionRow {
+	acronym: string | null;
+	documentId: string;
+	email: string | null;
+	id: string;
+	imageId: string | null;
+	mailingList: string | null;
+	name: string;
+	sshocMarketplaceActorId: number | null;
+	summary: string | null;
+}
 
 /**
  * Worker-scoped service that provides DB access and test-data helpers.
@@ -55,7 +70,7 @@ export class DatabaseService {
 	 */
 	async getTestEntity(): Promise<{ id: string; name: string }> {
 		const [row] = await this.db
-			.select({ id: schema.entities.id, slug: schema.slugs.value })
+			.select({ id: schema.entities.id, slug: schema.slugs.value, label: schema.entities.label })
 			.from(schema.entities)
 			.innerJoin(
 				schema.slugs,
@@ -68,12 +83,13 @@ export class DatabaseService {
 			throw new Error("No entities found in database — required for relation tests.");
 		}
 
-		return { id: row.id, name: row.slug };
+		// The picker displays the denormalized label (published title), falling back to the slug.
+		return { id: row.id, name: row.label ?? row.slug };
 	}
 
 	async getTestEntities(count: number): Promise<Array<{ id: string; name: string }>> {
 		const rows = await this.db
-			.select({ id: schema.entities.id, slug: schema.slugs.value })
+			.select({ id: schema.entities.id, slug: schema.slugs.value, label: schema.entities.label })
 			.from(schema.entities)
 			.innerJoin(
 				schema.slugs,
@@ -87,8 +103,118 @@ export class DatabaseService {
 		}
 
 		return rows.map((row) => {
-			return { id: row.id, name: row.slug };
+			return { id: row.id, name: row.label ?? row.slug };
 		});
+	}
+
+	async getTestResources(count: number): Promise<Array<{ id: string; name: string }>> {
+		const { search } = await import("../../../lib/search");
+		const result = await search.collections.resources.search({
+			query: "*",
+			queryBy: ["label"],
+			sortBy: [{ field: "label", direction: "asc" }],
+			perPage: count,
+		});
+
+		if (result.isErr()) {
+			throw result.error;
+		}
+
+		const resources = result.value.items.map((hit) => {
+			return { id: hit.document.id, name: hit.document.label };
+		});
+
+		if (resources.length < count) {
+			throw new Error("Not enough resources found in search index — required for relation tests.");
+		}
+
+		return resources;
+	}
+
+	/**
+	 * Returns published news items (id = published version id, matching what the featured-items
+	 * picker uses) ordered by title, the same order as the picker's first page.
+	 */
+	async getPublishedNewsItems(count: number): Promise<Array<{ id: string; name: string }>> {
+		const rows = await this.db
+			.select({ id: schema.news.id, name: schema.news.title })
+			.from(schema.news)
+			.innerJoin(schema.entityVersions, eq(schema.news.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(eq(schema.entityStatus.type, "published"))
+			.orderBy(schema.news.title)
+			.limit(count);
+
+		if (rows.length < count) {
+			throw new Error(
+				`Expected at least ${String(count)} published news items for featured tests.`,
+			);
+		}
+
+		return rows;
+	}
+
+	/**
+	 * Returns published events (id = published version id, matching what the featured-items picker
+	 * uses) ordered by title, the same order as the picker's first page.
+	 */
+	async getPublishedEvents(count: number): Promise<Array<{ id: string; name: string }>> {
+		const rows = await this.db
+			.select({ id: schema.events.id, name: schema.events.title })
+			.from(schema.events)
+			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(eq(schema.entityStatus.type, "published"))
+			.orderBy(schema.events.title)
+			.limit(count);
+
+		if (rows.length < count) {
+			throw new Error(`Expected at least ${String(count)} published events for featured tests.`);
+		}
+
+		return rows;
+	}
+
+	/**
+	 * Reads the singleton site_metadata row's `featuredItemIds`, grouped by entity type (empty lists
+	 * when unset).
+	 */
+	async getSiteMetadataFeaturedItemIds(): Promise<{
+		news: Array<string>;
+		events: Array<string>;
+	}> {
+		const row = await this.db.query.siteMetadata.findFirst({
+			columns: { featuredItemIds: true },
+		});
+
+		return {
+			news: row?.featuredItemIds?.news ?? [],
+			events: row?.featuredItemIds?.events ?? [],
+		};
+	}
+
+	/**
+	 * Upserts the singleton site_metadata row, setting `featuredItemIds` (and ensuring title +
+	 * description exist so the form can be saved without filling them). Used to put the page into a
+	 * known state before/after the featured-items tests.
+	 */
+	async resetSiteMetadataFeaturedItems(
+		featuredItemIds: { news?: Array<string>; events?: Array<string> } = {},
+	): Promise<void> {
+		const value = { news: featuredItemIds.news ?? [], events: featuredItemIds.events ?? [] };
+
+		await this.db
+			.insert(schema.siteMetadata)
+			.values({
+				id: 1,
+				title: "E2E Site Title",
+				description: "E2E Site Description",
+				featuredItemIds: value,
+			})
+			.onConflictDoUpdate({
+				target: schema.siteMetadata.id,
+				set: { featuredItemIds: value, updatedAt: sql`NOW()` },
+			});
 	}
 
 	/** Returns related entity and resource IDs for a given entity (by its document DB id). */
@@ -99,11 +225,13 @@ export class DatabaseService {
 			this.db
 				.select({ relatedEntityId: schema.entitiesToEntities.relatedEntityId })
 				.from(schema.entitiesToEntities)
-				.where(eq(schema.entitiesToEntities.entityId, entityId)),
+				.where(eq(schema.entitiesToEntities.entityId, entityId))
+				.orderBy(schema.entitiesToEntities.position),
 			this.db
 				.select({ resourceId: schema.entitiesToResources.resourceId })
 				.from(schema.entitiesToResources)
-				.where(eq(schema.entitiesToResources.entityId, entityId)),
+				.where(eq(schema.entitiesToResources.entityId, entityId))
+				.orderBy(schema.entitiesToResources.position),
 		]);
 
 		return {
@@ -135,13 +263,19 @@ export class DatabaseService {
 	 * Finds a news item by exact title. Returns the document entity ID (entities.id) so callers can
 	 * use it with getEntityRelations / getEntitiesToEntitiesRow.
 	 */
-	async getNewsItemByTitle(
-		title: string,
-	): Promise<{ id: string; imageId: string; summary: string } | null> {
+	async getNewsItemByTitle(title: string): Promise<{
+		documentId: string;
+		id: string;
+		imageId: string;
+		publicationDate: Date;
+		summary: string;
+	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				id: schema.entityVersions.entityId,
 				imageId: schema.news.imageId,
+				publicationDate: schema.news.publicationDate,
 				summary: schema.news.summary,
 			})
 			.from(schema.news)
@@ -152,18 +286,41 @@ export class DatabaseService {
 		return row ?? null;
 	}
 
-	async getAssetByLabel(label: string): Promise<{ id: string; key: string } | null> {
+	async getAssetByLabel(
+		label: string,
+	): Promise<{ id: string; key: string; mimeType: string } | null> {
 		const asset = await this.db.query.assets.findFirst({
 			where: { label },
-			columns: { id: true, key: true },
+			columns: { id: true, key: true, mimeType: true },
 		});
 
 		return asset ?? null;
 	}
 
-	async getNewsContentBlocksByTitle(
-		title: string,
-	): Promise<Array<{ type: string; position: number; content: unknown }>> {
+	async getNewsContentBlocksByTitle(title: string): Promise<
+		Array<{
+			accordionItemTitle: string | null;
+			blockId: string;
+			parentBlockId: string | null;
+			calloutIntent: string | null;
+			calloutTitle: string | null;
+			content: unknown;
+			dataLimit: number | null;
+			embedTitle: string | null;
+			embedUrl: string | null;
+			galleryCaption: unknown;
+			galleryItems: unknown;
+			galleryLayout: string | null;
+			heroCtas: unknown;
+			heroEyebrow: string | null;
+			heroTitle: string | null;
+			imageCaptionMode: string | null;
+			imageLayout: string | null;
+			mediaTextSide: string | null;
+			position: number;
+			type: string;
+		}>
+	> {
 		const [newsItem] = await this.db
 			.select({ versionId: schema.news.id })
 			.from(schema.news)
@@ -176,7 +333,42 @@ export class DatabaseService {
 
 		const rows = await this.db
 			.select({
-				content: sql<unknown>`${schema.richTextContentBlocks.content}`,
+				accordionItemTitle: schema.accordionItemContentBlocks.title,
+				blockId: schema.contentBlocks.id,
+				parentBlockId: schema.contentBlocks.parentBlockId,
+				calloutIntent: schema.calloutContentBlocks.intent,
+				calloutTitle: schema.calloutContentBlocks.title,
+				content: sql<unknown>`coalesce(${schema.richTextContentBlocks.content}, ${schema.mediaTextContentBlocks.content})`,
+				dataLimit: schema.dataContentBlocks.limit,
+				embedTitle: schema.embedContentBlocks.title,
+				embedUrl: schema.embedContentBlocks.url,
+				/** The gallery's own caption, on its row — its items' captions are aggregated below. */
+				galleryCaption: schema.galleryContentBlocks.caption,
+				/**
+				 * Items live in their own table, one row per image. Aggregated here rather than joined so a
+				 * gallery stays one row like every other block type.
+				 */
+				galleryItems: sql<unknown>`(
+					select coalesce(
+						json_agg(
+							json_build_object(
+								'caption', ${schema.galleryContentBlockItems.caption},
+								'captionMode', ${schema.galleryContentBlockItems.captionMode}
+							)
+							order by ${schema.galleryContentBlockItems.position}
+						),
+						'[]'::json
+					)
+					from ${schema.galleryContentBlockItems}
+					where ${schema.galleryContentBlockItems.galleryContentBlockId} = ${schema.contentBlocks.id}
+				)`,
+				galleryLayout: schema.galleryContentBlocks.layout,
+				heroCtas: schema.heroContentBlocks.ctas,
+				heroEyebrow: schema.heroContentBlocks.eyebrow,
+				heroTitle: schema.heroContentBlocks.title,
+				imageCaptionMode: schema.imageContentBlocks.captionMode,
+				imageLayout: schema.imageContentBlocks.layout,
+				mediaTextSide: schema.mediaTextContentBlocks.side,
 				position: schema.contentBlocks.position,
 				type: schema.contentBlockTypes.type,
 			})
@@ -189,6 +381,36 @@ export class DatabaseService {
 			.leftJoin(
 				schema.richTextContentBlocks,
 				eq(schema.richTextContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(
+				schema.calloutContentBlocks,
+				eq(schema.calloutContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(
+				schema.accordionItemContentBlocks,
+				eq(schema.accordionItemContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(
+				schema.imageContentBlocks,
+				eq(schema.imageContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(
+				schema.mediaTextContentBlocks,
+				eq(schema.mediaTextContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(
+				schema.embedContentBlocks,
+				eq(schema.embedContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(
+				schema.galleryContentBlocks,
+				eq(schema.galleryContentBlocks.id, schema.contentBlocks.id),
+			)
+			.leftJoin(schema.dataContentBlocks, eq(schema.dataContentBlocks.id, schema.contentBlocks.id))
+			.leftJoin(schema.heroContentBlocks, eq(schema.heroContentBlocks.id, schema.contentBlocks.id))
+			.leftJoin(
+				schema.accordionContentBlocks,
+				eq(schema.accordionContentBlocks.id, schema.contentBlocks.id),
 			)
 			.where(eq(schema.fields.entityVersionId, newsItem.versionId))
 			.orderBy(schema.contentBlocks.position);
@@ -240,6 +462,27 @@ export class DatabaseService {
 			return null;
 		}
 		return this.getOrganisationalUnitDescriptionByVersionId(institution.id);
+	}
+
+	async getInstitutionSocialMediaIdsByName(name: string): Promise<Array<string> | null> {
+		const institution = await this.getInstitutionByName(name);
+		if (institution == null) {
+			return null;
+		}
+
+		return this.getOrganisationalUnitSocialMediaIds(institution.id);
+	}
+
+	async getOrganisationalUnitSocialMediaIds(versionId: string): Promise<Array<string>> {
+		const socialMedia = await this.db
+			.select({
+				socialMediaId: schema.organisationalUnitsToSocialMedia.socialMediaId,
+			})
+			.from(schema.organisationalUnitsToSocialMedia)
+			.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, versionId))
+			.orderBy(schema.organisationalUnitsToSocialMedia.position);
+
+		return socialMedia.map((item) => item.socialMediaId);
 	}
 
 	async getCountryByName(name: string): Promise<{
@@ -372,27 +615,25 @@ export class DatabaseService {
 		return this.getOrganisationalUnitDescriptionByVersionId(consortium.id);
 	}
 
-	async getWorkingGroupByName(name: string): Promise<{
-		acronym: string | null;
-		documentId: string;
-		id: string;
-		imageId: string | null;
-		name: string;
-		sshocMarketplaceActorId: number | null;
-		summary: string | null;
-	} | null> {
+	private async getWorkingGroupByNameAndStatus(
+		name: string,
+		statusType: "draft" | "published",
+	): Promise<WorkingGroupVersionRow | null> {
 		const [row] = await this.db
 			.select({
 				acronym: schema.organisationalUnits.acronym,
 				documentId: schema.entityVersions.entityId,
+				email: schema.organisationalUnits.email,
 				id: schema.organisationalUnits.id,
 				imageId: schema.organisationalUnits.imageId,
+				mailingList: schema.organisationalUnits.mailingList,
 				name: schema.organisationalUnits.name,
 				sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
 				summary: schema.organisationalUnits.summary,
 			})
 			.from(schema.organisationalUnits)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
 			.innerJoin(
 				schema.organisationalUnitTypes,
 				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
@@ -401,11 +642,28 @@ export class DatabaseService {
 				and(
 					eq(schema.organisationalUnits.name, name),
 					eq(schema.organisationalUnitTypes.type, "working_group"),
+					eq(schema.entityStatus.type, statusType),
 				),
 			)
 			.limit(1);
 
 		return row ?? null;
+	}
+
+	/**
+	 * Read the _draft_ working-group version. Save-only (unpublished) admin edits only ever touch the
+	 * draft row, so this is what create/edit/relation assertions should read. Use
+	 * {@link getPublishedWorkingGroupByName} to assert what a public visitor sees after publishing —
+	 * previously this join had no status filter and an unordered `.limit(1)`, so it silently read the
+	 * draft and masked bugs that only corrupt the published row (e.g. dropped-column-on-publish).
+	 */
+	async getWorkingGroupByName(name: string): Promise<WorkingGroupVersionRow | null> {
+		return this.getWorkingGroupByNameAndStatus(name, "draft");
+	}
+
+	/** Read the _published_ working-group version — what a public visitor sees after publishing. */
+	async getPublishedWorkingGroupByName(name: string): Promise<WorkingGroupVersionRow | null> {
+		return this.getWorkingGroupByNameAndStatus(name, "published");
 	}
 
 	async getWorkingGroupDescriptionByName(name: string): Promise<unknown> {
@@ -466,6 +724,7 @@ export class DatabaseService {
 			organisationalUnitId: string;
 			roleType: string;
 			duration: { start: Date; end?: Date };
+			description: string | null;
 		}>
 	> {
 		return this.db
@@ -474,6 +733,7 @@ export class DatabaseService {
 				organisationalUnitId: schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
 				roleType: schema.personRoleTypes.type,
 				duration: schema.personsToOrganisationalUnits.duration,
+				description: schema.personsToOrganisationalUnits.description,
 			})
 			.from(schema.personsToOrganisationalUnits)
 			.innerJoin(
@@ -491,6 +751,7 @@ export class DatabaseService {
 			relatedUnitId: string;
 			statusType: string;
 			duration: { start: Date; end?: Date };
+			description: string | null;
 		}>
 	> {
 		return this.db
@@ -500,6 +761,7 @@ export class DatabaseService {
 				relatedUnitId: schema.organisationalUnits.id,
 				statusType: schema.organisationalUnitStatus.status,
 				duration: schema.organisationalUnitsRelations.duration,
+				description: schema.organisationalUnitsRelations.description,
 			})
 			.from(schema.organisationalUnitsRelations)
 			.innerJoin(
@@ -520,6 +782,496 @@ export class DatabaseService {
 			.where(
 				sql`${schema.organisationalUnitsRelations.unitDocumentId} = (SELECT ${schema.entityVersions.entityId} FROM ${schema.entityVersions} WHERE ${schema.entityVersions.id} = ${versionId})`,
 			);
+	}
+
+	/**
+	 * Unit relations where `documentId` is the **source** (`unit_document_id`), keyed by document id
+	 * so it also resolves relations of a draft-only unit (e.g. a delegated, never-published
+	 * institution and its `is_located_in` / partner edges). Returns the raw related-unit document id
+	 * and status type.
+	 */
+	async getUnitRelationsBySourceDocumentId(documentId: string): Promise<
+		Array<{
+			id: string;
+			relatedUnitDocumentId: string;
+			statusType: string;
+		}>
+	> {
+		return this.db
+			.select({
+				id: schema.organisationalUnitsRelations.id,
+				relatedUnitDocumentId: schema.organisationalUnitsRelations.relatedUnitDocumentId,
+				statusType: schema.organisationalUnitStatus.status,
+			})
+			.from(schema.organisationalUnitsRelations)
+			.innerJoin(
+				schema.organisationalUnitStatus,
+				eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
+			)
+			.where(eq(schema.organisationalUnitsRelations.unitDocumentId, documentId));
+	}
+
+	/**
+	 * A published country which is (or is not) a member or observer of DARIAH-EU.
+	 *
+	 * The guided-form tests need both: `countryMembershipRules` requires a partner institution's
+	 * country to be a member, so the same wizard run must succeed quietly for one and raise a warning
+	 * for the other. Resolved from the data rather than hardcoded, so the tests do not depend on
+	 * which countries a given seed happens to contain.
+	 */
+	async getCountryByDariahMembership(isMember: boolean): Promise<{
+		documentId: string;
+		name: string;
+	} | null> {
+		const membership = this.db
+			.select({ one: sql`1` })
+			.from(schema.organisationalUnitsRelations)
+			.innerJoin(
+				schema.organisationalUnitStatus,
+				eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
+			)
+			.innerJoin(
+				schema.slugs,
+				and(
+					eq(schema.slugs.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+					eq(schema.slugs.isPublished, true),
+				),
+			)
+			.where(
+				and(
+					eq(schema.organisationalUnitsRelations.unitDocumentId, schema.entityVersions.entityId),
+					inArray(schema.organisationalUnitStatus.status, ["is_member_of", "is_observer_of"]),
+					eq(schema.slugs.value, "dariah-eu"),
+				),
+			);
+
+		const [row] = await this.db
+			.select({
+				documentId: schema.entityVersions.entityId,
+				name: schema.organisationalUnits.name,
+			})
+			.from(schema.organisationalUnits)
+			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
+			.innerJoin(
+				schema.organisationalUnitTypes,
+				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
+			)
+			.where(
+				and(
+					eq(schema.organisationalUnitTypes.type, "country"),
+					eq(schema.entityStatus.type, "published"),
+					isMember ? exists(membership) : notExists(membership),
+				),
+			)
+			.orderBy(schema.organisationalUnits.name)
+			.limit(1);
+
+		return row ?? null;
+	}
+
+	/**
+	 * Ensures a country is recorded as a member of DARIAH-EU, and reports whether it had to create
+	 * that relation.
+	 *
+	 * The kitchen-sink seed hangs its fixtures off a separate `kitchen-sink-eric` unit, so a seeded
+	 * database has no country related to `dariah-eu` at all — and every integrity rule is pinned to
+	 * that slug. Tests that need the rules to have something to judge therefore establish the
+	 * membership themselves and remove it again, rather than depending on seed data that does not
+	 * describe DARIAH-EU.
+	 */
+	async ensureDariahEricMembership(countryDocumentId: string): Promise<string | null> {
+		const [eric] = await this.db
+			.select({ id: schema.entities.id })
+			.from(schema.entities)
+			.innerJoin(
+				schema.slugs,
+				and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
+			)
+			.where(eq(schema.slugs.value, "dariah-eu"))
+			.limit(1);
+
+		if (eric == null) {
+			return null;
+		}
+
+		const [status] = await this.db
+			.select({ id: schema.organisationalUnitStatus.id })
+			.from(schema.organisationalUnitStatus)
+			.where(eq(schema.organisationalUnitStatus.status, "is_member_of"))
+			.limit(1);
+
+		if (status == null) {
+			return null;
+		}
+
+		const [existing] = await this.db
+			.select({ id: schema.organisationalUnitsRelations.id })
+			.from(schema.organisationalUnitsRelations)
+			.where(
+				and(
+					eq(schema.organisationalUnitsRelations.unitDocumentId, countryDocumentId),
+					eq(schema.organisationalUnitsRelations.relatedUnitDocumentId, eric.id),
+					eq(schema.organisationalUnitsRelations.status, status.id),
+				),
+			)
+			.limit(1);
+
+		if (existing != null) {
+			return null;
+		}
+
+		const [created] = await this.db
+			.insert(schema.organisationalUnitsRelations)
+			.values({
+				unitDocumentId: countryDocumentId,
+				relatedUnitDocumentId: eric.id,
+				status: status.id,
+				duration: { start: new Date("2000-01-01T00:00:00.000Z") },
+			})
+			.returning({ id: schema.organisationalUnitsRelations.id });
+
+		return created?.id ?? null;
+	}
+
+	async getEntityDocumentIdBySlug(slug: string): Promise<string | null> {
+		const [row] = await this.db
+			.select({ id: schema.entities.id })
+			.from(schema.entities)
+			.innerJoin(
+				schema.slugs,
+				and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
+			)
+			.where(eq(schema.slugs.value, slug))
+			.limit(1);
+
+		return row?.id ?? null;
+	}
+
+	async getFirstPublishedPerson(): Promise<{ documentId: string; name: string } | null> {
+		const [row] = await this.db
+			.select({ documentId: schema.entityVersions.entityId, name: schema.persons.name })
+			.from(schema.persons)
+			.innerJoin(schema.entityVersions, eq(schema.persons.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
+			.where(eq(schema.entityStatus.type, "published"))
+			.orderBy(schema.persons.sortName)
+			.limit(1);
+
+		return row ?? null;
+	}
+
+	/**
+	 * A published working group the retire-unit test can close without touching seeded data.
+	 *
+	 * Retiring a unit ends every relation hanging off it, so the test must own the unit outright —
+	 * ending relations on a seeded working group would break the wgchair suite, which depends on its
+	 * chair relations still being open.
+	 */
+	async createPublishedOrganisationalUnit(params: {
+		name: string;
+		slug: string;
+		unitType: (typeof schema.organisationalUnitTypesEnum)[number];
+	}): Promise<{ documentId: string; versionId: string }> {
+		return this.db.transaction(async (tx) => {
+			const [entityType, status, unitType] = await Promise.all([
+				tx.query.entityTypes.findFirst({
+					where: { type: "organisational_units" },
+					columns: { id: true },
+				}),
+				tx.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+				tx.query.organisationalUnitTypes.findFirst({
+					where: { type: params.unitType },
+					columns: { id: true },
+				}),
+			]);
+
+			const locale = await tx.query.locales.findFirst({
+				where: { isDefault: true },
+				columns: { id: true },
+			});
+
+			if (entityType == null || status == null || unitType == null || locale == null) {
+				throw new Error(`Missing lookup rows for a "${params.unitType}".`);
+			}
+
+			const [document] = await tx
+				.insert(schema.entities)
+				.values({ typeId: entityType.id })
+				.returning({ id: schema.entities.id });
+			if (document == null) {
+				throw new Error("Failed to insert organisational-unit document.");
+			}
+
+			const [version] = await tx
+				.insert(schema.entityVersions)
+				.values({ entityId: document.id, statusId: status.id, localeId: locale.id })
+				.returning({ id: schema.entityVersions.id });
+			if (version == null) {
+				throw new Error("Failed to insert organisational-unit version.");
+			}
+
+			await tx
+				.insert(schema.organisationalUnits)
+				.values({ id: version.id, name: params.name, typeId: unitType.id });
+
+			await tx.insert(schema.slugs).values({
+				entityVersionId: version.id,
+				entityId: document.id,
+				typeId: entityType.id,
+				localeId: locale.id,
+				isPublished: true,
+				value: params.slug,
+			});
+
+			return { documentId: document.id, versionId: version.id };
+		});
+	}
+
+	async createPublishedWorkingGroup(params: {
+		name: string;
+		slug: string;
+	}): Promise<{ documentId: string; versionId: string }> {
+		return this.createPublishedOrganisationalUnit({ ...params, unitType: "working_group" });
+	}
+
+	async createPublishedInstitution(params: {
+		name: string;
+		slug: string;
+	}): Promise<{ documentId: string; versionId: string }> {
+		return this.createPublishedOrganisationalUnit({ ...params, unitType: "institution" });
+	}
+
+	/**
+	 * A person the country-role tests own outright.
+	 *
+	 * The seed has only two published persons and global setup gives them committee relations, so a
+	 * test reusing one would land on the wizard's "already recorded" path instead of the one it means
+	 * to exercise. Cleaned up by `cleanupWorkerPersons`, which also clears their relations.
+	 */
+	async createPublishedPerson(params: {
+		name: string;
+		sortName: string;
+		slug: string;
+	}): Promise<{ documentId: string; versionId: string }> {
+		return this.db.transaction(async (tx) => {
+			const [entityType, status, locale] = await Promise.all([
+				tx.query.entityTypes.findFirst({ where: { type: "persons" }, columns: { id: true } }),
+				tx.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+				tx.query.locales.findFirst({ where: { isDefault: true }, columns: { id: true } }),
+			]);
+
+			if (entityType == null || status == null || locale == null) {
+				throw new Error("Missing lookup rows for a person.");
+			}
+
+			const [document] = await tx
+				.insert(schema.entities)
+				.values({ typeId: entityType.id })
+				.returning({ id: schema.entities.id });
+			if (document == null) {
+				throw new Error("Failed to insert person document.");
+			}
+
+			const [version] = await tx
+				.insert(schema.entityVersions)
+				.values({ entityId: document.id, statusId: status.id, localeId: locale.id })
+				.returning({ id: schema.entityVersions.id });
+			if (version == null) {
+				throw new Error("Failed to insert person version.");
+			}
+
+			await tx
+				.insert(schema.persons)
+				.values({ id: version.id, name: params.name, sortName: params.sortName });
+
+			await tx.insert(schema.slugs).values({
+				entityVersionId: version.id,
+				entityId: document.id,
+				typeId: entityType.id,
+				localeId: locale.id,
+				isPublished: true,
+				value: params.slug,
+			});
+
+			return { documentId: document.id, versionId: version.id };
+		});
+	}
+
+	/** Every relation a person holds, with the unit resolved — the shape the assertions need. */
+	async getPersonRelations(personDocumentId: string): Promise<
+		Array<{
+			id: string;
+			roleType: string;
+			unitDocumentId: string;
+			unitSlug: string;
+			start: Date;
+			end: Date | null;
+		}>
+	> {
+		const rows = await this.db
+			.select({
+				id: schema.personsToOrganisationalUnits.id,
+				roleType: schema.personRoleTypes.type,
+				unitDocumentId: schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+				unitSlug: schema.slugs.value,
+				duration: schema.personsToOrganisationalUnits.duration,
+			})
+			.from(schema.personsToOrganisationalUnits)
+			.innerJoin(
+				schema.personRoleTypes,
+				eq(schema.personRoleTypes.id, schema.personsToOrganisationalUnits.roleTypeId),
+			)
+			.innerJoin(
+				schema.slugs,
+				and(
+					eq(
+						schema.slugs.entityId,
+						schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+					),
+					eq(schema.slugs.isPublished, true),
+				),
+			)
+			.where(eq(schema.personsToOrganisationalUnits.personDocumentId, personDocumentId));
+
+		return rows.map((row) => {
+			return {
+				id: row.id,
+				roleType: row.roleType,
+				unitDocumentId: row.unitDocumentId,
+				unitSlug: row.unitSlug,
+				start: row.duration.start,
+				end: row.duration.end ?? null,
+			};
+		});
+	}
+
+	async addUnitRelation(params: {
+		unitDocumentId: string;
+		relatedUnitDocumentId: string;
+		statusType: (typeof schema.organisationalUnitStatusEnum)[number];
+		start: Date;
+	}): Promise<string> {
+		const [status] = await this.db
+			.select({ id: schema.organisationalUnitStatus.id })
+			.from(schema.organisationalUnitStatus)
+			.where(eq(schema.organisationalUnitStatus.status, params.statusType))
+			.limit(1);
+
+		if (status == null) {
+			throw new Error(`Missing organisational unit status "${params.statusType}".`);
+		}
+
+		const [row] = await this.db
+			.insert(schema.organisationalUnitsRelations)
+			.values({
+				unitDocumentId: params.unitDocumentId,
+				relatedUnitDocumentId: params.relatedUnitDocumentId,
+				status: status.id,
+				duration: { start: params.start },
+			})
+			.returning({ id: schema.organisationalUnitsRelations.id });
+
+		if (row == null) {
+			throw new Error("Failed to insert unit relation.");
+		}
+
+		return row.id;
+	}
+
+	async addPersonRelation(params: {
+		personDocumentId: string;
+		organisationalUnitDocumentId: string;
+		roleType: (typeof schema.personRoleTypesEnum)[number];
+		start: Date;
+	}): Promise<string> {
+		const [roleType] = await this.db
+			.select({ id: schema.personRoleTypes.id })
+			.from(schema.personRoleTypes)
+			.where(eq(schema.personRoleTypes.type, params.roleType))
+			.limit(1);
+
+		if (roleType == null) {
+			throw new Error(`Missing person role type "${params.roleType}".`);
+		}
+
+		const [row] = await this.db
+			.insert(schema.personsToOrganisationalUnits)
+			.values({
+				personDocumentId: params.personDocumentId,
+				organisationalUnitDocumentId: params.organisationalUnitDocumentId,
+				roleTypeId: roleType.id,
+				duration: { start: params.start },
+			})
+			.returning({ id: schema.personsToOrganisationalUnits.id });
+
+		if (row == null) {
+			throw new Error("Failed to insert person relation.");
+		}
+
+		return row.id;
+	}
+
+	async getUnitRelationEndById(id: string): Promise<Date | null | undefined> {
+		const [row] = await this.db
+			.select({ duration: schema.organisationalUnitsRelations.duration })
+			.from(schema.organisationalUnitsRelations)
+			.where(eq(schema.organisationalUnitsRelations.id, id))
+			.limit(1);
+
+		return row == null ? undefined : (row.duration.end ?? null);
+	}
+
+	async getPersonRelationEndById(id: string): Promise<Date | null | undefined> {
+		const [row] = await this.db
+			.select({ duration: schema.personsToOrganisationalUnits.duration })
+			.from(schema.personsToOrganisationalUnits)
+			.where(eq(schema.personsToOrganisationalUnits.id, id))
+			.limit(1);
+
+		return row == null ? undefined : (row.duration.end ?? null);
+	}
+
+	/**
+	 * Person relations are not removed by `deleteWorkingGroup`, so a test that attaches one must
+	 * clear it before the unit goes, or the delete trips the foreign key.
+	 */
+	async deletePersonRelationById(id: string): Promise<void> {
+		await this.db
+			.delete(schema.personsToOrganisationalUnits)
+			.where(eq(schema.personsToOrganisationalUnits.id, id));
+	}
+
+	/** The first published country, whatever its relation to DARIAH-EU. */
+	async getFirstPublishedCountry(): Promise<{ documentId: string; name: string } | null> {
+		const [row] = await this.db
+			.select({
+				documentId: schema.entityVersions.entityId,
+				name: schema.organisationalUnits.name,
+			})
+			.from(schema.organisationalUnits)
+			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
+			.innerJoin(
+				schema.organisationalUnitTypes,
+				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
+			)
+			.where(
+				and(
+					eq(schema.organisationalUnitTypes.type, "country"),
+					eq(schema.entityStatus.type, "published"),
+				),
+			)
+			.orderBy(schema.organisationalUnits.name)
+			.limit(1);
+
+		return row ?? null;
+	}
+
+	async deleteUnitRelationById(id: string): Promise<void> {
+		await this.db
+			.delete(schema.organisationalUnitsRelations)
+			.where(eq(schema.organisationalUnitsRelations.id, id));
 	}
 
 	async getPublishedVersionId(documentId: string): Promise<string | null> {
@@ -545,7 +1297,7 @@ export class DatabaseService {
 	} | null> {
 		const [row] = await this.db
 			.select({
-				documentId: schema.entityVersions.entityId,
+				documentId: schema.entities.id,
 				id: schema.internalPages.id,
 				slug: schema.slugs.value,
 				title: schema.internalPages.title,
@@ -722,7 +1474,7 @@ export class DatabaseService {
 		imageId: string | null;
 		name: string;
 		scopeId: string;
-		summary: string;
+		summary: string | null;
 		topic: string | null;
 	} | null> {
 		const [row] = await this.db
@@ -789,7 +1541,8 @@ export class DatabaseService {
 		const socialMedia = await this.db
 			.select({ socialMediaId: schema.projectsToSocialMedia.socialMediaId })
 			.from(schema.projectsToSocialMedia)
-			.where(eq(schema.projectsToSocialMedia.projectId, project.id));
+			.where(eq(schema.projectsToSocialMedia.projectId, project.id))
+			.orderBy(schema.projectsToSocialMedia.position);
 
 		return {
 			partners,
@@ -928,6 +1681,14 @@ export class DatabaseService {
 		return { ...row, ownerUnitDocumentIds, providerUnitDocumentIds };
 	}
 
+	/**
+	 * The `get*Option` helpers answer "any published row will do". They must never answer with
+	 * another worker's fixture: those are deleted by that worker's afterAll, which can land in the
+	 * middle of this test — taking the relation under test with it, or leaving a row this worker
+	 * linked to and the other worker can no longer delete. Only seeded rows outlive every worker, and
+	 * `[e2e-worker-N] …` names sort ahead of the seeded ones in the default collation, so the
+	 * exclusion is load-bearing rather than belt-and-braces.
+	 */
 	async getOrganisationalUnitOptions(
 		limit = 4,
 	): Promise<Array<{ documentId: string; name: string }>> {
@@ -939,18 +1700,29 @@ export class DatabaseService {
 			.from(schema.organisationalUnits)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(eq(schema.entityStatus.type, "published"))
+			.where(
+				and(
+					eq(schema.entityStatus.type, "published"),
+					sql`${schema.organisationalUnits.name} NOT LIKE ${WORKER_FIXTURE_NAME_PATTERN}`,
+				),
+			)
 			.orderBy(schema.organisationalUnits.name)
 			.limit(limit);
 	}
 
+	/** A seeded published person. See {@link getOrganisationalUnitOptions} on the exclusion. */
 	async getPersonOption(): Promise<{ id: string; name: string }> {
 		const [row] = await this.db
 			.select({ id: schema.persons.id, name: schema.persons.name })
 			.from(schema.persons)
 			.innerJoin(schema.entityVersions, eq(schema.persons.id, schema.entityVersions.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(eq(schema.entityStatus.type, "published"))
+			.where(
+				and(
+					eq(schema.entityStatus.type, "published"),
+					sql`${schema.persons.name} NOT LIKE ${WORKER_FIXTURE_NAME_PATTERN}`,
+				),
+			)
 			.orderBy(schema.persons.name)
 			.limit(1);
 
@@ -961,10 +1733,21 @@ export class DatabaseService {
 		return row;
 	}
 
-	async getCountryOption(): Promise<{ id: string; name: string }> {
-		const [row] = await this.db
-			// reports key the country by document id.
-			.select({ id: schema.entityVersions.entityId, name: schema.organisationalUnits.name })
+	/**
+	 * Published org-unit documents of a given type, ordered by name. `id` is the document id (matches
+	 * how reports key their org unit) and `slug` is the document slug used to build reporting URLs.
+	 * Seeded rows only — see {@link getOrganisationalUnitOptions}.
+	 */
+	private async getPublishedOrgUnitOptions(
+		unitType: "country" | "working_group",
+		limit: number,
+	): Promise<Array<{ id: string; name: string; slug: string }>> {
+		return this.db
+			.select({
+				id: schema.entityVersions.entityId,
+				name: schema.organisationalUnits.name,
+				slug: schema.slugs.value,
+			})
 			.from(schema.organisationalUnits)
 			.innerJoin(
 				schema.organisationalUnitTypes,
@@ -972,14 +1755,20 @@ export class DatabaseService {
 			)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.organisationalUnits.id))
 			.where(
 				and(
-					eq(schema.organisationalUnitTypes.type, "country"),
+					eq(schema.organisationalUnitTypes.type, unitType),
 					eq(schema.entityStatus.type, "published"),
+					sql`${schema.organisationalUnits.name} NOT LIKE ${WORKER_FIXTURE_NAME_PATTERN}`,
 				),
 			)
 			.orderBy(schema.organisationalUnits.name)
-			.limit(1);
+			.limit(limit);
+	}
+
+	async getCountryOption(): Promise<{ id: string; name: string; slug: string }> {
+		const [row] = await this.getPublishedOrgUnitOptions("country", 1);
 
 		if (row == null) {
 			throw new Error("Expected at least one country for e2e tests.");
@@ -988,31 +1777,42 @@ export class DatabaseService {
 		return row;
 	}
 
-	async getWorkingGroupOption(): Promise<{ id: string; name: string }> {
-		const [row] = await this.db
-			// reports key the working group by document id.
-			.select({ id: schema.entityVersions.entityId, name: schema.organisationalUnits.name })
-			.from(schema.organisationalUnits)
-			.innerJoin(
-				schema.organisationalUnitTypes,
-				eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
-			)
-			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
-			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
-			.where(
-				and(
-					eq(schema.organisationalUnitTypes.type, "working_group"),
-					eq(schema.entityStatus.type, "published"),
-				),
-			)
-			.orderBy(schema.organisationalUnits.name)
-			.limit(1);
+	async getWorkingGroupOption(): Promise<{ id: string; name: string; slug: string }> {
+		const [row] = await this.getPublishedOrgUnitOptions("working_group", 1);
 
 		if (row == null) {
 			throw new Error("Expected at least one working group for e2e tests.");
 		}
 
 		return row;
+	}
+
+	/**
+	 * A published country other than {@link getCountryOption} — used by authz tests to prove that a
+	 * persona's relation to one country does not grant access to another.
+	 */
+	async getOtherCountryOption(): Promise<{ id: string; name: string; slug: string }> {
+		const rows = await this.getPublishedOrgUnitOptions("country", 2);
+
+		if (rows[1] == null) {
+			throw new Error("Expected at least two countries for cross-tenant authz e2e tests.");
+		}
+
+		return rows[1];
+	}
+
+	/**
+	 * A published working group other than {@link getWorkingGroupOption}. See
+	 * {@link getOtherCountryOption}.
+	 */
+	async getOtherWorkingGroupOption(): Promise<{ id: string; name: string; slug: string }> {
+		const rows = await this.getPublishedOrgUnitOptions("working_group", 2);
+
+		if (rows[1] == null) {
+			throw new Error("Expected at least two working groups for cross-tenant authz e2e tests.");
+		}
+
+		return rows[1];
 	}
 
 	async createOpenCampaign(year: number): Promise<{ id: string }> {
@@ -1077,6 +1877,14 @@ export class DatabaseService {
 		if (wgReportRows.length > 0) {
 			const wgReportIds = wgReportRows.map((r) => r.id);
 			await this.db
+				.delete(schema.reportScreenComments)
+				.where(
+					and(
+						eq(schema.reportScreenComments.reportType, "working_group"),
+						inArray(schema.reportScreenComments.reportId, wgReportIds),
+					),
+				);
+			await this.db
 				.delete(schema.workingGroupReportAnswers)
 				.where(inArray(schema.workingGroupReportAnswers.workingGroupReportId, wgReportIds));
 			await this.db
@@ -1085,6 +1893,12 @@ export class DatabaseService {
 			await this.db
 				.delete(schema.workingGroupReportSocialMedia)
 				.where(inArray(schema.workingGroupReportSocialMedia.workingGroupReportId, wgReportIds));
+			await this.db
+				.delete(schema.workingGroupReportChairs)
+				.where(inArray(schema.workingGroupReportChairs.workingGroupReportId, wgReportIds));
+			await this.db
+				.delete(schema.reportExternalResourceSnapshots)
+				.where(inArray(schema.reportExternalResourceSnapshots.workingGroupReportId, wgReportIds));
 			await this.db
 				.delete(schema.workingGroupReports)
 				.where(inArray(schema.workingGroupReports.id, wgReportIds));
@@ -1102,14 +1916,28 @@ export class DatabaseService {
 		if (countryReportRows.length > 0) {
 			const countryReportIds = countryReportRows.map((r) => r.id);
 			await this.db
+				.delete(schema.reportScreenComments)
+				.where(
+					and(
+						eq(schema.reportScreenComments.reportType, "country"),
+						inArray(schema.reportScreenComments.reportId, countryReportIds),
+					),
+				);
+			await this.db
 				.delete(schema.countryReportContributions)
 				.where(inArray(schema.countryReportContributions.countryReportId, countryReportIds));
 			await this.db
 				.delete(schema.countryReportSocialMediaKpis)
 				.where(inArray(schema.countryReportSocialMediaKpis.countryReportId, countryReportIds));
 			await this.db
+				.delete(schema.countryReportSocialMedia)
+				.where(inArray(schema.countryReportSocialMedia.countryReportId, countryReportIds));
+			await this.db
 				.delete(schema.countryReportServiceKpis)
 				.where(inArray(schema.countryReportServiceKpis.countryReportId, countryReportIds));
+			await this.db
+				.delete(schema.countryReportServices)
+				.where(inArray(schema.countryReportServices.countryReportId, countryReportIds));
 			await this.db
 				.delete(schema.countryReportProjectContributions)
 				.where(inArray(schema.countryReportProjectContributions.countryReportId, countryReportIds));
@@ -1248,6 +2076,15 @@ export class DatabaseService {
 		return row;
 	}
 
+	async getCountryReportServiceIds(countryReportId: string): Promise<Array<string>> {
+		const rows = await this.db.query.countryReportServices.findMany({
+			where: { countryReportId },
+			columns: { serviceId: true },
+		});
+
+		return rows.map((row) => row.serviceId);
+	}
+
 	async createCountryReportProjectContribution(params: {
 		amountEuros: number;
 		countryReportId: string;
@@ -1286,7 +2123,38 @@ export class DatabaseService {
 	}
 
 	async deleteCountryReport(id: string): Promise<void> {
-		await this.db.delete(schema.countryReports).where(eq(schema.countryReports.id, id));
+		await this.db.transaction(async (tx) => {
+			await tx
+				.delete(schema.reportScreenComments)
+				.where(
+					and(
+						eq(schema.reportScreenComments.reportType, "country"),
+						eq(schema.reportScreenComments.reportId, id),
+					),
+				);
+			await tx
+				.delete(schema.countryReportContributions)
+				.where(eq(schema.countryReportContributions.countryReportId, id));
+			await tx
+				.delete(schema.countryReportSocialMediaKpis)
+				.where(eq(schema.countryReportSocialMediaKpis.countryReportId, id));
+			await tx
+				.delete(schema.countryReportSocialMedia)
+				.where(eq(schema.countryReportSocialMedia.countryReportId, id));
+			await tx
+				.delete(schema.countryReportServiceKpis)
+				.where(eq(schema.countryReportServiceKpis.countryReportId, id));
+			await tx
+				.delete(schema.countryReportServices)
+				.where(eq(schema.countryReportServices.countryReportId, id));
+			await tx
+				.delete(schema.countryReportProjectContributions)
+				.where(eq(schema.countryReportProjectContributions.countryReportId, id));
+			await tx
+				.delete(schema.countryReportInstitutions)
+				.where(eq(schema.countryReportInstitutions.countryReportId, id));
+			await tx.delete(schema.countryReports).where(eq(schema.countryReports.id, id));
+		});
 	}
 
 	async getWorkingGroupReportByCampaignAndGroup(
@@ -1328,8 +2196,127 @@ export class DatabaseService {
 		return row ?? null;
 	}
 
+	async createWorkingGroupReport(params: {
+		campaignId: string;
+		workingGroupDocumentId: string;
+		status?: "accepted" | "draft" | "submitted";
+	}): Promise<{ id: string }> {
+		const { campaignId, workingGroupDocumentId, status = "draft" } = params;
+		const [row] = await this.db
+			.insert(schema.workingGroupReports)
+			.values({ campaignId, workingGroupDocumentId, status })
+			.returning({ id: schema.workingGroupReports.id });
+
+		if (row == null) {
+			throw new Error("Failed to create working group report.");
+		}
+
+		return row;
+	}
+
 	async deleteWorkingGroupReport(id: string): Promise<void> {
-		await this.db.delete(schema.workingGroupReports).where(eq(schema.workingGroupReports.id, id));
+		await this.db.transaction(async (tx) => {
+			await tx
+				.delete(schema.reportScreenComments)
+				.where(
+					and(
+						eq(schema.reportScreenComments.reportType, "working_group"),
+						eq(schema.reportScreenComments.reportId, id),
+					),
+				);
+			await tx
+				.delete(schema.workingGroupReportAnswers)
+				.where(eq(schema.workingGroupReportAnswers.workingGroupReportId, id));
+			await tx
+				.delete(schema.workingGroupReportEvents)
+				.where(eq(schema.workingGroupReportEvents.workingGroupReportId, id));
+			await tx
+				.delete(schema.workingGroupReportSocialMedia)
+				.where(eq(schema.workingGroupReportSocialMedia.workingGroupReportId, id));
+			await tx
+				.delete(schema.workingGroupReportChairs)
+				.where(eq(schema.workingGroupReportChairs.workingGroupReportId, id));
+			await tx
+				.delete(schema.reportExternalResourceSnapshots)
+				.where(eq(schema.reportExternalResourceSnapshots.workingGroupReportId, id));
+			await tx.delete(schema.workingGroupReports).where(eq(schema.workingGroupReports.id, id));
+		});
+	}
+
+	/**
+	 * Seeds a working-group-report question for a campaign. `question` is a minimal tiptap document
+	 * wrapping the given text. Cleaned up with the campaign via `cleanupCampaignSubTables`.
+	 */
+	async createWorkingGroupReportQuestion(params: {
+		campaignId: string;
+		questionText: string;
+		position: number;
+	}): Promise<{ id: string }> {
+		const { campaignId, questionText, position } = params;
+		const [row] = await this.db
+			.insert(schema.workingGroupReportQuestions)
+			.values({
+				campaignId,
+				position,
+				question: {
+					type: "doc",
+					content: [{ type: "paragraph", content: [{ type: "text", text: questionText }] }],
+				},
+			})
+			.returning({ id: schema.workingGroupReportQuestions.id });
+
+		if (row == null) {
+			throw new Error("Failed to create working group report question.");
+		}
+
+		return row;
+	}
+
+	async createWorkingGroupReportEvent(params: {
+		workingGroupReportId: string;
+		title: string;
+		role?: "organiser" | "presenter";
+		date?: Date;
+	}): Promise<{ id: string }> {
+		const { workingGroupReportId, title, role = "organiser", date = new Date() } = params;
+		const [row] = await this.db
+			.insert(schema.workingGroupReportEvents)
+			.values({ workingGroupReportId, title, role, date })
+			.returning({ id: schema.workingGroupReportEvents.id });
+
+		if (row == null) {
+			throw new Error("Failed to create working group report event.");
+		}
+
+		return row;
+	}
+
+	async getWorkingGroupReportEventById(id: string): Promise<{ id: string } | null> {
+		const [row] = await this.db
+			.select({ id: schema.workingGroupReportEvents.id })
+			.from(schema.workingGroupReportEvents)
+			.where(eq(schema.workingGroupReportEvents.id, id))
+			.limit(1);
+
+		return row ?? null;
+	}
+
+	async getWorkingGroupReportAnswer(
+		workingGroupReportId: string,
+		questionId: string,
+	): Promise<{ answer: unknown } | null> {
+		const [row] = await this.db
+			.select({ answer: schema.workingGroupReportAnswers.answer })
+			.from(schema.workingGroupReportAnswers)
+			.where(
+				and(
+					eq(schema.workingGroupReportAnswers.workingGroupReportId, workingGroupReportId),
+					eq(schema.workingGroupReportAnswers.questionId, questionId),
+				),
+			)
+			.limit(1);
+
+		return row ?? null;
 	}
 
 	async getUserByName(name: string): Promise<{
@@ -1359,13 +2346,19 @@ export class DatabaseService {
 		return row ?? null;
 	}
 
-	async getPageItemByTitle(
-		title: string,
-	): Promise<{ id: string; imageId: string | null; summary: string } | null> {
+	async getPageItemByTitle(title: string): Promise<{
+		documentId: string;
+		id: string;
+		imageId: string | null;
+		publicationDate: Date;
+		summary: string;
+	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				id: schema.entityVersions.entityId,
 				imageId: schema.pages.imageId,
+				publicationDate: schema.pages.publicationDate,
 				summary: schema.pages.summary,
 			})
 			.from(schema.pages)
@@ -1424,6 +2417,7 @@ export class DatabaseService {
 	}
 
 	async getEventByTitle(title: string): Promise<{
+		documentId: string;
 		duration: { start: Date; end?: Date };
 		id: string;
 		imageId: string;
@@ -1434,6 +2428,7 @@ export class DatabaseService {
 	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				duration: schema.events.duration,
 				id: schema.events.id,
 				imageId: schema.events.imageId,
@@ -1443,6 +2438,7 @@ export class DatabaseService {
 				website: schema.events.website,
 			})
 			.from(schema.events)
+			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
 			.where(eq(schema.events.title, title))
 			.limit(1);
 
@@ -1462,17 +2458,22 @@ export class DatabaseService {
 	}
 
 	async getImpactCaseStudyByTitle(title: string): Promise<{
+		documentId: string;
 		id: string;
 		imageId: string;
+		publicationDate: Date;
 		summary: string;
 	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				id: schema.impactCaseStudies.id,
 				imageId: schema.impactCaseStudies.imageId,
+				publicationDate: schema.impactCaseStudies.publicationDate,
 				summary: schema.impactCaseStudies.summary,
 			})
 			.from(schema.impactCaseStudies)
+			.innerJoin(schema.entityVersions, eq(schema.impactCaseStudies.id, schema.entityVersions.id))
 			.where(eq(schema.impactCaseStudies.title, title))
 			.limit(1);
 
@@ -1492,17 +2493,22 @@ export class DatabaseService {
 	}
 
 	async getSpotlightArticleByTitle(title: string): Promise<{
+		documentId: string;
 		id: string;
 		imageId: string;
+		publicationDate: Date;
 		summary: string;
 	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				id: schema.spotlightArticles.id,
 				imageId: schema.spotlightArticles.imageId,
+				publicationDate: schema.spotlightArticles.publicationDate,
 				summary: schema.spotlightArticles.summary,
 			})
 			.from(schema.spotlightArticles)
+			.innerJoin(schema.entityVersions, eq(schema.spotlightArticles.id, schema.entityVersions.id))
 			.where(eq(schema.spotlightArticles.title, title))
 			.limit(1);
 
@@ -1593,6 +2599,7 @@ export class DatabaseService {
 				title,
 				summary: "Colliding slug news item",
 				imageId,
+				publicationDate: new Date("2024-01-15T00:00:00.000Z"),
 			});
 
 			await tx.insert(schema.slugs).values({
@@ -1608,18 +2615,160 @@ export class DatabaseService {
 		});
 	}
 
+	/**
+	 * A never-published news document (draft version only). Its `entities.label` stays null, so it is
+	 * invisible to the relation-options pickers — used to prove the maintenance slug editor resolves
+	 * drafts through its own options endpoint.
+	 */
+	async createDraftNewsDocument(params: {
+		slug: string;
+		title: string;
+		imageId: string;
+	}): Promise<{ documentId: string; versionId: string }> {
+		const { slug, title, imageId } = params;
+
+		return this.db.transaction(async (tx) => {
+			const type = await tx.query.entityTypes.findFirst({
+				where: { type: "news" },
+				columns: { id: true },
+			});
+			if (type == null) {
+				throw new Error('Entity type "news" not found.');
+			}
+
+			const status = await tx.query.entityStatus.findFirst({
+				where: { type: "draft" },
+				columns: { id: true },
+			});
+			if (status == null) {
+				throw new Error('Entity status "draft" not found.');
+			}
+
+			const locale = await tx.query.locales.findFirst({
+				where: { isDefault: true },
+				columns: { id: true },
+			});
+			if (locale == null) {
+				throw new Error("Default locale not found in database.");
+			}
+
+			const [document] = await tx
+				.insert(schema.entities)
+				.values({ typeId: type.id })
+				.returning({ id: schema.entities.id });
+			if (document == null) {
+				throw new Error("Failed to insert draft entity document.");
+			}
+
+			const [version] = await tx
+				.insert(schema.entityVersions)
+				.values({ entityId: document.id, statusId: status.id, localeId: locale.id })
+				.returning({ id: schema.entityVersions.id });
+			if (version == null) {
+				throw new Error("Failed to insert draft entity version.");
+			}
+
+			await tx.insert(schema.news).values({
+				id: version.id,
+				title,
+				summary: "Draft-only news item",
+				publicationDate: new Date("2024-01-15T00:00:00.000Z"),
+				imageId,
+			});
+
+			await tx.insert(schema.slugs).values({
+				entityVersionId: version.id,
+				entityId: document.id,
+				typeId: type.id,
+				localeId: locale.id,
+				isPublished: false,
+				value: slug,
+			});
+
+			return { documentId: document.id, versionId: version.id };
+		});
+	}
+
+	/** Insert a document-level entity→entity relation (used to seed the maintenance merge tool). */
+	async addEntityToEntityRelation(entityId: string, relatedEntityId: string): Promise<void> {
+		await this.db
+			.insert(schema.entitiesToEntities)
+			.values({ entityId, relatedEntityId, position: 0 })
+			.onConflictDoNothing();
+	}
+
+	/** Read the current slug of an entity document (used by the maintenance slug editor test). */
+	async getEntitySlugByDocumentId(documentId: string): Promise<string | null> {
+		const [row] = await this.db
+			.select({ slug: schema.slugs.value })
+			.from(schema.slugs)
+			.where(eq(schema.slugs.entityId, documentId))
+			.limit(1);
+
+		return row?.slug ?? null;
+	}
+
+	/**
+	 * Look up a document by slug together with its lifecycle state — used by the maintenance
+	 * duplicate tool test, where the clone is addressable only by its generated `-copy` slug and must
+	 * come out draft-only.
+	 */
+	async getEntityDocumentBySlug(
+		slug: string,
+	): Promise<{ documentId: string; hasDraft: boolean; hasPublished: boolean } | null> {
+		const [row] = await this.db
+			.select({
+				documentId: schema.slugs.entityId,
+				draftId: schema.documentLifecycle.draftId,
+				publishedId: schema.documentLifecycle.publishedId,
+			})
+			.from(schema.slugs)
+			.leftJoin(
+				schema.documentLifecycle,
+				eq(schema.documentLifecycle.documentId, schema.slugs.entityId),
+			)
+			.where(eq(schema.slugs.value, slug))
+			.limit(1);
+
+		if (row == null) {
+			return null;
+		}
+
+		return {
+			documentId: row.documentId,
+			hasDraft: row.draftId != null,
+			hasPublished: row.publishedId != null,
+		};
+	}
+
+	/** Whether an entity document still exists (a merged-away source should not). */
+	async entityDocumentExists(documentId: string): Promise<boolean> {
+		const [row] = await this.db
+			.select({ id: schema.entities.id })
+			.from(schema.entities)
+			.where(eq(schema.entities.id, documentId))
+			.limit(1);
+
+		return row != null;
+	}
+
 	async getFundingCallByTitle(title: string): Promise<{
+		documentId: string;
 		duration: { start: Date; end?: Date };
 		id: string;
-		summary: string | null;
+		imageId: string;
+		summary: string;
 	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				duration: schema.fundingCalls.duration,
 				id: schema.fundingCalls.id,
+				imageId: schema.fundingCalls.imageId,
 				summary: schema.fundingCalls.summary,
 			})
 			.from(schema.fundingCalls)
+			.innerJoin(schema.entityVersions, eq(schema.fundingCalls.id, schema.entityVersions.id))
 			.where(eq(schema.fundingCalls.title, title))
 			.limit(1);
 
@@ -1635,21 +2784,26 @@ export class DatabaseService {
 	}
 
 	async getOpportunityByTitle(title: string): Promise<{
+		documentId: string;
 		duration: { start: Date; end?: Date };
 		id: string;
+		imageId: string;
 		sourceId: string;
-		summary: string | null;
+		summary: string;
 		website: string | null;
 	} | null> {
 		const [row] = await this.db
 			.select({
+				documentId: schema.entityVersions.entityId,
 				duration: schema.opportunities.duration,
 				id: schema.opportunities.id,
+				imageId: schema.opportunities.imageId,
 				sourceId: schema.opportunities.sourceId,
 				summary: schema.opportunities.summary,
 				website: schema.opportunities.website,
 			})
 			.from(schema.opportunities)
+			.innerJoin(schema.entityVersions, eq(schema.opportunities.id, schema.entityVersions.id))
 			.where(eq(schema.opportunities.title, title))
 			.limit(1);
 
@@ -1790,6 +2944,19 @@ export class DatabaseService {
 			.limit(1);
 
 		if (remainingVersions.length === 0) {
+			// A user's actor points at a person or org-unit document via a non-cascading FK
+			// (`users_person_document_id_entities_id_fkey`). A suite that linked a user to this document
+			// may still be running in the other worker, and its own afterAll cannot help us here — so
+			// unlink first rather than let the FK abort this cleanup and leak every row after it.
+			await tx
+				.update(schema.users)
+				.set({ personDocumentId: null })
+				.where(eq(schema.users.personDocumentId, documentId));
+			await tx
+				.update(schema.users)
+				.set({ organisationalUnitDocumentId: null })
+				.where(eq(schema.users.organisationalUnitDocumentId, documentId));
+
 			await tx.delete(schema.entities).where(eq(schema.entities.id, documentId));
 		}
 	}
@@ -2035,6 +3202,36 @@ export class DatabaseService {
 		}
 	}
 
+	/**
+	 * Inserts a social-media entry. The name is expected to be worker-prefixed so the standard
+	 * `cleanupWorkerSocialMedia` helper removes it.
+	 */
+	async createSocialMedia(params: {
+		name: string;
+		type: (typeof schema.socialMediaTypesEnum)[number];
+		url: string;
+	}): Promise<{ id: string }> {
+		const { name, type, url } = params;
+
+		const typeRow = await this.db.query.socialMediaTypes.findFirst({
+			where: { type },
+			columns: { id: true },
+		});
+		if (typeRow == null) {
+			throw new Error(`Social-media type "${type}" not found.`);
+		}
+
+		const [row] = await this.db
+			.insert(schema.socialMedia)
+			.values({ name, typeId: typeRow.id, url })
+			.returning({ id: schema.socialMedia.id });
+		if (row == null) {
+			throw new Error("Failed to insert social-media entry.");
+		}
+
+		return row;
+	}
+
 	/** Deletes assets uploaded by tests after dependent rows have been removed. */
 	async cleanupWorkerAssets(workerIndex: number): Promise<void> {
 		const prefix = `[e2e-worker-${String(workerIndex)}]`;
@@ -2057,6 +3254,20 @@ export class DatabaseService {
 			await tx
 				.delete(schema.personsToOrganisationalUnits)
 				.where(eq(schema.personsToOrganisationalUnits.personDocumentId, documentId));
+
+			// Article contributor edges point at the person *document*, so they outlive the version and
+			// would block the document delete if the article cleanup has not already cleared them.
+			await tx
+				.delete(schema.spotlightArticlesToPersons)
+				.where(eq(schema.spotlightArticlesToPersons.personDocumentId, documentId));
+			await tx
+				.delete(schema.impactCaseStudiesToPersons)
+				.where(eq(schema.impactCaseStudiesToPersons.personDocumentId, documentId));
+
+			// Version-scoped and subtype-owned, so it has to go before the persons row it references.
+			await tx
+				.delete(schema.personSocialMedia)
+				.where(eq(schema.personSocialMedia.personId, versionId));
 
 			await tx.delete(schema.persons).where(eq(schema.persons.id, versionId));
 			await this.deleteDocumentVersionTail(tx, versionId, documentId);
@@ -2109,6 +3320,9 @@ export class DatabaseService {
 				await tx
 					.delete(schema.personsToOrganisationalUnits)
 					.where(eq(schema.personsToOrganisationalUnits.personDocumentId, documentId));
+				await tx
+					.delete(schema.personSocialMedia)
+					.where(eq(schema.personSocialMedia.personId, version.id));
 				await tx.delete(schema.persons).where(eq(schema.persons.id, version.id));
 				await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, version.id));
 				await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, version.id));
@@ -2164,6 +3378,9 @@ export class DatabaseService {
 			}
 			const { documentId } = ids;
 
+			await tx
+				.delete(schema.organisationalUnitsToSocialMedia)
+				.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, versionId));
 			await tx
 				.delete(schema.organisationalUnitsRelations)
 				.where(
@@ -2277,6 +3494,9 @@ export class DatabaseService {
 			}
 			const { documentId } = ids;
 
+			await tx
+				.delete(schema.organisationalUnitsToSocialMedia)
+				.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, versionId));
 			await tx
 				.delete(schema.organisationalUnitsRelations)
 				.where(
@@ -2451,6 +3671,9 @@ export class DatabaseService {
 			const { documentId } = ids;
 
 			await tx
+				.delete(schema.organisationalUnitsToSocialMedia)
+				.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, versionId));
+			await tx
 				.delete(schema.organisationalUnitsRelations)
 				.where(
 					or(
@@ -2502,6 +3725,44 @@ export class DatabaseService {
 	}
 
 	/**
+	 * Clears any impersonation left on the given account's sessions, so a test that fails
+	 * mid-impersonation does not hand the next one a non-admin identity. Scoped to a single account:
+	 * impersonation lives on the impersonator's session row, and the suites in the other Playwright
+	 * worker are signed in as different personas that must not be touched.
+	 */
+	async clearImpersonationsForUser(email: string): Promise<void> {
+		await this.db
+			.update(schema.sessions)
+			.set({ impersonatedUserId: null, impersonationExpiresAt: null })
+			.where(inArray(schema.sessions.userId, await this.getUserIdsByEmail(email)));
+	}
+
+	/**
+	 * Backdates the given account's live impersonations, so a test can observe the lapse without
+	 * waiting out `sessions.impersonation.durationMs`. Scoped like {@link clearImpersonationsForUser}.
+	 */
+	async expireImpersonationsForUser(email: string): Promise<void> {
+		await this.db
+			.update(schema.sessions)
+			.set({ impersonationExpiresAt: new Date(Date.now() - 1000) })
+			.where(inArray(schema.sessions.userId, await this.getUserIdsByEmail(email)));
+	}
+
+	private async getUserIdsByEmail(email: string): Promise<Array<string>> {
+		const rows = await this.db
+			.select({ id: schema.users.id })
+			.from(schema.users)
+			// The unique index is on `lower(email)`, so match the same way.
+			.where(sql`lower(${schema.users.email}) = lower(${email})`);
+
+		if (rows.length === 0) {
+			throw new Error(`Expected a seeded e2e user with email "${email}".`);
+		}
+
+		return rows.map((row) => row.id);
+	}
+
+	/**
 	 * Finds all users whose name starts with `[e2e-worker-{workerIndex}]` and deletes them. Called in
 	 * afterAll to ensure a clean state.
 	 */
@@ -2518,12 +3779,61 @@ export class DatabaseService {
 		}
 	}
 
+	async createService(params: {
+		name: string;
+		sshocMarketplaceId?: string;
+		status?: (typeof schema.serviceStatusesEnum)[number];
+		type?: (typeof schema.serviceTypesEnum)[number];
+	}): Promise<{ id: string }> {
+		const { name, sshocMarketplaceId = null, status = "live", type = "internal" } = params;
+
+		const [typeRow, statusRow] = await Promise.all([
+			this.db.query.serviceTypes.findFirst({ where: { type }, columns: { id: true } }),
+			this.db.query.serviceStatuses.findFirst({ where: { status }, columns: { id: true } }),
+		]);
+		if (typeRow == null) {
+			throw new Error(`Service type "${type}" not found.`);
+		}
+		if (statusRow == null) {
+			throw new Error(`Service status "${status}" not found.`);
+		}
+
+		const [row] = await this.db
+			.insert(schema.services)
+			.values({ name, sshocMarketplaceId, statusId: statusRow.id, typeId: typeRow.id })
+			.returning({ id: schema.services.id });
+		if (row == null) {
+			throw new Error("Failed to insert service.");
+		}
+
+		return row;
+	}
+
+	async getServiceStatus(
+		serviceId: string,
+	): Promise<(typeof schema.serviceStatusesEnum)[number] | null> {
+		const [row] = await this.db
+			.select({ status: schema.serviceStatuses.status })
+			.from(schema.services)
+			.innerJoin(schema.serviceStatuses, eq(schema.services.statusId, schema.serviceStatuses.id))
+			.where(eq(schema.services.id, serviceId))
+			.limit(1);
+
+		return row?.status ?? null;
+	}
+
 	/**
 	 * Cascade-deletes a service and all its related records. Replicates the logic in
 	 * `delete-service.action.ts`.
 	 */
 	async deleteService(serviceId: string): Promise<void> {
 		await this.db.transaction(async (tx) => {
+			await tx
+				.delete(schema.countryReportServiceKpis)
+				.where(eq(schema.countryReportServiceKpis.serviceId, serviceId));
+			await tx
+				.delete(schema.countryReportServices)
+				.where(eq(schema.countryReportServices.serviceId, serviceId));
 			await tx
 				.delete(schema.servicesToSocialMedia)
 				.where(eq(schema.servicesToSocialMedia.serviceId, serviceId));
@@ -2692,6 +4002,22 @@ export class DatabaseService {
 			.from(schema.documentPolicyGroups)
 			.where(sql`${schema.documentPolicyGroups.label} LIKE ${`${prefix}%`}`)
 			.orderBy(schema.documentPolicyGroups.position, schema.documentPolicyGroups.label);
+	}
+
+	async getDocumentPolicyGroupLabels(): Promise<Array<string>> {
+		const groups = await this.db
+			.select({ label: schema.documentPolicyGroups.label })
+			.from(schema.documentPolicyGroups)
+			.orderBy(schema.documentPolicyGroups.position, schema.documentPolicyGroups.label);
+
+		return groups.map((group) => group.label);
+	}
+
+	async setDocumentPolicyGroupPositions(labels: Array<string>, position: number): Promise<void> {
+		await this.db
+			.update(schema.documentPolicyGroups)
+			.set({ position })
+			.where(inArray(schema.documentPolicyGroups.label, labels));
 	}
 
 	async cleanupWorkerDocumentPolicyGroups(workerIndex: number): Promise<void> {
@@ -3437,14 +4763,13 @@ export class DatabaseService {
 			await this.cleanupWorkerAssets(workerIndex);
 		}
 
-		// Reporting campaigns use year 3100+workerIndex as their identifier (no [e2e-worker-N] prefix),
-		// so they are not discovered by the name scan above. Delete any leftover campaigns in the
-		// reserved year range directly.
+		// Reporting campaigns use reserved years as their identifier (no [e2e-worker-N] prefix), so
+		// they are not discovered by the name scan above. Delete leftovers in that range directly.
 		const leakedCampaigns = await this.db
 			.select({ id: schema.reportingCampaigns.id })
 			.from(schema.reportingCampaigns)
 			.where(
-				sql`${schema.reportingCampaigns.year} >= 3100 AND ${schema.reportingCampaigns.year} < 3200`,
+				sql`${schema.reportingCampaigns.year} >= 3100 AND ${schema.reportingCampaigns.year} < 3300`,
 			);
 		for (const campaign of leakedCampaigns) {
 			await this.deleteReportingCampaign(campaign.id);

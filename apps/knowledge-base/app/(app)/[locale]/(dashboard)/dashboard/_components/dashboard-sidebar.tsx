@@ -23,7 +23,9 @@ import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useEffect } from "react";
 
 import { useDashboardCommandPalette } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/dashboard-command-palette-context";
+import { ColorSchemeToggle } from "@/app/(app)/[locale]/_components/color-scheme-toggle";
 import { Logo } from "@/components/logo";
+import type { UserOrganisationalUnitScopes } from "@/lib/data/user-organisational-units";
 import { useMetadata } from "@/lib/i18n/metadata";
 import { usePathname } from "@/lib/navigation/navigation";
 
@@ -39,11 +41,56 @@ interface SidebarMenuSection {
 	items: Array<SidebarMenuItem>;
 }
 
-export function useSidebarMenu(isAdmin: boolean): Array<SidebarMenuSection> {
+export function useSidebarMenu(
+	isAdmin: boolean,
+	organisationalUnitScopes: UserOrganisationalUnitScopes,
+): Array<SidebarMenuSection> {
 	const t = useExtracted();
 
+	const administrationSection: SidebarMenuSection = {
+		title: t("Administration"),
+		items: [
+			{
+				href: "/dashboard/administrator/administration",
+				tooltip: t("Overview"),
+				label: t("Overview"),
+				icon: <ListBulletIcon />,
+			},
+			{
+				href: "/dashboard/administrator/drafts",
+				tooltip: t("Drafts"),
+				label: t("Drafts"),
+				icon: <ListBulletIcon />,
+			},
+			{
+				href: "/dashboard/administrator/guided-forms",
+				tooltip: t("Guided forms"),
+				label: t("Guided forms"),
+				icon: <ListBulletIcon />,
+			},
+			{
+				href: "/dashboard/administrator/maintenance",
+				tooltip: t("Maintenance"),
+				label: t("Maintenance"),
+				icon: <ListBulletIcon />,
+			},
+			{
+				href: "/dashboard/administrator/tasks",
+				tooltip: t("Tasks"),
+				label: t("Tasks"),
+				icon: <ListBulletIcon />,
+			},
+			{
+				href: "/dashboard/administrator/users",
+				tooltip: t("Users"),
+				label: t("Users"),
+				icon: <ListBulletIcon />,
+			},
+		],
+	};
+
 	const adminSection: SidebarMenuSection = {
-		title: t("Administrator"),
+		title: t("Organisation & governance"),
 		items: [
 			{
 				href: "/dashboard/administrator",
@@ -112,33 +159,21 @@ export function useSidebarMenu(isAdmin: boolean): Array<SidebarMenuSection> {
 				icon: <ListBulletIcon />,
 			},
 			{
-				href: "/dashboard/administrator/project-persons",
-				tooltip: t("Project persons"),
-				label: t("Project persons"),
-				icon: <ListBulletIcon />,
-			},
-			{
 				href: "/dashboard/administrator/internal-services",
-				tooltip: t("Internal Services"),
-				label: t("Internal Services"),
+				tooltip: t("Internal services"),
+				label: t("Internal services"),
 				icon: <ListBulletIcon />,
 			},
 			{
 				href: "/dashboard/administrator/sshoc-services",
-				tooltip: t("SSHOC Services"),
-				label: t("SSHOC Services"),
+				tooltip: t("SSHOC services"),
+				label: t("SSHOC services"),
 				icon: <ListBulletIcon />,
 			},
 			{
 				href: "/dashboard/administrator/social-media",
 				tooltip: t("Social media"),
 				label: t("Social media"),
-				icon: <ListBulletIcon />,
-			},
-			{
-				href: "/dashboard/administrator/users",
-				tooltip: t("Users"),
-				label: t("Users"),
 				icon: <ListBulletIcon />,
 			},
 			{
@@ -196,9 +231,15 @@ export function useSidebarMenu(isAdmin: boolean): Array<SidebarMenuSection> {
 				icon: <ListBulletIcon />,
 			},
 			{
+				href: "/dashboard/website/featured",
+				tooltip: t("Featured items"),
+				label: t("Featured items"),
+				icon: <ListBulletIcon />,
+			},
+			{
 				href: "/dashboard/website/funding-calls",
-				tooltip: t("Funding Calls"),
-				label: t("Funding Calls"),
+				tooltip: t("Funding calls"),
+				label: t("Funding calls"),
 				icon: <ListBulletIcon />,
 			},
 			{
@@ -304,8 +345,39 @@ export function useSidebarMenu(isAdmin: boolean): Array<SidebarMenuSection> {
 	};
 
 	return [
+		...(isAdmin ? [administrationSection] : []),
 		...(isAdmin ? [adminSection] : []),
 		...(isAdmin ? [knowledgeBaseSection] : []),
+		...(!isAdmin
+			? organisationalUnitScopes.countries.map((country) => {
+					return {
+						title: country.name,
+						items: [
+							{
+								href: `/dashboard/countries/${country.slug}`,
+								tooltip: t("National consortium"),
+								label: t("National consortium"),
+								icon: <ListBulletIcon />,
+							},
+						],
+					};
+				})
+			: []),
+		...(!isAdmin
+			? organisationalUnitScopes.workingGroups.map((workingGroup) => {
+					return {
+						title: workingGroup.name,
+						items: [
+							{
+								href: `/dashboard/working-groups/${workingGroup.slug}`,
+								tooltip: t("Working group"),
+								label: t("Working group"),
+								icon: <ListBulletIcon />,
+							},
+						],
+					};
+				})
+			: []),
 		reportingSection,
 		...(isAdmin ? [websiteSection] : []),
 	] satisfies Array<SidebarMenuSection>;
@@ -337,17 +409,21 @@ function getCurrentSidebarHref(
 
 interface DashboardSidebarProps extends SidebarProps {
 	isAdmin: boolean;
+	organisationalUnitScopes: UserOrganisationalUnitScopes;
 }
 
 export function DashboardSidebar(props: Readonly<DashboardSidebarProps>): ReactNode {
-	const { isAdmin, ...sidebarProps } = props;
+	const { isAdmin, organisationalUnitScopes, ...sidebarProps } = props;
 	const { state, isMobile, setIsOpenOnMobile } = useSidebar();
 	const { openCommandPalette } = useDashboardCommandPalette();
 	const pathname = usePathname();
-	const sidebarMenu = useSidebarMenu(isAdmin);
+	const sidebarMenu = useSidebarMenu(isAdmin, organisationalUnitScopes);
 	const currentHref = getCurrentSidebarHref(pathname, sidebarMenu);
 	const meta = useMetadata();
 	const t = useExtracted();
+
+	/** On mobile the sidebar is shown as a sheet at full width, however collapsed the desktop one is. */
+	const isCollapsed = state === "collapsed" && !isMobile;
 
 	useEffect(() => {
 		setIsOpenOnMobile(false);
@@ -357,7 +433,7 @@ export function DashboardSidebar(props: Readonly<DashboardSidebarProps>): ReactN
 		<Sidebar {...sidebarProps}>
 			<SidebarHeader>
 				<Link
-					className="flex items-center gap-x-2 group-data-[collapsible=dock]:block-8 group-data-[collapsible=dock]:inline-8 group-data-[collapsible=dock]:items-center group-data-[collapsible=dock]:justify-center"
+					className="flex items-center gap-x-2 group-data-[collapsible=dock]:items-center group-data-[collapsible=dock]:justify-center group-data-[collapsible=dock]:block-8 group-data-[collapsible=dock]:inline-8"
 					href="/dashboard"
 				>
 					<Logo className="block-5 inline-5" />
@@ -374,7 +450,7 @@ export function DashboardSidebar(props: Readonly<DashboardSidebarProps>): ReactN
 									className={cn(
 										"group",
 										state === "expanded" &&
-											"bg-bg sm:inline-full sm:justify-between dark:bg-secondary/50",
+											"bg-bg sm:justify-between sm:inline-full dark:bg-secondary/50",
 									)}
 									intent={state === "expanded" ? "outline" : "plain"}
 									onPress={openCommandPalette}
@@ -428,9 +504,11 @@ export function DashboardSidebar(props: Readonly<DashboardSidebarProps>): ReactN
 				</SidebarSectionGroup>
 			</SidebarContent>
 
-			<SidebarFooter
-				className={state === "collapsed" ? "p-4" : "border-bs px-4 py-2.5"}
-			></SidebarFooter>
+			{/* The docked rail is only `--sidebar-width-dock` wide, so the stacked toggle needs the same
+			    slim padding the sections get rather than the roomier expanded one. */}
+			<SidebarFooter className={isCollapsed ? "p-2" : "border-bs px-4 py-2.5"}>
+				<ColorSchemeToggle orientation={isCollapsed ? "vertical" : "horizontal"} />
+			</SidebarFooter>
 
 			<SidebarRail />
 		</Sidebar>

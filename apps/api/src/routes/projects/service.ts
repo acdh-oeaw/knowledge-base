@@ -6,9 +6,10 @@ import * as schema from "@dariah-eric/database/schema";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import { generateImageUrl, imageAssetColumns, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPublishedProjectPartners } from "@/lib/project-partners";
+import { socialMediaByPosition } from "@/lib/social-media";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, and, count, desc, eq, inArray, not, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
@@ -72,7 +73,8 @@ async function getSocialMediaByProjectVersionId(
 			eq(schema.socialMedia.id, schema.projectsToSocialMedia.socialMediaId),
 		)
 		.innerJoin(schema.socialMediaTypes, eq(schema.socialMediaTypes.id, schema.socialMedia.typeId))
-		.where(inArray(schema.projectsToSocialMedia.projectId, projectVersionIds));
+		.where(inArray(schema.projectsToSocialMedia.projectId, projectVersionIds))
+		.orderBy(schema.projectsToSocialMedia.position, schema.socialMedia.id);
 
 	for (const row of rows) {
 		const list = socialMediaByProjectId.get(row.projectId) ?? [];
@@ -120,6 +122,8 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 				scope: schema.projectScopes.scope,
 				imageKey: schema.assets.key,
 				imageAlt: schema.assets.alt,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
 				imageCaption: schema.assets.caption,
 				licenseName: schema.licenses.name,
 				licenseUrl: schema.licenses.url,
@@ -178,6 +182,8 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 				key: item.imageKey,
 				alt: item.imageAlt,
 				caption: item.imageCaption,
+				width: item.imageWidth,
+				height: item.imageHeight,
 				licenseName: item.licenseName,
 				licenseUrl: item.licenseUrl,
 			}),
@@ -247,27 +253,14 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 				scope: {
 					columns: {
 						scope: true,
 					},
 				},
 				socialMedia: {
+					...socialMediaByPosition,
 					columns: {
 						id: true,
 						url: true,
@@ -436,27 +429,14 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 			scope: {
 				columns: {
 					scope: true,
 				},
 			},
 			socialMedia: {
+				...socialMediaByPosition,
 				columns: {
 					id: true,
 					url: true,

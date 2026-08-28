@@ -4,11 +4,11 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { imageAssetWidth } from "@/config/assets.config";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
 import { images } from "@/lib/images";
 
-export type PagesSort = "title" | "updatedAt";
+export type PagesSort = "publicationDate" | "title";
 
 interface GetPagesParams {
 	/** @default 10 */
@@ -21,18 +21,17 @@ interface GetPagesParams {
 }
 
 export async function getPages(params: GetPagesParams) {
-	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
+	const { limit = 10, offset = 0, q, sort = "publicationDate", dir = "desc" } = params;
 	const query = q?.trim();
-	const where =
-		query != null && query !== "" ? unaccentIlike(schema.pages.title, `%${query}%`) : undefined;
+	const where = matchesAllTerms(query, schema.pages.title);
 	const orderBy =
 		sort === "title"
 			? dir === "asc"
 				? schema.pages.title
 				: desc(schema.pages.title)
 			: dir === "asc"
-				? schema.entityVersions.updatedAt
-				: desc(schema.entityVersions.updatedAt);
+				? schema.pages.publicationDate
+				: desc(schema.pages.publicationDate);
 
 	const pickedVersion = sql`COALESCE(${schema.documentLifecycle.draftId}, ${schema.documentLifecycle.publishedId})`;
 
@@ -44,6 +43,7 @@ export async function getPages(params: GetPagesParams) {
 				slug: schema.slugs.value,
 				summary: schema.pages.summary,
 				title: schema.pages.title,
+				publicationDate: schema.pages.publicationDate,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
 				status: schema.entityStatus.type,
@@ -84,6 +84,7 @@ export async function getPages(params: GetPagesParams) {
 			summary: item.summary,
 			title: item.title,
 			isPublished: item.isPublished,
+			publicationDate: item.publicationDate,
 			status: item.status,
 			updatedAt: item.updatedAt,
 		};

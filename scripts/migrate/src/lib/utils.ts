@@ -217,7 +217,6 @@ export async function createAsset(
 			key,
 			label,
 			mimeType: metadata["content-type"],
-			caption: "",
 			alt: "",
 			size: metadata.size,
 		})
@@ -260,23 +259,13 @@ export async function addSocialMediaRelationForPerson(
 	url: string,
 	personId: string,
 ): Promise<void> {
-	const [kbSocialMedia] = await tx
-		.insert(schema.socialMedia)
-		.values({
-			name,
-			typeId,
-			url,
-			duration: {
-				start: new Date(Date.UTC(1900, 0, 1)),
-			},
-		})
-		.returning({ id: schema.socialMedia.id });
-
-	assert(kbSocialMedia);
-
-	await tx.insert(schema.personsToSocialMedia).values({
+	// Unlike organisational units, a person's social media links do not go through the shared
+	// `socialMedia` entity + join table — `personSocialMedia` holds the link directly.
+	await tx.insert(schema.personSocialMedia).values({
 		personId,
-		socialMediaId: kbSocialMedia.id,
+		typeId,
+		url,
+		label: name,
 	});
 }
 

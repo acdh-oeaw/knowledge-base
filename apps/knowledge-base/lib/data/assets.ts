@@ -3,13 +3,21 @@
 import { Readable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
 
-import { isNonEmptyString } from "@acdh-oeaw/lib";
-import { relationsFilterToSQL } from "@dariah-eric/database/relations";
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
+import { type Dimensions, toDisplayDimensions } from "@dariah-eric/storage/lib";
+import sharp from "sharp";
 
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import { imageMaxResolution } from "@/config/assets.config";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { eq } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { and, count, desc, eq, like } from "@/lib/db/sql";
 import { type ImageUrlOptions, images } from "@/lib/images";
 import { type AssetPrefix, assetPrefixes, storage as s3 } from "@/lib/storage";
 
@@ -56,6 +64,22 @@ export async function getAssets(params: GetAssetsParams) {
 	};
 }
 
+/** Looks up the storage key and download metadata for a single asset, or `null` if it is gone. */
+export async function getAssetForDownload(
+	id: string,
+): Promise<{ key: string; filename: string | null; mimeType: string } | null> {
+	const [asset] = await db
+		.select({
+			key: schema.assets.key,
+			filename: schema.assets.filename,
+			mimeType: schema.assets.mimeType,
+		})
+		.from(schema.assets)
+		.where(eq(schema.assets.id, id));
+
+	return asset ?? null;
+}
+
 interface GetMediaLibraryAssetsParams {
 	imageUrlOptions: ImageUrlOptions;
 	/** @default 20 */
@@ -69,31 +93,30 @@ interface GetMediaLibraryAssetsParams {
 export async function getMediaLibraryAssets(params: GetMediaLibraryAssetsParams) {
 	const { imageUrlOptions, limit = 20, offset = 0, prefix, q } = params;
 
-	const prefixFilter = prefix != null ? { key: { like: `${prefix}/%` } } : undefined;
-	const searchFilter = isNonEmptyString(q)
-		? { RAW: unaccentIlike(schema.assets.label, `%${q}%`) }
-		: undefined;
+	const prefixFilter = prefix != null ? like(schema.assets.key, `${prefix}/%`) : undefined;
+	const searchFilter = matchesAllTerms(q, schema.assets.label);
+	const where = and(prefixFilter, searchFilter);
 
-	const filter =
-		prefixFilter != null || searchFilter != null ? { ...prefixFilter, ...searchFilter } : undefined;
-
-	const sqlFilter = filter != null ? relationsFilterToSQL(schema.assets, filter) : undefined;
-
-	const [assets, total] = await Promise.all([
-		db.query.assets.findMany({
-			columns: {
-				key: true,
-				label: true,
-				mimeType: true,
-			},
-			limit,
-			offset,
-			orderBy: {
-				updatedAt: "desc",
-			},
-			where: filter,
-		}),
-		db.$count(schema.assets, sqlFilter),
+	const [assets, aggregate] = await Promise.all([
+		db
+			.select({
+				id: schema.assets.id,
+				key: schema.assets.key,
+				label: schema.assets.label,
+				alt: schema.assets.alt,
+				caption: schema.assets.caption,
+				licenseId: schema.assets.licenseId,
+				mimeType: schema.assets.mimeType,
+				size: schema.assets.size,
+				width: schema.assets.width,
+				height: schema.assets.height,
+			})
+			.from(schema.assets)
+			.where(where)
+			.orderBy(desc(schema.assets.updatedAt))
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(schema.assets).where(where),
 	]);
 
 	const items = assets.map((asset) => {
@@ -102,10 +125,111 @@ export async function getMediaLibraryAssets(params: GetMediaLibraryAssetsParams)
 			options: imageUrlOptions,
 		});
 
-		return { key: asset.key, label: asset.label, mimeType: asset.mimeType, url };
+		return {
+			id: asset.id,
+			key: asset.key,
+			label: asset.label,
+			alt: asset.alt,
+			caption: asset.caption,
+			licenseId: asset.licenseId,
+			mimeType: asset.mimeType,
+			size: asset.size,
+			width: asset.width,
+			height: asset.height,
+			url,
+		};
 	});
 
-	return { items, total };
+	return { items, total: aggregate.at(0)?.total ?? 0 };
+}
+
+interface GetAssetByKeyParams {
+	imageUrlOptions: ImageUrlOptions;
+	key: string;
+}
+
+/**
+ * Looks up one asset by its storage key, in the shape the dashboard's asset cards render. Editors
+ * reach for this where a placement stores only the key - richtext image and media_text blocks keep
+ * the key in the document, not a copy of the asset's metadata, so the card reads the asset itself
+ * and never shows a stale label or caption.
+ */
+export async function getAssetByKey(params: GetAssetByKeyParams): Promise<SelectedImage | null> {
+	const { imageUrlOptions, key } = params;
+
+	const asset = await db.query.assets.findFirst({
+		where: { key },
+		columns: selectedImageColumns,
+		with: selectedImageWith,
+	});
+
+	return asset != null ? toSelectedImage(asset, imageUrlOptions) : null;
+}
+
+/** Vector images have no raster resolution, so imgproxy's source-resolution limit does not apply. */
+const vectorMimeType = "image/svg+xml";
+
+/**
+ * Ensures the uploaded image stays within imgproxy's source-resolution limit (see
+ * {@link imageMaxResolution}). Images above the limit are downscaled with sharp — imgproxy only
+ * ever serves much smaller derived variants, so the extra pixels carry no deliverable value and
+ * would only break rendering. Images within the limit keep their original bytes untouched.
+ *
+ * Also reports the dimensions the image will be _displayed_ at, which `assets` records so consumers
+ * can size a responsive `srcset` against the source's real resolution. Null when there is nothing
+ * meaningful to record: vectors have no raster resolution, and sharp cannot measure every file it
+ * accepts.
+ */
+async function prepareImageForUpload(
+	file: File,
+): Promise<{ input: Readable | Buffer; size: number; dimensions: Dimensions | null }> {
+	if (file.type === vectorMimeType) {
+		return {
+			input: Readable.fromWeb(file.stream() as ReadableStream),
+			size: file.size,
+			dimensions: null,
+		};
+	}
+
+	const buffer = Buffer.from(await file.arrayBuffer());
+	const { height, orientation, width } = await sharp(buffer).metadata();
+	const resolution = width * height;
+
+	/**
+	 * `Number.isFinite` guards against images sharp cannot measure (guarding against `NaN`
+	 * dimensions).
+	 */
+	if (!Number.isFinite(resolution)) {
+		return { input: buffer, size: buffer.byteLength, dimensions: null };
+	}
+
+	if (resolution <= imageMaxResolution) {
+		return {
+			input: buffer,
+			size: buffer.byteLength,
+			dimensions: toDisplayDimensions({ width, height, orientation }),
+		};
+	}
+
+	const scale = Math.sqrt(imageMaxResolution / resolution);
+	const resized = await sharp(buffer)
+		/** Bake EXIF orientation into the pixels before we strip metadata during re-encoding. */
+		.rotate()
+		.resize({ fit: "inside", height: Math.floor(height * scale), width: Math.floor(width * scale) })
+		.toBuffer();
+
+	/**
+	 * Measured rather than computed from `scale`: `.rotate()` has baked in the orientation by now,
+	 * and `fit: "inside"` rounds to preserve the aspect ratio, so the buffer is the only thing that
+	 * knows what it actually ended up as.
+	 */
+	const resizedMetadata = await sharp(resized).metadata();
+
+	return {
+		input: resized,
+		size: resized.byteLength,
+		dimensions: { width: resizedMetadata.width, height: resizedMetadata.height },
+	};
 }
 
 interface UploadAssetParams {
@@ -113,31 +237,43 @@ interface UploadAssetParams {
 	licenseId?: schema.AssetInput["licenseId"];
 	prefix: AssetPrefix;
 	label?: string;
-	caption?: string;
+	caption?: schema.AssetInput["caption"];
 	alt?: string;
 }
 
 export async function uploadAsset(params: UploadAssetParams) {
 	const { file, licenseId, prefix, label, alt, caption } = params;
 
-	const input = Readable.fromWeb(file.stream() as ReadableStream);
-	const size = file.size;
+	const { input, size, dimensions } = file.type.startsWith("image/")
+		? await prepareImageForUpload(file)
+		: {
+				input: Readable.fromWeb(file.stream() as ReadableStream),
+				size: file.size,
+				dimensions: null,
+			};
 	const metadata = { "content-type": file.type, name: file.name };
 
 	const { key } = (await s3.upload({ input, prefix, metadata, size })).unwrap();
 
-	await db.insert(schema.assets).values({
-		key,
-		licenseId,
-		mimeType: metadata["content-type"],
-		filename: file.name,
-		size,
-		label: label ?? file.name,
-		alt,
-		caption,
-	});
+	const [asset] = await db
+		.insert(schema.assets)
+		.values({
+			key,
+			licenseId,
+			mimeType: metadata["content-type"],
+			filename: file.name,
+			size,
+			width: dimensions?.width,
+			height: dimensions?.height,
+			label: label ?? file.name,
+			alt,
+			caption,
+		})
+		.returning({ id: schema.assets.id });
+	assert(asset);
 
 	return {
+		id: asset.id,
 		key,
 	};
 }
@@ -146,7 +282,7 @@ interface UpdateAssetMetadataParams {
 	id: string;
 	label: string;
 	alt?: string | null;
-	caption?: string | null;
+	caption?: schema.AssetInput["caption"];
 	licenseId?: schema.AssetInput["licenseId"] | null;
 }
 
@@ -177,36 +313,30 @@ interface GetAssetsForDashboardParams {
 export async function getAssetsForDashboard(params: GetAssetsForDashboardParams) {
 	const { imageUrlOptions, limit = 24, offset = 0, prefix, q } = params;
 
-	const prefixFilter = prefix != null ? { key: { like: `${prefix}/%` } } : undefined;
-	const searchFilter = isNonEmptyString(q)
-		? { RAW: unaccentIlike(schema.assets.label, `%${q}%`) }
-		: undefined;
+	const prefixFilter = prefix != null ? like(schema.assets.key, `${prefix}/%`) : undefined;
+	const searchFilter = matchesAllTerms(q, schema.assets.label);
+	const where = and(prefixFilter, searchFilter);
 
-	const filter =
-		prefixFilter != null || searchFilter != null ? { ...prefixFilter, ...searchFilter } : undefined;
-
-	const sqlFilter = filter != null ? relationsFilterToSQL(schema.assets, filter) : undefined;
-
-	const [assets, total] = await Promise.all([
-		db.query.assets.findMany({
-			columns: {
-				id: true,
-				key: true,
-				label: true,
-				alt: true,
-				caption: true,
-				licenseId: true,
-				mimeType: true,
-				size: true,
-			},
-			limit,
-			offset,
-			orderBy: {
-				updatedAt: "desc",
-			},
-			where: filter,
-		}),
-		db.$count(schema.assets, sqlFilter),
+	const [assets, aggregate] = await Promise.all([
+		db
+			.select({
+				id: schema.assets.id,
+				key: schema.assets.key,
+				label: schema.assets.label,
+				alt: schema.assets.alt,
+				caption: schema.assets.caption,
+				licenseId: schema.assets.licenseId,
+				mimeType: schema.assets.mimeType,
+				size: schema.assets.size,
+				width: schema.assets.width,
+				height: schema.assets.height,
+			})
+			.from(schema.assets)
+			.where(where)
+			.orderBy(desc(schema.assets.updatedAt))
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(schema.assets).where(where),
 	]);
 
 	const items = assets.map((asset) => {
@@ -224,9 +354,11 @@ export async function getAssetsForDashboard(params: GetAssetsForDashboardParams)
 			licenseId: asset.licenseId,
 			mimeType: asset.mimeType,
 			size: asset.size,
+			width: asset.width,
+			height: asset.height,
 			url,
 		};
 	});
 
-	return { items, total };
+	return { items, total: aggregate.at(0)?.total ?? 0 };
 }

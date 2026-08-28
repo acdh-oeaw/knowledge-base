@@ -15,6 +15,7 @@ import {
 	ContentBlocks,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
+import { EntitySlugField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-slug-field";
 import {
 	FormLayout,
 	FormSection,
@@ -24,13 +25,18 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 interface DocumentationPageFormProps {
 	contentBlocks?: Array<ContentBlock>;
 	documentationPage?: Pick<schema.DocumentationPage, "id" | "title"> & {
-		entityVersion: { entity: Pick<schema.Entity, "id"> };
+		entityVersion: { slug: Pick<schema.Slug, "value"> };
 	};
+	/**
+	 * Whether the edited documentation page is published, which freezes its slug. Unused when
+	 * creating.
+	 */
+	isPublished?: boolean;
 	formAction: ServerAction;
 }
 
 export function DocumentationPageForm(props: Readonly<DocumentationPageFormProps>): ReactNode {
-	const { contentBlocks, documentationPage, formAction } = props;
+	const { contentBlocks, documentationPage, formAction, isPublished } = props;
 
 	const t = useExtracted();
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
@@ -44,6 +50,11 @@ export function DocumentationPageForm(props: Readonly<DocumentationPageFormProps
 						<Input />
 						<FieldError />
 					</TextField>
+
+					<EntitySlugField
+						isPublished={isPublished}
+						slug={documentationPage?.entityVersion.slug.value}
+					/>
 				</FormSection>
 
 				<Separator className="my-6" />
@@ -58,7 +69,7 @@ export function DocumentationPageForm(props: Readonly<DocumentationPageFormProps
 						<input
 							name="documentId"
 							type="hidden"
-							value={documentationPage.entityVersion.entity.id}
+							value={documentationPage.entityVersion.slug.value}
 						/>
 					</Fragment>
 				) : null}

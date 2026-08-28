@@ -10,16 +10,23 @@ import { Note } from "@dariah-eric/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-summary";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { FeaturedImageDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/featured-image-details";
 import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-mark";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
+import type { PersonArticle } from "@/lib/data/article-contributors";
 import type { PersonContribution } from "@/lib/data/contributions";
-import { getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
+import type { PersonSocialMediaEntry } from "@/lib/data/person-social-media";
+import { getEntityDetailHref, getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
+import { getEntityTypeLabel } from "@/lib/entity-type-label";
+import { getOrcidUrl } from "@/lib/external-identifier-url";
 import { formatRoleType } from "@/lib/format-role-type";
+import { getSocialMediaTypeLabel } from "@/lib/social-media-type-label";
 
 interface PersonDetailsProps {
 	documentId: string;
@@ -29,17 +36,17 @@ interface PersonDetailsProps {
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
 	selectedVersion: "draft" | "published";
-	person: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
+	person: Pick<
+		schema.Person,
+		"email" | "id" | "name" | "orcid" | "sortName" | "imageCaption" | "imageCaptionMode"
+	> & {
 		biographyContentBlocks: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-		socialMedia: Array<{
-			id: string;
-			name: string;
-			url: string;
-			type: { type: string };
-		}>;
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	contributions: Array<PersonContribution>;
+	socialMedia: Array<PersonSocialMediaEntry>;
+	/** Read-only lens: the edge is owned by the article, so it is not editable from here. */
+	articles: Array<PersonArticle>;
 	publishAction: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
 }
@@ -56,10 +63,14 @@ export function PersonDetails(props: Readonly<PersonDetailsProps>): ReactNode {
 		publishAction,
 		discardDraftAction,
 		selectedLocaleCode,
+		articles,
+		socialMedia,
 		selectedVersion,
 	} = props;
 
 	const t = useExtracted();
+
+	const orcidUrl = getOrcidUrl(person.orcid);
 
 	return (
 		<Fragment>
@@ -102,15 +113,39 @@ export function PersonDetails(props: Readonly<PersonDetailsProps>): ReactNode {
 				<DescriptionDetails>{person.email}</DescriptionDetails>
 
 				<DescriptionTerm>{t("ORCID")}</DescriptionTerm>
-				<DescriptionDetails>{person.orcid}</DescriptionDetails>
+				<DescriptionDetails>
+					{orcidUrl != null ? (
+						<a className="underline" href={orcidUrl} rel="noreferrer" target="_blank">
+							{person.orcid}
+						</a>
+					) : (
+						person.orcid
+					)}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Social media")}</DescriptionTerm>
+				<DescriptionDetails>
+					{socialMedia.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{socialMedia.map((entry) => (
+								<li key={entry.url}>
+									<span className="text-muted-fg">{getSocialMediaTypeLabel(entry.type)}</span>{" "}
+									<a className="underline" href={entry.url} rel="noreferrer" target="_blank">
+										{entry.label ?? entry.url}
+									</a>
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Image")}</DescriptionTerm>
 				<DescriptionDetails>
 					{person.image != null ? (
-						<img
-							alt=""
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-							src={person.image.url}
+						<FeaturedImageDetails
+							image={person.image}
+							imageCaption={person.imageCaption}
+							imageCaptionMode={person.imageCaptionMode}
 						/>
 					) : null}
 				</DescriptionDetails>
@@ -144,6 +179,27 @@ export function PersonDetails(props: Readonly<PersonDetailsProps>): ReactNode {
 					) : null}
 				</DescriptionDetails>
 
+				<DescriptionTerm>{t("Articles")}</DescriptionTerm>
+				<DescriptionDetails>
+					{articles.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{articles.map((article) => (
+								<RelationStatement
+									key={`${article.entityType}-${article.documentId}`}
+									relation={formatRoleType(article.role)}
+									source={person.name}
+									target={article.title}
+									targetHref={getEntityDetailHref({
+										entityType: article.entityType,
+										slug: article.slug,
+									})}
+									targetType={getEntityTypeLabel({ entityType: article.entityType })}
+								/>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
+
 				<DescriptionTerm>{t("Biography")}</DescriptionTerm>
 				<DescriptionDetails>
 					{person.biographyContentBlocks.length > 0 ? (
@@ -151,24 +207,6 @@ export function PersonDetails(props: Readonly<PersonDetailsProps>): ReactNode {
 							key={selectedVersion}
 							contentBlocks={person.biographyContentBlocks}
 						/>
-					) : null}
-				</DescriptionDetails>
-				<DescriptionTerm>{t("Social media")}</DescriptionTerm>
-				<DescriptionDetails>
-					{person.socialMedia.length > 0 ? (
-						<ul className="flex flex-col gap-1">
-							{person.socialMedia.map((item) => (
-								<li key={item.id} className="text-sm">
-									<span className="font-medium">{item.name}</span>
-									{" · "}
-									<span className="text-muted-fg">{item.type.type}</span>
-									{" · "}
-									<a className="underline" href={item.url} rel="noreferrer" target="_blank">
-										{item.url}
-									</a>
-								</li>
-							))}
-						</ul>
 					) : null}
 				</DescriptionDetails>
 			</DescriptionList>

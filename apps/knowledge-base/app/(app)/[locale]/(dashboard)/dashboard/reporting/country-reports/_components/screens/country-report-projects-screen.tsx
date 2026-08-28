@@ -66,6 +66,7 @@ export async function CountryReportProjectsScreen(
 			<CountryReportProjectsForm
 				addAction={createCountryReportProjectContributionAction}
 				allProjects={allProjects}
+				canManageRelations={user.role === "admin"}
 				deleteAction={deleteCountryReportProjectContributionAction}
 				report={report}
 			/>

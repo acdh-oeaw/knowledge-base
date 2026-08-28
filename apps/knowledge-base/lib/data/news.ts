@@ -6,11 +6,11 @@ import { imageAssetWidth } from "@/config/assets.config";
 import { relationOptionsPageSize } from "@/lib/constants/relations";
 import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
 import { type Database, type Transaction, db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 import { images } from "@/lib/images/";
 
-export type NewsSort = "title" | "updatedAt";
+export type NewsSort = "publicationDate" | "title";
 
 interface GetNewsParams {
 	/** @default 10 */
@@ -23,18 +23,17 @@ interface GetNewsParams {
 }
 
 export async function getNews(params: GetNewsParams, queryDb: Database | Transaction = db) {
-	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
+	const { limit = 10, offset = 0, q, sort = "publicationDate", dir = "desc" } = params;
 	const query = q?.trim();
-	const where =
-		query != null && query !== "" ? unaccentIlike(schema.news.title, `%${query}%`) : undefined;
+	const where = matchesAllTerms(query, schema.news.title);
 	const orderBy =
 		sort === "title"
 			? dir === "asc"
 				? schema.news.title
 				: desc(schema.news.title)
 			: dir === "asc"
-				? schema.entityVersions.updatedAt
-				: desc(schema.entityVersions.updatedAt);
+				? schema.news.publicationDate
+				: desc(schema.news.publicationDate);
 
 	// Pick the draft version when one exists, otherwise the published version — one row per
 	// document. The document_lifecycle view already collapses the two-version-per-document shape
@@ -49,6 +48,7 @@ export async function getNews(params: GetNewsParams, queryDb: Database | Transac
 				slug: schema.slugs.value,
 				summary: schema.news.summary,
 				title: schema.news.title,
+				publicationDate: schema.news.publicationDate,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
 				status: schema.entityStatus.type,
@@ -88,6 +88,7 @@ export async function getNews(params: GetNewsParams, queryDb: Database | Transac
 			summary: item.summary,
 			title: item.title,
 			isPublished: item.isPublished,
+			publicationDate: item.publicationDate,
 			status: item.status,
 			updatedAt: item.updatedAt,
 		};
@@ -157,8 +158,7 @@ export async function getNewsItemOptions(
 ): Promise<{ items: Array<NewsItemOption>; total: number }> {
 	const { limit = relationOptionsPageSize, offset = 0, q } = params;
 	const query = q?.trim();
-	const searchWhere =
-		query != null && query !== "" ? unaccentIlike(schema.news.title, `%${query}%`) : undefined;
+	const searchWhere = matchesAllTerms(query, schema.news.title);
 	const where = and(publishedEntityVersionWhere(), searchWhere);
 
 	const [items, aggregate] = await Promise.all([
@@ -168,7 +168,7 @@ export async function getNewsItemOptions(
 			.innerJoin(schema.entityVersions, eq(schema.news.id, schema.entityVersions.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
 			.where(where)
-			.orderBy(schema.news.title)
+			.orderBy(desc(schema.news.publicationDate), schema.news.id)
 			.limit(limit)
 			.offset(offset),
 		db

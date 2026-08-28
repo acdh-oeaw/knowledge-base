@@ -25,10 +25,21 @@ export const setupTwoFactorAction = createServerAction(
 			return createActionStateError({ message: t("Too many requests.") });
 		}
 
-		const { session, user } = await getCurrentSession();
+		const { isImpersonating, realUser: user, session } = await getCurrentSession();
 
 		if (session == null) {
 			return createActionStateError({ message: t("Not authenticated.") });
+		}
+
+		/**
+		 * This action changes the credential behind the session, which is the admin's own account while
+		 * impersonating -- never the account the UI is currently showing. Refuse rather than silently
+		 * apply it to the wrong one of the two.
+		 */
+		if (isImpersonating) {
+			return createActionStateError({
+				message: t("Not available while signed in as another user."),
+			});
 		}
 		if (!user.isEmailVerified) {
 			return createActionStateError({ message: t("Forbidden.") });

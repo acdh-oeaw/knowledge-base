@@ -34,7 +34,7 @@ export const Vertical: Story = {
 	args: { orientation: "vertical" },
 	render(props) {
 		return (
-			<div className="flex block-8 items-center gap-4">
+			<div className="flex items-center gap-4 block-8">
 				<span>{"Left"}</span>
 				<Separator {...props} />
 				<span>{"Right"}</span>

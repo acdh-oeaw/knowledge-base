@@ -10,7 +10,11 @@ import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getSpotlightArticleContributors } from "@/lib/data/article-contributors";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getContributionPersonOptions } from "@/lib/data/contributions";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import {
 	getEntityRelationOptions,
 	getEntityRelationOptionsByIds,
@@ -18,9 +22,13 @@ import {
 	getResourceRelationOptions,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { spotlightArticlesLifecycleAdapter } from "@/lib/data/spotlight-articles.lifecycle-adapter";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteEditSpotlightArticlePageProps extends PageProps<"/[locale]/dashboard/website/spotlight-articles/[slug]/edit"> {}
@@ -41,7 +49,7 @@ export async function generateMetadata(
 export default async function DashboardWebsiteEditSpotlightArticlePage(
 	props: Readonly<DashboardWebsiteEditSpotlightArticlePageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
@@ -62,13 +70,29 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			documentId,
 			spotlightArticlesLifecycleAdapter,
+			selectedLocale.id,
 		);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -84,6 +108,9 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 			where: { id: draftVersionId },
 			columns: {
 				id: true,
+				imageCaption: true,
+				imageCaptionMode: true,
+				publicationDate: true,
 				title: true,
 				summary: true,
 			},
@@ -110,10 +137,8 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-						label: true,
-					},
+					columns: selectedImageColumns,
+					with: selectedImageWith,
 				},
 			},
 		}),
@@ -132,10 +157,7 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 	);
 	const entityVersionSlug = spotlightArticle.entityVersion.slug;
 
-	const image = images.generateSignedImageUrl({
-		key: spotlightArticle.image.key,
-		options: imageGridOptions,
-	});
+	const image = toSelectedImage(spotlightArticle.image, imageGridOptions);
 	const [{ relatedEntityIds, relatedResourceIds }, contributors, contentBlocks] = await Promise.all(
 		[
 			getEntityRelations(documentId),
@@ -165,12 +187,14 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 			spotlightArticle={{
 				...spotlightArticle,
 				entityVersion: { ...spotlightArticle.entityVersion, slug: entityVersionSlug },
-				image: { ...spotlightArticle.image, url: image.url },
+				image,
 			}}
 		/>
 	);

@@ -9,6 +9,7 @@ import { NationalConsortiumDetails } from "@/app/(app)/[locale]/(dashboard)/dash
 import { publishNationalConsortiumAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_lib/publish-national-consortium.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
+import { resolvePlaceholderValuesInContentBlocks } from "@/lib/content-blocks-service";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
@@ -125,6 +126,9 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 		`Slug missing for entity version "${nationalConsortium.entityVersion.id}".`,
 	);
 	const entityVersionSlug = nationalConsortium.entityVersion.slug;
+	const descriptionContentBlocks = await resolvePlaceholderValuesInContentBlocks(
+		nationalConsortium.descriptionContentBlocks,
+	);
 
 	const image =
 		nationalConsortium.image != null
@@ -148,6 +152,7 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 			nationalConsortium={{
 				...nationalConsortium,
 				entityVersion: { ...nationalConsortium.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
 				image,
 			}}
 			relations={relations}

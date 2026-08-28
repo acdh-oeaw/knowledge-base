@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 export const CreateServiceActionInputSchema = v.object({
 	name: v.pipe(v.string(), v.nonEmpty()),
+	typeId: v.pipe(v.string(), v.uuid()),
 	statusId: v.pipe(v.string(), v.uuid()),
 	comment: v.optional(v.pipe(v.string(), v.nonEmpty())),
 	dariahBranding: v.pipe(

@@ -80,7 +80,7 @@ export const Default: Story = {
 						placeholder="Pick some tags..."
 						value={value}
 					/>
-					<p className="mbs-2 text-muted-fg text-sm">
+					<p className="mbs-2 text-sm text-muted-fg">
 						{"Selected: "}
 						{value.join(", ") || "none"}
 					</p>

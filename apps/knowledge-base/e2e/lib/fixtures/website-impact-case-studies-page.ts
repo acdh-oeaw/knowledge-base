@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/website/impact-case-studies";
@@ -39,6 +40,25 @@ export class WebsiteImpactCaseStudiesPage {
 		await this.page.getByLabel("Summary").fill(summary);
 	}
 
+	async fillPublicationDate(year: number, month: number, day: number): Promise<void> {
+		await clearDateSegments(this.page, "Publication date");
+
+		const group = this.page.getByRole("group", { name: "Publication date" });
+
+		const daySegment = group.getByRole("spinbutton", { name: /day/i });
+		const monthSegment = group.getByRole("spinbutton", { name: /month/i });
+		const yearSegment = group.getByRole("spinbutton", { name: /year/i });
+
+		await daySegment.click();
+		await this.page.keyboard.type(String(day).padStart(2, "0"));
+
+		await monthSegment.click();
+		await this.page.keyboard.type(String(month).padStart(2, "0"));
+
+		await yearSegment.click();
+		await this.page.keyboard.type(String(year));
+	}
+
 	private contentBlockEditor(): Locator {
 		return this.page.getByRole("textbox", { name: "Content" });
 	}
@@ -56,7 +76,7 @@ export class WebsiteImpactCaseStudiesPage {
 	}
 
 	async selectImageFromMediaLibrary(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Select image" }).click();
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
 		await this.page.waitForSelector('[role="dialog"]');
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
@@ -74,11 +94,61 @@ export class WebsiteImpactCaseStudiesPage {
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
+	}
+
+	// ---------------------------------------------------------------------------
+	// Edit page — contributors tab
+	// ---------------------------------------------------------------------------
+
+	async goToContributorsTab(): Promise<void> {
+		await this.page.getByRole("tab", { name: "Contributors" }).click();
+	}
+
+	contributorsTable(): Locator {
+		return this.page.getByRole("grid", { name: "contributors" });
+	}
+
+	private async selectContributorPerson(personName: string): Promise<void> {
+		await this.page.getByRole("button", { name: "No person selected" }).click();
+		// `fill` rather than typing into the auto-focused field: `AsyncSelect` keeps its search text in
+		// component state, which closing the popover does not reset.
+		const search = this.page
+			.getByRole("dialog", { name: "No person selected" })
+			.getByRole("searchbox");
+		await search.fill(personName);
+		await search.press("Enter");
+		const option = this.page.getByRole("option", { name: personName });
+		await option.waitFor({ state: "visible" });
+		await option.click();
+		// Wait for the selection to commit — a click landing mid-refresh leaves the field empty, so the
+		// submit fails client validation and fires no POST.
+		await this.page
+			.getByRole("button", { name: "No person selected" })
+			.waitFor({ state: "hidden" });
+	}
+
+	private async selectContributorRole(role: string): Promise<void> {
+		const control = this.page
+			.locator('[data-slot="control"]')
+			.filter({ has: this.page.getByText("Role", { exact: true }) });
+		await control.locator("button").click();
+		await this.page.getByRole("option", { name: role, exact: true }).click();
+	}
+
+	/** Adds a contributor from the edit page's contributors tab and waits for the row to appear. */
+	async addContributor(personName: string, role: string): Promise<void> {
+		await this.selectContributorPerson(personName);
+		await this.selectContributorRole(role);
+		await this.page.getByRole("button", { name: "Add contributor", exact: true }).click();
+		await expect(
+			this.contributorsTable().getByRole("row").filter({ hasText: personName }),
+		).toBeVisible();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -143,6 +213,22 @@ export class WebsiteImpactCaseStudiesPage {
 	}
 
 	// ---------------------------------------------------------------------------
+	// Details page — contributors
+	// ---------------------------------------------------------------------------
+
+	detailsContributors(): Locator {
+		return this.page.locator('dt:has-text("Contributors") + dd');
+	}
+
+	detailsContributor(personName: string): Locator {
+		return this.detailsContributors().getByRole("listitem").filter({ hasText: personName });
+	}
+
+	detailsContributorLink(personName: string): Locator {
+		return this.detailsContributors().getByRole("link", { name: personName });
+	}
+
+	// ---------------------------------------------------------------------------
 	// Details page — lifecycle actions
 	// ---------------------------------------------------------------------------
 
@@ -174,7 +260,7 @@ export class WebsiteImpactCaseStudiesPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

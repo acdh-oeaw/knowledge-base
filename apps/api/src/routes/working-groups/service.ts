@@ -5,18 +5,23 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPersonPositions } from "@/lib/persons";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
-import { mapSocialMedia } from "@/lib/social-media";
+import { mapSocialMedia, socialMediaByPosition } from "@/lib/social-media";
 import type { Database, Transaction } from "@/middlewares/db";
 import {
 	type SQLWrapper,
 	alias,
 	and,
+	asc,
 	count,
-	desc,
 	eq,
 	exists,
 	inArray,
@@ -205,11 +210,15 @@ export async function getWorkingGroups(db: Database | Transaction, params: GetWo
 				metadata: schema.organisationalUnits.metadata,
 				name: schema.organisationalUnits.name,
 				summary: schema.organisationalUnits.summary,
+				email: schema.organisationalUnits.email,
+				mailingList: schema.organisationalUnits.mailingList,
 				sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
 				updatedAt: itemsResolvedVersion.updatedAt,
 				slug: schema.slugs.value,
 				imageKey: schema.assets.key,
 				imageAlt: schema.assets.alt,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
 				imageCaption: schema.assets.caption,
 				licenseName: schema.licenses.name,
 				licenseUrl: schema.licenses.url,
@@ -253,7 +262,7 @@ export async function getWorkingGroups(db: Database | Transaction, params: GetWo
 					status != null ? buildStatusFilter(db, itemsResolvedVersion.id, status) : undefined,
 				),
 			)
-			.orderBy(desc(itemsResolvedVersion.updatedAt))
+			.orderBy(asc(schema.organisationalUnits.name), asc(itemsResolvedVersion.id))
 			.limit(limit)
 			.offset(offset),
 		db
@@ -288,6 +297,8 @@ export async function getWorkingGroups(db: Database | Transaction, params: GetWo
 				key: item.imageKey,
 				alt: item.imageAlt,
 				caption: item.imageCaption,
+				width: item.imageWidth,
+				height: item.imageHeight,
 				licenseName: item.licenseName,
 				licenseUrl: item.licenseUrl,
 			}),
@@ -301,6 +312,8 @@ export async function getWorkingGroups(db: Database | Transaction, params: GetWo
 			metadata: item.metadata,
 			name: item.name,
 			summary: item.summary,
+			email: item.email,
+			mailingList: item.mailingList,
 			sshocMarketplaceActorId: item.sshocMarketplaceActorId,
 			entity: { slug: item.slug },
 			publishedAt: item.updatedAt.toISOString(),
@@ -319,17 +332,67 @@ interface GetWorkingGroupByIdParams {
 }
 
 async function getChairs(db: Database | Transaction, workingGroupId: string) {
+	const workingGroupRelation = alias(
+		schema.organisationalUnitsRelations,
+		"chair_working_group_relation",
+	);
+	const workingGroupRelationStatus = alias(
+		schema.organisationalUnitStatus,
+		"chair_working_group_relation_status",
+	);
+	const chairMatchesWorkingGroupLifecycle = exists(
+		db
+			.select({ one: sql<number>`1` })
+			.from(workingGroupRelation)
+			.innerJoin(
+				workingGroupRelationStatus,
+				eq(workingGroupRelation.status, workingGroupRelationStatus.id),
+			)
+			.where(
+				and(
+					eq(
+						workingGroupRelation.unitDocumentId,
+						schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
+					),
+					eq(workingGroupRelationStatus.status, "is_part_of"),
+					// Timestamp ranges are upper-exclusive. Compare their bounds explicitly for ended
+					// groups so a chair relation ending at the same instant as the group is included.
+					sql`
+						(
+							(
+								${workingGroupRelation.duration} @> NOW()::TIMESTAMPTZ
+								AND ${schema.personsToOrganisationalUnits.duration} @> NOW()::TIMESTAMPTZ
+							)
+							OR (
+								UPPER(${workingGroupRelation.duration}) <= NOW()::TIMESTAMPTZ
+								AND LOWER(${schema.personsToOrganisationalUnits.duration}) < UPPER(${workingGroupRelation.duration})
+								AND (
+									UPPER(${schema.personsToOrganisationalUnits.duration}) IS NULL
+									OR UPPER(${schema.personsToOrganisationalUnits.duration}) >= UPPER(${workingGroupRelation.duration})
+								)
+							)
+						)
+					`,
+				),
+			),
+	);
+
 	const rows = await db
 		.select({
 			id: schema.persons.id,
 			name: schema.persons.name,
 			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
+			personImageCaption: schema.persons.imageCaption,
+			personImageCaptionMode: schema.persons.imageCaptionMode,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			roleType: schema.personRoleTypes.type,
+			description: schema.personsToOrganisationalUnits.description,
 		})
 		.from(schema.personsToOrganisationalUnits)
 		.innerJoin(
@@ -350,7 +413,7 @@ async function getChairs(db: Database | Transaction, workingGroupId: string) {
 			and(
 				sql`${schema.personsToOrganisationalUnits.organisationalUnitDocumentId} = (SELECT ${schema.entityVersions.entityId} FROM ${schema.entityVersions} WHERE ${schema.entityVersions.id} = ${workingGroupId})`,
 				eq(schema.personRoleTypes.type, "is_chair_of"),
-				sql`${schema.personsToOrganisationalUnits.duration} @> NOW()::TIMESTAMPTZ`,
+				chairMatchesWorkingGroupLifecycle,
 			),
 		);
 
@@ -360,19 +423,36 @@ async function getChairs(db: Database | Transaction, workingGroupId: string) {
 	);
 
 	return rows.map(
-		({ imageKey, imageAlt, imageCaption, licenseName, licenseUrl, roleType, ...row }) => {
+		({
+			imageKey,
+			imageAlt,
+			imageCaption,
+			imageWidth: imageSourceWidth,
+			imageHeight: imageSourceHeight,
+			personImageCaption,
+			personImageCaptionMode,
+			licenseName,
+			licenseUrl,
+			roleType,
+			...row
+		}) => {
 			return {
 				...row,
-				position: positions.get(row.id) ?? null,
+				positions: positions.get(row.id) ?? null,
 				role: roleType,
 				image: generateImageUrl(
-					toImageAsset({
-						key: imageKey,
-						alt: imageAlt,
-						caption: imageCaption,
-						licenseName,
-						licenseUrl,
-					}),
+					withResolvedCaption(
+						toImageAsset({
+							key: imageKey,
+							alt: imageAlt,
+							caption: imageCaption,
+							width: imageSourceWidth,
+							height: imageSourceHeight,
+							licenseName,
+							licenseUrl,
+						}),
+						{ imageCaption: personImageCaption, imageCaptionMode: personImageCaptionMode },
+					),
 					imageWidth.avatar,
 				),
 			};
@@ -404,6 +484,8 @@ export async function getWorkingGroupById(
 				metadata: true,
 				name: true,
 				summary: true,
+				email: true,
+				mailingList: true,
 				sshocMarketplaceActorId: true,
 			},
 			with: {
@@ -415,22 +497,9 @@ export async function getWorkingGroupById(
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 				socialMedia: {
+					...socialMediaByPosition,
 					columns: {
 						id: true,
 						name: true,
@@ -537,7 +606,7 @@ export async function getWorkingGroupSlugs(
 					eq(schema.organisationalUnits.typeId, workingGroupTypeId),
 				),
 			)
-			.orderBy(desc(schema.entityVersions.updatedAt))
+			.orderBy(asc(schema.organisationalUnits.name), asc(schema.entityVersions.id))
 			.limit(limit)
 			.offset(offset),
 		db

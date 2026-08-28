@@ -17,6 +17,7 @@ import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 import type { EricReverseRelationGroups } from "@/lib/data/eric";
 import {
@@ -143,7 +144,7 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 					{eric.image != null ? (
 						<img
 							alt=""
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
+							className="rounded-lg object-contain block-24 inline-auto max-inline-full"
 							src={eric.image.url}
 						/>
 					) : null}
@@ -207,6 +208,7 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 									>
 										{relatedEntity.name}
 									</RelationLink>
+									<RelationTypeSuffix type={relatedEntity.description} />
 								</li>
 							))}
 						</ul>
@@ -220,6 +222,7 @@ export function EricDetails(props: Readonly<EricDetailsProps>): ReactNode {
 							{selectedRelatedResources.map((relatedResource) => (
 								<li key={relatedResource.id} className="text-sm">
 									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
 								</li>
 							))}
 						</ul>

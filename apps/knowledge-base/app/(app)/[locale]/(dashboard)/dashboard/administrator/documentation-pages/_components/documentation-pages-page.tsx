@@ -20,6 +20,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -33,6 +34,7 @@ interface DocumentationPagesPageProps {
 	documentationPages: {
 		data: Array<
 			Pick<schema.DocumentationPage, "id" | "title"> & {
+				documentId: string;
 				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
@@ -62,7 +64,7 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 		documentationPages.data,
 		(state, id: string) => state.filter((item) => item.id !== id),
 	);
-	const [itemToDelete, setItemToDelete] = useState<{ id: string } | null>(null);
+	const [itemToDelete, setItemToDelete] = useState<{ id: string; documentId: string } | null>(null);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const search = useUrlPaginatedSearch({
 		dir: initialDir,
@@ -76,7 +78,7 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 		<Fragment>
 			<EntityListHeader
 				title={t("Documentation pages")}
-				description={t("Manage all documentation pages in the knowledge base.")}
+				description={t("Manage all documentation pages in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -96,7 +98,7 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 						{t("Title")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -104,7 +106,7 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 							href={`/dashboard/administrator/documentation-pages/${item.entity.slug}/details`}
 						>
 							<TableCell>
-								<div className="max-inline-64 truncate">{item.title}</div>
+								<EntityListTitle title={item.title} />
 							</TableCell>
 							<TableCell>
 								<EntityLifecycleStatusBadge
@@ -112,7 +114,7 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/documentation-pages/${item.entity.slug}/details`}
@@ -131,7 +133,7 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 										danger={true}
 										icon={<TrashIcon className="me-2 block-4 inline-4" />}
 										onAction={() => {
-											setItemToDelete({ id: item.id });
+											setItemToDelete({ id: item.id, documentId: item.documentId });
 										}}
 									>
 										{t("Delete")}
@@ -159,13 +161,13 @@ export function DocumentationPagesPage(props: Readonly<DocumentationPagesPagePro
 						return;
 					}
 
-					const id = itemToDelete.id;
+					const { id, documentId } = itemToDelete;
 					setDeleteError(null);
 
 					startDeleteTransition(async () => {
 						optimisticallyRemoveItem(id);
 						try {
-							const state = await deleteDocumentationPageAction(id);
+							const state = await deleteDocumentationPageAction(documentId);
 							if (isActionStateError(state)) {
 								const message = Array.isArray(state.message) ? state.message[0] : state.message;
 								setDeleteError(

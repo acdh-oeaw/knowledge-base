@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { inArray } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import * as p from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-orm/valibot";
 
@@ -9,6 +9,7 @@ import { entities } from "./entities";
 import { personsToOrganisationalUnits } from "./persons";
 import { services } from "./services";
 import { socialMedia } from "./social-media";
+import { users } from "./users";
 
 export const reportingCampaignStatusEnum = ["draft", "open", "closed"] as const;
 
@@ -47,6 +48,20 @@ export const countryReportInstitutionRepresentationEnum = [
 	"is_national_coordinating_institution_in",
 	"is_national_representative_institution_in",
 	"is_partner_institution_of",
+] as const;
+
+/**
+ * The compensated contribution roles. Each carries a per-campaign € amount ({@link
+ * reportingCampaignContributionAmounts}); a country report's contributions are classified into
+ * these (coordinator/deputy are snapshotted from relations, the rest claimed manually).
+ */
+export const reportingCampaignContributionRoleEnum = [
+	"national_coordinator",
+	"national_coordinator_deputy",
+	"is_chair_of_jrc",
+	"is_chair_of_ncc",
+	"is_chair_of_wg",
+	"is_member_of_jrc",
 ] as const;
 
 export const reportScreenCommentTypeEnum = ["country", "working_group"] as const;
@@ -118,7 +133,6 @@ export const workingGroupReports = p.snakeCase.table(
 			.references(() => entities.id),
 		status: p.text("status", { enum: reportStatusEnum }).notNull().default("draft"),
 		numberOfMembers: p.integer("number_of_members"),
-		mailingList: p.text("mailing_list"),
 		...f.timestamps(),
 	},
 	(t) => [
@@ -135,6 +149,121 @@ export type WorkingGroupReportInput = typeof workingGroupReports.$inferInsert;
 export const WorkingGroupReportSelectSchema = createSelectSchema(workingGroupReports);
 export const WorkingGroupReportInsertSchema = createInsertSchema(workingGroupReports);
 export const WorkingGroupReportUpdateSchema = createUpdateSchema(workingGroupReports);
+
+export const reportExternalResourceSnapshotSectionEnum = [
+	"country_sshoc_resources",
+	"country_zotero_publications",
+	"working_group_sshoc_resources",
+	"working_group_zotero_publications",
+] as const;
+
+/**
+ * A frozen per-report snapshot of externally indexed SSHOC/Zotero resources. The external search
+ * query can be refreshed while a report is editable; submitted/accepted reports render this stored
+ * snapshot rather than live search-index state.
+ */
+export const reportExternalResourceSnapshots = p.snakeCase.table(
+	"report_external_resource_snapshots",
+	{
+		id: p.uuid("id").primaryKey().default(uuidv7()),
+		countryReportId: p.uuid("country_report_id").references(() => countryReports.id),
+		workingGroupReportId: p
+			.uuid("working_group_report_id")
+			.references(() => workingGroupReports.id),
+		section: p.text("section", { enum: reportExternalResourceSnapshotSectionEnum }).notNull(),
+		filterBy: p.text("filter_by").notNull(),
+		actorSlugs: p.jsonb("actor_slugs").$type<Array<string>>().notNull(),
+		capturedAt: f.timestamp("captured_at").notNull().defaultNow(),
+		capturedByUserId: p.uuid("captured_by_user_id").references(() => users.id),
+		...f.timestamps(),
+	},
+	(t) => [
+		p
+			.unique("report_external_resource_snapshots_country_report_section_unique")
+			.on(t.countryReportId, t.section),
+		p
+			.unique("report_external_resource_snapshots_working_group_report_section_unique")
+			.on(t.workingGroupReportId, t.section),
+		p.check(
+			"report_external_resource_snapshots_section_enum_check",
+			inArray(t.section, reportExternalResourceSnapshotSectionEnum),
+		),
+		p.check(
+			"report_external_resource_snapshots_report_owner_xor_check",
+			sql`
+				(
+					CASE WHEN ${t.countryReportId} IS NULL THEN 0 ELSE 1 END
+					+ CASE WHEN ${t.workingGroupReportId} IS NULL THEN 0 ELSE 1 END
+				) = 1
+			`,
+		),
+	],
+);
+
+export type ReportExternalResourceSnapshot = typeof reportExternalResourceSnapshots.$inferSelect;
+export type ReportExternalResourceSnapshotInput =
+	typeof reportExternalResourceSnapshots.$inferInsert;
+
+export const ReportExternalResourceSnapshotSelectSchema = createSelectSchema(
+	reportExternalResourceSnapshots,
+);
+export const ReportExternalResourceSnapshotInsertSchema = createInsertSchema(
+	reportExternalResourceSnapshots,
+);
+export const ReportExternalResourceSnapshotUpdateSchema = createUpdateSchema(
+	reportExternalResourceSnapshots,
+);
+
+export const reportExternalResourceSnapshotItems = p.snakeCase.table(
+	"report_external_resource_snapshot_items",
+	{
+		id: p.uuid("id").primaryKey().default(uuidv7()),
+		snapshotId: p
+			.uuid("snapshot_id")
+			.notNull()
+			.references(() => reportExternalResourceSnapshots.id, { onDelete: "cascade" }),
+		position: p.integer("position").notNull(),
+		searchDocumentId: p.text("search_document_id").notNull(),
+		source: p.text("source").notNull(),
+		sourceId: p.text("source_id").notNull(),
+		sourceUpdatedAt: p.bigint("source_updated_at", { mode: "number" }),
+		importedAt: p.bigint("imported_at", { mode: "number" }).notNull(),
+		type: p.text("type").notNull(),
+		sshocCategory: p.text("sshoc_category"),
+		label: p.text("label").notNull(),
+		description: p.text("description").notNull(),
+		keywords: p.jsonb("keywords").$type<Array<string>>().notNull(),
+		kind: p.text("kind"),
+		sourceUrl: p.text("source_url"),
+		links: p.jsonb("links").$type<Array<string>>().notNull(),
+		authors: p.jsonb("authors").$type<Array<string>>(),
+		year: p.integer("year"),
+		pid: p.text("pid"),
+	},
+	(t) => [
+		p
+			.unique("report_external_resource_snapshot_items_snapshot_document_unique")
+			.on(t.snapshotId, t.searchDocumentId),
+		p
+			.unique("report_external_resource_snapshot_items_snapshot_position_unique")
+			.on(t.snapshotId, t.position),
+	],
+);
+
+export type ReportExternalResourceSnapshotItem =
+	typeof reportExternalResourceSnapshotItems.$inferSelect;
+export type ReportExternalResourceSnapshotItemInput =
+	typeof reportExternalResourceSnapshotItems.$inferInsert;
+
+export const ReportExternalResourceSnapshotItemSelectSchema = createSelectSchema(
+	reportExternalResourceSnapshotItems,
+);
+export const ReportExternalResourceSnapshotItemInsertSchema = createInsertSchema(
+	reportExternalResourceSnapshotItems,
+);
+export const ReportExternalResourceSnapshotItemUpdateSchema = createUpdateSchema(
+	reportExternalResourceSnapshotItems,
+);
 
 export const reportScreenComments = p.snakeCase.table(
 	"report_screen_comments",
@@ -180,8 +309,20 @@ export const countryReportContributions = p.snakeCase.table(
 			.uuid("person_to_org_unit_id")
 			.notNull()
 			.references(() => personsToOrganisationalUnits.id),
+		// Frozen compensation role at capture/claim time (classified from the relation's role + org).
+		// Nullable: legacy rows captured before this column existed stay null until re-captured.
+		contributionRole: p.text("contribution_role", {
+			enum: reportingCampaignContributionRoleEnum,
+		}),
 	},
-	(t) => [p.unique().on(t.countryReportId, t.personToOrgUnitId)],
+	(t) => [
+		p.unique().on(t.countryReportId, t.personToOrgUnitId),
+		// A CHECK only fails on FALSE, so NULL (legacy rows) passes.
+		p.check(
+			"country_report_contributions_contribution_role_enum_check",
+			inArray(t.contributionRole, reportingCampaignContributionRoleEnum),
+		),
+	],
 );
 
 export type CountryReportContribution = typeof countryReportContributions.$inferSelect;
@@ -243,6 +384,35 @@ export const CountryReportSocialMediaKpiUpdateSchema = createUpdateSchema(
 	countryReportSocialMediaKpis,
 );
 
+/**
+ * The set of social media accounts a country report covers. Curated per report (carried over from
+ * the previous year, then added to), rather than derived from the country org-unit's own accounts —
+ * a country may report KPIs for a partner institution's account or a one-off event website. KPIs in
+ * {@link countryReportSocialMediaKpis} hang off these (report, social media) pairs.
+ */
+export const countryReportSocialMedia = p.snakeCase.table(
+	"country_report_social_media",
+	{
+		id: p.uuid("id").primaryKey().default(uuidv7()),
+		countryReportId: p
+			.uuid("country_report_id")
+			.notNull()
+			.references(() => countryReports.id),
+		socialMediaId: p
+			.uuid("social_media_id")
+			.notNull()
+			.references(() => socialMedia.id),
+	},
+	(t) => [p.unique().on(t.countryReportId, t.socialMediaId)],
+);
+
+export type CountryReportSocialMedia = typeof countryReportSocialMedia.$inferSelect;
+export type CountryReportSocialMediaInput = typeof countryReportSocialMedia.$inferInsert;
+
+export const CountryReportSocialMediaSelectSchema = createSelectSchema(countryReportSocialMedia);
+export const CountryReportSocialMediaInsertSchema = createInsertSchema(countryReportSocialMedia);
+export const CountryReportSocialMediaUpdateSchema = createUpdateSchema(countryReportSocialMedia);
+
 export const serviceKpiCategoryEnum = [
 	"downloads",
 	"hits",
@@ -256,6 +426,35 @@ export const serviceKpiCategoryEnum = [
 	"visits",
 	"websites_hosted",
 ] as const;
+
+/**
+ * The set of services a country report covers. Membership is snapshotted when the report is created
+ * (current live consortium services plus live services from the previous year's report), then
+ * curated independently of later consortium-relation changes. KPIs in
+ * {@link countryReportServiceKpis} hang off these (report, service) pairs.
+ */
+export const countryReportServices = p.snakeCase.table(
+	"country_report_services",
+	{
+		id: p.uuid("id").primaryKey().default(uuidv7()),
+		countryReportId: p
+			.uuid("country_report_id")
+			.notNull()
+			.references(() => countryReports.id),
+		serviceId: p
+			.uuid("service_id")
+			.notNull()
+			.references(() => services.id),
+	},
+	(t) => [p.unique().on(t.countryReportId, t.serviceId)],
+);
+
+export type CountryReportService = typeof countryReportServices.$inferSelect;
+export type CountryReportServiceInput = typeof countryReportServices.$inferInsert;
+
+export const CountryReportServiceSelectSchema = createSelectSchema(countryReportServices);
+export const CountryReportServiceInsertSchema = createInsertSchema(countryReportServices);
+export const CountryReportServiceUpdateSchema = createUpdateSchema(countryReportServices);
 
 export const countryReportServiceKpis = p.snakeCase.table(
 	"country_report_service_kpis",
@@ -340,7 +539,9 @@ export const countryReportInstitutions = p.snakeCase.table(
 		}),
 	},
 	(t) => [
-		p.unique().on(t.countryReportId, t.organisationalUnitDocumentId),
+		p
+			.unique("country_report_institutions_report_unit_document_type_unique")
+			.on(t.countryReportId, t.organisationalUnitDocumentId, t.representationType),
 		// A CHECK only fails on FALSE, so NULL (legacy rows) passes.
 		p.check(
 			"country_report_institutions_representation_type_enum_check",
@@ -384,6 +585,43 @@ export const WorkingGroupReportSocialMediaInsertSchema = createInsertSchema(
 export const WorkingGroupReportSocialMediaUpdateSchema = createUpdateSchema(
 	workingGroupReportSocialMedia,
 );
+
+export const workingGroupReportChairRoleEnum = ["is_chair_of", "is_vice_chair_of"] as const;
+
+/**
+ * The chair relations captured for a working-group report. The relation identifies the person and
+ * working group; `chairRole` freezes the role at capture time so later relation edits do not change
+ * the reported state.
+ */
+export const workingGroupReportChairs = p.snakeCase.table(
+	"working_group_report_chairs",
+	{
+		id: p.uuid("id").primaryKey().default(uuidv7()),
+		workingGroupReportId: p
+			.uuid("working_group_report_id")
+			.notNull()
+			.references(() => workingGroupReports.id),
+		personToOrgUnitId: p
+			.uuid("person_to_org_unit_id")
+			.notNull()
+			.references(() => personsToOrganisationalUnits.id),
+		chairRole: p.text("chair_role", { enum: workingGroupReportChairRoleEnum }).notNull(),
+	},
+	(t) => [
+		p.unique().on(t.workingGroupReportId, t.personToOrgUnitId),
+		p.check(
+			"working_group_report_chairs_role_enum_check",
+			inArray(t.chairRole, workingGroupReportChairRoleEnum),
+		),
+	],
+);
+
+export type WorkingGroupReportChair = typeof workingGroupReportChairs.$inferSelect;
+export type WorkingGroupReportChairInput = typeof workingGroupReportChairs.$inferInsert;
+
+export const WorkingGroupReportChairSelectSchema = createSelectSchema(workingGroupReportChairs);
+export const WorkingGroupReportChairInsertSchema = createInsertSchema(workingGroupReportChairs);
+export const WorkingGroupReportChairUpdateSchema = createUpdateSchema(workingGroupReportChairs);
 
 export const workingGroupEventRoleEnum = ["organiser", "presenter"] as const;
 
@@ -527,15 +765,6 @@ export const ReportingCampaignSocialMediaAmountSelectSchema = createSelectSchema
 export const ReportingCampaignSocialMediaAmountInsertSchema = createInsertSchema(
 	reportingCampaignSocialMediaAmounts,
 );
-
-export const reportingCampaignContributionRoleEnum = [
-	"national_coordinator",
-	"national_coordinator_deputy",
-	"is_chair_of_jrc",
-	"is_chair_of_ncc",
-	"is_chair_of_wg",
-	"is_member_of_jrc",
-] as const;
 
 export const reportingCampaignContributionAmounts = p.snakeCase.table(
 	"reporting_campaign_contribution_amounts",

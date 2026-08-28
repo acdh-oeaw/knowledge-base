@@ -6,12 +6,16 @@ import { after } from "next/server";
 
 import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAdmin } from "@/lib/auth/session";
+import { resolveAuditSubjectLabel } from "@/lib/data/audit-log";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function deleteNavigationMenuAction(id: string): Promise<void> {
 	const auditSession = await assertAdmin();
+
+	// Snapshot the label while the row still exists, so the audit log doesn't fall back to the uuid.
+	const subjectLabel = await resolveAuditSubjectLabel("navigation", id);
 
 	await db.delete(schema.navigationMenus).where(eq(schema.navigationMenus.id, id));
 
@@ -24,6 +28,7 @@ export async function deleteNavigationMenuAction(id: string): Promise<void> {
 		action: "delete",
 		subjectType: "navigation",
 		subjectId: id,
+		subjectLabel,
 		summary: {},
 	});
 

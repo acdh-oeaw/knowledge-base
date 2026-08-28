@@ -18,6 +18,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -72,7 +73,7 @@ export function SocialMediaPage(props: Readonly<SocialMediaPageProps>): ReactNod
 		<Fragment>
 			<EntityListHeader
 				title={t("Social media")}
-				description={t("Manage all social media in the knowledge base.")}
+				description={t("Manage all social media in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -95,21 +96,27 @@ export function SocialMediaPage(props: Readonly<SocialMediaPageProps>): ReactNod
 						{t("Type")}
 					</TableColumn>
 					<TableColumn>{t("URL")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow id={item.id}>
 							<TableCell>
-								<div className="max-inline-64 truncate">{item.name}</div>
+								<EntityListTitle title={item.name} />
 							</TableCell>
 							<TableCell>{item.type.type}</TableCell>
-							<TableCell className="max-inline-xs truncate">
-								<a className="underline" href={item.url} rel="noreferrer" target="_blank">
+							<TableCell>
+								<a
+									className="block truncate underline max-inline-xs"
+									href={item.url}
+									rel="noreferrer"
+									target="_blank"
+									title={item.url}
+								>
 									{item.url}
 								</a>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/social-media/${item.id}/edit`}

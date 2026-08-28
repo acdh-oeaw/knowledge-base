@@ -23,6 +23,7 @@ test.describe("website events lifecycle", () => {
 		await eventsPage.gotoCreate();
 		await eventsPage.fillTitle(title);
 		await eventsPage.fillSummary("Lifecycle test event summary");
+		await eventsPage.setFullDay();
 		await eventsPage.fillDatePicker("Start date", 2025, 6, 15);
 		await eventsPage.fillLocation("Vienna, Austria");
 		await eventsPage.selectImageFromMediaLibrary("E2E Test Asset");
@@ -99,6 +100,7 @@ test.describe("website events lifecycle", () => {
 		await eventsPage.gotoCreate();
 		await eventsPage.fillTitle(originalTitle);
 		await eventsPage.fillSummary("Version selector test event");
+		await eventsPage.setFullDay();
 		await eventsPage.fillDatePicker("Start date", 2025, 6, 15);
 		await eventsPage.fillLocation("Vienna, Austria");
 		await eventsPage.selectImageFromMediaLibrary("E2E Test Asset");

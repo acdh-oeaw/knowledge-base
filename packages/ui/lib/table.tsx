@@ -50,7 +50,7 @@ function useTableContext(): TableProps {
 function Root(props: Readonly<TableProps>): ReactNode {
 	return (
 		<AriaTable
-			className="inline-full min-inline-full caption-bottom text-sm/6 outline-hidden [--table-selected-bg:var(--color-secondary)]/50"
+			className="caption-bottom text-sm/6 outline-hidden [--table-selected-bg:var(--color-secondary)]/50 inline-full min-inline-full"
 			{...props}
 		/>
 	);
@@ -79,7 +79,7 @@ export function Table(props: Readonly<TableProps>): ReactNode {
 				>
 					<div
 						className={twJoin(
-							"inline-block min-inline-full align-middle",
+							"inline-block align-middle min-inline-full",
 							!bleed && "sm:px-(--gutter)",
 						)}
 					>
@@ -104,11 +104,11 @@ function ColumnResizer(props: Readonly<AriaColumnResizerProps>): ReactNode {
 		<AriaColumnResizer
 			{...rest}
 			className={cx(
-				"absolute inset-y-0 inset-e-0 grid inline-px touch-none place-content-center px-1 resizable-both:cursor-ew-resize [data-resizable-direction=left]:cursor-e-resize [data-resizable-direction=right]:cursor-w-resize [&[data-resizing]>div]:bg-primary",
+				"absolute inset-y-0 inset-e-0 grid touch-none place-content-center px-1 inline-px resizable-both:cursor-ew-resize [data-resizable-direction=left]:cursor-e-resize [data-resizable-direction=right]:cursor-w-resize [&[data-resizing]>div]:bg-primary",
 				className,
 			)}
 		>
-			<div className="block-full inline-px bg-border py-(--gutter-y)" />
+			<div className="bg-border py-(--gutter-y) block-full inline-px" />
 		</AriaColumnResizer>
 	);
 }
@@ -140,9 +140,9 @@ export function TableColumn(props: Readonly<TableColumnProps>): ReactNode {
 					"relative outline-hidden allows-sorting:cursor-default dragging:cursor-grabbing",
 					"px-4 py-(--gutter-y)",
 					"first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2))",
-					bleed !== true && "sm:last:pe-1 sm:first:ps-1",
+					bleed !== true && "sm:first:ps-1 sm:last:pe-1",
 					grid === true && "border-s first:border-s-0",
-					isResizable && "overflow-hidden truncate",
+					isResizable && "truncate overflow-hidden",
 				],
 				className,
 			)}
@@ -163,7 +163,7 @@ export function TableColumn(props: Readonly<TableColumnProps>): ReactNode {
 						{values.allowsSorting && (
 							<span
 								className={twJoin(
-									"grid block-[1.15rem] inline-[1.15rem] flex-none shrink-0 place-content-center rounded-sm ring-1 ring-transparent *:data-[slot=icon]:block-3.5 *:data-[slot=icon]:inline-3.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:transition-transform *:data-[slot=icon]:duration-200",
+									"grid flex-none shrink-0 place-content-center rounded-sm ring-1 ring-transparent block-[1.15rem] inline-[1.15rem] *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:transition-transform *:data-[slot=icon]:duration-200 *:data-[slot=icon]:block-3.5 *:data-[slot=icon]:inline-3.5",
 									isSorted
 										? "bg-primary/10 text-primary ring-primary/15"
 										: values.isHovered
@@ -209,7 +209,7 @@ export function TableHeader<T extends object>(props: Readonly<TableHeaderProps<T
 				<AriaColumn
 					className={twMerge(
 						"first:ps-(--gutter,--spacing(2))",
-						bleed !== true && "sm:last:pe-1 sm:first:ps-1",
+						bleed !== true && "sm:first:ps-1 sm:last:pe-1",
 					)}
 					data-slot="table-column"
 				/>
@@ -218,7 +218,7 @@ export function TableHeader<T extends object>(props: Readonly<TableHeaderProps<T
 				<AriaColumn
 					className={twMerge(
 						"first:ps-(--gutter,--spacing(2))",
-						bleed !== true && "sm:last:pe-1 sm:first:ps-1",
+						bleed !== true && "sm:first:ps-1 sm:last:pe-1",
 					)}
 					data-slot="table-column"
 				>
@@ -263,7 +263,7 @@ export function TableRow<T extends object>(props: Readonly<TableRowProps<T>>): R
 					twMerge(
 						"group relative cursor-default text-muted-fg outline outline-transparent",
 						isFocusVisible &&
-							"bg-primary/5 outline-primary ring-3 ring-ring/20 hover:bg-primary/10",
+							"bg-primary/5 ring-3 ring-ring/20 outline-primary hover:bg-primary/10",
 						isDragging === true && "cursor-grabbing bg-primary/10 text-fg outline-primary",
 						isSelected && "bg-(--table-selected-bg) text-fg hover:bg-(--table-selected-bg)/50",
 						striped === true && "even:bg-muted",
@@ -340,11 +340,11 @@ export function TableCell(props: Readonly<TableCellProps>): ReactNode {
 			{...rest}
 			className={cx(
 				twJoin(
-					"group px-4 py-(--gutter-y) align-middle outline-hidden first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2)) group-has-data-focus-visible-within:text-fg",
+					"group px-4 py-(--gutter-y) align-middle outline-hidden group-has-data-focus-visible-within:text-fg first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2))",
 					striped !== true && "border-be",
 					grid === true && "border-s first:border-s-0",
-					bleed !== true && "sm:last:pe-1 sm:first:ps-1",
-					allowResize === true && "overflow-hidden truncate",
+					bleed !== true && "sm:first:ps-1 sm:last:pe-1",
+					allowResize === true && "truncate overflow-hidden",
 				),
 				className,
 			)}

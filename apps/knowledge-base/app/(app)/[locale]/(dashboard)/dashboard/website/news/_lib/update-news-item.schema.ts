@@ -2,12 +2,16 @@ import { NewsItemUpdateSchema } from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
 import { ContentBlockInputSchema } from "@/lib/content-block-input";
+import { EntitySlugInputSchema } from "@/lib/entity-slug-input";
+import { FeaturedImageInputSchema } from "@/lib/featured-image-input";
 
 export const UpdateNewsItemActionInputSchema = v.object({
+	slug: EntitySlugInputSchema,
 	documentId: v.pipe(v.string(), v.uuid()),
 	...v.pick(NewsItemUpdateSchema, ["title"]).entries,
 	...v.pick(NewsItemUpdateSchema, ["summary"]).entries,
-	imageKey: v.pipe(v.string(), v.nonEmpty()),
+	publicationDate: v.pipe(v.string(), v.isoDate(), v.toDate()),
+	...FeaturedImageInputSchema,
 	contentBlocks: v.optional(
 		v.array(v.pipe(v.string(), v.parseJson(), ContentBlockInputSchema)),
 		[],

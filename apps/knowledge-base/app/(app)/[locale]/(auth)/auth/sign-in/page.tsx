@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import { SignInForm } from "@/app/(app)/[locale]/(auth)/auth/sign-in/_components/sign-in-form";
 import { Main } from "@/components/main";
+import { env } from "@/config/env.config";
 import { getCurrentSession } from "@/lib/auth/session";
 import { redirect } from "@/lib/navigation/navigation";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -35,7 +36,7 @@ export default async function SignInPage(_props: Readonly<SignInPageProps>): Pro
 		return t("Too many requests.");
 	}
 
-	const { session, user } = await getCurrentSession();
+	const { realUser: user, session } = await getCurrentSession();
 
 	if (session != null) {
 		if (!user.isEmailVerified) {
@@ -54,9 +55,9 @@ export default async function SignInPage(_props: Readonly<SignInPageProps>): Pro
 	}
 
 	return (
-		<Main className="min-block-full p-6 items-center justify-center flex flex-col">
-			<div className="inline-full max-inline-sm flex flex-col gap-y-4">
-				<Link aria-label={t("Home")} className="mbe-2 rounded-xs self-start inline-block" href="/">
+		<Main className="flex flex-col items-center justify-center p-6 min-block-full">
+			<div className="flex flex-col gap-y-4 inline-full max-inline-sm">
+				<Link aria-label={t("Home")} className="mbe-2 inline-block self-start rounded-xs" href="/">
 					<Avatar
 						className="dark:invert"
 						isSquare={true}
@@ -68,13 +69,15 @@ export default async function SignInPage(_props: Readonly<SignInPageProps>): Pro
 				<div>
 					<h1 className="text-xl/10 font-semibold">{t("Sign in")}</h1>
 
-					<Text>{t("Sign in to the The Knowledge Base with your user account.")}</Text>
+					<Text>{t("Sign in to the DARIAH Knowledge Base with your user account.")}</Text>
 				</div>
 
 				<SignInForm />
 
 				<Text className="flex flex-wrap items-center gap-x-6">
-					<TextLink href="/auth/sign-up">{t("Create an account")}</TextLink>
+					{env.AUTH_SIGN_UP === "enabled" ? (
+						<TextLink href="/auth/sign-up">{t("Create an account")}</TextLink>
+					) : null}
 					<TextLink href="/auth/forgot-password">{t("Forgot password?")}</TextLink>
 				</Text>
 			</div>

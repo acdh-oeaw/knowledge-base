@@ -21,7 +21,7 @@ export function ProgressCircle(props: Readonly<ProgressCircleProps>): ReactNode 
 		<AriaProgressBar {...rest}>
 			{({ percentage, isIndeterminate }) => (
 				<svg
-					className={twMerge("block-4 inline-4 shrink-0", className)}
+					className={twMerge("shrink-0 block-4 inline-4", className)}
 					data-slot="icon"
 					fill="none"
 					viewBox="0 0 24 24"

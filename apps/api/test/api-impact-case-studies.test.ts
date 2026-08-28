@@ -26,6 +26,7 @@ function createItems(count: number) {
 				id: versionId,
 				title,
 				summary: f.lorem.paragraph(),
+				publicationDate: f.date.past(),
 			};
 
 			return { entity, version, impactCaseStudy };
@@ -161,7 +162,7 @@ async function seed(
 	await db.insert(schema.assets).values(contributor.asset);
 
 	await db.insert(schema.entities).values({
-		id: contributor.entity.id,
+		...contributor.entity,
 		typeId: personType.id,
 	});
 
@@ -183,7 +184,7 @@ async function seed(
 	await db.insert(schema.persons).values(contributor.person);
 
 	await db.insert(schema.entities).values({
-		id: contributor.affiliation.entity.id,
+		...contributor.affiliation.entity,
 		typeId: organisationalUnitType.id,
 	});
 
@@ -273,10 +274,13 @@ describe("impact-case-studies", () => {
 				const title = item.impactCaseStudy.title;
 				const contributorName = contributor.person.name;
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const contributorPosition = expect.arrayContaining([
+				const contributorPositions = expect.arrayContaining([
 					expect.objectContaining({
 						role: "is_affiliated_with",
-						name: contributor.affiliation.organisationalUnit.name,
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						entity: expect.objectContaining({
+							label: contributor.affiliation.organisationalUnit.name,
+						}),
 					}),
 				]);
 
@@ -298,7 +302,7 @@ describe("impact-case-studies", () => {
 						expect.objectContaining({
 							name: contributorName,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-							position: contributorPosition,
+							positions: contributorPositions,
 						}),
 					]),
 					title,
@@ -396,10 +400,13 @@ describe("impact-case-studies", () => {
 				const title = item.impactCaseStudy.title;
 				const contributorName = contributor.person.name;
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const contributorPosition = expect.arrayContaining([
+				const contributorPositions = expect.arrayContaining([
 					expect.objectContaining({
 						role: "is_affiliated_with",
-						name: contributor.affiliation.organisationalUnit.name,
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+						entity: expect.objectContaining({
+							label: contributor.affiliation.organisationalUnit.name,
+						}),
 					}),
 				]);
 
@@ -422,7 +429,7 @@ describe("impact-case-studies", () => {
 						expect.objectContaining({
 							name: contributorName,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-							position: contributorPosition,
+							positions: contributorPositions,
 						}),
 					]),
 					title,

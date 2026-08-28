@@ -33,7 +33,7 @@ export function DateInput({
 					"relative block appearance-none rounded-lg px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)]",
 					"text-base/6 text-fg placeholder:text-muted-fg sm:text-sm/6",
 					"border border-input hover:border-muted-fg/30",
-					"focus-within:border-ring/70 focus-within:bg-primary-subtle/5 focus-within:outline-hidden focus-within:ring-3 focus-within:ring-ring/20 focus-within:hover:border-ring/80",
+					"focus-within:border-ring/70 focus-within:bg-primary-subtle/5 focus-within:ring-3 focus-within:ring-ring/20 focus-within:outline-hidden focus-within:hover:border-ring/80",
 					"invalid:border-danger-subtle-fg/70 invalid:bg-danger-subtle/5 invalid:hover:border-danger-subtle-fg/80 focus-within:invalid:border-danger-subtle-fg/70 focus-within:invalid:bg-danger-subtle/5 focus-within:invalid:ring-danger-subtle-fg/20 focus-within:invalid:hover:border-danger-subtle-fg/80",
 					"disabled:bg-muted disabled:opacity-50",
 					"dark:scheme-dark",
@@ -44,7 +44,7 @@ export function DateInput({
 				{(segment) => (
 					<DateSegment
 						className={twJoin(
-							"inline shrink-0 rounded-sm px-1.5 text-fg tracking-wider caret-transparent outline-0 forced-color-adjust-none type-literal:px-0 sm:p-0.5 sm:py-0.5 sm:text-sm forced-colors:text-[ButtonText] data-placeholder:not-data-focused:text-muted-fg",
+							"inline shrink-0 rounded-sm px-1.5 tracking-wider text-fg caret-transparent outline-0 forced-color-adjust-none data-placeholder:not-data-focused:text-muted-fg sm:p-0.5 sm:py-0.5 sm:text-sm forced-colors:text-[ButtonText] type-literal:px-0",
 							"focus:bg-primary-subtle focus:text-primary-subtle-fg focus:data-invalid:bg-danger-subtle focus:data-invalid:text-danger-subtle-fg forced-colors:focus:bg-[Highlight] forced-colors:focus:text-[HighlightText]",
 							"disabled:opacity-50 forced-colors:disabled:text-[GrayText]",
 						)}

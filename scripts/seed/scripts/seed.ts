@@ -1,3 +1,5 @@
+// oxlint-disable oxc/no-map-spread
+
 import { parseArgs } from "node:util";
 
 import { log } from "@acdh-oeaw/lib";

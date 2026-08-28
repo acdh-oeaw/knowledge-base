@@ -5,12 +5,16 @@ import type { JSONContent } from "@tiptap/core";
 import { ImageIcon } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 
+import { BlockAssetMetadata } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/block-asset-metadata";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import type { MediaLibraryAsset } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-asset";
 import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
 import { mergeBlocksToDocument, splitDocumentToBlocks } from "@/lib/content-blocks-document";
 
-type MergeableContentBlock = Extract<ContentBlock, { type: "rich_text" | "image" | "embed" }>;
+type MergeableContentBlock = Extract<
+	ContentBlock,
+	{ type: "rich_text" | "image" | "embed" | "callout" }
+>;
 
 interface RichTextContentBlocksFieldProps {
 	"aria-label": string;
@@ -28,7 +32,10 @@ export function RichTextContentBlocksField({
 	const mergeableBlocks =
 		initialBlocks?.filter(
 			(block): block is MergeableContentBlock =>
-				block.type === "rich_text" || block.type === "image" || block.type === "embed",
+				block.type === "rich_text" ||
+				block.type === "image" ||
+				block.type === "embed" ||
+				block.type === "callout",
 		) ?? [];
 	const initialContent = mergeBlocksToDocument(mergeableBlocks);
 	const [editorContent, setEditorContent] = useState<JSONContent>(
@@ -49,13 +56,47 @@ export function RichTextContentBlocksField({
 		),
 		[initialAssets],
 	);
+	const renderImageInsert = useCallback(
+		({
+			isOpen,
+			onOpenChange,
+			select,
+		}: {
+			isOpen: boolean;
+			onOpenChange: (isOpen: boolean) => void;
+			select: (key: string, url: string) => void;
+		}) => (
+			<MediaLibraryDialog
+				defaultPrefix="images"
+				initialAssets={initialAssets}
+				isOpen={isOpen}
+				onOpenChange={onOpenChange}
+				onSelect={select}
+				prefixes={["avatars", "images", "logos"]}
+			/>
+		),
+		[initialAssets],
+	);
+	const renderAssetMetadata = useCallback(
+		({
+			imageKey,
+			onMetadataChange,
+		}: {
+			imageKey: string;
+			onMetadataChange: (metadata: { alt: string | null; caption: JSONContent | null }) => void;
+		}) => <BlockAssetMetadata assetKey={imageKey} onMetadataChange={onMetadataChange} />,
+		[],
+	);
 
 	return (
 		<>
 			<RichTextEditor
 				aria-label={ariaLabel}
+				blocks={["callout", "buttonLink", "placeholderValue"]}
 				content={initialContent}
 				onChange={setEditorContent}
+				renderAssetMetadata={renderAssetMetadata}
+				renderImageInsert={renderImageInsert}
 				renderImagePicker={renderImagePicker}
 			/>
 			{blocks.map((block, idx) => (

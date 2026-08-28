@@ -5,7 +5,12 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPersonPositions } from "@/lib/persons";
 import { getRelatedEntities, getRelatedResources, resolveDocumentId } from "@/lib/relations";
@@ -71,13 +76,19 @@ export async function getImpactCaseStudies(
 				id: schema.impactCaseStudies.id,
 				title: schema.impactCaseStudies.title,
 				summary: schema.impactCaseStudies.summary,
-				updatedAt: schema.entityVersions.updatedAt,
+				publicationDate: schema.impactCaseStudies.publicationDate,
 				slug: schema.slugs.value,
-				imageKey: schema.assets.key,
-				imageAlt: schema.assets.alt,
-				imageCaption: schema.assets.caption,
-				licenseName: schema.licenses.name,
-				licenseUrl: schema.licenses.url,
+				imageCaption: schema.impactCaseStudies.imageCaption,
+				imageCaptionMode: schema.impactCaseStudies.imageCaptionMode,
+				image: {
+					key: schema.assets.key,
+					alt: schema.assets.alt,
+					caption: schema.assets.caption,
+					width: schema.assets.width,
+					height: schema.assets.height,
+					licenseName: schema.licenses.name,
+					licenseUrl: schema.licenses.url,
+				},
 			})
 			.from(schema.entities)
 			.leftJoin(
@@ -125,13 +136,7 @@ export async function getImpactCaseStudies(
 
 	const data = items.map((item) => {
 		const image = generateImageUrl(
-			toImageAsset({
-				key: item.imageKey,
-				alt: item.imageAlt,
-				caption: item.imageCaption,
-				licenseName: item.licenseName,
-				licenseUrl: item.licenseUrl,
-			}),
+			withResolvedCaption(toImageAsset(item.image), item),
 			imageWidth.preview,
 		);
 
@@ -140,7 +145,7 @@ export async function getImpactCaseStudies(
 			title: item.title,
 			summary: item.summary,
 			entity: { slug: item.slug },
-			publishedAt: item.updatedAt.toISOString(),
+			publishedAt: item.publicationDate.toISOString(),
 			image,
 		};
 	});
@@ -165,8 +170,12 @@ async function getContributors(db: Database | Transaction, impactCaseStudyId: st
 			name: schema.persons.name,
 			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
+			personImageCaption: schema.persons.imageCaption,
+			personImageCaptionMode: schema.persons.imageCaptionMode,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			role: schema.impactCaseStudiesToPersons.role,
@@ -189,22 +198,40 @@ async function getContributors(db: Database | Transaction, impactCaseStudyId: st
 		rows.map((row) => row.id),
 	);
 
-	return rows.map(({ imageKey, imageAlt, imageCaption, licenseName, licenseUrl, ...row }) => {
-		return {
-			...row,
-			position: positions.get(row.id) ?? null,
-			image: generateImageUrl(
-				toImageAsset({
-					key: imageKey,
-					alt: imageAlt,
-					caption: imageCaption,
-					licenseName,
-					licenseUrl,
-				}),
-				imageWidth.avatar,
-			),
-		};
-	});
+	return rows.map(
+		({
+			imageKey,
+			imageAlt,
+			imageCaption,
+			imageWidth: imageSourceWidth,
+			imageHeight: imageSourceHeight,
+			personImageCaption,
+			personImageCaptionMode,
+			licenseName,
+			licenseUrl,
+			...row
+		}) => {
+			return {
+				...row,
+				positions: positions.get(row.id) ?? null,
+				image: generateImageUrl(
+					withResolvedCaption(
+						toImageAsset({
+							key: imageKey,
+							alt: imageAlt,
+							caption: imageCaption,
+							width: imageSourceWidth,
+							height: imageSourceHeight,
+							licenseName,
+							licenseUrl,
+						}),
+						{ imageCaption: personImageCaption, imageCaptionMode: personImageCaptionMode },
+					),
+					imageWidth.avatar,
+				),
+			};
+		},
+	);
 }
 
 //
@@ -226,7 +253,10 @@ export async function getImpactCaseStudyById(
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
+				publicationDate: true,
 				title: true,
 				summary: true,
 			},
@@ -239,21 +269,7 @@ export async function getImpactCaseStudyById(
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 			},
 		}),
 		getContentBlocks(db, id),
@@ -269,12 +285,14 @@ export async function getImpactCaseStudyById(
 		getRelatedResources(db, id),
 	]);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
+	const { publicationDate, ...data } = flattenEntityVersion(item);
 
 	return {
-		...flattenEntityVersion(item),
+		...data,
 		contributors,
 		image,
+		publishedAt: publicationDate.toISOString(),
 		...fields,
 		relatedEntities,
 		relatedResources,
@@ -380,7 +398,10 @@ export async function getImpactCaseStudyBySlug(
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
+			publicationDate: true,
 			title: true,
 			summary: true,
 		},
@@ -393,21 +414,7 @@ export async function getImpactCaseStudyBySlug(
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 		},
 	});
 
@@ -417,7 +424,8 @@ export async function getImpactCaseStudyBySlug(
 
 	const contributors = await getContributors(db, item.id);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
+	const { publicationDate, ...data } = flattenEntityVersion(item);
 
 	const [fields, relatedEntities, relatedResources] = await Promise.all([
 		getContentBlocks(db, item.id),
@@ -426,9 +434,10 @@ export async function getImpactCaseStudyBySlug(
 	]);
 
 	return {
-		...flattenEntityVersion(item),
+		...data,
 		contributors,
 		image,
+		publishedAt: publicationDate.toISOString(),
 		...fields,
 		relatedEntities,
 		relatedResources,

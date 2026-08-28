@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { PersonRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/person-relations-section";
 import {
@@ -19,6 +20,7 @@ import {
 	UnitProjectsSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/unit-projects-section";
 import { UnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/unit-relations-section";
+import { personRelationActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_lib/admin-relation-actions";
 import { InstitutionForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_components/institution-form";
 import { discardInstitutionDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_lib/discard-institution-draft.action";
 import { publishInstitutionAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_lib/publish-institution.action";
@@ -41,7 +43,7 @@ interface InstitutionEditFormProps {
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -129,6 +131,7 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 
 					<InstitutionForm
 						key={institution.id}
+						isPublished={isPublished}
 						formAction={updateInstitutionAction}
 						formId={formId}
 						initialAssets={initialAssets}
@@ -151,6 +154,7 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 
 				<TabPanel id="people" shouldPreserveState={true}>
 					<PersonRelationsSection
+						actions={personRelationActions}
 						initialPersonItems={initialPersonItems}
 						initialPersonTotal={initialPersonTotal}
 						relations={personRelations}

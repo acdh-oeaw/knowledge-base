@@ -80,7 +80,7 @@ export const Default: Story = {
 						placeholder="Select a person..."
 						selectedItem={selected}
 					/>
-					<p className="mbs-2 text-muted-fg text-sm">
+					<p className="mbs-2 text-sm text-muted-fg">
 						{"Selected: "}
 						{selected?.name ?? "none"}
 					</p>

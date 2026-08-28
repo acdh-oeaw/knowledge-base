@@ -1,24 +1,14 @@
 "use server";
 
-import { getFormDataValues } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import { serviceKpiCategoryEnum } from "@dariah-eric/database/schema";
-import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
-import { getLocale } from "next-intl/server";
-import { revalidatePath } from "next/cache";
+import { getExtracted } from "next-intl/server";
 import * as v from "valibot";
 
-import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
-import { assertCan } from "@/lib/auth/permissions";
-import { assertAuthenticated } from "@/lib/auth/session";
-import {
-	countryReportRevalidatePaths,
-	getCountryReportEditHrefById,
-	sanitizeReportRedirectTo,
-} from "@/lib/data/reporting-urls";
-import { db } from "@/lib/db";
-import { eq } from "@/lib/db/sql";
-import { redirect } from "@/lib/navigation/navigation";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
+import { countryReportRevalidatePaths } from "@/lib/data/reporting-urls";
+import { and, eq, inArray } from "@/lib/db/sql";
+import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 const UpsertCountryReportServiceKpisSchema = v.object({
 	id: v.pipe(v.string(), v.uuid()),
@@ -33,63 +23,62 @@ const UpsertCountryReportServiceKpisSchema = v.object({
 	),
 });
 
-export async function upsertCountryReportServiceKpisAction(formData: FormData): Promise<void> {
-	if (!(await globalPostRequestRateLimit())) {
-		return;
-	}
+/**
+ * Saves the per-service KPI values for a country report. Replace-set semantics scoped to the
+ * country's services (resolved via its consortium): a removed/blanked metric is dropped from the
+ * form data, so re-writing the set is what clears it, and a forged `serviceId` outside the
+ * country's services is ignored.
+ */
+export const upsertCountryReportServiceKpisAction = createMutationAction({
+	schema: UpsertCountryReportServiceKpisSchema,
+	requireAuth: true,
+	audit: { action: "update", subjectType: "country_report" },
+	revalidate: countryReportRevalidatePaths,
 
-	const result = v.safeParse(UpsertCountryReportServiceKpisSchema, getFormDataValues(formData));
-	if (!result.success) {
-		return;
-	}
+	async preCheck({ input, ctx }) {
+		await assertCan(ctx.user, "update", { type: "country_report", id: input.id });
+		await assertReportEditable(ctx.user, { type: "country_report", id: input.id });
+		return undefined;
+	},
 
-	const { id, kpis } = result.output;
+	async mutate(tx, input) {
+		const t = await getExtracted();
 
-	const locale = await getLocale();
-	const { user } = await assertAuthenticated();
-	await assertCan(user, "update", { type: "country_report", id });
+		const memberships = await tx.query.countryReportServices.findMany({
+			where: { countryReportId: input.id },
+			columns: { serviceId: true },
+		});
+		const allowedServiceIds = new Set(memberships.map((membership) => membership.serviceId));
 
-	await db.transaction(async (tx) => {
-		for (const [serviceId, kpiValues] of Object.entries(kpis ?? {})) {
-			for (const [kpi, value] of Object.entries(kpiValues)) {
-				const existing = await tx.query.countryReportServiceKpis.findFirst({
-					where: {
-						countryReportId: id,
-						serviceId,
-						kpi: kpi as (typeof serviceKpiCategoryEnum)[number],
-					},
-					columns: { id: true },
-				});
+		const rows = Object.entries(input.kpis ?? {}).flatMap(([serviceId, kpiValues]) => {
+			if (!allowedServiceIds.has(serviceId)) {
+				return [];
+			}
+			return Object.entries(kpiValues).map(([kpi, value]) => {
+				return {
+					countryReportId: input.id,
+					serviceId,
+					kpi: kpi as (typeof serviceKpiCategoryEnum)[number],
+					value,
+				};
+			});
+		});
 
-				if (existing != null) {
-					await tx
-						.update(schema.countryReportServiceKpis)
-						.set({ value })
-						.where(eq(schema.countryReportServiceKpis.id, existing.id));
-				} else {
-					await tx.insert(schema.countryReportServiceKpis).values({
-						countryReportId: id,
-						serviceId,
-						kpi: kpi as (typeof serviceKpiCategoryEnum)[number],
-						value,
-					});
-				}
+		if (allowedServiceIds.size > 0) {
+			await tx
+				.delete(schema.countryReportServiceKpis)
+				.where(
+					and(
+						eq(schema.countryReportServiceKpis.countryReportId, input.id),
+						inArray(schema.countryReportServiceKpis.serviceId, [...allowedServiceIds]),
+					),
+				);
+
+			if (rows.length > 0) {
+				await tx.insert(schema.countryReportServiceKpis).values(rows);
 			}
 		}
-	});
 
-	await recordAuditEvent(db, {
-		actorUserId: user.id,
-		action: "update",
-		subjectType: "country_report",
-		subjectId: id,
-		summary: getAuditSummaryFromFormData(formData),
-	});
-
-	for (const path of countryReportRevalidatePaths) {
-		revalidatePath(path, "layout");
-	}
-
-	const redirectTo = sanitizeReportRedirectTo(formData.get("redirectTo"));
-	redirect({ href: redirectTo ?? (await getCountryReportEditHrefById(id, "services")), locale });
-}
+		return { subjectId: input.id, successMessage: t("Saved.") };
+	},
+});

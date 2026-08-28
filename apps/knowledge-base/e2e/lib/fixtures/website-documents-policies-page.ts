@@ -82,7 +82,7 @@ export class WebsiteDocumentsPoliciesPage {
 	}
 
 	async selectDocumentFromMediaLibrary(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Select image" }).click();
+		await this.page.getByRole("button", { name: /^(Select|Change) document$/ }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		await dialog.waitFor({ state: "visible" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
@@ -91,6 +91,24 @@ export class WebsiteDocumentsPoliciesPage {
 		await dialog.getByRole("button", { name: "Select" }).click();
 		await dialog.waitFor({ state: "hidden" });
 		await this.page.getByText(assetLabel, { exact: true }).waitFor({ state: "visible" });
+		await expect(this.page.locator('input[name="documentKey"]')).not.toHaveValue("");
+	}
+
+	async uploadDocumentFromMediaLibrary(
+		file: { buffer: Buffer; mimeType: string; name: string },
+		label: string,
+	): Promise<void> {
+		await this.page.getByRole("button", { name: /^(Select|Change) document$/ }).click();
+		const dialog = this.page.getByRole("dialog", { name: "Media library" });
+		await dialog.waitFor({ state: "visible" });
+		await dialog.getByRole("tab", { name: "Upload" }).click();
+		const fileInput = dialog.locator('input[type="file"]');
+		await expect(fileInput).toHaveAttribute("accept", /application\/pdf/);
+		await fileInput.setInputFiles(file);
+		await dialog.getByLabel("Label").fill(label);
+		await dialog.getByRole("button", { name: "Upload" }).click();
+		await dialog.waitFor({ state: "hidden" });
+		await this.page.getByText(label, { exact: true }).waitFor({ state: "visible" });
 		await expect(this.page.locator('input[name="documentKey"]')).not.toHaveValue("");
 	}
 
@@ -107,11 +125,12 @@ export class WebsiteDocumentsPoliciesPage {
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -230,6 +249,18 @@ export class WebsiteDocumentsPoliciesPage {
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
 	}
 
+	async gotoEditFromList(title: string): Promise<void> {
+		const row = this.rowByTitle(title);
+		const editHref = await row.getByRole("link", { name: "Content" }).getAttribute("href");
+
+		if (editHref == null) {
+			throw new Error(`Could not find content edit link for document or policy "${title}".`);
+		}
+
+		await this.page.goto(editHref);
+		await this.page.waitForURL(`**${BASE_PATH}/**/edit`);
+	}
+
 	async gotoEditFromDetails(): Promise<void> {
 		const editHref = await this.page.getByRole("link", { name: "Edit" }).getAttribute("href");
 
@@ -289,7 +320,7 @@ export class WebsiteDocumentsPoliciesPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

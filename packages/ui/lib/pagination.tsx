@@ -19,7 +19,7 @@ export function Pagination(props: Readonly<PaginationProps>): ReactNode {
 		<nav
 			aria-label={t("Pagination")}
 			className={twMerge(
-				"mx-auto flex inline-full items-center justify-center gap-(--pagination-gap) [--pagination-gap:--spacing(2)] [--section-radius:calc(var(--radius-lg)-1px)] **:data-[slot=control]:inline-auto",
+				"mx-auto flex items-center justify-center gap-(--pagination-gap) [--pagination-gap:--spacing(2)] [--section-radius:calc(var(--radius-lg)-1px)] inline-full **:data-[slot=control]:inline-auto",
 				"**:data-[slot=pagination-item]:cursor-default",
 				className,
 			)}
@@ -36,7 +36,7 @@ export function PaginationSection(props: Readonly<PaginationSectionProps>): Reac
 
 	return (
 		<li data-slot="pagination-section">
-			<ul ref={ref} className={twMerge("flex block-full gap-1.5 text-sm/6", className)} {...rest} />
+			<ul ref={ref} className={twMerge("flex gap-1.5 text-sm/6 block-full", className)} {...rest} />
 		</li>
 	);
 }
@@ -77,7 +77,7 @@ export function PaginationItem(props: Readonly<PaginationItemProps>): ReactNode 
 					size,
 					isCircle,
 					intent: isCurrent === true ? "outline" : "plain",
-					className: twMerge("touch-area min-inline-9 shrink-0", className),
+					className: twMerge("touch-area shrink-0 min-inline-9", className),
 				})}
 				data-slot="pagination-item"
 				href={isCurrent === true ? undefined : props.href}
@@ -295,14 +295,13 @@ export function PaginationGap(props: Readonly<PaginationGapProps>): ReactNode {
 	return (
 		<li
 			className={twMerge(
-				"inline-9 select-none text-center font-semibold text-fg text-sm/6 outline-hidden",
+				"text-center text-sm/6 font-semibold text-fg outline-hidden select-none inline-9",
 				className,
 			)}
 			data-slot="pagination-gap"
 			{...rest}
 			aria-hidden={true}
 		>
-			{/* eslint-disable-next-line react/jsx-no-literals */}
 			{children ?? <Fragment>&hellip;</Fragment>}
 		</li>
 	);
@@ -316,7 +315,7 @@ export function PaginationLabel(props: Readonly<PaginationLabelProps>): ReactNod
 	return (
 		<li
 			className={twMerge(
-				"min-inline-4 self-center text-fg *:[strong]:font-medium *:[strong]:text-fg",
+				"self-center text-fg min-inline-4 *:[strong]:font-medium *:[strong]:text-fg",
 				className,
 			)}
 			data-slot="pagination-label"
@@ -333,7 +332,7 @@ export function PaginationInfo(props: Readonly<PaginationInfoProps>): ReactNode 
 	return (
 		<p
 			className={twMerge(
-				"text-muted-fg text-sm/6 *:[strong]:font-medium *:[strong]:text-fg",
+				"text-sm/6 text-muted-fg *:[strong]:font-medium *:[strong]:text-fg",
 				className,
 			)}
 			{...rest}

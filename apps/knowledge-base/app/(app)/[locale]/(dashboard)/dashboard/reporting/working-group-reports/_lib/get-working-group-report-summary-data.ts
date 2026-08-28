@@ -1,15 +1,15 @@
 import { assert } from "@acdh-oeaw/lib";
 import type { User } from "@dariah-eric/auth";
-import * as schema from "@dariah-eric/database/schema";
 
 import type { WorkingGroupReportSummaryData } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_components/working-group-report-summary";
 import { type Action, can } from "@/lib/auth/permissions";
+import { getWorkingGroupReportChairs } from "@/lib/data/working-group-report-chairs";
 import { db } from "@/lib/db";
-import { alias, and, eq, inArray, sql } from "@/lib/db/sql";
 
 export interface WorkingGroupReportData {
 	id: string;
 	status: string;
+	workingGroupDocumentId: string;
 	workingGroup: { name: string };
 	campaign: { year: number; status: string };
 	summary: WorkingGroupReportSummaryData;
@@ -32,7 +32,6 @@ async function getWorkingGroupReportData(id: string): Promise<WorkingGroupReport
 			id: true,
 			status: true,
 			numberOfMembers: true,
-			mailingList: true,
 			campaignId: true,
 			workingGroupDocumentId: true,
 		},
@@ -57,47 +56,8 @@ async function getWorkingGroupReportData(id: string): Promise<WorkingGroupReport
 		return null;
 	}
 
-	const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
 	const [chairs, questions] = await Promise.all([
-		db
-			.select({
-				id: schema.personsToOrganisationalUnits.id,
-				personName: schema.persons.name,
-				roleType: schema.personRoleTypes.type,
-			})
-			.from(schema.personsToOrganisationalUnits)
-			.innerJoin(
-				personDocumentLifecycle,
-				eq(
-					personDocumentLifecycle.documentId,
-					schema.personsToOrganisationalUnits.personDocumentId,
-				),
-			)
-			.innerJoin(
-				schema.persons,
-				sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.draftId}, ${personDocumentLifecycle.publishedId})`,
-			)
-			.innerJoin(
-				schema.personRoleTypes,
-				eq(schema.personRoleTypes.id, schema.personsToOrganisationalUnits.roleTypeId),
-			)
-			.where(
-				and(
-					// report.workingGroupDocumentId is the org-unit document id directly.
-					eq(
-						schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
-						report.workingGroupDocumentId,
-					),
-					inArray(schema.personRoleTypes.type, ["is_chair_of", "is_vice_chair_of"]),
-					sql`
-						${schema.personsToOrganisationalUnits.duration} && tstzrange (
-							MAKE_DATE(${report.campaign.year}, 1, 1)::TIMESTAMPTZ,
-							MAKE_DATE(${report.campaign.year + 1}, 1, 1)::TIMESTAMPTZ
-						)
-					`,
-				),
-			)
-			.orderBy(schema.persons.sortName, schema.personRoleTypes.type),
+		getWorkingGroupReportChairs(report.id),
 		db.query.workingGroupReportQuestions.findMany({
 			where: { campaignId: report.campaignId },
 			columns: { id: true, question: true, position: true },
@@ -113,12 +73,14 @@ async function getWorkingGroupReportData(id: string): Promise<WorkingGroupReport
 	return {
 		id: report.id,
 		status: report.status,
+		workingGroupDocumentId: report.workingGroupDocumentId,
 		workingGroup: report.workingGroup,
 		campaign: report.campaign,
 		summary: {
 			numberOfMembers: report.numberOfMembers,
-			mailingList: report.mailingList,
-			chairs,
+			chairs: chairs.map((chair) => {
+				return { id: chair.id, personName: chair.personName, roleType: chair.chairRole };
+			}),
 			socialMedia: report.socialMedia,
 			events: report.events,
 			questions: questions.map((q) => {

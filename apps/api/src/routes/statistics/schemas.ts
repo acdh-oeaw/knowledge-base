@@ -3,6 +3,7 @@ import * as v from "valibot";
 export const StatisticsSchema = v.pipe(
 	v.object({
 		memberCountries: v.number(),
+		observerCountries: v.number(),
 		partnerInstitutions: v.number(),
 		cooperatingPartners: v.number(),
 		workingGroups: v.number(),

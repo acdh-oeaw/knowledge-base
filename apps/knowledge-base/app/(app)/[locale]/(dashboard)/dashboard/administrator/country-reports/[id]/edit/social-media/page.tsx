@@ -25,10 +25,5 @@ export default async function DashboardAdministratorCountryReportSocialMediaPage
 
 	const { id } = await params;
 
-	return (
-		<CountryReportSocialMediaScreen
-			basePath={`/dashboard/administrator/country-reports/${id}/edit`}
-			reportId={id}
-		/>
-	);
+	return <CountryReportSocialMediaScreen reportId={id} />;
 }

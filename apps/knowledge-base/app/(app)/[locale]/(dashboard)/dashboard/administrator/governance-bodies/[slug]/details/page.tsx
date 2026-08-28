@@ -9,7 +9,7 @@ import { GovernanceBodyDetails } from "@/app/(app)/[locale]/(dashboard)/dashboar
 import { publishGovernanceBodyAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_lib/publish-governance-body.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import { getPersonRelations } from "@/lib/data/person-relations";
@@ -99,14 +99,8 @@ export default async function DashboardAdministratorGovernanceBodyDetailsPage(
 			</Fragment>
 		);
 	}
-	const {
-		displayLocaleId,
-		hasDraftChanges,
-		isLocaleFallback,
-		publishedId,
-		selectedVersion,
-		versionId,
-	} = localizedVersion;
+	const { hasDraftChanges, isLocaleFallback, publishedId, selectedVersion, versionId } =
+		localizedVersion;
 
 	const governanceBody = await db.query.organisationalUnits.findFirst({
 		where: { id: versionId },
@@ -154,12 +148,13 @@ export default async function DashboardAdministratorGovernanceBodyDetailsPage(
 	] = await Promise.all([
 		getPersonRelations(documentId),
 		getEntityRelations(documentId),
-		getUnitRelations(documentId, displayLocaleId),
+		getUnitRelations(documentId),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: governanceBody.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
-		getEntityContentBlocks(versionId, "description"),
+		getResolvedEntityContentBlocks(versionId, "description"),
 	]);
 
 	const socialMediaIds = socialMediaRows.map((row) => row.socialMediaId);

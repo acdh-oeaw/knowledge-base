@@ -55,14 +55,14 @@ export function MeterTrack(props: Readonly<ComponentProps<"div">>): ReactNode {
 		<div
 			className={twMerge(
 				"[--meter-height:--spacing(1.5)]",
-				"relative block-(--meter-height) inline-full overflow-hidden rounded-full bg-secondary outline outline-transparent -outline-offset-1",
+				"relative overflow-hidden rounded-full bg-secondary outline -outline-offset-1 outline-transparent block-(--meter-height) inline-full",
 				className,
 			)}
 			data-slot="meter-track"
 			{...rest}
 		>
 			<div
-				className="absolute inset-bs-0 inset-s-0 block-full rounded-full transition-[width] duration-200 ease-linear will-change-[width] motion-reduce:transition-none forced-colors:bg-[Highlight]"
+				className="absolute inset-s-0 inset-bs-0 rounded-full transition-[width] duration-200 ease-linear will-change-[width] block-full motion-reduce:transition-none forced-colors:bg-[Highlight]"
 				data-slot="meter-fill"
 				style={{
 					width: `${String(percentage)}%`,

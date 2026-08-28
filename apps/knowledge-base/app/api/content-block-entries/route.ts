@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { type SQL, and, count, eq, inArray } from "@/lib/db/sql";
 import { enforceApiGetRateLimit } from "@/lib/server/api-rate-limit";
 
@@ -26,18 +26,13 @@ function isContentBlockEntryType(value: string | null): value is ContentBlockEnt
 }
 
 function createWhere(
-	title: Parameters<typeof unaccentIlike>[0],
+	title: Parameters<typeof matchesAllTerms>[1],
 	id: Parameters<typeof inArray>[0],
 	q: string | undefined,
 	ids: Array<string> | undefined,
 ): SQL | undefined {
-	const query = q?.trim();
-	const entryWhere =
-		query != null && query !== ""
-			? unaccentIlike(title, `%${query}%`)
-			: ids != null
-				? inArray(id, ids)
-				: undefined;
+	const searchWhere = matchesAllTerms(q, title);
+	const entryWhere = searchWhere ?? (ids != null ? inArray(id, ids) : undefined);
 
 	return and(publishedEntityVersionWhere(), entryWhere);
 }

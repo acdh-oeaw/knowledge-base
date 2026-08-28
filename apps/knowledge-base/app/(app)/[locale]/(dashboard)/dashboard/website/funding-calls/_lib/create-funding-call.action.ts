@@ -1,17 +1,17 @@
 "use server";
 
-import { assert, keyBy } from "@acdh-oeaw/lib";
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import slugify from "@sindresorhus/slugify";
 
 import { CreateFundingCallActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_lib/create-funding-call.schema";
-import { upsertTypedContentBlock } from "@/lib/content-blocks-service";
-import { createDraftDocument, publishVersion } from "@/lib/data/entity-lifecycle";
+import { createDraftDocumentWithSlug, publishVersion } from "@/lib/data/entity-lifecycle";
+import { insertContentBlockTree } from "@/lib/data/entity-version-fields";
 import { fundingCallsLifecycleAdapter } from "@/lib/data/funding-calls.lifecycle-adapter";
-import { db } from "@/lib/db";
+import { filterToPublishedDocumentIds } from "@/lib/data/relations";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getCreatedSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const createFundingCallAction = createMutationAction({
@@ -19,25 +19,55 @@ export const createFundingCallAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "create", subjectType: "funding_calls" },
 	revalidate: "/[locale]/dashboard/website/funding-calls",
-	redirect: "/dashboard/website/funding-calls",
+	redirect: ({ result }) => `/dashboard/website/funding-calls/${getCreatedSlug(result)}/details`,
 
 	async mutate(tx, input, { formData }) {
-		const slug = slugify(input.title);
-
 		const type = await tx.query.entityTypes.findFirst({
 			where: { type: "funding_calls" },
 			columns: { id: true },
 		});
 		assert(type);
 
-		const { documentId, versionId } = await createDraftDocument(tx, type.id, slug);
+		const { documentId, versionId, slug } = await createDraftDocumentWithSlug(tx, type.id, {
+			requestedSlug: getRequestedSlug(input.slug),
+			title: input.title,
+		});
+
+		const asset = await tx.query.assets.findFirst({
+			where: { key: input.imageKey },
+			columns: { id: true },
+		});
+		assert(asset);
 
 		await tx.insert(schema.fundingCalls).values({
 			id: versionId,
 			duration: input.duration,
 			title: input.title,
 			summary: input.summary,
+			imageId: asset.id,
+			imageCaption: input.imageCaption,
+			imageCaptionMode: input.imageCaptionMode,
 		});
+
+		const publishedRelatedEntityIds = await filterToPublishedDocumentIds(
+			tx,
+			input.relatedEntityIds,
+		);
+		if (publishedRelatedEntityIds.length > 0) {
+			await tx.insert(schema.entitiesToEntities).values(
+				publishedRelatedEntityIds.map((relatedEntityId, position) => {
+					return { entityId: documentId, position, relatedEntityId };
+				}),
+			);
+		}
+
+		if (input.relatedResourceIds.length > 0) {
+			await tx.insert(schema.entitiesToResources).values(
+				input.relatedResourceIds.map((resourceId, position) => {
+					return { entityId: documentId, position, resourceId };
+				}),
+			);
+		}
 
 		const contentFieldName = await tx.query.entityTypesFieldsNames.findFirst({
 			where: { entityTypeId: type.id, fieldName: "content" },
@@ -51,23 +81,7 @@ export const createFundingCallAction = createMutationAction({
 			.returning({ id: schema.fields.id });
 		assert(contentField);
 
-		const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-		const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-		await Promise.all(
-			input.contentBlocks.map(async (contentBlock, index) => {
-				const [added] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						fieldId: contentField.id,
-						typeId: contentBlockTypesByType[contentBlock.type].id,
-						position: index,
-					})
-					.returning({ id: schema.contentBlocks.id });
-				assert(added);
-				await upsertTypedContentBlock(tx, contentBlock, added.id, true);
-			}),
-		);
+		await insertContentBlockTree(tx, contentField.id, input.contentBlocks);
 
 		if (shouldSaveAndPublish(formData)) {
 			await publishVersion(tx, documentId, fundingCallsLifecycleAdapter);
@@ -75,6 +89,7 @@ export const createFundingCallAction = createMutationAction({
 
 		return {
 			subjectId: documentId,
+			subjectSlug: slug,
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

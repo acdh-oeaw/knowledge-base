@@ -4,14 +4,21 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateEricActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_lib/update-eric.schema";
-import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";
+import {
+	ensureDraftVersion,
+	getDocumentSlug,
+	publishVersion,
+	touchVersion,
+} from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { syncEntityRelations } from "@/lib/data/relations";
-import { eq, inArray } from "@/lib/db/sql";
+import { syncOrganisationalUnitSocialMedia } from "@/lib/data/social-media-relations";
+import { checkSshocMarketplaceActorIdAvailable } from "@/lib/data/sshoc-marketplace-actor-id";
+import { eq } from "@/lib/db/sql";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateEricAction = createMutationAction({
@@ -19,7 +26,14 @@ export const updateEricAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "eric" },
 	revalidate: "/[locale]/dashboard/administrator/eric",
-	redirect: "/dashboard/administrator/eric",
+	redirect: ({ result }) => `/dashboard/administrator/eric/${getResultSlug(result)}/details`,
+
+	async preCheck({ input }) {
+		return checkSshocMarketplaceActorIdAvailable({
+			sshocMarketplaceActorId: input.sshocMarketplaceActorId,
+			excludeDocumentId: input.documentId,
+		});
+	},
 
 	async mutate(tx, input, { formData }) {
 		const draftVersionId = await ensureDraftVersion(
@@ -57,34 +71,7 @@ export const updateEricAction = createMutationAction({
 			input.descriptionContentBlocks,
 		);
 
-		const existingSocialMedia = await tx.query.organisationalUnitsToSocialMedia.findMany({
-			where: { organisationalUnitId: draftVersionId },
-			columns: { id: true, socialMediaId: true },
-		});
-		const existingSocialMediaIds = new Set(existingSocialMedia.map((row) => row.socialMediaId));
-		const submittedSocialMediaIds = new Set(input.socialMediaIds);
-
-		const socialMediaToDelete = existingSocialMedia
-			.filter((row) => !submittedSocialMediaIds.has(row.socialMediaId))
-			.map((row) => row.id);
-
-		if (socialMediaToDelete.length > 0) {
-			await tx
-				.delete(schema.organisationalUnitsToSocialMedia)
-				.where(inArray(schema.organisationalUnitsToSocialMedia.id, socialMediaToDelete));
-		}
-
-		const socialMediaToInsert = input.socialMediaIds.filter(
-			(socialMediaId) => !existingSocialMediaIds.has(socialMediaId),
-		);
-
-		if (socialMediaToInsert.length > 0) {
-			await tx.insert(schema.organisationalUnitsToSocialMedia).values(
-				socialMediaToInsert.map((socialMediaId) => {
-					return { organisationalUnitId: draftVersionId, socialMediaId };
-				}),
-			);
-		}
+		await syncOrganisationalUnitSocialMedia(tx, draftVersionId, input.socialMediaIds);
 
 		await syncEntityRelations(
 			tx,
@@ -100,6 +87,7 @@ export const updateEricAction = createMutationAction({
 
 		return {
 			subjectId: input.documentId,
+			subjectSlug: await getDocumentSlug(tx, input.documentId),
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

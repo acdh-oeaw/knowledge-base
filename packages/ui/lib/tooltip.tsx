@@ -13,7 +13,7 @@ import { type VariantProps, tv } from "tailwind-variants";
 
 export const tooltipStyles = tv({
 	base: [
-		"group max-inline-sm origin-(--trigger-anchor-point) rounded-lg border border-(--tooltip-border) px-2.5 py-1.5 text-sm/6 will-change-transform [--tooltip-border:var(--color-muted-fg)]/30 dark:shadow-none *:[strong]:font-medium",
+		"group origin-(--trigger-anchor-point) rounded-lg border border-(--tooltip-border) px-2.5 py-1.5 text-sm/6 will-change-transform [--tooltip-border:var(--color-muted-fg)]/30 max-inline-sm dark:shadow-none *:[strong]:font-medium",
 	],
 	variants: {
 		inverse: {
@@ -22,13 +22,13 @@ export const tooltipStyles = tv({
 		},
 		isEntering: {
 			true: [
-				"fade-in animate-in",
+				"animate-in fade-in",
 				"placement-left:slide-in-from-right-1 placement-right:slide-in-from-left-1 placement-top:slide-in-from-bottom-1 placement-bottom:slide-in-from-top-1",
 			],
 		},
 		isExiting: {
 			true: [
-				"fade-in direction-reverse animate-in",
+				"animate-in direction-reverse fade-in",
 				"placement-left:slide-out-to-right-1 placement-right:slide-out-to-left-1 placement-top:slide-out-to-bottom-1 placement-bottom:slide-out-to-top-1",
 			],
 		},
@@ -67,7 +67,7 @@ export function TooltipContent(props: Readonly<TooltipContentProps>): ReactNode 
 				<AriaOverlayArrow className="group">
 					<svg
 						className={twJoin(
-							"block group-placement-bottom:rotate-180 group-placement-left:-rotate-90 group-placement-right:rotate-90 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]",
+							"block group-placement-left:-rotate-90 group-placement-right:rotate-90 group-placement-bottom:rotate-180 forced-colors:fill-[Canvas] forced-colors:stroke-[ButtonBorder]",
 							inverse === true
 								? "fill-fg stroke-transparent"
 								: "fill-overlay stroke-(--tooltip-border)",

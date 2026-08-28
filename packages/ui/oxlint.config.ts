@@ -18,7 +18,8 @@ const configs = [base, react, storybook, turbo, vitest];
  */
 // oxlint-disable-next-line node/no-process-env
 if (process.env.CI == null) {
-	configs.push(tailwindcss);
+	// oxlint-disable-next-line typescript/no-explicit-any typescript/no-unsafe-argument
+	configs.push(tailwindcss as any);
 }
 
 const config = defineConfig({

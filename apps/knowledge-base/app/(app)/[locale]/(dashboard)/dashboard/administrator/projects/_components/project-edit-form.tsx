@@ -12,10 +12,10 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ProjectForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form";
 import { ProjectPartnersSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section";
-import { ProjectPersonsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-persons-section";
 import { discardProjectDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/discard-project-draft.action";
 import { publishProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/publish-project.action";
 import { updateProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/update-project.action";
@@ -39,25 +39,24 @@ interface ProjectEditFormProps {
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
 	roles: Array<Pick<schema.ProjectRole, "id" | "role">>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
 	selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedEntityIds: Array<string>;
+	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedEntityTotal: number;
+	initialRelatedResourceIds: Array<string>;
+	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedResourceTotal: number;
+	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
+	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
 	initialPartners: Array<{
 		id: string;
 		unitDocumentId: string;
 		unitName: string;
-		roleId: string;
-		roleName: string;
-		durationStart: Date | null;
-		durationEnd: Date | null;
-	}>;
-	initialPersons: Array<{
-		id: string;
-		personDocumentId: string;
-		personName: string;
 		roleId: string;
 		roleName: string;
 		durationStart: Date | null;
@@ -81,9 +80,16 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
 		selectedSocialMediaItems,
+		initialRelatedEntityIds,
+		initialRelatedEntityItems,
+		initialRelatedEntityTotal,
+		initialRelatedResourceIds,
+		initialRelatedResourceItems,
+		initialRelatedResourceTotal,
+		selectedRelatedEntities,
+		selectedRelatedResources,
 		roles,
 		initialPartners,
-		initialPersons,
 	} = props;
 
 	const t = useExtracted();
@@ -116,14 +122,23 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 
 					<ProjectForm
 						key={project.id}
+						isDefaultLocale={isDefaultLocale}
+						isPublished={isPublished}
 						formAction={updateProjectAction}
 						initialAssets={initialAssets}
+						initialRelatedEntityIds={initialRelatedEntityIds}
+						initialRelatedEntityItems={initialRelatedEntityItems}
+						initialRelatedEntityTotal={initialRelatedEntityTotal}
+						initialRelatedResourceIds={initialRelatedResourceIds}
+						initialRelatedResourceItems={initialRelatedResourceItems}
+						initialRelatedResourceTotal={initialRelatedResourceTotal}
 						initialSocialMediaIds={initialSocialMediaIds}
 						initialSocialMediaItems={initialSocialMediaItems}
 						initialSocialMediaTotal={initialSocialMediaTotal}
-						isDefaultLocale={isDefaultLocale}
 						project={project}
 						scopes={scopes}
+						selectedRelatedEntities={selectedRelatedEntities}
+						selectedRelatedResources={selectedRelatedResources}
 						selectedSocialMediaItems={selectedSocialMediaItems}
 					/>
 				</TabPanel>
@@ -131,13 +146,6 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 				<TabPanel id="project-partners" shouldPreserveState={true}>
 					<ProjectPartnersSection
 						partners={initialPartners}
-						projectDocumentId={documentId}
-						roles={roles}
-					/>
-				</TabPanel>
-				<TabPanel id="project-persons" shouldPreserveState={true}>
-					<ProjectPersonsSection
-						persons={initialPersons}
 						projectDocumentId={documentId}
 						roles={roles}
 					/>

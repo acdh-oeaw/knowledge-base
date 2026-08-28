@@ -1,24 +1,14 @@
 "use server";
 
-import { getFormDataValues } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import { socialMediaKpiCategoryEnum } from "@dariah-eric/database/schema";
-import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
-import { getLocale } from "next-intl/server";
-import { revalidatePath } from "next/cache";
+import { getExtracted } from "next-intl/server";
 import * as v from "valibot";
 
-import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
-import { assertCan } from "@/lib/auth/permissions";
-import { assertAuthenticated } from "@/lib/auth/session";
-import {
-	countryReportRevalidatePaths,
-	getCountryReportEditHrefById,
-	sanitizeReportRedirectTo,
-} from "@/lib/data/reporting-urls";
-import { db } from "@/lib/db";
-import { eq } from "@/lib/db/sql";
-import { redirect } from "@/lib/navigation/navigation";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
+import { countryReportRevalidatePaths } from "@/lib/data/reporting-urls";
+import { and, eq, inArray } from "@/lib/db/sql";
+import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 const UpsertCountryReportSocialMediaKpisSchema = v.object({
 	id: v.pipe(v.string(), v.uuid()),
@@ -33,66 +23,62 @@ const UpsertCountryReportSocialMediaKpisSchema = v.object({
 	),
 });
 
-export async function upsertCountryReportSocialMediaKpisAction(formData: FormData): Promise<void> {
-	if (!(await globalPostRequestRateLimit())) {
-		return;
-	}
+/**
+ * Saves the per-account KPI values for a country report. Replace-set semantics scoped to the
+ * report's covered accounts (its `country_report_social_media` membership): a removed/blanked
+ * metric is dropped from the form data, so re-writing the set is what clears it, and a forged
+ * `socialMediaId` for an account the report doesn't cover is ignored.
+ */
+export const upsertCountryReportSocialMediaKpisAction = createMutationAction({
+	schema: UpsertCountryReportSocialMediaKpisSchema,
+	requireAuth: true,
+	audit: { action: "update", subjectType: "country_report" },
+	revalidate: countryReportRevalidatePaths,
 
-	const result = v.safeParse(UpsertCountryReportSocialMediaKpisSchema, getFormDataValues(formData));
-	if (!result.success) {
-		return;
-	}
+	async preCheck({ input, ctx }) {
+		await assertCan(ctx.user, "update", { type: "country_report", id: input.id });
+		await assertReportEditable(ctx.user, { type: "country_report", id: input.id });
+		return undefined;
+	},
 
-	const { id, kpis } = result.output;
+	async mutate(tx, input) {
+		const t = await getExtracted();
 
-	const locale = await getLocale();
-	const { user } = await assertAuthenticated();
-	await assertCan(user, "update", { type: "country_report", id });
+		const memberships = await tx.query.countryReportSocialMedia.findMany({
+			where: { countryReportId: input.id },
+			columns: { socialMediaId: true },
+		});
+		const allowedSocialMediaIds = new Set(memberships.map((m) => m.socialMediaId));
 
-	await db.transaction(async (tx) => {
-		for (const [socialMediaId, kpiValues] of Object.entries(kpis ?? {})) {
-			for (const [kpi, value] of Object.entries(kpiValues)) {
-				const existing = await tx.query.countryReportSocialMediaKpis.findFirst({
-					where: {
-						countryReportId: id,
-						socialMediaId,
-						kpi: kpi as (typeof socialMediaKpiCategoryEnum)[number],
-					},
-					columns: { id: true },
-				});
+		const rows = Object.entries(input.kpis ?? {}).flatMap(([socialMediaId, kpiValues]) => {
+			if (!allowedSocialMediaIds.has(socialMediaId)) {
+				return [];
+			}
+			return Object.entries(kpiValues).map(([kpi, value]) => {
+				return {
+					countryReportId: input.id,
+					socialMediaId,
+					kpi: kpi as (typeof socialMediaKpiCategoryEnum)[number],
+					value,
+				};
+			});
+		});
 
-				if (existing != null) {
-					await tx
-						.update(schema.countryReportSocialMediaKpis)
-						.set({ value })
-						.where(eq(schema.countryReportSocialMediaKpis.id, existing.id));
-				} else {
-					await tx.insert(schema.countryReportSocialMediaKpis).values({
-						countryReportId: id,
-						socialMediaId,
-						kpi: kpi as (typeof socialMediaKpiCategoryEnum)[number],
-						value,
-					});
-				}
+		if (allowedSocialMediaIds.size > 0) {
+			await tx
+				.delete(schema.countryReportSocialMediaKpis)
+				.where(
+					and(
+						eq(schema.countryReportSocialMediaKpis.countryReportId, input.id),
+						inArray(schema.countryReportSocialMediaKpis.socialMediaId, [...allowedSocialMediaIds]),
+					),
+				);
+
+			if (rows.length > 0) {
+				await tx.insert(schema.countryReportSocialMediaKpis).values(rows);
 			}
 		}
-	});
 
-	await recordAuditEvent(db, {
-		actorUserId: user.id,
-		action: "update",
-		subjectType: "country_report",
-		subjectId: id,
-		summary: getAuditSummaryFromFormData(formData),
-	});
-
-	for (const path of countryReportRevalidatePaths) {
-		revalidatePath(path, "layout");
-	}
-
-	const redirectTo = sanitizeReportRedirectTo(formData.get("redirectTo"));
-	redirect({
-		href: redirectTo ?? (await getCountryReportEditHrefById(id, "social-media")),
-		locale,
-	});
-}
+		return { subjectId: input.id, successMessage: t("Saved.") };
+	},
+});

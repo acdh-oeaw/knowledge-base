@@ -1,5 +1,4 @@
 import { assert } from "@acdh-oeaw/lib";
-import * as schema from "@dariah-eric/database/schema";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -11,12 +10,16 @@ import { discardProjectDraftAction } from "@/app/(app)/[locale]/(dashboard)/dash
 import { publishProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/publish-project.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import { getProjectPartnerUnits } from "@/lib/data/project-partners";
+import {
+	getEntityRelationOptionsByIds,
+	getEntityRelations,
+	getResourceRelationOptionsByIds,
+} from "@/lib/data/relations";
 import { db } from "@/lib/db";
-import { alias, eq, sql } from "@/lib/db/sql";
 import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -160,34 +163,12 @@ export default async function DashboardAdministratorProjectDetailsPage(
 	);
 	const entityVersionSlug = project.entityVersion.slug;
 
-	const [descriptionContentBlocks, partners, persons, socialMediaLinks] = await Promise.all([
-		getEntityContentBlocks(versionId, "description"),
+	const [descriptionContentBlocks, partners, socialMediaLinks] = await Promise.all([
+		getResolvedEntityContentBlocks(versionId, "description"),
 		getProjectPartnerUnits(documentId, displayLocaleId),
-		(() => {
-			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
-			return db
-				.select({
-					id: schema.projectsToPersons.id,
-					duration: schema.projectsToPersons.duration,
-					personName: schema.persons.name,
-					personSlug: schema.slugs.value,
-					roleName: schema.projectRoles.role,
-				})
-				.from(schema.projectsToPersons)
-				.innerJoin(
-					personDocumentLifecycle,
-					eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
-				)
-				.innerJoin(
-					schema.persons,
-					sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.publishedId}, ${personDocumentLifecycle.draftId})`,
-				)
-				.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.persons.id))
-				.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
-				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
-		})(),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
+			orderBy: { position: "asc" },
 			columns: {},
 			with: {
 				socialMedia: {
@@ -196,6 +177,13 @@ export default async function DashboardAdministratorProjectDetailsPage(
 				},
 			},
 		}),
+	]);
+
+	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(documentId);
+
+	const [selectedRelatedEntities, selectedRelatedResources] = await Promise.all([
+		getEntityRelationOptionsByIds(relatedEntityIds),
+		getResourceRelationOptionsByIds(relatedResourceIds),
 	]);
 
 	const image =
@@ -234,18 +222,11 @@ export default async function DashboardAdministratorProjectDetailsPage(
 						unitIsLocaleFallback: partner.unitIsLocaleFallback,
 					};
 				}),
-				persons: persons.map((person) => {
-					return {
-						id: person.id,
-						personName: person.personName,
-						personSlug: person.personSlug,
-						roleName: person.roleName,
-						duration: person.duration ?? null,
-					};
-				}),
 				socialMedia: socialMediaLinks.map((link) => link.socialMedia),
 			}}
 			publishAction={publishProjectAction}
+			selectedRelatedEntities={selectedRelatedEntities}
+			selectedRelatedResources={selectedRelatedResources}
 			selectedVersion={selectedVersion}
 		/>
 	);

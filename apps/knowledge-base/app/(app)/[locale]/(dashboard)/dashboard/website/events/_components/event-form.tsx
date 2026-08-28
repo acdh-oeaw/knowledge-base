@@ -1,5 +1,6 @@
 "use client";
 
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
 import { Checkbox } from "@dariah-eric/ui/checkbox";
@@ -10,7 +11,14 @@ import { Input } from "@dariah-eric/ui/input";
 import { Separator } from "@dariah-eric/ui/separator";
 import { TextField } from "@dariah-eric/ui/text-field";
 import { TextArea } from "@dariah-eric/ui/textarea";
-import { CalendarDate } from "@internationalized/date";
+import {
+	CalendarDate,
+	CalendarDateTime,
+	type DateValue,
+	toCalendarDate,
+	toCalendarDateTime,
+} from "@internationalized/date";
+import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useActionState, useState } from "react";
 
@@ -20,11 +28,15 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
 import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
+import { EntitySlugField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-slug-field";
 import {
 	FormLayout,
 	FormSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
-import { ImageSelectField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import {
+	ImageSelectField,
+	type SelectedImage,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface EventFormProps {
@@ -41,8 +53,14 @@ interface EventFormProps {
 		"id" | "duration" | "isFullDay" | "location" | "title" | "summary" | "website"
 	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } };
+	} & {
+		image: SelectedImage;
+		imageCaption?: JSONContent | null;
+		imageCaptionMode?: ImageCaptionMode;
+	};
 	formId?: string;
+	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
+	isPublished?: boolean;
 	formAction: ServerAction;
 	initialRelatedEntityIds?: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -53,6 +71,23 @@ interface EventFormProps {
 	selectedRelatedEntities?: Array<{ id: string; name: string; description?: string }>;
 	selectedRelatedResources?: Array<{ id: string; name: string; description?: string }>;
 	showRelationFields?: boolean;
+}
+
+/**
+ * Build a timezone-agnostic picker value from a stored UTC instant, reading UTC components so the
+ * displayed wall-clock matches the stored value (the app treats UTC as a standin for the event's
+ * local time). All-day events use a date-only `CalendarDate`; timed events a `CalendarDateTime`.
+ */
+function toDateValue(date: Date, isFullDay: boolean): DateValue {
+	return isFullDay
+		? new CalendarDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate())
+		: new CalendarDateTime(
+				date.getUTCFullYear(),
+				date.getUTCMonth() + 1,
+				date.getUTCDate(),
+				date.getUTCHours(),
+				date.getUTCMinutes(),
+			);
 }
 
 export function EventForm(props: Readonly<EventFormProps>): ReactNode {
@@ -72,15 +107,37 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 		selectedRelatedEntities,
 		selectedRelatedResources,
 		showRelationFields = true,
+		isPublished,
 	} = props;
 
 	const t = useExtracted();
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
-	const [selectedImage, setSelectedImage] = useState<{ key: string; url: string } | null>(
-		event?.image ?? null,
+	const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(event?.image ?? null);
+
+	// New events default to full-day — the large majority of events are all-day, so this saves the
+	// common case a toggle (and the time pickers for a timed event are one click away).
+	const [isFullDay, setIsFullDay] = useState(event?.isFullDay ?? true);
+	const [start, setStart] = useState<DateValue | null>(
+		event != null ? toDateValue(event.duration.start, event.isFullDay) : null,
 	);
+	const [end, setEnd] = useState<DateValue | null>(
+		event?.duration.end != null ? toDateValue(event.duration.end, event.isFullDay) : null,
+	);
+
+	function handleFullDayChange(nextIsFullDay: boolean) {
+		setIsFullDay(nextIsFullDay);
+		const convert = (value: DateValue | null): DateValue | null => {
+			if (value == null) {
+				return null;
+			}
+			return nextIsFullDay ? toCalendarDate(value) : toCalendarDateTime(value);
+		};
+		setStart(convert);
+		setEnd(convert);
+	}
+
 	return (
 		<FormLayout>
 			<Form action={action} className="flex flex-col gap-y-6" id={formId} state={state}>
@@ -97,40 +154,50 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 					{isDefaultLocale ? (
+						<Checkbox
+							isSelected={isFullDay}
+							name="isFullDay"
+							onChange={handleFullDayChange}
+							value="true"
+						>
+							{t("Full day")}
+						</Checkbox>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Full day")}</Label>
+							<p className="text-sm">{isFullDay ? t("Yes") : t("No")}</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{isFullDay ? <input name="isFullDay" type="hidden" value="true" /> : null}
+						</div>
+					)}
+					{isDefaultLocale ? (
 						<Fragment>
 							<DatePicker
-								defaultValue={
-									event != null
-										? new CalendarDate(
-												event.duration.start.getUTCFullYear(),
-												event.duration.start.getUTCMonth() + 1,
-												event.duration.start.getUTCDate(),
-											)
-										: undefined
-								}
-								granularity="day"
+								// Remount when the granularity flips: react-aria's DateField crashes if `granularity`
+								// changes on a live field whose value was previously cleared, so give each mode a
+								// stable-but-distinct key to force a clean re-init with the converted value.
+								key={isFullDay ? "start-day" : "start-time"}
+								granularity={isFullDay ? "day" : "minute"}
+								hideTimeZone={true}
 								isRequired={true}
 								name="duration.start"
+								onChange={setStart}
+								value={start}
 							>
-								<Label>{t("Start date")}</Label>
+								<Label>{isFullDay ? t("Start date") : t("Start")}</Label>
 								<DatePickerTrigger />
 								<FieldError />
 							</DatePicker>
 
 							<DatePicker
-								defaultValue={
-									event?.duration.end != null
-										? new CalendarDate(
-												event.duration.end.getUTCFullYear(),
-												event.duration.end.getUTCMonth() + 1,
-												event.duration.end.getUTCDate(),
-											)
-										: undefined
-								}
-								granularity="day"
+								key={isFullDay ? "end-day" : "end-time"}
+								granularity={isFullDay ? "day" : "minute"}
+								hideTimeZone={true}
 								name="duration.end"
+								onChange={setEnd}
+								value={end}
 							>
-								<Label>{t("End date")}</Label>
+								<Label>{isFullDay ? t("End date") : t("End")}</Label>
 								<DatePickerTrigger />
 								<FieldError />
 							</DatePicker>
@@ -166,18 +233,7 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 							) : null}
 						</div>
 					)}
-					{isDefaultLocale ? (
-						<Checkbox defaultSelected={event?.isFullDay ?? false} name="isFullDay" value="true">
-							{t("Full day")}
-						</Checkbox>
-					) : (
-						<div className="flex flex-col gap-y-1">
-							<Label>{t("Full day")}</Label>
-							<p className="text-sm">{event?.isFullDay ? t("Yes") : t("No")}</p>
-							<Description>{t("Editable only in the default locale.")}</Description>
-							{event?.isFullDay ? <input name="isFullDay" type="hidden" value="true" /> : null}
-						</div>
-					)}
+
 					{isDefaultLocale ? (
 						<TextField
 							defaultValue={event?.location ?? undefined}
@@ -203,6 +259,8 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 						<Input placeholder="https://" />
 						<FieldError />
 					</TextField>
+
+					<EntitySlugField isPublished={isPublished} slug={event?.entityVersion.slug.value} />
 				</FormSection>
 
 				<Separator className="my-6" />
@@ -213,6 +271,9 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 					title={t("Image")}
 				>
 					<ImageSelectField
+						captionName="imageCaption"
+						defaultCaption={event?.imageCaption}
+						defaultCaptionMode={event?.imageCaptionMode}
 						defaultPrefix="images"
 						initialAssets={initialAssets}
 						isRequired={true}

@@ -1,8 +1,9 @@
 "use client";
 
+import { isNonEmptyString } from "@acdh-oeaw/lib";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
 import type { AssetPrefix } from "@dariah-eric/storage/config";
-import { Button } from "@dariah-eric/ui/button";
+import { Button, buttonStyles } from "@dariah-eric/ui/button";
 import { Label } from "@dariah-eric/ui/field";
 import { GridList, GridListItem } from "@dariah-eric/ui/grid-list";
 import { Input } from "@dariah-eric/ui/input";
@@ -14,12 +15,13 @@ import {
 	ModalHeader,
 } from "@dariah-eric/ui/modal";
 import { ProgressCircle } from "@dariah-eric/ui/progress-circle";
+import { toPlainText } from "@dariah-eric/ui/rich-text";
 import { SearchField, SearchInput } from "@dariah-eric/ui/search-field";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@dariah-eric/ui/select";
 import { Tab, TabList, TabPanel, Tabs } from "@dariah-eric/ui/tabs";
 import { TextField } from "@dariah-eric/ui/text-field";
 import { ToggleGroup, ToggleGroupItem } from "@dariah-eric/ui/toggle-group";
-import { ListBulletIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ListBulletIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
 import cn from "clsx/lite";
 import { useExtracted } from "next-intl";
 import {
@@ -34,23 +36,53 @@ import {
 import { FileTrigger, type Selection } from "react-aria-components";
 
 import { AssetPreview } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-preview";
+import { CaptionField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/caption-field";
 import type { MediaLibraryAsset } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-asset";
+import {
+	EditAssetMetadataDialog,
+	type SavedAssetMetadata,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog";
 import { uploadImageAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/upload-image.action";
 import { imageMimeTypes, imageSizeLimit, mediaLibraryPageSize } from "@/config/assets.config";
+import { formatDimensions } from "@/lib/format-dimensions";
 import { formatFileSize } from "@/lib/format-file-size";
 
 interface MediaLibraryDialogProps<T extends AssetPrefix> {
 	acceptedFileTypes?: ReadonlyArray<string>;
 	initialAssets: Array<MediaLibraryAsset>;
-	onSelect: (key: string, url: string) => void;
+	onSelect: (key: string, url: string, asset?: MediaLibraryAsset) => void;
 	defaultPrefix: T;
 	prefixes: ReadonlyArray<T>;
+	/**
+	 * Renders its own trigger when given one. Callers that open the dialog from a menu pass
+	 * `isOpen`/`onOpenChange` instead: a trigger nested in a menu is unmounted by the menu closing,
+	 * before the dialog it opens ever appears.
+	 */
 	trigger?: ComponentType<{ open: () => void }>;
+	triggerLabel?: string;
+	/**
+	 * The asset the dialog opens on, when it was opened to replace one. Only honoured if the key is
+	 * on the first page of the default prefix — see the open effect.
+	 */
+	selectedKey?: string | null;
+	isOpen?: boolean;
+	onOpenChange?: (isOpen: boolean) => void;
 }
 
 type ActiveTab = "select" | "upload";
 
 type AssetsLayout = "grid" | "list";
+
+function EditMetadataTrigger(props: Readonly<{ open: () => void }>): ReactNode {
+	const { open } = props;
+	const t = useExtracted();
+
+	return (
+		<Button intent="outline" onPress={open}>
+			{t("Edit metadata")}
+		</Button>
+	);
+}
 
 interface LicenseOption {
 	id: string;
@@ -68,11 +100,23 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 		onSelect,
 		prefixes,
 		trigger,
+		triggerLabel,
+		selectedKey,
+		isOpen: controlledIsOpen,
+		onOpenChange,
 	} = props;
 
 	const t = useExtracted();
+	const acceptsNonImageFiles = acceptedFileTypes.some((mimeType) => !mimeType.startsWith("image/"));
 
-	const [isOpen, setIsOpen] = useState(false);
+	const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
+	const isOpen = controlledIsOpen ?? uncontrolledIsOpen;
+
+	function setIsOpen(next: boolean) {
+		setUncontrolledIsOpen(next);
+		onOpenChange?.(next);
+	}
+
 	const [activeTab, setActiveTab] = useState<ActiveTab>("select");
 
 	// Select tab state
@@ -132,8 +176,25 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 		uploadFormRef.current?.reset();
 	}
 
-	function handleOpen() {
-		setIsOpen(true);
+	/**
+	 * Everything the dialog needs on its way open: a freshly fetched first page rather than the
+	 * `initialAssets` the last render happened to leave behind, and a selection that starts on
+	 * `selectedKey` where the caller named one — opening on nothing would make "change this" look
+	 * like "pick from scratch", and hide which asset is about to be replaced.
+	 *
+	 * The selection is applied once the page has arrived, because the asset behind the key is only
+	 * known from the fetched rows. A key that is not on the first page (an older document, one the
+	 * caller reached by searching) simply stays unselected; the author searches for its replacement
+	 * as they would anyway.
+	 *
+	 * Driven by an effect rather than by the trigger's click handler, because a controlled caller
+	 * opens the dialog by flipping `isOpen` and never goes through a trigger at all.
+	 */
+	useEffect(() => {
+		if (!isOpen) {
+			return;
+		}
+
 		setActiveTab("select");
 		setSelectedPrefix(defaultPrefix);
 		setOffset(0);
@@ -148,7 +209,19 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 			]);
 			setDisplayedAssets(items);
 			setLicenseOptions(licenses);
+
+			const preselected =
+				selectedKey != null ? items.find((item) => item.key === selectedKey) : undefined;
+			if (preselected != null) {
+				setSelectedKeys(new Set([preselected.key]));
+				setSelectedAsset(preselected);
+			}
 		});
+		// oxlint-disable-next-line react-hooks/exhaustive-deps -- runs on the transition into open only.
+	}, [isOpen]);
+
+	function handleOpen() {
+		setIsOpen(true);
 	}
 
 	function handleOpenChange(open: boolean) {
@@ -243,9 +316,13 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 			setPendingFile(null);
 			setPendingFileUrl(null);
 			setUploadError(
-				t("The selected image is too large. Choose an image smaller than {size}.", {
-					size: formatFileSize(imageSizeLimit),
-				}),
+				acceptsNonImageFiles
+					? t("The selected file is too large. Choose a file smaller than {size}.", {
+							size: formatFileSize(imageSizeLimit),
+						})
+					: t("The selected image is too large. Choose an image smaller than {size}.", {
+							size: formatFileSize(imageSizeLimit),
+						}),
 			);
 			return;
 		}
@@ -253,6 +330,17 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 		setPendingFile(file);
 		setPendingFileUrl(file != null ? URL.createObjectURL(file) : null);
 		setUploadError(null);
+	}
+
+	/** Labels a license id from the options this dialog already loaded, for the selection callback. */
+	function resolveLicense(licenseId: string | null | undefined) {
+		if (licenseId == null || licenseId === "" || licenseId === "none") {
+			return null;
+		}
+
+		const license = licenseOptions.find((option) => option.id === licenseId);
+
+		return license != null ? { code: license.code, name: license.name } : null;
 	}
 
 	function handleUploadAction(formData: FormData) {
@@ -264,7 +352,17 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 			const result = await uploadImageAction(createActionStateInitial(), formData);
 
 			if (result.status === "success") {
-				onSelect(result.data.key, result.data.url);
+				// The upload action returns no label; `uploadAsset` stores `label ?? file.name`, so the
+				// label typed into the form - or the filename - is what was stored.
+				const submittedLabel = formData.get("label");
+				const label = isNonEmptyString(submittedLabel)
+					? submittedLabel.trim() || pendingFile.name
+					: pendingFile.name;
+				onSelect(result.data.key, result.data.url, {
+					...result.data,
+					label,
+					license: resolveLicense(result.data.licenseId),
+				});
 				resetUploadTab();
 				setIsOpen(false);
 			}
@@ -275,31 +373,52 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 		if (selectedAsset == null) {
 			return;
 		}
-		onSelect(selectedAsset.key, selectedAsset.url);
+		onSelect(selectedAsset.key, selectedAsset.url, {
+			...selectedAsset,
+			license: resolveLicense(selectedAsset.licenseId),
+		});
 		resetUploadTab();
 		setIsOpen(false);
 	}
 
+	function handleMetadataSaved(saved: SavedAssetMetadata) {
+		if (selectedAsset == null) {
+			return;
+		}
+
+		const updatedAsset = { ...selectedAsset, ...saved };
+		setSelectedAsset(updatedAsset);
+		setDisplayedAssets((assets) =>
+			assets.map((asset) => (asset.key === updatedAsset.key ? updatedAsset : asset)),
+		);
+	}
+
 	const isPending = isUploading || isFetching;
 	const Trigger = trigger;
+	const licensesById = new Map(licenseOptions.map((license) => [license.id, license]));
 
 	return (
 		<Fragment>
-			{Trigger != null ? (
-				<Trigger open={handleOpen} />
-			) : (
+			{Trigger != null ? <Trigger open={handleOpen} /> : null}
+			{/* A controlled caller opens the dialog from somewhere the dialog cannot live — a menu item —
+			    so it wants no trigger of its own, not the default one. */}
+			{Trigger == null && controlledIsOpen == null ? (
 				<Button intent="outline" onPress={handleOpen}>
-					{t("Select image")}
+					{triggerLabel ?? t("Select image")}
 				</Button>
-			)}
+			) : null}
 
 			<ModalContent isOpen={isOpen} onOpenChange={handleOpenChange} size="3xl">
 				<ModalHeader
-					description={t("Select an existing image or upload a new one.")}
+					description={
+						acceptsNonImageFiles
+							? t("Select an existing file or upload a new one.")
+							: t("Select an existing image or upload a new one.")
+					}
 					title={t("Media library")}
 				/>
 
-				<ModalBody className="flex block-128 flex-col">
+				<ModalBody className="flex flex-col block-128">
 					<Tabs
 						className="flex flex-1 flex-col min-block-0"
 						onSelectionChange={(key) => {
@@ -358,7 +477,7 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 
 							{displayedAssets.length === 0 && !isPending ? (
 								<div className="flex flex-1 items-center justify-center">
-									<p className="text-center text-muted-fg text-sm">
+									<p className="text-center text-sm text-muted-fg">
 										{appliedQ
 											? t("No assets found for your search.")
 											: t("No assets found. Upload one to get started.")}
@@ -366,6 +485,17 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 								</div>
 							) : (
 								<div className="relative flex-1 overflow-y-auto">
+									{/*
+									    Both layouts render a `GridList` in the same place, so React keeps one instance
+									    across a switch — and a collection caches each row's markup against the item it
+									    was built from, which does not change when only the layout does. Naming the
+									    layout as a dependency invalidates that cache; without it the rows keep the
+									    markup of the layout that built them until the next fetch replaces the items,
+									    which is why paging or switching prefix "fixed" it. (In development the cache
+									    is keyed by the render function's source too, so this only shows in a build.)
+									    Anything else a row reads from outside its own asset belongs here for the same
+									    reason — the licences a row names are fetched separately from the assets.
+									*/}
 									{layout === "grid" ? (
 										<GridList
 											aria-label={t("Media library")}
@@ -373,6 +503,7 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 												"grid grid-cols-[repeat(auto-fill,minmax(min(8rem,100%),1fr))] gap-3",
 												isPending && "opacity-50",
 											)}
+											dependencies={[layout]}
 											items={displayedAssets}
 											layout="grid"
 											onSelectionChange={handleSelectionChange}
@@ -382,7 +513,7 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 										>
 											{(asset) => (
 												<GridListItem
-													className="flex flex-col gap-1 p-1 place-content-center"
+													className="flex flex-col place-content-center gap-1 p-1"
 													id={asset.key}
 													textValue={asset.label}
 												>
@@ -395,7 +526,7 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 														src={asset.url}
 														storageKey={asset.key}
 													/>
-													<span className="inline-24 truncate text-center text-xs text-muted-fg">
+													<span className="truncate text-center text-xs text-muted-fg inline-24">
 														{asset.label}
 													</span>
 												</GridListItem>
@@ -404,38 +535,83 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 									) : (
 										<GridList
 											aria-label={t("Media library")}
-											className={cn("flex flex-col gap-1.5", isPending && "opacity-50")}
+											className={cn("flex flex-col gap-2", isPending && "opacity-50")}
+											dependencies={[layout, licenseOptions]}
 											items={displayedAssets}
 											onSelectionChange={handleSelectionChange}
 											selectedKeys={selectedKeys}
 											selectionBehavior="replace"
 											selectionMode="single"
 										>
-											{(asset) => (
-												<GridListItem
-													className="flex flex-row items-center gap-3 p-1.5"
-													id={asset.key}
-													textValue={asset.label}
-												>
-													<AssetPreview
-														alt={asset.label}
-														className="block-12 inline-16 shrink-0"
-														imageClassName="rounded-sm object-contain"
-														kindLabelClassName="bg-background/90 text-xs"
-														mimeType={asset.mimeType}
-														src={asset.url}
-														storageKey={asset.key}
-													/>
-													<div className="flex min-inline-0 flex-1 flex-col gap-y-0.5">
-														<span className="truncate text-sm/tight font-medium">
-															{asset.label}
-														</span>
-														{asset.mimeType != null ? (
-															<span className="text-xs text-muted-fg">{asset.mimeType}</span>
-														) : null}
-													</div>
-												</GridListItem>
-											)}
+											{(asset) => {
+												const prefix = asset.key.split("/")[0] ?? "";
+												const license =
+													asset.licenseId != null ? licensesById.get(asset.licenseId) : undefined;
+												const dimensions = formatDimensions(asset.width, asset.height);
+												return (
+													<GridListItem className="p-2.5" id={asset.key} textValue={asset.label}>
+														{/* React Aria wraps a row's children in one grid cell, so the columns are
+														    laid out inside that cell: flexing the row itself only arranges the
+														    single cell and leaves thumbnail and metadata stacked. */}
+														<div className="flex flex-row items-start gap-3 inline-full">
+															<div className="shrink-0 overflow-hidden rounded-md bg-muted block-16 inline-24">
+																<AssetPreview
+																	alt={asset.alt ?? asset.label}
+																	className="block-full inline-full"
+																	imageClassName="object-contain"
+																	kindLabelClassName="bg-background/90 text-xs"
+																	mimeType={asset.mimeType}
+																	src={asset.url}
+																	storageKey={asset.key}
+																/>
+															</div>
+															<div className="flex flex-1 flex-col gap-y-1 min-inline-0">
+																<div className="flex flex-row items-baseline gap-x-2">
+																	<span className="truncate text-sm/tight font-medium">
+																		{asset.label}
+																	</span>
+																	{prefix !== "" ? (
+																		<span className="shrink-0 text-xs text-muted-fg">{prefix}</span>
+																	) : null}
+																</div>
+																{asset.alt != null && asset.alt !== "" ? (
+																	<span className="line-clamp-1 text-xs text-muted-fg">
+																		<span className="font-medium">{t("Alt text")}:</span>{" "}
+																		{asset.alt}
+																	</span>
+																) : null}
+																{asset.caption != null && toPlainText(asset.caption) !== "" ? (
+																	<span className="line-clamp-2 text-xs text-muted-fg">
+																		<span className="font-medium">{t("Caption")}:</span>{" "}
+																		{toPlainText(asset.caption)}
+																	</span>
+																) : null}
+																<div className="flex flex-row flex-wrap items-center gap-x-1.5 text-xs text-muted-fg">
+																	{license != null ? (
+																		<Fragment>
+																			<span>{license.code}</span>
+																			<span aria-hidden={true}>{"·"}</span>
+																		</Fragment>
+																	) : null}
+																	{asset.mimeType != null ? <span>{asset.mimeType}</span> : null}
+																	{dimensions != null ? (
+																		<Fragment>
+																			<span aria-hidden={true}>{"·"}</span>
+																			<span>{dimensions}</span>
+																		</Fragment>
+																	) : null}
+																	{asset.size != null ? (
+																		<Fragment>
+																			<span aria-hidden={true}>{"·"}</span>
+																			<span>{formatFileSize(asset.size)}</span>
+																		</Fragment>
+																	) : null}
+																</div>
+															</div>
+														</div>
+													</GridListItem>
+												);
+											}}
 										</GridList>
 									)}
 
@@ -473,21 +649,24 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 											</Button>
 										</FileTrigger>
 
-										{pendingFileUrl != null ? (
-											<img
-												alt={t("Preview")}
-												className="block-24 inline-auto max-inline-full rounded-sm"
+										{pendingFileUrl != null && pendingFile != null ? (
+											<AssetPreview
+												alt={pendingFile.name}
+												className="rounded-sm block-24 inline-24"
+												imageClassName="object-contain"
+												mimeType={pendingFile.type}
 												src={pendingFileUrl}
+												storageKey={pendingFile.name}
 											/>
 										) : null}
 									</div>
 
 									{pendingFile != null ? (
-										<p className="text-muted-fg text-sm">{pendingFile.name}</p>
+										<p className="text-sm text-muted-fg">{pendingFile.name}</p>
 									) : null}
 
 									{uploadError != null ? (
-										<p className="text-danger text-sm" role="alert">
+										<p className="text-sm text-danger" role="alert">
 											{uploadError}
 										</p>
 									) : null}
@@ -502,10 +681,7 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 										<Input />
 									</TextField>
 
-									<TextField name="caption">
-										<Label>{t("Caption")}</Label>
-										<Input />
-									</TextField>
+									<CaptionField name="caption" />
 
 									<Select defaultValue="none" name="licenseId">
 										<Label>{t("License")}</Label>
@@ -529,9 +705,42 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 					<ModalClose>{t("Cancel")}</ModalClose>
 
 					{activeTab === "select" ? (
-						<Button isDisabled={selectedAsset == null} onPress={handleConfirm}>
-							{t("Select")}
-						</Button>
+						<Fragment>
+							{selectedAsset != null ? (
+								<a
+									className={buttonStyles({ intent: "outline" })}
+									download={true}
+									href={`/api/assets/download?key=${encodeURIComponent(selectedAsset.key)}`}
+								>
+									<ArrowDownTrayIcon aria-hidden={true} className="block-4 inline-4" />
+									{t("Download original")}
+								</a>
+							) : null}
+
+							{selectedAsset?.id != null ? (
+								<EditAssetMetadataDialog
+									asset={{
+										id: selectedAsset.id,
+										key: selectedAsset.key,
+										label: selectedAsset.label,
+										alt: selectedAsset.alt ?? null,
+										caption: selectedAsset.caption ?? null,
+										licenseId: selectedAsset.licenseId ?? null,
+										mimeType: selectedAsset.mimeType ?? "",
+										width: selectedAsset.width,
+										height: selectedAsset.height,
+										url: selectedAsset.url,
+									}}
+									licenses={licenseOptions}
+									onSuccess={handleMetadataSaved}
+									trigger={EditMetadataTrigger}
+								/>
+							) : null}
+
+							<Button isDisabled={selectedAsset == null} onPress={handleConfirm}>
+								{t("Select")}
+							</Button>
+						</Fragment>
 					) : (
 						<Button
 							form="upload-form"

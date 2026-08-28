@@ -25,5 +25,5 @@ export default async function DashboardReportingCountryReportsPage(): Promise<Re
 
 	const reports = await getUserAllCountryReports(user);
 
-	return <CountryReportsListPage reports={reports} />;
+	return <CountryReportsListPage isAdmin={user.role === "admin"} reports={reports} />;
 }

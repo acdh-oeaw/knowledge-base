@@ -39,7 +39,7 @@ export const Default: Story = {
 						{slides.map((slide) => (
 							<CarouselItem key={slide.id}>
 								<div
-									className={`flex block-40 items-center justify-center rounded-xl ${slide.bg} text-sm font-medium`}
+									className={`flex items-center justify-center rounded-xl block-40 ${slide.bg} text-sm font-medium`}
 								>
 									{slide.label}
 								</div>
@@ -66,7 +66,7 @@ export const MultipleVisible: Story = {
 						{slides.map((slide) => (
 							<CarouselItem key={slide.id} className="basis-1/2">
 								<div
-									className={`flex block-32 items-center justify-center rounded-xl ${slide.bg} text-sm font-medium`}
+									className={`flex items-center justify-center rounded-xl block-32 ${slide.bg} text-sm font-medium`}
 								>
 									{slide.label}
 								</div>

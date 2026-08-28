@@ -24,6 +24,7 @@ export const resourcesCollection = defineCollection({
 		{ name: "description", type: "string", index: true },
 		{ name: "keywords", type: "string[]", index: true, facet: true },
 		{ name: "kind", type: "string", index: false, optional: true },
+		{ name: "source_url", type: "string", index: false, optional: true },
 		{ name: "links", type: "string[]", index: false },
 		{ name: "authors", type: "string[]", index: false, optional: true },
 		{ name: "year", type: "int32", index: true, facet: true, optional: true },
@@ -31,7 +32,15 @@ export const resourcesCollection = defineCollection({
 	] as const,
 });
 
-export const resourceSources = ["ssh-open-marketplace", "zenodo", "zotero"] as const;
+export const resourceSources = [
+	"dariah-campus",
+	"episciences",
+	"hal",
+	"open-aire",
+	"ssh-open-marketplace",
+	"zenodo",
+	"zotero",
+] as const;
 export type ResourceSource = (typeof resourceSources)[number];
 
 export const resourceTypes = [
@@ -49,12 +58,14 @@ export type ResourceServiceKind = (typeof resourceServiceKinds)[number];
 interface ResourceDocumentBase extends CollectionDocument<typeof resourcesCollection> {
 	type: ResourceType;
 	source: ResourceSource;
+	/** Link to the resource's details page on the ingest source (e.g. its sshoc or zenodo page). */
+	source_url: string | null;
 }
 
 export interface PublicationResourceDocument extends ResourceDocumentBase {
 	type: "publication";
 	kind: string | null;
-	source: "zenodo" | "zotero";
+	source: "episciences" | "hal" | "open-aire" | "zenodo" | "zotero";
 	national_consortia: Array<string>;
 	working_groups: Array<string>;
 	institutions: Array<string>;
@@ -93,7 +104,7 @@ export interface SoftwareResourceDocument extends ResourceDocumentBase {
 export interface TrainingMaterialResourceDocument extends ResourceDocumentBase {
 	type: "training-material";
 	kind: null;
-	source: "ssh-open-marketplace";
+	source: "dariah-campus" | "ssh-open-marketplace";
 	national_consortia: Array<string>;
 	working_groups: Array<string>;
 	institutions: Array<string>;

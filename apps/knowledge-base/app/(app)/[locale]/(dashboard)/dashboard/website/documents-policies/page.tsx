@@ -7,6 +7,7 @@ import { DocumentsPoliciesPage } from "@/app/(app)/[locale]/(dashboard)/dashboar
 import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { latestEditableEntityVersionWhere } from "@/lib/data/current-entity-version";
+import { toSelectedImage } from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
 import { asc, eq, sql } from "@/lib/db/sql";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -81,10 +82,21 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 				isPublished: sql<boolean>`EXISTS (
 					SELECT 1 FROM "entity_versions" AS "published_versions"
 					INNER JOIN "entity_status" AS "published_status" ON "published_versions"."status_id" = "published_status"."id"
-					WHERE "published_versions"."entity_id" = ${schema.entityVersions.entityId}
+					WHERE "published_versions"."entity_id" = ${schema.entities.id}
 					AND "published_status"."type" = 'published'
 				)`,
-				document: { key: schema.assets.key, label: schema.assets.label },
+				document: {
+					id: schema.assets.id,
+					key: schema.assets.key,
+					label: schema.assets.label,
+					alt: schema.assets.alt,
+					caption: schema.assets.caption,
+					licenseId: schema.assets.licenseId,
+					mimeType: schema.assets.mimeType,
+					size: schema.assets.size,
+					width: schema.assets.width,
+					height: schema.assets.height,
+				},
 			})
 			.from(schema.documentsPolicies)
 			.innerJoin(schema.entityVersions, eq(schema.documentsPolicies.id, schema.entityVersions.id))
@@ -96,8 +108,12 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "documents" }),
 	]);
 
-	const documentsShaped = documents.map(({ slug, entityId, ...rest }) => {
-		return { ...rest, entityVersion: { entity: { id: entityId }, slug: { value: slug } } };
+	const documentsShaped = documents.map(({ slug, entityId, document, ...rest }) => {
+		return {
+			...rest,
+			document: toSelectedImage(document, imageGridOptions),
+			entityVersion: { entity: { id: entityId }, slug: { value: slug } },
+		};
 	});
 	const groupsWithDocuments = groups.map((group) => {
 		return {

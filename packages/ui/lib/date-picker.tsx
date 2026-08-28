@@ -53,8 +53,10 @@ export interface DatePickerOverlayProps extends Omit<PopoverProps, "children"> {
 	pageBehavior?: "visible" | "single";
 }
 
+const defaultVisibleDuration = { months: 1 };
+
 export function DatePickerOverlay({
-	visibleDuration = { months: 1 },
+	visibleDuration = defaultVisibleDuration,
 	pageBehavior = "visible",
 	placement = "bottom",
 	range,
@@ -77,7 +79,7 @@ export function DatePickerOverlay({
 		<PopoverContent
 			arrow={false}
 			className={twJoin(
-				"flex min-inline-auto max-inline-none snap-x justify-center p-4 sm:min-inline-66 sm:p-2 sm:pbs-3",
+				"flex snap-x justify-center p-4 max-inline-none min-inline-auto sm:p-2 sm:pbs-3 sm:min-inline-66",
 				visibleDuration.months === 1 ? "sm:max-inline-2xs" : "sm:max-inline-none",
 			)}
 			placement={placement}
@@ -102,7 +104,7 @@ export function DatePickerTrigger({ className, ...props }: Readonly<GroupProps>)
 				aria-label={t("Open calendar")}
 				className={twJoin(
 					"touch-area grid place-content-center outline-hidden",
-					"text-muted-fg pressed:text-fg hover:text-fg focus-visible:text-fg",
+					"text-muted-fg hover:text-fg focus-visible:text-fg pressed:text-fg",
 					"px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6",
 					"*:data-[slot=icon]:block-4.5 *:data-[slot=icon]:inline-4.5 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4",
 				)}

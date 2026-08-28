@@ -10,12 +10,18 @@ import { discardPersonDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashb
 import { publishPersonAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_lib/publish-person.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getPersonArticles } from "@/lib/data/article-contributors";
 import { getPersonContributions } from "@/lib/data/contributions";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
+import { getPersonSocialMedia } from "@/lib/data/person-social-media";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorPersonDetailsPageProps extends PageProps<"/[locale]/dashboard/administrator/persons/[slug]/details"> {}
@@ -43,7 +49,7 @@ export default async function DashboardAdministratorPersonDetailsPage(
 	const t = await getExtracted();
 	await assertAuthenticated();
 
-	const anyVersion = await db.query.persons.findFirst({
+	const anyVersion = await db.query.organisationalUnits.findFirst({
 		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {
@@ -102,6 +108,8 @@ export default async function DashboardAdministratorPersonDetailsPage(
 	const person = await db.query.persons.findFirst({
 		where: { id: versionId },
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			email: true,
 			name: true,
@@ -131,10 +139,8 @@ export default async function DashboardAdministratorPersonDetailsPage(
 				},
 			},
 			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -149,40 +155,25 @@ export default async function DashboardAdministratorPersonDetailsPage(
 	);
 	const entityVersionSlug = person.entityVersion.slug;
 
-	const [contributions, biographyContentBlocks, socialMediaLinks] = await Promise.all([
+	const [contributions, articles, biographyContentBlocks, socialMedia] = await Promise.all([
 		getPersonContributions(documentId, displayLocaleId),
-		getEntityContentBlocks(versionId, "biography"),
-		db.query.personsToSocialMedia.findMany({
-			where: { personId: person.id },
-			columns: {},
-			with: {
-				socialMedia: {
-					columns: { id: true, name: true, url: true },
-					with: { type: { columns: { type: true } } },
-				},
-			},
-		}),
+		getPersonArticles(documentId, displayLocaleId),
+		getResolvedEntityContentBlocks(versionId, "biography"),
+		getPersonSocialMedia(db, versionId),
 	]);
 
-	const image =
-		person.image != null
-			? {
-					...person.image,
-					url: images.generateSignedImageUrl({
-						key: person.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
-			: null;
+	const image = person.image != null ? toSelectedImage(person.image, imageGridOptions) : null;
 
 	return (
 		<PersonDetails
+			articles={articles}
 			contributions={contributions}
 			discardDraftAction={discardPersonDraftAction}
 			documentId={documentId}
 			hasDraft={hasDraftChanges}
 			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}
+			socialMedia={socialMedia}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
 			person={{
@@ -190,7 +181,6 @@ export default async function DashboardAdministratorPersonDetailsPage(
 				entityVersion: { ...person.entityVersion, slug: entityVersionSlug },
 				biographyContentBlocks,
 				image,
-				socialMedia: socialMediaLinks.map((link) => link.socialMedia),
 			}}
 			publishAction={publishPersonAction}
 			selectedVersion={selectedVersion}

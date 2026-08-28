@@ -10,6 +10,7 @@ import { Note } from "@dariah-eric/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-summary";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
@@ -17,6 +18,7 @@ import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 import type { PersonRelation } from "@/lib/data/person-relations";
 import type { UnitRelation } from "@/lib/data/unit-relations";
@@ -33,11 +35,11 @@ interface WorkingGroupDetailsProps {
 	selectedVersion: "draft" | "published";
 	workingGroup: Pick<
 		schema.OrganisationalUnit,
-		"acronym" | "id" | "name" | "sshocMarketplaceActorId" | "summary"
+		"acronym" | "email" | "id" | "mailingList" | "name" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	selectedRelatedEntities: Array<{
 		id: string;
 		name: string;
@@ -56,8 +58,11 @@ interface WorkingGroupDetailsProps {
 	}>;
 	personRelations: Array<PersonRelation>;
 	relations: Array<UnitRelation>;
-	publishAction: (documentId: string) => Promise<unknown>;
+	publishAction?: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
+	detailHref?: string;
+	editHref?: string | null;
+	enableAdminEntityLinks?: boolean;
 }
 
 export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): ReactNode {
@@ -77,9 +82,13 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 		selectedRelatedResources,
 		selectedSocialMediaItems,
 		selectedVersion,
+		enableAdminEntityLinks,
 	} = props;
 
 	const t = useExtracted();
+
+	const mailingListIsUrl =
+		workingGroup.mailingList != null && URL.canParse(workingGroup.mailingList);
 
 	return (
 		<Fragment>
@@ -129,7 +138,7 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 					{workingGroup.image != null ? (
 						<img
 							alt=""
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
+							className="rounded-lg object-contain block-24 inline-auto max-inline-full"
 							src={workingGroup.image.url}
 						/>
 					) : null}
@@ -142,6 +151,31 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 							key={selectedVersion}
 							contentBlocks={workingGroup.descriptionContentBlocks}
 						/>
+					) : null}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Email")}</DescriptionTerm>
+				<DescriptionDetails>
+					{workingGroup.email != null ? (
+						<a className="underline" href={`mailto:${workingGroup.email}`}>
+							{workingGroup.email}
+						</a>
+					) : null}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Mailing list")}</DescriptionTerm>
+				<DescriptionDetails>
+					{workingGroup.mailingList != null ? (
+						<a
+							className="underline"
+							href={
+								mailingListIsUrl ? workingGroup.mailingList : `mailto:${workingGroup.mailingList}`
+							}
+							rel={mailingListIsUrl ? "noreferrer" : undefined}
+							target={mailingListIsUrl ? "_blank" : undefined}
+						>
+							{workingGroup.mailingList}
+						</a>
 					) : null}
 				</DescriptionDetails>
 
@@ -183,16 +217,21 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 						<ul className="flex flex-col gap-1">
 							{selectedRelatedEntities.map((relatedEntity) => (
 								<li key={relatedEntity.id} className="text-sm">
-									<RelationLink
-										className="font-medium"
-										href={getEntityDetailHref({
-											entityType: relatedEntity.entityType,
-											slug: relatedEntity.slug,
-											unitType: relatedEntity.unitType,
-										})}
-									>
-										{relatedEntity.name}
-									</RelationLink>
+									{enableAdminEntityLinks ? (
+										<RelationLink
+											className="font-medium"
+											href={getEntityDetailHref({
+												entityType: relatedEntity.entityType,
+												slug: relatedEntity.slug,
+												unitType: relatedEntity.unitType,
+											})}
+										>
+											{relatedEntity.name}
+										</RelationLink>
+									) : (
+										<span className="font-medium">{relatedEntity.name}</span>
+									)}
+									<RelationTypeSuffix type={relatedEntity.description} />
 								</li>
 							))}
 						</ul>
@@ -206,6 +245,7 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 							{selectedRelatedResources.map((relatedResource) => (
 								<li key={relatedResource.id} className="text-sm">
 									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
 								</li>
 							))}
 						</ul>
@@ -220,10 +260,14 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 								<RelationStatement
 									key={relation.id}
 									source={relation.personName}
-									sourceHref={getEntityDetailHref({
-										entityType: "persons",
-										slug: relation.personSlug,
-									})}
+									sourceHref={
+										enableAdminEntityLinks
+											? getEntityDetailHref({
+													entityType: "persons",
+													slug: relation.personSlug,
+												})
+											: undefined
+									}
 									relation={formatRoleType(relation.roleType)}
 									target={workingGroup.name}
 									targetType={formatRoleType(relation.targetUnitType)}
@@ -249,10 +293,14 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 											{relation.relatedUnitIsLocaleFallback ? <LocaleFallbackMark /> : null}
 										</Fragment>
 									}
-									targetHref={getOrganisationalUnitDetailHref(
-										relation.relatedUnitType,
-										relation.relatedUnitSlug,
-									)}
+									targetHref={
+										enableAdminEntityLinks
+											? getOrganisationalUnitDetailHref(
+													relation.relatedUnitType,
+													relation.relatedUnitSlug,
+												)
+											: undefined
+									}
 									targetType={formatRoleType(relation.relatedUnitType)}
 									duration={relation.duration}
 								/>

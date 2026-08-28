@@ -16,10 +16,21 @@ import {
 } from "@/lib/data/entity-lifecycle";
 import { getLocales } from "@/lib/data/locales";
 import { projectsLifecycleAdapter } from "@/lib/data/projects.lifecycle-adapter";
+import {
+	getEntityRelationOptions,
+	getEntityRelationOptionsByIds,
+	getEntityRelations,
+	getResourceRelationOptions,
+	getResourceRelationOptionsByIds,
+} from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
 import { alias, eq } from "@/lib/db/sql";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorEditProjectPageProps extends PageProps<"/[locale]/dashboard/administrator/projects/[slug]/edit"> {}
@@ -126,10 +137,8 @@ export default async function DashboardAdministratorEditProjectPage(
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-						label: true,
-					},
+					columns: selectedImageColumns,
+					with: selectedImageWith,
 				},
 				scope: {
 					columns: {
@@ -157,8 +166,10 @@ export default async function DashboardAdministratorEditProjectPage(
 		roles,
 		initialSocialMedia,
 		existingPartners,
-		existingPersons,
 		existingSocialMedia,
+		initialRelatedEntities,
+		initialRelatedResources,
+		relations,
 	] = await Promise.all([
 		getEntityContentBlocks(project.id, "description"),
 		db.query.projectScopes.findMany({
@@ -196,30 +207,19 @@ export default async function DashboardAdministratorEditProjectPage(
 				)
 				.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, documentId));
 		})(),
-		(() => {
-			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
-			return db
-				.select({
-					id: schema.projectsToPersons.id,
-					personDocumentId: schema.projectsToPersons.personDocumentId,
-					personName: schema.persons.name,
-					roleId: schema.projectsToPersons.roleId,
-					roleName: schema.projectRoles.role,
-					duration: schema.projectsToPersons.duration,
-				})
-				.from(schema.projectsToPersons)
-				.innerJoin(
-					personDocumentLifecycle,
-					eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
-				)
-				.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
-				.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
-				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
-		})(),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
+		getEntityRelationOptions(),
+		getResourceRelationOptions(),
+		getEntityRelations(documentId),
+	]);
+
+	const [selectedRelatedEntities, selectedRelatedResources] = await Promise.all([
+		getEntityRelationOptionsByIds(relations.relatedEntityIds),
+		getResourceRelationOptionsByIds(relations.relatedResourceIds),
 	]);
 
 	const initialPartners = existingPartners.map((partner) => {
@@ -234,32 +234,11 @@ export default async function DashboardAdministratorEditProjectPage(
 		};
 	});
 
-	const initialPersons = existingPersons.map((person) => {
-		return {
-			id: person.id,
-			personDocumentId: person.personDocumentId,
-			personName: person.personName,
-			roleId: person.roleId,
-			roleName: person.roleName,
-			durationStart: person.duration?.start ?? null,
-			durationEnd: person.duration?.end ?? null,
-		};
-	});
-
 	const initialSocialMediaIds = existingSocialMedia.map((row) => row.socialMediaId);
 
 	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
 
-	const image =
-		project.image != null
-			? {
-					...project.image,
-					url: images.generateSignedImageUrl({
-						key: project.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
-			: null;
+	const image = project.image != null ? toSelectedImage(project.image, imageGridOptions) : null;
 
 	return (
 		<ProjectEditForm
@@ -267,12 +246,7 @@ export default async function DashboardAdministratorEditProjectPage(
 			hasDraftChanges={hasDraftChanges}
 			initialAssets={initialAssets}
 			initialPartners={initialPartners}
-			initialPersons={initialPersons}
-			initialSocialMediaIds={initialSocialMediaIds}
-			initialSocialMediaItems={initialSocialMedia.items}
-			initialSocialMediaTotal={initialSocialMedia.total}
 			isDefaultLocale={selectedLocale.isDefault}
-			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
 			project={{
@@ -281,8 +255,20 @@ export default async function DashboardAdministratorEditProjectPage(
 				descriptionContentBlocks,
 				image,
 			}}
+			initialRelatedEntityIds={relations.relatedEntityIds}
+			initialRelatedEntityItems={initialRelatedEntities.items}
+			initialRelatedEntityTotal={initialRelatedEntities.total}
+			initialRelatedResourceIds={relations.relatedResourceIds}
+			initialRelatedResourceItems={initialRelatedResources.items}
+			initialRelatedResourceTotal={initialRelatedResources.total}
+			initialSocialMediaIds={initialSocialMediaIds}
+			initialSocialMediaItems={initialSocialMedia.items}
+			initialSocialMediaTotal={initialSocialMedia.total}
+			isPublished={publishedId != null}
 			roles={roles}
 			scopes={scopes}
+			selectedRelatedEntities={selectedRelatedEntities}
+			selectedRelatedResources={selectedRelatedResources}
 			selectedSocialMediaItems={selectedSocialMediaItems}
 		/>
 	);

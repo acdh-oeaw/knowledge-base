@@ -6,21 +6,14 @@ import {
 	ImageSchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
+	PersonPositionsSchema,
 	RelatedEntitiesSchema,
 	RelatedResourcesSchema,
 } from "@/lib/schemas";
 
 const GovernanceBodyPersonSchema = v.object({
 	...v.pick(schema.PersonSelectSchema, ["id", "name", "sortName", "email", "orcid"]).entries,
-	position: v.nullable(
-		v.array(
-			v.object({
-				role: v.picklist(schema.personRoleTypesEnum),
-				name: v.string(),
-				type: v.picklist(schema.organisationalUnitTypesEnum),
-			}),
-		),
-	),
+	positions: PersonPositionsSchema,
 	image: v.nullable(ImageSchema),
 	slug: v.string(),
 	role: v.picklist(schema.personRoleTypesEnum),
@@ -28,6 +21,7 @@ const GovernanceBodyPersonSchema = v.object({
 		start: v.string(),
 		end: v.nullable(v.string()),
 	}),
+	description: v.nullable(v.string()),
 });
 
 export const GovernanceBodyBaseSchema = v.pipe(

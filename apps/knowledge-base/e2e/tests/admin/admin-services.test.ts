@@ -190,7 +190,7 @@ test.describe("services admin", () => {
 		});
 	});
 
-	test("should delete a service", async ({ createAdminServicesPage }) => {
+	test("should delete a service", async ({ createAdminServicesPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const servicesPage = createAdminServicesPage(workerIndex);
 
@@ -204,10 +204,18 @@ test.describe("services admin", () => {
 		await servicesPage.searchByName(name);
 		await expect(servicesPage.rowByName(name)).toBeVisible();
 
+		expect(await db.getServiceByName(name)).not.toBeNull();
+
 		const deleteDialog = await servicesPage.openDeleteDialog(name);
 		await expect(deleteDialog).toBeVisible();
 		await servicesPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(servicesPage.rowByName(name)).toBeHidden();
+
+		// Source of truth: services are not entity documents, so the row itself must be gone.
+		expect(await db.getServiceByName(name)).toBeNull();
 	});
 });

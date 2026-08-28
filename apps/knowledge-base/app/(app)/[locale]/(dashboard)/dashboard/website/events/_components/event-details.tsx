@@ -10,10 +10,13 @@ import { Note } from "@dariah-eric/ui/note";
 import { useExtracted, useFormatter } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-summary";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { FeaturedImageDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/featured-image-details";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 
 interface EventDetailsProps {
@@ -25,9 +28,20 @@ interface EventDetailsProps {
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
 	selectedVersion: "draft" | "published";
-	event: Pick<schema.Event, "id" | "duration" | "location" | "title" | "summary" | "website"> & {
+	event: Pick<
+		schema.Event,
+		| "id"
+		| "duration"
+		| "isFullDay"
+		| "location"
+		| "title"
+		| "summary"
+		| "website"
+		| "imageCaption"
+		| "imageCaptionMode"
+	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } };
+	} & { image: SelectedImage };
 	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
 	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
 	publishAction: (documentId: string) => Promise<unknown>;
@@ -93,11 +107,16 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 
 				<DescriptionTerm>{t("Duration")}</DescriptionTerm>
 				<DescriptionDetails>
-					{event.duration.end
-						? format.dateTimeRange(event.duration.start, event.duration.end, {
-								dateStyle: "short",
-							})
-						: format.dateTime(event.duration.start, { dateStyle: "short" })}
+					{(() => {
+						// Timed events render the time-of-day; all-day events are date-only (their stored
+						// time is UTC midnight and carries no meaning).
+						const options = event.isFullDay
+							? ({ dateStyle: "short" } as const)
+							: ({ dateStyle: "short", timeStyle: "short" } as const);
+						return event.duration.end
+							? format.dateTimeRange(event.duration.start, event.duration.end, options)
+							: format.dateTime(event.duration.start, options);
+					})()}
 				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Location")}</DescriptionTerm>
@@ -106,18 +125,18 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 				<DescriptionTerm>{t("Website")}</DescriptionTerm>
 				<DescriptionDetails>{event.website}</DescriptionDetails>
 
+				<DescriptionTerm>{t("Image")}</DescriptionTerm>
+				<DescriptionDetails>
+					<FeaturedImageDetails
+						image={event.image}
+						imageCaption={event.imageCaption}
+						imageCaptionMode={event.imageCaptionMode}
+					/>
+				</DescriptionDetails>
+
 				<DescriptionTerm>{t("Content")}</DescriptionTerm>
 				<DescriptionDetails>
 					<ContentBlocksView contentBlocks={contentBlocks} />
-				</DescriptionDetails>
-
-				<DescriptionTerm>{t("Image")}</DescriptionTerm>
-				<DescriptionDetails>
-					<img
-						alt=""
-						className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-						src={event.image.url}
-					/>
 				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Related entities")}</DescriptionTerm>
@@ -127,6 +146,7 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 							{selectedRelatedEntities.map((relatedEntity) => (
 								<li key={relatedEntity.id} className="text-sm">
 									<span className="font-medium">{relatedEntity.name}</span>
+									<RelationTypeSuffix type={relatedEntity.description} />
 								</li>
 							))}
 						</ul>
@@ -140,6 +160,7 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 							{selectedRelatedResources.map((relatedResource) => (
 								<li key={relatedResource.id} className="text-sm">
 									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
 								</li>
 							))}
 						</ul>

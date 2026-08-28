@@ -4,10 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { WorkingGroupReportQuestionsScreen } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_components/screens/working-group-report-questions-screen";
-import {
-	getWorkingGroupReportEditHref,
-	resolveWorkingGroupReportId,
-} from "@/lib/data/reporting-urls";
+import { resolveWorkingGroupReportId } from "@/lib/data/reporting-urls";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardReportingWorkingGroupReportQuestionsPageProps extends PageProps<"/[locale]/dashboard/reporting/working-group-reports/[year]/[slug]/edit/questions"> {}
@@ -35,10 +32,5 @@ export default async function DashboardReportingWorkingGroupReportQuestionsPage(
 		notFound();
 	}
 
-	return (
-		<WorkingGroupReportQuestionsScreen
-			basePath={getWorkingGroupReportEditHref(Number(routeYear), slug)}
-			reportId={id}
-		/>
-	);
+	return <WorkingGroupReportQuestionsScreen reportId={id} />;
 }

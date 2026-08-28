@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { InternalPageDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-pages/_components/internal-page-details";
 import { discardInternalPageDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-pages/_lib/discard-internal-page-draft.action";
 import { publishInternalPageAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-pages/_lib/publish-internal-page.action";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -113,7 +113,7 @@ export default async function DashboardAdministratorInternalPageDetailsPage(
 	);
 	const entityVersionSlug = internalPage.entityVersion.slug;
 
-	const contentBlocks = await getEntityContentBlocks(internalPage.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(internalPage.id, "content");
 	const hasPublishableDraft = draftId != null && (publishedId == null || hasDraftChanges);
 
 	return (

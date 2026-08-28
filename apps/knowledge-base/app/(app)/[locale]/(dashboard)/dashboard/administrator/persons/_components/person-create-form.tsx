@@ -11,13 +11,10 @@ import { createPersonAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/a
 interface PersonCreateFormProps {
 	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
-	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
-	initialSocialMediaTotal: number;
 }
 
 export function PersonCreateForm(props: Readonly<PersonCreateFormProps>): ReactNode {
-	const { defaultLocaleName, initialAssets, initialSocialMediaItems, initialSocialMediaTotal } =
-		props;
+	const { defaultLocaleName, initialAssets } = props;
 
 	const t = useExtracted();
 
@@ -32,12 +29,7 @@ export function PersonCreateForm(props: Readonly<PersonCreateFormProps>): ReactN
 				)}
 			</Note>
 
-			<PersonForm
-				formAction={createPersonAction}
-				initialAssets={initialAssets}
-				initialSocialMediaItems={initialSocialMediaItems}
-				initialSocialMediaTotal={initialSocialMediaTotal}
-			/>
+			<PersonForm formAction={createPersonAction} initialAssets={initialAssets} />
 		</Fragment>
 	);
 }

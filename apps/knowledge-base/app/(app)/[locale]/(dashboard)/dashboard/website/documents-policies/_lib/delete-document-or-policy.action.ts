@@ -7,6 +7,7 @@ import { after } from "next/server";
 
 import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAdmin } from "@/lib/auth/session";
+import { resolveAuditSubjectLabel } from "@/lib/data/audit-log";
 import { documentsPoliciesLifecycleAdapter } from "@/lib/data/documents-policies.lifecycle-adapter";
 import { getDocumentVersions } from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
@@ -19,6 +20,9 @@ import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function deleteDocumentOrPolicyAction(documentId: string): Promise<void> {
 	const auditSession = await assertAdmin();
+
+	// Snapshot the label before the transaction wipes the entity, so the audit log keeps it readable.
+	const subjectLabel = await resolveAuditSubjectLabel("documents_policies", documentId);
 
 	const descriptor = await db.transaction(async (tx) => {
 		const entity = await tx.query.entities.findFirst({
@@ -88,6 +92,7 @@ export async function deleteDocumentOrPolicyAction(documentId: string): Promise<
 		action: "delete",
 		subjectType: "documents_policies",
 		subjectId: documentId,
+		subjectLabel,
 		summary: {},
 	});
 

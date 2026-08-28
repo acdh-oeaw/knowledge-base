@@ -7,6 +7,7 @@ import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getDefaultLocale } from "@/lib/data/locales";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
+import { getSocialMediaOptions } from "@/lib/data/social-media";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 export async function generateMetadata(
@@ -23,13 +24,19 @@ export async function generateMetadata(
 }
 
 export default async function DashboardAdministratorCreateCountryPage(): Promise<ReactNode> {
-	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources, defaultLocale] =
-		await Promise.all([
-			getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
-			getEntityRelationOptions(),
-			getResourceRelationOptions(),
-			getDefaultLocale(),
-		]);
+	const [
+		{ items: initialAssets },
+		initialRelatedEntities,
+		initialRelatedResources,
+		initialSocialMedia,
+		defaultLocale,
+	] = await Promise.all([
+		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
+		getEntityRelationOptions(),
+		getResourceRelationOptions(),
+		getSocialMediaOptions(),
+		getDefaultLocale(),
+	]);
 
 	return (
 		<CountryCreateForm
@@ -39,6 +46,9 @@ export default async function DashboardAdministratorCreateCountryPage(): Promise
 			initialRelatedEntityTotal={initialRelatedEntities.total}
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
+
+			initialSocialMediaItems={initialSocialMedia.items}
+			initialSocialMediaTotal={initialSocialMedia.total}
 		/>
 	);
 }

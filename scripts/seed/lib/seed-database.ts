@@ -1,5 +1,7 @@
+// oxlint-disable oxc/no-map-spread
+
 import { groupBy, keyBy } from "@acdh-oeaw/lib";
-import type { Database, Transaction } from "@dariah-eric/database";
+import { type Database, type Transaction, plainTextToRichText } from "@dariah-eric/database";
 import * as schema from "@dariah-eric/database/schema";
 import { eq } from "@dariah-eric/database/sql";
 import { faker as f } from "@faker-js/faker";
@@ -267,6 +269,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 				return {
 					title,
 					summary: f.lorem.paragraph(),
+					publicationDate: f.date.past(),
 					imageId: f.helpers.arrayElement(imageIds).id,
 				};
 			},
@@ -307,6 +310,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 				return {
 					title,
 					summary: f.lorem.paragraph(),
+					publicationDate: f.date.past(),
 					imageId: f.helpers.arrayElement(imageIds).id,
 				};
 			},
@@ -335,6 +339,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 				return {
 					title,
 					summary: f.lorem.paragraph(),
+					publicationDate: f.date.past(),
 					imageId: f.helpers.arrayElement(imageIds).id,
 				};
 			},
@@ -387,6 +392,7 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 				return {
 					title,
 					summary: f.lorem.paragraph(),
+					publicationDate: f.date.past(),
 					imageId: f.helpers.arrayElement(imageIds).id,
 				};
 			},
@@ -450,10 +456,14 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 
 		const imageContentBlocks: Array<schema.ImageContentBlockInput> =
 			contentBlockIdsByType.image.map(({ id }) => {
+				const caption = plainTextToRichText(
+					f.helpers.maybe(() => f.lorem.sentence(), { probability: 0.5 }),
+				);
 				return {
 					id,
 					imageId: f.helpers.arrayElement(imageIds).id,
-					caption: f.helpers.maybe(() => f.lorem.sentence(), { probability: 0.5 }),
+					caption,
+					captionMode: caption != null ? "override" : "inherit",
 				};
 			});
 
@@ -464,6 +474,9 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 				return {
 					id,
 					layout: "carousel",
+					caption: plainTextToRichText(
+						f.helpers.maybe(() => f.lorem.sentence(), { probability: 0.5 }),
+					),
 				};
 			});
 
@@ -476,7 +489,9 @@ export async function seed(db: Database, config: SeedConfig = {}): Promise<void>
 						galleryContentBlockId,
 						imageId,
 						position,
-						caption: f.helpers.maybe(() => f.lorem.sentence(), { probability: 0.5 }),
+						caption: plainTextToRichText(
+							f.helpers.maybe(() => f.lorem.sentence(), { probability: 0.5 }),
+						),
 					};
 				}),
 			);

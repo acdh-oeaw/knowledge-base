@@ -3,6 +3,7 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
+import { resolveEntityDocumentLabel } from "@/lib/data/audit-log";
 import { documentationPagesLifecycleAdapter } from "@/lib/data/documentation-pages.lifecycle-adapter";
 import { getDocumentVersions } from "@/lib/data/entity-lifecycle";
 import { eq, inArray, or } from "@/lib/db/sql";
@@ -19,6 +20,9 @@ export const deleteDocumentationPageAction = createCommandAction({
 			columns: { id: true },
 		});
 		assert(entity, "Document not found.");
+
+		// Snapshot the label before deletion so the audit log doesn't fall back to the uuid.
+		const subjectLabel = await resolveEntityDocumentLabel(tx, documentId);
 
 		const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
 		const versionIds = [draftId, publishedId].filter((id): id is string => id != null);
@@ -56,11 +60,12 @@ export const deleteDocumentationPageAction = createCommandAction({
 			);
 
 		if (versionIds.length > 0) {
+			await tx.delete(schema.slugs).where(inArray(schema.slugs.entityVersionId, versionIds));
 			await tx.delete(schema.entityVersions).where(inArray(schema.entityVersions.id, versionIds));
 		}
 
 		await tx.delete(schema.entities).where(eq(schema.entities.id, documentId));
 
-		return { subjectId: documentId };
+		return { subjectId: documentId, subjectLabel };
 	},
 });

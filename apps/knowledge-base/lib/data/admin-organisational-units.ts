@@ -8,6 +8,7 @@ import {
 	getEntityRelations,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import { selectedImageColumns, selectedImageWith } from "@/lib/data/selected-image";
 import { getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { getUnitRelationStatusOptions, getUnitRelations } from "@/lib/data/unit-relations";
 import { db } from "@/lib/db";
@@ -26,14 +27,11 @@ function assertAdminUser(user: Pick<User, "role">): void {
 	}
 }
 
-async function getOrganisationalUnitBySlugForAdmin(
-	currentUser: Pick<User, "role">,
+async function getOrganisationalUnitBySlug(
 	unitType: ManagedOrganisationalUnitType,
 	slug: string,
 	versionId?: string,
 ) {
-	assertAdminUser(currentUser);
-
 	return db.query.organisationalUnits.findFirst({
 		where:
 			versionId != null
@@ -44,7 +42,9 @@ async function getOrganisationalUnitBySlugForAdmin(
 					},
 		columns: {
 			acronym: true,
+			email: true,
 			id: true,
+			mailingList: true,
 			name: true,
 			ror: true,
 			sshocMarketplaceActorId: true,
@@ -67,10 +67,8 @@ async function getOrganisationalUnitBySlugForAdmin(
 				},
 			},
 			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -87,9 +85,22 @@ export async function getOrganisationalUnitEditDataForAdmin(
 		localeId?: string;
 	},
 ) {
+	assertAdminUser(currentUser);
+	return getOrganisationalUnitEditData(params);
+}
+
+/** Caller must perform its own page-level authorisation before using this data loader. */
+export async function getOrganisationalUnitEditData(params: {
+	slug: string;
+	unitType: ManagedOrganisationalUnitType;
+	versionId?: string;
+	publishedVersionId?: string | null;
+	/** Resolves related-unit names/slugs in this locale; defaults to the default locale. */
+	localeId?: string;
+}) {
 	const { slug, unitType, versionId, localeId } = params;
 
-	const unit = await getOrganisationalUnitBySlugForAdmin(currentUser, unitType, slug, versionId);
+	const unit = await getOrganisationalUnitBySlug(unitType, slug, versionId);
 
 	if (unit == null) {
 		return null;
@@ -108,6 +119,7 @@ export async function getOrganisationalUnitEditDataForAdmin(
 		getUnitRelations(documentId, localeId),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: unit.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
 		getUnitRelationStatusOptions(unitType),

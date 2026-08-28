@@ -6,8 +6,8 @@ import { forbidden } from "next/navigation";
 
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { alias, and, count, desc, eq, or, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { alias, and, count, desc, eq, sql } from "@/lib/db/sql";
 
 export type ProjectsSort = "name" | "acronym" | "funding" | "scope";
 
@@ -44,13 +44,7 @@ function assertAdminUser(user: Pick<User, "role">): void {
 export async function getProjects(params: Readonly<GetProjectsParams>): Promise<ProjectsResult> {
 	const { limit, offset, q, sort = "name", dir = "asc" } = params;
 	const query = q?.trim();
-	const where =
-		query != null && query !== ""
-			? or(
-					unaccentIlike(schema.projects.name, `%${query}%`),
-					unaccentIlike(schema.projects.acronym, `%${query}%`),
-				)
-			: undefined;
+	const where = matchesAllTerms(query, schema.projects.name, schema.projects.acronym);
 	const orderBy =
 		sort === "acronym"
 			? dir === "asc"
@@ -258,33 +252,6 @@ function getProjectPartnerRowsForAdmin(projectDocumentId: string) {
 		.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, projectDocumentId));
 }
 
-/**
- * Project partner rows (project↔org-unit relations) for a single project, for the admin surfaces.
- * Each partner's unit is resolved to its published version: a partner is only ever created against
- * a published unit and that published version is never removed without deleting the whole document
- * (which also removes the partner row), so `publishedId` is always present here.
- */
-function getProjectPersonRowsForAdmin(projectDocumentId: string) {
-	const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
-	return db
-		.select({
-			id: schema.projectsToPersons.id,
-			personDocumentId: schema.projectsToPersons.personDocumentId,
-			personName: schema.persons.name,
-			roleId: schema.projectsToPersons.roleId,
-			roleName: schema.projectRoles.role,
-			duration: schema.projectsToPersons.duration,
-		})
-		.from(schema.projectsToPersons)
-		.innerJoin(
-			personDocumentLifecycle,
-			eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
-		)
-		.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
-		.innerJoin(schema.projectRoles, eq(schema.projectRoles.id, schema.projectsToPersons.roleId))
-		.where(eq(schema.projectsToPersons.projectDocumentId, projectDocumentId));
-}
-
 export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">, slug: string) {
 	assertAdminUser(currentUser);
 
@@ -294,7 +261,7 @@ export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">,
 		return null;
 	}
 
-	const [descriptionRows, partners, persons, socialMediaLinks] = await Promise.all([
+	const [descriptionRows, partners, socialMediaLinks] = await Promise.all([
 		db
 			.select({ content: schema.richTextContentBlocks.content })
 			.from(schema.richTextContentBlocks)
@@ -312,9 +279,9 @@ export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">,
 			)
 			.limit(1),
 		getProjectPartnerRowsForAdmin(project.entityVersion.entity.id),
-		getProjectPersonRowsForAdmin(project.entityVersion.entity.id),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
+			orderBy: { position: "asc" },
 			columns: {},
 			with: {
 				socialMedia: {
@@ -333,14 +300,6 @@ export async function getProjectDetailsForAdmin(currentUser: Pick<User, "role">,
 				unitName: partner.unitName,
 				roleName: partner.roleName,
 				duration: partner.duration ?? null,
-			};
-		}),
-		persons: persons.map((person) => {
-			return {
-				id: person.id,
-				personName: person.personName,
-				roleName: person.roleName,
-				duration: person.duration ?? null,
 			};
 		}),
 		project,
@@ -363,7 +322,6 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		roles,
 		initialSocialMedia,
 		existingPartners,
-		existingPersons,
 		existingSocialMedia,
 	] = await Promise.all([
 		db
@@ -392,9 +350,9 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		}),
 		getSocialMediaOptions(),
 		getProjectPartnerRowsForAdmin(project.entityVersion.entity.id),
-		getProjectPersonRowsForAdmin(project.entityVersion.entity.id),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
 	]);
@@ -413,20 +371,6 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		};
 	});
 
-	const initialPersons = existingPersons.map((person) => {
-		return {
-			id: person.id,
-			personDocumentId: person.personDocumentId,
-			personName: person.personName,
-			roleId: person.roleId,
-			roleName: person.roleName,
-			durationStart:
-				person.duration?.start != null ? person.duration.start.toISOString().slice(0, 10) : null,
-			durationEnd:
-				person.duration?.end != null ? person.duration.end.toISOString().slice(0, 10) : null,
-		};
-	});
-
 	const initialSocialMediaIds = existingSocialMedia.map((row) => row.socialMediaId);
 
 	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
@@ -434,7 +378,6 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 	return {
 		description: descriptionRows.at(0)?.content,
 		initialPartners,
-		initialPersons,
 		initialSocialMedia,
 		initialSocialMediaIds,
 		project,

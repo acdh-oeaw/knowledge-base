@@ -8,9 +8,20 @@ import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_comp
 import { FundingCallDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-details";
 import { discardFundingCallDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_lib/discard-funding-call-draft.action";
 import { publishFundingCallAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_lib/publish-funding-call.action";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { imageGridOptions } from "@/config/assets.config";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
+import {
+	getEntityRelationOptionsByIds,
+	getEntityRelations,
+	getResourceRelationOptionsByIds,
+} from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -91,6 +102,8 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 	const fundingCall = await db.query.fundingCalls.findFirst({
 		where: { id: versionId },
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			duration: true,
 			title: true,
@@ -118,6 +131,10 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 					},
 				},
 			},
+			image: {
+				columns: selectedImageColumns,
+				with: selectedImageWith,
+			},
 		},
 	});
 
@@ -131,7 +148,16 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 	);
 	const entityVersionSlug = fundingCall.entityVersion.slug;
 
-	const contentBlocks = await getEntityContentBlocks(fundingCall.id, "content");
+	const image = toSelectedImage(fundingCall.image, imageGridOptions);
+
+	const contentBlocks = await getResolvedEntityContentBlocks(fundingCall.id, "content");
+
+	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(doc.id);
+
+	const [selectedRelatedEntities, selectedRelatedResources] = await Promise.all([
+		getEntityRelationOptionsByIds(relatedEntityIds),
+		getResourceRelationOptionsByIds(relatedResourceIds),
+	]);
 
 	return (
 		<FundingCallDetails
@@ -140,6 +166,7 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 			documentId={doc.id}
 			fundingCall={{
 				...fundingCall,
+				image,
 				entityVersion: { ...fundingCall.entityVersion, slug: entityVersionSlug },
 			}}
 			hasDraft={hasDraftChanges}
@@ -148,6 +175,8 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
 			publishAction={publishFundingCallAction}
+			selectedRelatedEntities={selectedRelatedEntities}
+			selectedRelatedResources={selectedRelatedResources}
 			selectedVersion={selectedVersion}
 		/>
 	);

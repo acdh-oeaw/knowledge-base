@@ -1,11 +1,25 @@
 import type { NextRequest } from "next/server";
 
-import { getCountryReportDataForUser } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/get-country-report-summary-data";
-import { type PdfSection, createTextPdf } from "@/app/api/reporting/_lib/text-pdf";
+import {
+	formatContributorOrgUnit,
+	getCountryReportDataForUser,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/get-country-report-summary-data";
+import { fetchBrandLogo } from "@/app/api/reporting/_lib/report-logo";
+import { type ReportBlock, createReportPdf } from "@/app/api/reporting/_lib/report-pdf";
 import { getCurrentSession } from "@/lib/auth/session";
+import { formatCountryReportInstitutionRepresentationType } from "@/lib/data/country-report-institutions";
+import {
+	type ReportExternalResourceSnapshot,
+	getCountryExternalResourceSnapshots,
+	getCountryReportConsortiumBranding,
+} from "@/lib/data/report-marketplace-resources";
 
 function value(value: number | string | null): string {
-	return value == null || value === "" ? "-" : String(value);
+	return value == null || value === "" ? "—" : String(value);
+}
+
+function formatStatus(status: string): string {
+	return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function formatRole(role: string): string {
@@ -19,11 +33,70 @@ function formatKpi(kpi: string): string {
 	return kpi.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatExternalSectionTitle(section: string): string {
+	return section.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatOperationalCostLabel(label: string): string {
+	const separatorIndex = label.indexOf(": ");
+	if (separatorIndex === -1) {
+		return label;
+	}
+
+	const prefix = label.slice(0, separatorIndex);
+	const suffix = label.slice(separatorIndex + 2);
+
+	return `${prefix}: ${formatRole(suffix)}`;
+}
+
 const eurFormatter = new Intl.NumberFormat("en", {
 	style: "currency",
 	currency: "EUR",
 	maximumFractionDigits: 0,
 });
+
+const dateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
+
+function externalResourceSnapshotBlocks(
+	snapshot: ReportExternalResourceSnapshot,
+): Array<ReportBlock> {
+	const captured = dateFormatter.format(snapshot.capturedAt);
+
+	if (snapshot.items.length === 0) {
+		return [
+			{ kind: "heading", text: formatExternalSectionTitle(snapshot.section) },
+			{ kind: "paragraphs", paragraphs: [{ text: `Captured ${captured}`, muted: true }] },
+			{
+				kind: "paragraphs",
+				paragraphs: [{ text: "No external resources recorded.", muted: true }],
+			},
+		];
+	}
+
+	return [
+		{ kind: "heading", text: formatExternalSectionTitle(snapshot.section) },
+		{ kind: "paragraphs", paragraphs: [{ text: `Captured ${captured}`, muted: true }] },
+		{
+			kind: "itemList",
+			items: snapshot.items.map((item) => {
+				const meta = [
+					item.sshocCategory,
+					item.source,
+					item.year == null ? null : String(item.year),
+					item.kind,
+				]
+					.filter(Boolean)
+					.join(" · ");
+
+				return {
+					primary: item.label,
+					secondary:
+						[meta, item.sourceUrl ?? item.links[0]].filter(Boolean).join(" · ") || undefined,
+				};
+			}),
+		},
+	];
+}
 
 export async function GET(
 	_request: NextRequest,
@@ -47,89 +120,193 @@ export async function GET(
 		}
 		case "ok": {
 			const report = result.data;
-			const sections: Array<PdfSection> = [
-				{
-					title: "Overview",
-					lines: [
-						`Country: ${report.country.name}`,
-						`Campaign: ${report.campaign.year}`,
-						`Status: ${report.status}`,
-					],
-				},
-				{
-					title: "Institutions",
-					lines:
-						report.summary.institutions.length > 0
-							? report.summary.institutions.map((i) => {
-									const label = i.acronym == null ? i.name : `${i.name} (${i.acronym})`;
-									return i.representationType == null
-										? label
-										: `${label} - ${formatRole(i.representationType)}`;
-								})
-							: ["No institutions recorded."],
-				},
-				{
-					title: "Contributors",
-					lines: [
-						`Total contributors: ${value(report.summary.totalContributors)}`,
-						...report.summary.contributions.map(
-							(c) => `${c.personName} - ${formatRole(c.roleType)} - ${c.orgUnitName}`,
-						),
-					],
-				},
-				{
-					title: "Events",
-					lines: [
-						`Small: ${value(report.summary.smallEvents)}`,
-						`Medium: ${value(report.summary.mediumEvents)}`,
-						`Large: ${value(report.summary.largeEvents)}`,
-						`Very large: ${value(report.summary.veryLargeEvents)}`,
-						`DARIAH commissioned event: ${value(report.summary.dariahCommissionedEvent)}`,
-						`Reusable outcomes: ${value(report.summary.reusableOutcomes)}`,
-					],
-				},
-				{
-					title: "Social media",
-					lines:
-						report.summary.socialMediaAccounts.length > 0
-							? report.summary.socialMediaAccounts.flatMap((account) => {
-									const kpis = account.kpis
-										.filter((kpi) => kpi.value > 0)
-										.map((kpi) => `${formatKpi(kpi.kpi)}: ${kpi.value}`)
-										.join(", ");
+			const summary = report.summary;
 
-									return [
-										`${account.name} - ${account.url}`,
-										kpis.length > 0 ? kpis : "No KPIs recorded.",
-									];
-								})
-							: ["No social media recorded."],
-				},
-				{
-					title: "Services",
-					lines:
-						report.summary.services.length > 0
-							? report.summary.services.flatMap((service) => {
-									const kpis = service.kpis
-										.filter((kpi) => kpi.value > 0)
-										.map((kpi) => `${formatKpi(kpi.kpi)}: ${kpi.value}`)
-										.join(", ");
+			const [externalResourceSnapshots, consortium] = await Promise.all([
+				getCountryExternalResourceSnapshots(report.id),
+				getCountryReportConsortiumBranding(report.countryDocumentId, report.campaign.year),
+			]);
+			const logoPng = await fetchBrandLogo(consortium?.imageKey ?? null);
 
-									return [service.name, kpis.length > 0 ? kpis : "No KPIs recorded."];
-								})
-							: ["No services recorded."],
+			// Contributors
+			const blocks: Array<ReportBlock> = [{ kind: "heading", text: "Contributors" }];
+			if (summary.contributions.length > 0) {
+				blocks.push({
+					kind: "itemList",
+					items: summary.contributions.map((c) => {
+						return {
+							primary: c.personName,
+							secondary: `${formatRole(c.roleType)} · ${formatContributorOrgUnit(c.orgUnitName, c.orgUnitType)}`,
+						};
+					}),
+				});
+			}
+			blocks.push({
+				kind: "definitionList",
+				rows: [{ label: "Total contributors", value: value(summary.totalContributors) }],
+			});
+
+			// Institutions
+			blocks.push({ kind: "heading", text: "Institutions" });
+			if (summary.institutions.length > 0) {
+				blocks.push({
+					kind: "itemList",
+					items: summary.institutions.map((i) => {
+						const primary = i.acronym == null ? i.name : `${i.name} (${i.acronym})`;
+						const representationTypes = i.representationTypes
+							.map(formatCountryReportInstitutionRepresentationType)
+							.join(", ");
+
+						return {
+							primary,
+							secondary: representationTypes === "" ? undefined : representationTypes,
+						};
+					}),
+				});
+			}
+			blocks.push({
+				kind: "definitionList",
+				rows: [
+					{ label: "Number of institutions", value: summary.institutions.length.toLocaleString() },
+				],
+			});
+
+			// Events
+			const hasEvents =
+				summary.smallEvents != null ||
+				summary.mediumEvents != null ||
+				summary.largeEvents != null ||
+				summary.veryLargeEvents != null ||
+				summary.dariahCommissionedEvent != null ||
+				summary.reusableOutcomes != null;
+			if (hasEvents) {
+				const rows = [
+					{ label: "Small", value: value(summary.smallEvents) },
+					{ label: "Medium", value: value(summary.mediumEvents) },
+					{ label: "Large", value: value(summary.largeEvents) },
+					{ label: "Very large", value: value(summary.veryLargeEvents) },
+				];
+				if (summary.dariahCommissionedEvent != null) {
+					rows.push({
+						label: "DARIAH commissioned event",
+						value: summary.dariahCommissionedEvent,
+					});
+				}
+				if (summary.reusableOutcomes != null) {
+					rows.push({ label: "Reusable outcomes", value: summary.reusableOutcomes });
+				}
+				blocks.push({ kind: "heading", text: "Events" });
+				blocks.push({ kind: "definitionList", rows });
+			}
+
+			// Social media
+			if (summary.socialMediaAccounts.length > 0) {
+				blocks.push({ kind: "heading", text: "Social media" });
+				blocks.push({
+					kind: "cards",
+					cards: summary.socialMediaAccounts.map((account) => {
+						return {
+							title: account.name,
+							subtitle: account.url,
+							kpis: account.kpis
+								.filter((kpi) => kpi.value > 0)
+								.map((kpi) => {
+									return { label: formatKpi(kpi.kpi), value: kpi.value.toLocaleString() };
+								}),
+							emptyLabel: "No KPIs recorded.",
+						};
+					}),
+				});
+			}
+
+			// Services
+			if (summary.services.length > 0) {
+				blocks.push({ kind: "heading", text: "Services" });
+				blocks.push({
+					kind: "cards",
+					cards: summary.services.map((service) => {
+						return {
+							title: service.name,
+							badge:
+								service.costBucket == null
+									? undefined
+									: `Bucket: ${formatRole(service.costBucket)}`,
+							kpis: service.kpis
+								.filter((kpi) => kpi.value > 0)
+								.map((kpi) => {
+									return { label: formatKpi(kpi.kpi), value: kpi.value.toLocaleString() };
+								}),
+							emptyLabel: "No KPIs recorded.",
+						};
+					}),
+				});
+			}
+
+			// Project contributions
+			if (summary.projectContributions.length > 0) {
+				blocks.push({ kind: "heading", text: "Project contributions" });
+				blocks.push({
+					kind: "itemList",
+					items: summary.projectContributions.map((p) => {
+						return { primary: p.projectName, trailing: eurFormatter.format(p.amountEuros) };
+					}),
+				});
+			}
+
+			// External resources
+			for (const snapshot of externalResourceSnapshots) {
+				blocks.push(...externalResourceSnapshotBlocks(snapshot));
+			}
+
+			// Operational cost (last)
+			blocks.push({ kind: "heading", text: "Operational cost" });
+			blocks.push({
+				kind: "costTable",
+				total: {
+					label: "Total operational cost",
+					value: eurFormatter.format(summary.operationalCost.total),
 				},
+				threshold: {
+					label: "Operational cost threshold",
+					value:
+						summary.operationalCost.threshold == null
+							? "—"
+							: eurFormatter.format(summary.operationalCost.threshold),
+				},
+				lines: summary.operationalCost.lines.map((line) => {
+					const meta = [
+						line.bucket == null ? null : `Bucket: ${formatRole(line.bucket)}`,
+						line.showQuantity ? `Quantity: ${line.quantity.toLocaleString()}` : null,
+						`Unit: ${eurFormatter.format(line.unitAmount)}`,
+					]
+						.filter(Boolean)
+						.join(" · ");
+
+					return {
+						label: formatOperationalCostLabel(line.label),
+						meta,
+						total: eurFormatter.format(line.total),
+					};
+				}),
+				emptyLabel: "No operational cost line items recorded.",
+			});
+
+			const pdf = await createReportPdf(
 				{
-					title: "Project contributions",
-					lines:
-						report.summary.projectContributions.length > 0
-							? report.summary.projectContributions.map(
-									(p) => `${p.projectName}: ${eurFormatter.format(p.amountEuros)}`,
-								)
-							: ["No project contributions recorded."],
+					subject: report.country.name,
+					meta: [
+						`Report ${report.campaign.year}`,
+						`Status: ${formatStatus(report.status)}`,
+						`Generated ${dateFormatter.format(new Date())}`,
+					],
+					brand: {
+						logoPng,
+						name: consortium?.name ?? report.country.name,
+						acronym: consortium?.acronym ?? null,
+					},
 				},
-			];
-			const pdf = await createTextPdf(`Country report - ${report.country.name}`, sections);
+				blocks,
+			);
 
 			return new Response(pdf, {
 				headers: {

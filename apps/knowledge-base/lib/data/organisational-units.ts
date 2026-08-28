@@ -3,9 +3,12 @@
 import * as schema from "@dariah-eric/database/schema";
 
 import { imageAssetWidth } from "@/config/assets.config";
-import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
-import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import {
+	latestEditableEntityVersionWhere,
+	publishedEntityVersionWhere,
+} from "@/lib/data/current-entity-version";
+import { type Database, type Transaction, db } from "@/lib/db";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, eq, exists, inArray, sql } from "@/lib/db/sql";
 import { images } from "@/lib/images";
 import type { OrganisationalUnitOption } from "@/lib/organisational-unit-options";
@@ -35,17 +38,36 @@ interface GetOrganisationalUnitOptionsParams {
 	 * Used to scope, for example, the institution picker on a country edit form.
 	 */
 	locatedInCountryDocumentId?: string;
+	/**
+	 * When true, also offer draft (or draft-only) units, one row per document. Delegated dashboards
+	 * opt in so a coordinator can relate a unit they just created (still a draft). Pickers that build
+	 * relations to a _target_ document must leave this off — see `latestEditableEntityVersionWhere`.
+	 */
+	includeDrafts?: boolean;
 }
 
 export async function getOrganisationalUnitOptions(
 	params: GetOrganisationalUnitOptionsParams = {},
+	executor: Database | Transaction = db,
 ): Promise<{ items: Array<OrganisationalUnitOption>; total: number }> {
-	const { limit = 20, offset = 0, q, unitType, locatedInCountryDocumentId } = params;
+	const {
+		limit = 20,
+		offset = 0,
+		q,
+		unitType,
+		locatedInCountryDocumentId,
+		includeDrafts = false,
+	} = params;
 	const query = q?.trim();
-	const searchWhere =
-		query != null && query !== ""
-			? unaccentIlike(schema.organisationalUnits.name, `%${query}%`)
-			: undefined;
+	// Match the acronym as well as the name: units are commonly known by their acronym only ("ACDH",
+	// "ELDAH"), which is why the institutions and working-groups tables search it too. Searching
+	// `entities.label` (which carries the acronym) is not an option here, because it is only
+	// populated for published versions and this query also serves draft-including pickers.
+	const searchWhere = matchesAllTerms(
+		query,
+		schema.organisationalUnits.name,
+		schema.organisationalUnits.acronym,
+	);
 	const typeWhere =
 		unitType != null ? eq(schema.organisationalUnitTypes.type, unitType) : undefined;
 	// Correlated on the outer `entityVersions.entityId` (the unit's document id): keep only units
@@ -75,10 +97,13 @@ export async function getOrganisationalUnitOptions(
 						),
 				)
 			: undefined;
-	const where = and(publishedEntityVersionWhere(), searchWhere, typeWhere, locatedInWhere);
+	const lifecycleWhere = includeDrafts
+		? latestEditableEntityVersionWhere()
+		: publishedEntityVersionWhere();
+	const where = and(lifecycleWhere, searchWhere, typeWhere, locatedInWhere);
 
 	const [items, aggregate] = await Promise.all([
-		db
+		executor
 			.select({
 				documentId: schema.entityVersions.entityId,
 				name: schema.organisationalUnits.name,
@@ -97,7 +122,7 @@ export async function getOrganisationalUnitOptions(
 			.orderBy(schema.organisationalUnits.name)
 			.limit(limit)
 			.offset(offset),
-		db
+		executor
 			.select({ total: count() })
 			.from(schema.organisationalUnits)
 			.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))

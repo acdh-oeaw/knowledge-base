@@ -2,7 +2,6 @@
 
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
-import { Button } from "@dariah-eric/ui/button";
 import { Description, FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { Input } from "@dariah-eric/ui/input";
@@ -14,12 +13,15 @@ import { Fragment, type ReactNode, useActionState, useState } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
-import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
+import { EntitySlugField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-slug-field";
 import {
 	FormLayout,
 	FormSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
-import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
+import {
+	ImageSelectField,
+	type SelectedImage,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { RichTextContentBlocksField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/rich-text-content-blocks-field";
 import { SocialMediaRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/social-media-relations-fields";
 import type { ServerAction } from "@/lib/server/create-server-action";
@@ -34,26 +36,22 @@ interface WorkingGroupFormProps {
 	isDefaultLocale?: boolean;
 	workingGroup?: Pick<
 		schema.OrganisationalUnit,
-		"acronym" | "id" | "name" | "sshocMarketplaceActorId" | "summary"
+		"acronym" | "email" | "id" | "mailingList" | "name" | "sshocMarketplaceActorId" | "summary"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	formId?: string;
+	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
+	isPublished?: boolean;
 	formAction: ServerAction;
-	initialRelatedEntityIds?: Array<string>;
-	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
-	initialRelatedEntityTotal: number;
-	initialRelatedResourceIds?: Array<string>;
-	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
-	initialRelatedResourceTotal: number;
 	initialSocialMediaIds?: Array<string>;
 	initialSocialMediaItems?: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal?: number;
-	selectedRelatedEntities?: Array<{ id: string; name: string; description?: string }>;
-	selectedRelatedResources?: Array<{ id: string; name: string; description?: string }>;
 	selectedSocialMediaItems?: Array<{ id: string; name: string; description?: string }>;
-	showRelationFields?: boolean;
+	showSaveAndPublish?: boolean;
+	/** Optional composed sections (e.g. related entities/resources) rendered before the form actions. */
+	children?: ReactNode;
 }
 
 export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactNode {
@@ -63,26 +61,20 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 		formId,
 		isDefaultLocale = true,
 		workingGroup,
-		initialRelatedEntityIds,
-		initialRelatedEntityItems,
-		initialRelatedEntityTotal,
-		initialRelatedResourceIds,
-		initialRelatedResourceItems,
-		initialRelatedResourceTotal,
 		initialSocialMediaIds,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
-		selectedRelatedEntities,
-		selectedRelatedResources,
 		selectedSocialMediaItems,
-		showRelationFields = true,
+		showSaveAndPublish,
+		children,
+		isPublished,
 	} = props;
 
 	const t = useExtracted();
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
-	const [selectedImage, setSelectedImage] = useState<{ key: string; url: string } | null>(
+	const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(
 		workingGroup?.image ?? null,
 	);
 
@@ -151,44 +143,23 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 						<TextArea rows={5} />
 						<FieldError />
 					</TextField>
+
+					<EntitySlugField
+						isPublished={isPublished}
+						slug={workingGroup?.entityVersion.slug.value}
+					/>
 				</FormSection>
 
 				<Separator className="my-6" />
 
 				<FormSection description={t("Select or upload an image.")} title={t("Image")}>
-					{selectedImage != null && (
-						<img
-							alt={t("Selected image")}
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-							src={selectedImage.url}
-						/>
-					)}
-					<MediaLibraryDialog
+					<ImageSelectField
+						allowRemove={true}
 						defaultPrefix="logos"
 						initialAssets={initialAssets}
-						onSelect={(key, url) => {
-							setSelectedImage({ key, url });
-						}}
+						onChange={setSelectedImage}
 						prefixes={["avatars", "images", "logos"]}
-					/>
-					{selectedImage != null ? (
-						<Button
-							intent="outline"
-							onPress={() => {
-								setSelectedImage(null);
-							}}
-						>
-							{t("Remove image")}
-						</Button>
-					) : null}
-
-					<input
-						aria-hidden={true}
-						className="sr-only"
-						name="imageKey"
-						readOnly={true}
-						tabIndex={-1}
-						value={selectedImage?.key ?? ""}
+						selectedImage={selectedImage}
 					/>
 				</FormSection>
 
@@ -209,6 +180,25 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 
 				<Separator className="my-6" />
 
+				<FormSection
+					description={t("Enter the working group contact details.")}
+					title={t("Contact")}
+				>
+					<TextField defaultValue={workingGroup?.email ?? undefined} name="email" type="email">
+						<Label>{t("Email")}</Label>
+						<Input />
+						<FieldError />
+					</TextField>
+
+					<TextField defaultValue={workingGroup?.mailingList ?? undefined} name="mailingList">
+						<Label>{t("Mailing list")}</Label>
+						<Input />
+						<FieldError />
+					</TextField>
+				</FormSection>
+
+				<Separator className="my-6" />
+
 				{initialSocialMediaItems != null && initialSocialMediaTotal != null ? (
 					<Fragment>
 						<SocialMediaRelationsFields
@@ -223,19 +213,7 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 					</Fragment>
 				) : null}
 
-				{showRelationFields ? (
-					<EntityRelationsFields
-						formId={formId}
-						initialRelatedEntityIds={initialRelatedEntityIds}
-						initialRelatedEntityItems={initialRelatedEntityItems}
-						initialRelatedEntityTotal={initialRelatedEntityTotal}
-						initialRelatedResourceIds={initialRelatedResourceIds}
-						initialRelatedResourceItems={initialRelatedResourceItems}
-						initialRelatedResourceTotal={initialRelatedResourceTotal}
-						selectedRelatedEntities={selectedRelatedEntities}
-						selectedRelatedResources={selectedRelatedResources}
-					/>
-				) : null}
+				{children}
 
 				{workingGroup != null ? (
 					<Fragment>
@@ -244,7 +222,12 @@ export function WorkingGroupForm(props: Readonly<WorkingGroupFormProps>): ReactN
 					</Fragment>
 				) : null}
 
-				<EntityFormActions entityName={t("Working group")} isPending={isPending} state={state} />
+				<EntityFormActions
+					entityName={t("Working group")}
+					isPending={isPending}
+					showSaveAndPublish={showSaveAndPublish}
+					state={state}
+				/>
 			</Form>
 		</FormLayout>
 	);

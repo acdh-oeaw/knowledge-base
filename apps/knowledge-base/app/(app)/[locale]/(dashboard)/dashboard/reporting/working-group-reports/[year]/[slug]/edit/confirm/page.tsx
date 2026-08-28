@@ -1,36 +1,21 @@
-import type { Metadata, ResolvingMetadata } from "next";
-import { getExtracted } from "next-intl/server";
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { getLocale } from "next-intl/server";
 
-import { WorkingGroupReportConfirmScreen } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_components/screens/working-group-report-confirm-screen";
-import { resolveWorkingGroupReportId } from "@/lib/data/reporting-urls";
-import { createMetadata } from "@/lib/server/create-metadata";
+import { redirect } from "@/lib/navigation/navigation";
 
-interface DashboardReportingWorkingGroupReportConfirmPageProps extends PageProps<"/[locale]/dashboard/reporting/working-group-reports/[year]/[slug]/edit/confirm"> {}
-
-export async function generateMetadata(
-	_props: Readonly<DashboardReportingWorkingGroupReportConfirmPageProps>,
-	resolvingMetadata: ResolvingMetadata,
-): Promise<Metadata> {
-	const t = await getExtracted();
-
-	return createMetadata(resolvingMetadata, {
-		title: t("Dashboard - Confirm working group report"),
-	});
+interface DashboardReportingWorkingGroupReportConfirmPageProps {
+	params: Promise<{ year: string; slug: string }>;
 }
 
 export default async function DashboardReportingWorkingGroupReportConfirmPage(
 	props: Readonly<DashboardReportingWorkingGroupReportConfirmPageProps>,
-): Promise<ReactNode> {
+): Promise<never> {
 	const { params } = props;
 
-	const { year: routeYear, slug } = await params;
-	const id = await resolveWorkingGroupReportId({ year: routeYear, slug });
+	const { year, slug } = await params;
+	const locale = await getLocale();
 
-	if (id == null) {
-		notFound();
-	}
-
-	return <WorkingGroupReportConfirmScreen reportId={id} />;
+	redirect({
+		href: `/dashboard/reporting/working-group-reports/${year}/${slug}/edit/summary`,
+		locale,
+	});
 }

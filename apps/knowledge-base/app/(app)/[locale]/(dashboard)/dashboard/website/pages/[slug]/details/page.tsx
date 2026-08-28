@@ -9,7 +9,7 @@ import { PageItemDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/webs
 import { discardPageItemDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_lib/discard-page-item-draft.action";
 import { publishPageItemAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_lib/publish-page-item.action";
 import { imageGridOptions } from "@/config/assets.config";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import {
@@ -17,8 +17,12 @@ import {
 	getEntityRelations,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsitePageItemDetailsPageProps extends PageProps<"/[locale]/dashboard/website/pages/[slug]/details"> {}
@@ -98,7 +102,10 @@ export default async function DashboardWebsitePageItemDetailsPage(
 	const pageItem = await db.query.pages.findFirst({
 		where: { id: versionId },
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
+			publicationDate: true,
 			title: true,
 			summary: true,
 		},
@@ -119,10 +126,8 @@ export default async function DashboardWebsitePageItemDetailsPage(
 				},
 			},
 			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -137,14 +142,8 @@ export default async function DashboardWebsitePageItemDetailsPage(
 	);
 	const entityVersionSlug = pageItem.entityVersion.slug;
 
-	const image = pageItem.image
-		? images.generateSignedImageUrl({
-				key: pageItem.image.key,
-				options: imageGridOptions,
-			})
-		: null;
-
-	const contentBlocks = await getEntityContentBlocks(pageItem.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(pageItem.id, "content");
+	const image = pageItem.image != null ? toSelectedImage(pageItem.image, imageGridOptions) : null;
 
 	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(doc.id);
 
@@ -168,7 +167,7 @@ export default async function DashboardWebsitePageItemDetailsPage(
 			pageItem={{
 				...pageItem,
 				entityVersion: { ...pageItem.entityVersion, slug: entityVersionSlug },
-				image: pageItem.image ? { ...pageItem.image, url: image!.url } : null,
+				image,
 			}}
 			publishAction={publishPageItemAction}
 			selectedVersion={selectedVersion}

@@ -2,11 +2,10 @@
 
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import slugify from "@sindresorhus/slugify";
 
 import { CreateDocumentOrPolicyFromDialogActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/create-document-or-policy-from-dialog.schema";
 import { documentsPoliciesLifecycleAdapter } from "@/lib/data/documents-policies.lifecycle-adapter";
-import { createDraftDocument, publishVersion } from "@/lib/data/entity-lifecycle";
+import { createDraftDocumentFromTitle, publishVersion } from "@/lib/data/entity-lifecycle";
 import { ensureEntityVersionField } from "@/lib/data/entity-version-fields";
 import { eq, isNull } from "@/lib/db/sql";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
@@ -24,8 +23,6 @@ export const createDocumentOrPolicyFromDialogAction = createMutationAction<
 	revalidate: "/[locale]/dashboard/website/documents-policies",
 
 	async mutate(tx, input, { formData }) {
-		const slug = slugify(input.title);
-
 		const type = await tx.query.entityTypes.findFirst({
 			where: { type: "documents_policies" },
 			columns: { id: true },
@@ -33,7 +30,7 @@ export const createDocumentOrPolicyFromDialogAction = createMutationAction<
 
 		assert(type);
 
-		const { documentId, versionId } = await createDraftDocument(tx, type.id, slug);
+		const { documentId, versionId } = await createDraftDocumentFromTitle(tx, type.id, input.title);
 
 		const asset = await tx.query.assets.findFirst({
 			where: { key: input.documentKey },

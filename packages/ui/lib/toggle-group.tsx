@@ -59,7 +59,7 @@ export function ToggleGroup(props: Readonly<ToggleGroupProps>): ReactNode {
 						"[--toggle-focused-bg:var(--color-secondary)] [--toggle-focused-fg:var(--color-secondary-fg)]",
 						"[--toggle-hover-bg:var(--toggle-focused-bg)] [--toggle-hover-fg:var(--toggle-focused-fg)]",
 						"[--toggle-icon:color-mix(in_oklab,var(--toggle-focused-fg)_50%,var(--toggle-focused-bg))]",
-						"inset-ring inset-ring-border inline-flex overflow-hidden p-(--toggle-gutter)",
+						"inline-flex overflow-hidden p-(--toggle-gutter) inset-ring inset-ring-border",
 						orientation === "horizontal" ? "flex-row" : "flex-col",
 						selectionMode === "single" ? "gap-(--toggle-gutter)" : "gap-0",
 						isCircle === true ? "rounded-full" : "rounded-(--toggle-group-radius)",
@@ -68,7 +68,7 @@ export function ToggleGroup(props: Readonly<ToggleGroupProps>): ReactNode {
 							"*:data-[slot=toggle-group-item]:rounded-full",
 						selectionMode === "multiple" &&
 							isCircle === true &&
-							"*:data-[slot=toggle-group-item]:last:rounded-e-full *:data-[slot=toggle-group-item]:first:rounded-s-full",
+							"*:data-[slot=toggle-group-item]:first:rounded-s-full *:data-[slot=toggle-group-item]:last:rounded-e-full",
 					],
 					className,
 				)}
@@ -84,7 +84,7 @@ export const toggleGroupItemStyles = tv({
 		"relative isolate",
 		"inline-flex flex-row items-center font-medium text-(--toggle-fg) outline-hidden",
 		"inset-ring inset-ring-transparent",
-		"*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 hover:*:data-[slot=icon]:text-(--btn-icon-active)/90",
+		"*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) hover:*:data-[slot=icon]:text-(--btn-icon-active)/90 focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80",
 		"forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText]",
 	],
 	variants: {
@@ -98,36 +98,36 @@ export const toggleGroupItemStyles = tv({
 		},
 		size: {
 			xs: [
-				"min-block-8 gap-x-1.5 px-2.5 py-1.5 text-sm sm:min-block-7 sm:px-2 sm:py-1.5 sm:text-xs/4",
+				"gap-x-1.5 px-2.5 py-1.5 text-sm min-block-8 sm:px-2 sm:py-1.5 sm:text-xs/4 sm:min-block-7",
 				"*:data-[slot=icon]:-mx-px *:data-[slot=icon]:block-3.5 *:data-[slot=icon]:inline-3.5 sm:*:data-[slot=icon]:block-3 sm:*:data-[slot=icon]:inline-3",
 				"*:data-[slot=loader]:-mx-px *:data-[slot=loader]:block-3.5 *:data-[slot=loader]:inline-3.5 sm:*:data-[slot=loader]:block-3 sm:*:data-[slot=loader]:inline-3",
 			],
 			sm: [
-				"min-block-9 gap-x-1.5 px-3 py-1.5 sm:min-block-8 sm:px-2.5 sm:py-1.5 sm:text-sm/5",
+				"gap-x-1.5 px-3 py-1.5 min-block-9 sm:px-2.5 sm:py-1.5 sm:text-sm/5 sm:min-block-8",
 				"*:data-[slot=icon]:block-4.5 *:data-[slot=icon]:inline-4.5 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4",
 				"*:data-[slot=loader]:block-4.5 *:data-[slot=loader]:inline-4.5 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
 			],
 			md: [
-				"min-block-10 gap-x-2 px-3.5 py-2 sm:min-block-9 sm:px-3 sm:py-1.5 sm:text-sm/6",
+				"gap-x-2 px-3.5 py-2 min-block-10 sm:px-3 sm:py-1.5 sm:text-sm/6 sm:min-block-9",
 				"*:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4",
 				"*:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
 			],
 			lg: [
-				"min-block-11 gap-x-2 px-4 py-2.5 sm:min-block-10 sm:px-3.5 sm:py-2 sm:text-sm/6",
+				"gap-x-2 px-4 py-2.5 min-block-11 sm:px-3.5 sm:py-2 sm:text-sm/6 sm:min-block-10",
 				"*:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 sm:*:data-[slot=icon]:block-4.5 sm:*:data-[slot=icon]:inline-4.5",
 				"*:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:*:data-[slot=loader]:block-4.5 sm:*:data-[slot=loader]:inline-4.5",
 			],
 			"sq-xs":
-				"touch-area block-8 inline-8 sm:block-7 sm:inline-7 sm:*:data-[slot=icon]:block-3 sm:*:data-[slot=icon]:inline-3 sm:*:data-[slot=loader]:block-3 sm:*:data-[slot=loader]:inline-3 *:data-[slot=icon]:block-3.5 *:data-[slot=icon]:inline-3.5 *:data-[slot=loader]:block-3.5 *:data-[slot=loader]:inline-3.5",
+				"touch-area block-8 inline-8 *:data-[slot=icon]:block-3.5 *:data-[slot=icon]:inline-3.5 *:data-[slot=loader]:block-3.5 *:data-[slot=loader]:inline-3.5 sm:block-7 sm:inline-7 sm:*:data-[slot=icon]:block-3 sm:*:data-[slot=icon]:inline-3 sm:*:data-[slot=loader]:block-3 sm:*:data-[slot=loader]:inline-3",
 			"sq-sm":
-				"touch-area block-9 inline-9 sm:block-8 sm:inline-8 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4 *:data-[slot=icon]:block-4.5 *:data-[slot=icon]:inline-4.5 *:data-[slot=loader]:block-4.5 *:data-[slot=loader]:inline-4.5",
+				"touch-area block-9 inline-9 *:data-[slot=icon]:block-4.5 *:data-[slot=icon]:inline-4.5 *:data-[slot=loader]:block-4.5 *:data-[slot=loader]:inline-4.5 sm:block-8 sm:inline-8 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
 			"sq-md":
-				"touch-area block-10 inline-10 sm:block-9 sm:inline-9 sm:*:data-[slot=icon]:block-4.5 sm:*:data-[slot=icon]:inline-4.5 sm:*:data-[slot=loader]:block-4.5 sm:*:data-[slot=loader]:inline-4.5 *:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 *:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5",
+				"touch-area block-10 inline-10 *:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 *:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:block-9 sm:inline-9 sm:*:data-[slot=icon]:block-4.5 sm:*:data-[slot=icon]:inline-4.5 sm:*:data-[slot=loader]:block-4.5 sm:*:data-[slot=loader]:inline-4.5",
 			"sq-lg":
-				"touch-area block-11 inline-11 sm:block-10 sm:inline-10 sm:*:data-[slot=icon]:block-5 sm:*:data-[slot=icon]:inline-5 sm:*:data-[slot=loader]:block-5 sm:*:data-[slot=loader]:inline-5 *:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 *:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5",
+				"touch-area block-11 inline-11 *:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 *:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:block-10 sm:inline-10 sm:*:data-[slot=icon]:block-5 sm:*:data-[slot=icon]:inline-5 sm:*:data-[slot=loader]:block-5 sm:*:data-[slot=loader]:inline-5",
 		},
 		isSelected: {
-			true: "inset-ring-fg/20 bg-(--toggle-selected-bg) text-(--toggle-selected-fg) [--toggle-icon:var(--primary-fg)] hover:bg-(--toggle-selected-bg)/90",
+			true: "bg-(--toggle-selected-bg) text-(--toggle-selected-fg) inset-ring-fg/20 [--toggle-icon:var(--primary-fg)] hover:bg-(--toggle-selected-bg)/90",
 		},
 		isFocused: {
 			true: "not-selected:bg-(--toggle-focused-bg) not-selected:text-(--toggle-focused-fg) not-selected:[--toggle-icon:var(--toggle-focused-fg)]",

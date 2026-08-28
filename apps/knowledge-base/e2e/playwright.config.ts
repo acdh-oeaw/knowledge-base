@@ -5,6 +5,8 @@ import { config as dotenv } from "@dotenvx/dotenvx";
 import { type PlaywrightTestConfig, defineConfig, devices } from "@playwright/test";
 import isCI from "is-in-ci";
 
+import { impersonationAdmin } from "./lib/fixtures/impersonation";
+
 /**
  * Reading `.env` files here instead of using `dotenvx run` so environment variables are available
  * to the vs code plugin as well.
@@ -19,6 +21,20 @@ dotenv({
 
 /** Playwright does not export the single web server config type, so we derive it. */
 type WebServer = Extract<NonNullable<PlaywrightTestConfig["webServer"]>, { command: string }>;
+
+/**
+ * Tests under these directories require a specific authenticated storage state and run in their own
+ * projects (`admin`, `non-admin`, `nc`, `wgchair`, `reporter`, `impersonation`). The cross-browser
+ * projects must ignore them so they only run once, under the matching identity.
+ */
+const authenticatedProjectGlobs = [
+	"**/admin/**/*.test.ts",
+	"**/non-admin/**/*.test.ts",
+	"**/nc/**/*.test.ts",
+	"**/wgchair/**/*.test.ts",
+	"**/reporter/**/*.test.ts",
+	"**/impersonation/**/*.test.ts",
+];
 
 function getConfig():
 	| { kind: "remote"; baseUrl: string; webServer: undefined }
@@ -51,6 +67,17 @@ function getConfig():
 				 * only honored when this flag is set on the server.
 				 */
 				E2E_FAILURE_INJECTION: "1",
+				/**
+				 * Run the server in a deliberately non-UTC timezone (a +05:30 half-hour offset, no DST) so
+				 * any code that accidentally depends on the server's local time surfaces instead of being
+				 * masked by a UTC CI host. Combined with the non-UTC _browser_ timezone some suites set
+				 * (e.g. website-events-datetime uses America/Los_Angeles), this exercises the client↔server
+				 * boundary from both sides. The app must stay timezone-independent: dates render via
+				 * next-intl's global `timeZone: "UTC"`, are stored/read as UTC, and wall-clock inputs are
+				 * parsed with an explicit `Z`. NOTE: with `reuseExistingServer` a stale local dev server
+				 * won't pick this up — it takes effect on a fresh start (always in CI).
+				 */
+				TZ: "Asia/Kolkata",
 			},
 		},
 	};
@@ -113,17 +140,17 @@ export default defineConfig({
 	projects: [
 		{
 			name: "chromium",
-			testIgnore: ["**/admin/**/*.test.ts", "**/non-admin/**/*.test.ts"],
+			testIgnore: authenticatedProjectGlobs,
 			use: { ...devices["Desktop Chrome"], channel: "chromium" },
 		},
 		{
 			name: "firefox",
-			testIgnore: ["**/admin/**/*.test.ts", "**/non-admin/**/*.test.ts"],
+			testIgnore: authenticatedProjectGlobs,
 			use: { ...devices["Desktop Firefox"] },
 		},
 		{
 			name: "webkit",
-			testIgnore: ["**/admin/**/*.test.ts", "**/non-admin/**/*.test.ts"],
+			testIgnore: authenticatedProjectGlobs,
 			use: { ...devices["Desktop Safari"] },
 		},
 		{
@@ -140,6 +167,51 @@ export default defineConfig({
 			use: {
 				...devices["Desktop Chrome"],
 				storageState: join(import.meta.dirname, ".auth/non-admin.json"),
+			},
+		},
+		/**
+		 * A second admin, whose session exists so that impersonating on it cannot reach the `admin`
+		 * project. Impersonation lives on the session row, so a suite that shared the `admin` session
+		 * would turn every admin test running concurrently in the other worker non-admin for as long as
+		 * the impersonation lasted. Kept in the same CI job as `admin` on purpose: running the two side
+		 * by side is what would catch that regression coming back.
+		 */
+		{
+			name: "impersonation",
+			testMatch: "**/impersonation/**/*.test.ts",
+			use: {
+				...devices["Desktop Chrome"],
+				storageState: join(import.meta.dirname, ".auth", impersonationAdmin.storageFile),
+			},
+		},
+		/**
+		 * Relation-derived reporting personas, authenticated via the storage states written in
+		 * `global-setup` (see `seedReportingPersonas`). `nc` = national coordinator, `wgchair` =
+		 * working-group chair, `reporter` = WG member + country coordination staff (edits, cannot
+		 * confirm).
+		 */
+		{
+			name: "nc",
+			testMatch: "**/nc/**/*.test.ts",
+			use: {
+				...devices["Desktop Chrome"],
+				storageState: join(import.meta.dirname, ".auth/nc.json"),
+			},
+		},
+		{
+			name: "wgchair",
+			testMatch: "**/wgchair/**/*.test.ts",
+			use: {
+				...devices["Desktop Chrome"],
+				storageState: join(import.meta.dirname, ".auth/wgchair.json"),
+			},
+		},
+		{
+			name: "reporter",
+			testMatch: "**/reporter/**/*.test.ts",
+			use: {
+				...devices["Desktop Chrome"],
+				storageState: join(import.meta.dirname, ".auth/reporter.json"),
 			},
 		},
 		/** Test against mobile viewports. */

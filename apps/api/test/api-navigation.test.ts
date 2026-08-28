@@ -186,7 +186,8 @@ describe("navigation", () => {
 					expect.arrayContaining([
 						expect.objectContaining({
 							label,
-							entity: { type: "working_group", slug },
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+							entity: expect.objectContaining({ type: "working_group", slug }),
 						}),
 					]),
 				);

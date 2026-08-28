@@ -95,6 +95,7 @@ export function createZoteroItem(
 		type: "publication",
 		label: data.title ?? "",
 		description: data.abstractNote ?? "",
+		source_url: null,
 		links: data.url != null ? [data.url] : [],
 		keywords: data.tags?.map((tag) => tag.tag).filter((keyword) => isNonEmptyString(keyword)) ?? [],
 		kind: data.itemType ?? null,

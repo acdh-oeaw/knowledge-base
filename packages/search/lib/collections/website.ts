@@ -13,6 +13,11 @@ export const websiteCollection = defineCollection({
 		{ name: "id", type: "string", index: false },
 		{ name: "source", type: "string", index: true, facet: true },
 		{ name: "source_id", type: "string", index: false },
+		// The knowledge-base document (entity) a document was derived from. Indexed so incremental
+		// sync can enumerate every document belonging to an entity — an entity may own more than one
+		// (e.g. an institution has one document per country it is located in). Only set on entity
+		// documents; resource documents have no knowledge-base entity behind them.
+		{ name: "entity_id", type: "string", index: true, optional: true },
 		{ name: "source_updated_at", type: "int64", index: true, optional: true, sort: true },
 		{ name: "imported_at", type: "int64", index: false },
 		{ name: "type", type: "string", index: true, facet: true },
@@ -27,6 +32,7 @@ export const websiteEntityTypes = [
 	"document-or-policy",
 	"event",
 	"funding-call",
+	"governance-body",
 	"impact-case-study",
 	"institution",
 	"national-consortium",
@@ -54,19 +60,29 @@ export type WebsiteDocumentType = WebsiteEntityType | WebsiteResourceType;
 export const websiteEntitySources = ["the-knowledge-base"] as const;
 export type WebsiteEntitySource = (typeof websiteEntitySources)[number];
 
-export const websiteResourceSources = ["ssh-open-marketplace", "zenodo", "zotero"] as const;
+export const websiteResourceSources = [
+	"dariah-campus",
+	"episciences",
+	"hal",
+	"open-aire",
+	"ssh-open-marketplace",
+	"zenodo",
+	"zotero",
+] as const;
 export type WebsiteResourceSource = (typeof websiteResourceSources)[number];
 
 export type WebsiteDocumentSource = WebsiteEntitySource | WebsiteResourceSource;
 
 export interface WebsiteEntityDocument extends CollectionDocument<typeof websiteCollection> {
 	kind: "entity";
+	entity_id: string;
 	source: WebsiteEntitySource;
 	type: WebsiteEntityType;
 }
 
 export interface WebsiteResourceDocument extends CollectionDocument<typeof websiteCollection> {
 	kind: "resource";
+	entity_id?: never;
 	source: WebsiteResourceSource;
 	type: WebsiteResourceType;
 }

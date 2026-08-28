@@ -2,15 +2,18 @@
 
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import slugify from "@sindresorhus/slugify";
 
 import { CreateInstitutionActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_lib/create-institution.schema";
-import { createDraftDocument, publishVersion } from "@/lib/data/entity-lifecycle";
+import { createDraftDocumentWithSlug, publishVersion } from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { filterToPublishedDocumentIds } from "@/lib/data/relations";
+import { syncOrganisationalUnitSocialMedia } from "@/lib/data/social-media-relations";
+import { checkSshocMarketplaceActorIdAvailable } from "@/lib/data/sshoc-marketplace-actor-id";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
+import { createMutationAction, getCreatedSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const createInstitutionAction = createMutationAction({
@@ -18,11 +21,16 @@ export const createInstitutionAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "create", subjectType: "institutions" },
 	revalidate: "/[locale]/dashboard/administrator/institutions",
-	redirect: "/dashboard/administrator/institutions",
+	redirect: ({ result }) =>
+		`/dashboard/administrator/institutions/${getCreatedSlug(result)}/details`,
+
+	async preCheck({ input }) {
+		return checkSshocMarketplaceActorIdAvailable({
+			sshocMarketplaceActorId: input.sshocMarketplaceActorId,
+		});
+	},
 
 	async mutate(tx, input, { formData }) {
-		const slug = slugify(input.name);
-
 		const entityType = await tx.query.entityTypes.findFirst({
 			where: { type: "organisational_units" },
 			columns: { id: true },
@@ -35,7 +43,10 @@ export const createInstitutionAction = createMutationAction({
 		});
 		assert(orgUnitType);
 
-		const { documentId, versionId } = await createDraftDocument(tx, entityType.id, slug);
+		const { documentId, versionId, slug } = await createDraftDocumentWithSlug(tx, entityType.id, {
+			requestedSlug: getRequestedSlug(input.slug),
+			title: input.name,
+		});
 
 		let imageId: string | null = null;
 		if (input.imageKey != null) {
@@ -64,19 +75,21 @@ export const createInstitutionAction = createMutationAction({
 		);
 		if (publishedRelatedEntityIds.length > 0) {
 			await tx.insert(schema.entitiesToEntities).values(
-				publishedRelatedEntityIds.map((relatedEntityId) => {
-					return { entityId: documentId, relatedEntityId };
+				publishedRelatedEntityIds.map((relatedEntityId, position) => {
+					return { entityId: documentId, position, relatedEntityId };
 				}),
 			);
 		}
 
 		if (input.relatedResourceIds.length > 0) {
 			await tx.insert(schema.entitiesToResources).values(
-				input.relatedResourceIds.map((resourceId) => {
-					return { entityId: documentId, resourceId };
+				input.relatedResourceIds.map((resourceId, position) => {
+					return { entityId: documentId, position, resourceId };
 				}),
 			);
 		}
+
+		await syncOrganisationalUnitSocialMedia(tx, versionId, input.socialMediaIds);
 
 		await replaceEntityVersionFieldContentBlocks(
 			tx,
@@ -91,16 +104,18 @@ export const createInstitutionAction = createMutationAction({
 
 		return {
 			subjectId: documentId,
+			subjectSlug: slug,
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},
 		};
 	},
 
-	async postCommit({ ctx }) {
+	async postCommit({ result, ctx }) {
 		if (!shouldSaveAndPublish(ctx.formData)) {
 			return;
 		}
+		await syncWebsiteDocumentForEntity(result.subjectId);
 		await dispatchWebhook({ type: "members-partners" });
 	},
 });

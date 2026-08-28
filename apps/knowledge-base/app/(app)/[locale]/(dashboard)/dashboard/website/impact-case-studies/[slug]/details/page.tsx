@@ -9,7 +9,7 @@ import { ImpactCaseStudyDetails } from "@/app/(app)/[locale]/(dashboard)/dashboa
 import { discardImpactCaseStudyDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_lib/discard-impact-case-study-draft.action";
 import { publishImpactCaseStudyAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_lib/publish-impact-case-study.action";
 import { imageGridOptions } from "@/config/assets.config";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getImpactCaseStudyContributors } from "@/lib/data/article-contributors";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
@@ -18,8 +18,12 @@ import {
 	getEntityRelations,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteImpactCaseStudyDetailsPageProps extends PageProps<"/[locale]/dashboard/website/impact-case-studies/[slug]/details"> {}
@@ -99,7 +103,10 @@ export default async function DashboardWebsiteImpactCaseStudyDetailsPage(
 	const impactCaseStudy = await db.query.impactCaseStudies.findFirst({
 		where: { id: versionId },
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
+			publicationDate: true,
 			title: true,
 			summary: true,
 		},
@@ -120,10 +127,8 @@ export default async function DashboardWebsiteImpactCaseStudyDetailsPage(
 				},
 			},
 			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -138,12 +143,9 @@ export default async function DashboardWebsiteImpactCaseStudyDetailsPage(
 	);
 	const entityVersionSlug = impactCaseStudy.entityVersion.slug;
 
-	const image = images.generateSignedImageUrl({
-		key: impactCaseStudy.image.key,
-		options: imageGridOptions,
-	});
+	const image = toSelectedImage(impactCaseStudy.image, imageGridOptions);
 
-	const contentBlocks = await getEntityContentBlocks(impactCaseStudy.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(impactCaseStudy.id, "content");
 
 	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(doc.id);
 
@@ -166,7 +168,7 @@ export default async function DashboardWebsiteImpactCaseStudyDetailsPage(
 			impactCaseStudy={{
 				...impactCaseStudy,
 				entityVersion: { ...impactCaseStudy.entityVersion, slug: entityVersionSlug },
-				image: { ...impactCaseStudy.image, url: image.url },
+				image,
 			}}
 			isLocaleFallback={isLocaleFallback}
 			isPublished={publishedId != null}

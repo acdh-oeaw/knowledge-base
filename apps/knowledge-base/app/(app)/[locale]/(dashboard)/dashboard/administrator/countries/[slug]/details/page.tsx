@@ -9,6 +9,7 @@ import { CountryDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/admin
 import { publishCountryAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/countries/_lib/publish-country.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
+import { resolvePlaceholderValuesInContentBlocks } from "@/lib/content-blocks-service";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
@@ -135,6 +136,9 @@ export default async function DashboardAdministratorCountryDetailsPage(
 		`Slug missing for entity version "${country.entityVersion.id}".`,
 	);
 	const entityVersionSlug = country.entityVersion.slug;
+	const descriptionContentBlocks = await resolvePlaceholderValuesInContentBlocks(
+		country.descriptionContentBlocks,
+	);
 
 	const image =
 		country.image != null
@@ -152,6 +156,7 @@ export default async function DashboardAdministratorCountryDetailsPage(
 			country={{
 				...country,
 				entityVersion: { ...country.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
 				image,
 			}}
 			documentId={documentId}

@@ -28,9 +28,9 @@ export const ServiceTypeUpdateSchema = createUpdateSchema(serviceTypes);
 
 /**
  * When services are ingested from sshoc marketplace, they default to "live". All other statuses are
- * managed in the knowledge base. Upon re-ingest from sshoc marketplace, the status field is not
- * updated. When a service is no longer included in the sshoc marketplace response (e.g. because it
- * has been deprecated there), its status is set to "needs_review" if its current status is still
+ * managed in the dariah knowledge base. Upon re-ingest from sshoc marketplace, the status field is
+ * not updated. When a service is no longer included in the sshoc marketplace response (e.g. because
+ * it has been deprecated there), its status is set to "needs_review" if its current status is still
  * set to "live". In other cases, the status field is not updated.
  */
 export const serviceStatusesEnum = [
@@ -60,7 +60,7 @@ export const ServiceStatusUpdateSchema = createUpdateSchema(serviceStatuses);
 export const services = p.snakeCase.table("services", {
 	id: p.uuid("id").primaryKey().default(uuidv7()),
 	name: p.text("name").notNull(),
-	sshocMarketplaceId: p.text("sshoc_marketplace_id"),
+	sshocMarketplaceId: p.text("sshoc_marketplace_id").unique(),
 	typeId: p
 		.uuid("type_id")
 		.notNull()
@@ -126,6 +126,10 @@ export const OrganisationalUnitServiceRoleUpdateSchema = createUpdateSchema(
  * The organisational-unit endpoint, however, is a versioned entity: it references `entities.id` (a
  * document id), not a version id, so the relation stays valid across the unit's draft/publish
  * lifecycle. Reads resolve the unit endpoint to its published version.
+ *
+ * Ownership of a row depends on its service: for a service with an `sshocMarketplaceId` the
+ * marketplace is the source of truth and the ingest reconciles the full set on every run (relations
+ * it does not see are deleted); for a local service the admin service form owns the set.
  */
 export const servicesToOrganisationalUnits = p.snakeCase.table("services_to_organisational_units", {
 	id: p.uuid("id").primaryKey().default(uuidv7()),

@@ -42,21 +42,23 @@ export function TagList<T extends object>(props: Readonly<TagListProps<T>>): Rea
 export interface TagProps extends AriaTagProps {}
 
 export function Tag(props: Readonly<TagProps>): ReactNode {
-	const { children, className, ...rest } = props;
+	const { children, className, textValue: textValueProp, ...rest } = props;
 
 	const t = useExtracted("ui");
 
-	const textValue = typeof children === "string" ? children : undefined;
+	// Respect an explicit `textValue` (e.g. when children are wrapped for truncation), otherwise
+	// derive it from string children.
+	const textValue = textValueProp ?? (typeof children === "string" ? children : undefined);
 
 	return (
 		<AriaTag
 			{...rest}
 			className={cx(
 				"inset-ring inset-ring-input outline-hidden dark:bg-input/30",
-				"inline-flex items-center gap-x-1.5 py-0.5 font-medium text-xs/5 forced-colors:outline",
-				"*:data-[slot=icon]:block-3 *:data-[slot=icon]:inline-3 *:data-[slot=icon]:shrink-0",
+				"inline-flex items-center gap-x-1.5 py-0.5 text-xs/5 font-medium forced-colors:outline",
+				"*:data-[slot=icon]:shrink-0 *:data-[slot=icon]:block-3 *:data-[slot=icon]:inline-3",
 				"cursor-default rounded-full px-2",
-				"selected:inset-ring-ring/70 selected:bg-primary-subtle selected:text-primary-subtle-fg",
+				"selected:bg-primary-subtle selected:text-primary-subtle-fg selected:inset-ring-ring/70",
 				"disabled:opacity-50 forced-colors:disabled:text-[GrayText]",
 				className,
 			)}

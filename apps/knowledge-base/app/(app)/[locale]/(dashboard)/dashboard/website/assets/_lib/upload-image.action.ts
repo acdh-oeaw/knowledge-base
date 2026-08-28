@@ -10,6 +10,7 @@ import { getExtracted, getLocale } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import * as v from "valibot";
 
+import type { UploadedAsset } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-asset";
 import { UploadImageInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/upload-image.schema";
 import { imageGridOptions } from "@/config/assets.config";
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
@@ -21,7 +22,7 @@ import { createServerAction } from "@/lib/server/create-server-action";
 
 /** Uses createServerAction because the success response carries typed data. */
 export const uploadImageAction = createServerAction<
-	{ key: string; url: string },
+	UploadedAsset,
 	GetValidationErrors<typeof UploadImageInputSchema>
 >(
 	// FIXME: should use a coarser-grained "can upload assets" capability instead of requireAdmin
@@ -45,14 +46,15 @@ export const uploadImageAction = createServerAction<
 
 		const { file, licenseId, prefix, label, alt, caption } = validation.output;
 
-		const { key } = await uploadAsset({ file, licenseId, prefix, label, alt, caption });
+		const { id, key } = await uploadAsset({ file, licenseId, prefix, label, alt, caption });
 		const { url } = images.generateSignedImageUrl({ key, options: imageGridOptions });
 
 		await recordAuditEvent(db, {
 			actorUserId: user?.id,
 			action: "create",
 			subjectType: "assets",
-			subjectId: key,
+			subjectId: id,
+			subjectLabel: label ?? file.name,
 			summary: getAuditSummaryFromFormData(formData),
 		});
 
@@ -60,8 +62,16 @@ export const uploadImageAction = createServerAction<
 		revalidatePath("/[locale]/dashboard/administrator/persons", "layout");
 
 		return createActionStateSuccess({
-			message: t("Successfully uploaded image."),
-			data: { key, url },
+			message: t("Successfully uploaded file."),
+			data: {
+				id,
+				key,
+				url,
+				alt: alt ?? null,
+				caption: caption ?? null,
+				licenseId: licenseId ?? null,
+				mimeType: file.type,
+			},
 		});
 	},
 );

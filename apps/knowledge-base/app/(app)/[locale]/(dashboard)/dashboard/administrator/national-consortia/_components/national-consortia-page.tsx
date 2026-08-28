@@ -33,6 +33,7 @@ interface NationalConsortiaPageProps {
 		data: Array<
 			Pick<schema.OrganisationalUnit, "id" | "name" | "sshocMarketplaceActorId"> & {
 				countryName: string | null;
+				documentId: string;
 				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
@@ -63,7 +64,7 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 		nationalConsortia.data,
 		(state, id: string) => state.filter((item) => item.id !== id),
 	);
-	const [itemToDelete, setItemToDelete] = useState<{ id: string } | null>(null);
+	const [itemToDelete, setItemToDelete] = useState<{ id: string; documentId: string } | null>(null);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const search = useUrlPaginatedSearch({
 		dir: initialDir,
@@ -77,7 +78,7 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 		<Fragment>
 			<EntityListHeader
 				title={t("National consortia")}
-				description={t("Manage all national consortia in the knowledge base.")}
+				description={t("Manage all national consortia in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -101,7 +102,7 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 					</TableColumn>
 					<TableColumn>{t("SSHOC actor ID")}</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -117,7 +118,7 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/national-consortia/${item.entity.slug}/details`}
@@ -136,7 +137,7 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 										danger={true}
 										icon={<TrashIcon className="me-2 block-4 inline-4" />}
 										onAction={() => {
-											setItemToDelete({ id: item.id });
+											setItemToDelete({ id: item.id, documentId: item.documentId });
 										}}
 									>
 										{t("Delete")}
@@ -164,13 +165,13 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 						return;
 					}
 
-					const id = itemToDelete.id;
+					const { id, documentId } = itemToDelete;
 					setDeleteError(null);
 
 					startDeleteTransition(async () => {
 						optimisticallyRemoveItem(id);
 						try {
-							const state = await deleteNationalConsortiumAction(id);
+							const state = await deleteNationalConsortiumAction(documentId);
 							if (isActionStateError(state)) {
 								const message = Array.isArray(state.message) ? state.message[0] : state.message;
 								setDeleteError(

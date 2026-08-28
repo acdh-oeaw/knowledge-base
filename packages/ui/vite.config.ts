@@ -7,12 +7,27 @@ import tailwindcssPlugin from "@tailwindcss/vite";
 import reactPlugin from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vite";
-import tsConfigPathsPlugin from "vite-tsconfig-paths";
 
 export default defineConfig({
-	plugins: [reactPlugin(), tailwindcssPlugin(), tsConfigPathsPlugin()],
+	plugins: [reactPlugin(), tailwindcssPlugin()],
+	resolve: {
+		tsconfigPaths: true,
+	},
 	test: {
 		projects: [
+			{
+				/**
+				 * Plain node tests for the pure helpers behind the components — attribute normalization and
+				 * the JSON serialization that carries block attributes through copy/paste. Nothing here
+				 * renders, so it stays out of the browser project and its playwright dependency.
+				 */
+				extends: true,
+				test: {
+					name: "unit",
+					environment: "node",
+					include: [path.join(import.meta.dirname, "lib/**/*.test.ts")],
+				},
+			},
 			{
 				extends: true,
 				plugins: [
@@ -28,7 +43,6 @@ export default defineConfig({
 						instances: [{ browser: "chromium" }],
 						provider: playwright({}),
 					},
-					setupFiles: [path.join(import.meta.dirname, ".storybook/vitest.setup.ts")],
 				},
 			},
 		],

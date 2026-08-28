@@ -3,27 +3,38 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	EntityRefSchema,
 	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
+	PersonPositionsSchema,
 } from "@/lib/schemas";
+
+/**
+ * A person's own social media entry, e.g. a personal website or a Bluesky profile. Distinct from
+ * the social media of an organisational unit: those are shared outreach channels that reports track
+ * KPIs for, while these belong to the person alone.
+ */
+export const PersonSocialMediaSchema = v.pipe(
+	v.object({
+		...v.pick(schema.PersonSocialMediaSelectSchema, ["url", "label"]).entries,
+		type: v.picklist(schema.personSocialMediaTypesEnum),
+	}),
+	v.description("Social media account owned by a person"),
+	v.metadata({ ref: "PersonSocialMedia" }),
+);
+
+export type PersonSocialMedia = v.InferOutput<typeof PersonSocialMediaSchema>;
 
 export const PersonBaseSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PersonSelectSchema, ["id", "name", "sortName", "email", "orcid"]).entries,
-		position: v.nullable(
-			v.array(
-				v.object({
-					role: v.picklist(schema.personRoleTypesEnum),
-					name: v.string(),
-					type: v.picklist(schema.organisationalUnitTypesEnum),
-				}),
-			),
-		),
+		positions: PersonPositionsSchema,
 		image: v.nullable(ImageSchema),
 		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
+		socialMedia: v.array(PersonSocialMediaSchema),
 	}),
 	v.description("Person"),
 	v.metadata({ ref: "PersonBase" }),
@@ -39,22 +50,42 @@ export const PersonListSchema = v.pipe(
 
 export type PersonList = v.InferOutput<typeof PersonListSchema>;
 
+export const personArticleTypesEnum = ["impact_case_study", "spotlight_article"] as const;
+
+/**
+ * An article a person is credited on. Spotlight articles and impact case studies share a shape, so
+ * they are returned as one chronological list discriminated by `type`.
+ */
+export const PersonArticleSchema = v.pipe(
+	v.object({
+		type: v.picklist(personArticleTypesEnum),
+		...v.pick(schema.SpotlightArticleSelectSchema, ["id", "title", "summary"]).entries,
+		image: ImageSchema,
+		entity: EntityRefSchema,
+		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
+		role: v.picklist(schema.articleContributorRolesEnum),
+	}),
+	v.description("Article a person is credited on"),
+	v.metadata({ ref: "PersonArticle" }),
+);
+
+export type PersonArticle = v.InferOutput<typeof PersonArticleSchema>;
+
 export const PersonSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PersonSelectSchema, ["id", "name", "sortName", "email", "orcid"]).entries,
-		position: v.nullable(
-			v.array(
-				v.object({
-					role: v.picklist(schema.personRoleTypesEnum),
-					name: v.string(),
-					type: v.picklist(schema.organisationalUnitTypesEnum),
-				}),
-			),
-		),
+		positions: PersonPositionsSchema,
+		/**
+		 * Roles the person no longer holds, only ever returned on the person detail endpoints — every
+		 * other endpoint embedding a person shows current positions alone.
+		 */
+		formerPositions: PersonPositionsSchema,
 		image: v.nullable(ImageSchema),
 		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
+		socialMedia: v.array(PersonSocialMediaSchema),
 		biography: v.optional(v.array(ContentBlockSchema), []),
+		articles: v.array(PersonArticleSchema),
 	}),
 	v.description("Person"),
 	v.metadata({ ref: "Person" }),

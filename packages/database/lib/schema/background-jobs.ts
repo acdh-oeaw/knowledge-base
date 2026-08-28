@@ -26,7 +26,7 @@ export const backgroundJobs = p.snakeCase.table(
 		startedAt: f.timestamp("started_at").notNull().defaultNow(),
 		finishedAt: f.timestamp("finished_at"),
 		result: p.jsonb("result"),
-		error: p.text("error"),
+		error: p.jsonb("error"),
 	},
 	(t) => [
 		p.check("background_jobs_kind_enum_check", inArray(t.kind, backgroundJobKindEnum)),

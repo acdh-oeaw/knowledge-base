@@ -20,6 +20,7 @@ import {
 	EntityDeleteModal,
 	EntityListHeader,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/selected-image-card";
 import {
 	type DocumentOrPolicyDialogItem,
 	DocumentOrPolicyFormDialog,
@@ -41,7 +42,7 @@ type DocumentItem = Pick<
 	};
 	hasDraft: boolean;
 	isPublished: boolean;
-	document: Pick<schema.Asset, "key" | "label">;
+	document: SelectedImage;
 };
 
 interface GroupWithDocuments extends Pick<schema.DocumentPolicyGroup, "id" | "label" | "position"> {
@@ -70,12 +71,9 @@ function DocumentRow(props: Readonly<DocumentRowProps>): ReactNode {
 
 	return (
 		<div className="flex items-center gap-x-2 rounded-md p-2 hover:bg-muted/50">
-			<div className="min-inline-0 flex flex-1 items-center gap-x-2">
+			<div className="flex flex-1 items-center gap-x-2 min-inline-0">
 				<EntityLifecycleStatusBadge hasDraft={item.hasDraft} isPublished={item.isPublished} />
 				<span className="text-sm font-medium">{item.title}</span>
-				{item.summary ? (
-					<span className="text-muted-fg ms-2 truncate text-xs">{item.summary}</span>
-				) : null}
 			</div>
 
 			<div className="flex shrink-0 items-center gap-x-1">
@@ -139,7 +137,7 @@ function DocumentRow(props: Readonly<DocumentRowProps>): ReactNode {
 						}}
 						size="sq-sm"
 					>
-						<TrashIcon className="block-4 inline-4 text-danger" />
+						<TrashIcon className="text-danger block-4 inline-4" />
 					</Button>
 					<TooltipContent inverse={true}>{t("Delete")}</TooltipContent>
 				</Tooltip>
@@ -239,7 +237,7 @@ function DocumentSection(props: Readonly<DocumentSectionProps>): ReactNode {
 								}}
 								size="sq-sm"
 							>
-								<TrashIcon className="block-4 inline-4 text-danger" />
+								<TrashIcon className="text-danger block-4 inline-4" />
 							</Button>
 							<TooltipContent inverse={true}>{t("Delete group")}</TooltipContent>
 						</Tooltip>
@@ -248,7 +246,7 @@ function DocumentSection(props: Readonly<DocumentSectionProps>): ReactNode {
 			</div>
 
 			{items.length === 0 ? (
-				<p className="text-muted-fg p-2 text-xs">{t("No documents yet.")}</p>
+				<p className="p-2 text-xs text-muted-fg">{t("No documents yet.")}</p>
 			) : (
 				<div className="flex flex-col gap-y-0.5">
 					{items.map((item, index) => (
@@ -308,7 +306,7 @@ export function DocumentsPoliciesPage(props: Readonly<DocumentsPoliciesPageProps
 		<Fragment>
 			<EntityListHeader
 				title={t("Documents and policies")}
-				description={t("Manage all documents and policies in the knowledge base.")}
+				description={t("Manage all documents and policies in the DARIAH knowledge base.")}
 				action={
 					<>
 						<DocumentPolicyGroupCreateDialog />

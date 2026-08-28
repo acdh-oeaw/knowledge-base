@@ -17,7 +17,10 @@ export const middleware: Middleware = function middleware(request, response) {
 	const token = request.cookies.get(sessions.cookie.name)?.value ?? null;
 
 	if (token != null) {
-		response.cookies.set(sessions.cookie.name, token, sessions.cookie.options);
+		response.cookies.set(sessions.cookie.name, token, {
+			...sessions.cookie.options,
+			expires: new Date(Date.now() + sessions.cookie.durationMs),
+		});
 	}
 
 	return response;

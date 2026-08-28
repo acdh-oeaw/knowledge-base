@@ -30,7 +30,7 @@ export function CampaignQuestionsForm(props: Readonly<CampaignQuestionsFormProps
 	const [state, action, isPending] = useActionState(createAction, createActionStateInitial());
 
 	return (
-		<div className="flex flex-col gap-y-8">
+		<div className="flex flex-col gap-y-8 max-inline-3xl">
 			{questions.length === 0 ? (
 				<p className="text-sm text-muted-fg">{t("No questions yet.")}</p>
 			) : (
@@ -41,11 +41,12 @@ export function CampaignQuestionsForm(props: Readonly<CampaignQuestionsFormProps
 								<span className="text-xs text-muted-fg">
 									{t("Question")} {q.position}
 								</span>
-								<div className="richtext richtext-sm">
+								<div className="rounded-md border border-border bg-muted/30 p-4">
 									<RichTextEditor
 										aria-label={t("Question")}
 										content={q.question}
 										isEditable={false}
+										size="sm"
 									/>
 								</div>
 							</div>
@@ -53,7 +54,12 @@ export function CampaignQuestionsForm(props: Readonly<CampaignQuestionsFormProps
 							<form action={deleteWorkingGroupReportQuestionAction}>
 								<input name="campaignId" type="hidden" value={campaignId} />
 								<input name="id" type="hidden" value={q.id} />
-								<Button intent="danger" size="sm" type="submit">
+								<Button
+									className="text-danger hover:text-danger"
+									intent="secondary"
+									size="sm"
+									type="submit"
+								>
 									{t("Remove")}
 								</Button>
 							</form>

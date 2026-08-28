@@ -6,7 +6,7 @@ export function Header({ className, ...props }: Readonly<ComponentProps<"div">>)
 	return (
 		<div className={twMerge("-m-(--layout-padding) bg-muted", className)}>
 			<div
-				className="flex min-inline-0 flex-col items-start justify-between gap-4 border-be p-(--layout-padding) md:flex-row md:items-end **:data-[slot=card-header]:max-inline-lg"
+				className="flex flex-col items-start justify-between gap-4 border-be p-(--layout-padding) min-inline-0 **:data-[slot=card-header]:max-inline-lg md:flex-row md:items-end"
 				{...props}
 			/>
 		</div>
@@ -23,7 +23,7 @@ export function HeaderTitle({
 }: Readonly<ComponentProps<"div">>): ReactNode {
 	return (
 		<h1
-			className={twMerge("font-semibold text-lg leading-none tracking-tight", className)}
+			className={twMerge("text-lg leading-none font-semibold tracking-tight", className)}
 			data-slot="section-card-title"
 			{...props}
 		>

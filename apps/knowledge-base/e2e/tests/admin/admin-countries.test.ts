@@ -11,6 +11,7 @@ test.describe("countries admin", () => {
 
 	test.afterAll(async ({ db }, testInfo) => {
 		await db.cleanupWorkerCountries(testInfo.workerIndex);
+		await db.cleanupWorkerSocialMedia(testInfo.workerIndex);
 	});
 
 	test("should create a country", async ({ createAdminCountriesPage, db }) => {
@@ -21,6 +22,8 @@ test.describe("countries admin", () => {
 		const acronym = "E2EC";
 		const summary = "E2E test country summary.";
 		const description = "E2E test country description.";
+		const socialMediaName = `${countriesPage.workerPrefix} Country Social ${randomUUID()}`;
+		const socialMediaUrl = "https://example.com/country-social";
 		const testAsset = await db.getTestAsset();
 
 		await countriesPage.gotoCreate();
@@ -30,6 +33,7 @@ test.describe("countries admin", () => {
 		await countriesPage.fillSummary(summary);
 		await countriesPage.selectTestImage();
 		await countriesPage.fillDescription(description);
+		await countriesPage.createSocialMediaInForm(socialMediaName, socialMediaUrl);
 
 		await countriesPage.submitForm();
 
@@ -40,6 +44,11 @@ test.describe("countries admin", () => {
 		expect(created).not.toBeNull();
 		expect(created).toMatchObject({ acronym, imageId: testAsset.id, name, summary });
 		expect(JSON.stringify(await db.getCountryDescriptionByName(name))).toContain(description);
+		const socialMedia = await db.getSocialMediaByName(socialMediaName);
+		expect(socialMedia).toMatchObject({ name: socialMediaName, url: socialMediaUrl });
+		expect(await db.getOrganisationalUnitSocialMediaIds(created!.id)).toStrictEqual([
+			socialMedia!.id,
+		]);
 	});
 
 	test("should edit all country form fields", async ({ page, createAdminCountriesPage, db }) => {
@@ -131,7 +140,7 @@ test.describe("countries admin", () => {
 		expect(updated).toMatchObject({ acronym: null, imageId: null, summary: null });
 	});
 
-	test("should delete a country", async ({ createAdminCountriesPage }) => {
+	test("should delete a country", async ({ createAdminCountriesPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const countriesPage = createAdminCountriesPage(workerIndex);
 
@@ -141,6 +150,9 @@ test.describe("countries admin", () => {
 		await countriesPage.fillDescription("Description for delete test.");
 		await countriesPage.submitForm();
 
+		const created = await db.getCountryByName(name);
+		expect(created).not.toBeNull();
+
 		await countriesPage.searchByName(name);
 		await expect(countriesPage.rowByName(name)).toBeVisible();
 
@@ -148,7 +160,14 @@ test.describe("countries admin", () => {
 		await expect(deleteDialog).toBeVisible();
 		await countriesPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(countriesPage.rowByName(name)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getCountryByName(name)).toBeNull();
 	});
 
 	test("version selector shows correct content per version", async ({

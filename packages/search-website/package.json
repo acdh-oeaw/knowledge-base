@@ -26,6 +26,7 @@
 		"@dariah-eric/configs": "workspace:^",
 		"@dariah-eric/database": "workspace:^",
 		"@dariah-eric/search": "workspace:^",
+		"@dariah-eric/website-routes": "workspace:^",
 		"@types/node": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:"
@@ -33,6 +34,7 @@
 	"peerDependencies": {
 		"@acdh-oeaw/lib": "catalog:",
 		"@dariah-eric/database": "workspace:^",
-		"@dariah-eric/search": "workspace:^"
+		"@dariah-eric/search": "workspace:^",
+		"@dariah-eric/website-routes": "workspace:^"
 	}
 }

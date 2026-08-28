@@ -12,6 +12,7 @@ import {
 import type { WorkingGroupReportHistoryItem } from "@/lib/data/reporting";
 
 interface WorkingGroupReportsListPageProps {
+	isAdmin: boolean;
 	reports: Array<WorkingGroupReportHistoryItem>;
 }
 
@@ -22,7 +23,7 @@ function formatStatus(status: string): string {
 export async function WorkingGroupReportsListPage(
 	props: Readonly<WorkingGroupReportsListPageProps>,
 ): Promise<ReactNode> {
-	const { reports } = props;
+	const { isAdmin, reports } = props;
 
 	const t = await getExtracted();
 
@@ -41,9 +42,12 @@ export async function WorkingGroupReportsListPage(
 					title={t("No reports found")}
 				/>
 			) : (
-				<ul className="divide-y rounded-lg border mx-(--layout-padding)">
+				<ul className="mx-(--layout-padding) divide-y rounded-lg border">
 					{reports.map((report) => {
-						const isEditable = report.campaignStatus === "open";
+						// Mirrors `isReportEditable` (lib/auth/permissions): admins always; otherwise
+						// only while the report is a `draft` and its campaign is `open`.
+						const isEditable =
+							isAdmin || (report.reportStatus === "draft" && report.campaignStatus === "open");
 
 						return (
 							<li
@@ -56,13 +60,16 @@ export async function WorkingGroupReportsListPage(
 										{report.campaignYear} &middot; {formatStatus(report.reportStatus)}
 									</span>
 								</div>
-								<ButtonLink
-									href={isEditable ? `/edit` : report.reportHref}
-									intent="plain"
-									size="sm"
-								>
-									{isEditable ? t("Edit") : t("View")}
-								</ButtonLink>
+								<div className="flex items-center gap-x-2">
+									<ButtonLink href={report.reportHref} intent="plain" size="sm">
+										{t("View")}
+									</ButtonLink>
+									{isEditable ? (
+										<ButtonLink href={`${report.reportHref}/edit`} intent="plain" size="sm">
+											{t("Edit")}
+										</ButtonLink>
+									) : null}
+								</div>
 							</li>
 						);
 					})}

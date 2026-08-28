@@ -8,6 +8,7 @@ import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { FormStatus } from "@dariah-eric/ui/form-status";
+import { Input } from "@dariah-eric/ui/input";
 import {
 	ModalBody,
 	ModalClose,
@@ -25,6 +26,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@dariah-eric/ui/table";
+import { TextField } from "@dariah-eric/ui/text-field";
 import type { AsyncOption, AsyncOptionsFetchPageParams } from "@dariah-eric/ui/use-async-options";
 import { PencilSquareIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { CalendarDate } from "@internationalized/date";
@@ -77,6 +79,7 @@ interface InstitutionRelationDialogState {
 	relatedUnit: AsyncOption | null;
 	durationStart: CalendarDate | null;
 	durationEnd: CalendarDate | null;
+	description: string;
 }
 
 const emptyDialog: InstitutionRelationDialogState = {
@@ -87,6 +90,7 @@ const emptyDialog: InstitutionRelationDialogState = {
 	relatedUnit: null,
 	durationStart: null,
 	durationEnd: null,
+	description: "",
 };
 
 function formatValue(value: string): string {
@@ -234,6 +238,7 @@ export function InstitutionRelationsPage(
 			},
 			durationStart: dateToCalendarDate(item.durationStart),
 			durationEnd: dateToCalendarDate(item.durationEnd),
+			description: item.description ?? "",
 		});
 	}
 
@@ -303,13 +308,13 @@ export function InstitutionRelationsPage(
 					<TableColumn allowsSorting={true} id="durationEnd">
 						{t("Until")}
 					</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow id={item.id}>
 							<TableCell>
-								<div className="max-inline-80 truncate" title={item.institutionName}>
+								<div className="truncate max-inline-80" title={item.institutionName}>
 									{item.institutionName}
 								</div>
 							</TableCell>
@@ -320,7 +325,7 @@ export function InstitutionRelationsPage(
 								</Badge>
 							</TableCell>
 							<TableCell>
-								<div className="max-inline-80 truncate" title={item.relatedUnitName}>
+								<div className="truncate max-inline-80" title={item.relatedUnitName}>
 									{item.relatedUnitName}
 								</div>
 							</TableCell>
@@ -330,7 +335,7 @@ export function InstitutionRelationsPage(
 									? format.dateTime(item.durationEnd, { dateStyle: "short" })
 									: t("present")}
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Action
 										icon={<PencilSquareIcon className="me-2 block-4 inline-4" />}
@@ -479,6 +484,19 @@ export function InstitutionRelationsPage(
 							<DatePickerTrigger />
 							<FieldError />
 						</DatePicker>
+						<TextField
+							name="description"
+							onChange={(value) => {
+								setDialog((prev) => {
+									return { ...prev, description: value };
+								});
+							}}
+							value={dialog.description}
+						>
+							<Label>{t("Description")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
 						<FormStatus state={formState} />
 					</ModalBody>
 					<ModalFooter>

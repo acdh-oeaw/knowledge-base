@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
+import { isEmptyRichTextDocument, withoutBlankParagraphs } from "@dariah-eric/database/rich-text";
 import * as schema from "@dariah-eric/database/schema";
 
 import { db } from "@/lib/db";
@@ -49,7 +50,13 @@ interface CreateRichTextContentBlockParams {
 }
 
 export async function createRichTextContentBlock(params: CreateRichTextContentBlockParams) {
-	const { fieldId, typeId, content, position = 0 } = params;
+	const { fieldId, typeId, position = 0 } = params;
+	// Spacer paragraphs are stripped before the empty check, so a document holding only blank lines
+	// is treated as empty rather than stored.
+	const content = withoutBlankParagraphs(params.content);
+	if (isEmptyRichTextDocument(content)) {
+		return undefined;
+	}
 
 	const [contentBlock] = await db
 		.insert(schema.contentBlocks)
@@ -91,7 +98,12 @@ interface UpdateRichTextContentBlockParams {
 }
 
 export async function updateRichTextContentBlock(params: UpdateRichTextContentBlockParams) {
-	const { id, content } = params;
+	const { id } = params;
+	const content = withoutBlankParagraphs(params.content);
+	if (isEmptyRichTextDocument(content)) {
+		await db.delete(schema.contentBlocks).where(eq(schema.contentBlocks.id, id));
+		return undefined;
+	}
 
 	const [updated] = await db
 		.update(schema.richTextContentBlocks)

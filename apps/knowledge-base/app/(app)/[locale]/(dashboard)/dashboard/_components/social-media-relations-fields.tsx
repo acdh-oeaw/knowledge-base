@@ -2,12 +2,13 @@
 
 import { socialMediaTypesEnum } from "@dariah-eric/database/schema";
 import { type ActionState, createActionStateInitial } from "@dariah-eric/next-lib/actions";
-import { AsyncMultipleSelect } from "@dariah-eric/ui/async-multiple-select";
+import { AsyncListSelect } from "@dariah-eric/ui/async-list-select";
 import { Button } from "@dariah-eric/ui/button";
 import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { FormStatus } from "@dariah-eric/ui/form-status";
+import { GridListDescription, GridListLabel } from "@dariah-eric/ui/grid-list";
 import { Input } from "@dariah-eric/ui/input";
 import {
 	ModalBody,
@@ -20,6 +21,7 @@ import { ProgressCircle } from "@dariah-eric/ui/progress-circle";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@dariah-eric/ui/select";
 import { TextField } from "@dariah-eric/ui/text-field";
 import type { AsyncOption, AsyncOptionsFetchPageParams } from "@dariah-eric/ui/use-async-options";
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/16/solid";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useState, useTransition } from "react";
@@ -28,11 +30,18 @@ import { FormSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_compone
 import {
 	type CreatedSocialMedia,
 	createSocialMediaAction,
-} from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/create-social-media.action";
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/create-social-media.action";
+import { LocaleLink } from "@/lib/navigation/navigation";
+import { getSocialMediaTypeLabel } from "@/lib/social-media-type-label";
+
+/** Social media options carry a human-readable `type` label, shown as the tag suffix. */
+interface SocialMediaOption extends AsyncOption {
+	type?: string;
+}
 
 async function fetchSocialMediaOptionsPage(
 	params: Readonly<AsyncOptionsFetchPageParams>,
-): Promise<{ items: Array<AsyncOption>; total: number }> {
+): Promise<{ items: Array<SocialMediaOption>; total: number }> {
 	const searchParams = new URLSearchParams({
 		limit: String(params.limit),
 		offset: String(params.offset),
@@ -50,15 +59,15 @@ async function fetchSocialMediaOptionsPage(
 		throw new Error("Failed to load social media options.");
 	}
 
-	return (await response.json()) as { items: Array<AsyncOption>; total: number };
+	return (await response.json()) as { items: Array<SocialMediaOption>; total: number };
 }
 
 interface SocialMediaRelationsFieldsProps {
 	description: string;
 	initialSocialMediaIds?: Array<string>;
-	initialSocialMediaItems: Array<AsyncOption>;
+	initialSocialMediaItems: Array<SocialMediaOption>;
 	initialSocialMediaTotal: number;
-	selectedSocialMediaItems?: Array<AsyncOption>;
+	selectedSocialMediaItems?: Array<SocialMediaOption>;
 }
 
 export function SocialMediaRelationsFields(
@@ -77,7 +86,7 @@ export function SocialMediaRelationsFields(
 	const [selectedSocialMediaIds, setSelectedSocialMediaIds] = useState<Array<string>>(
 		initialSocialMediaIds ?? [],
 	);
-	const [localSocialMediaItems, setLocalSocialMediaItems] = useState<Array<AsyncOption>>(
+	const [localSocialMediaItems, setLocalSocialMediaItems] = useState<Array<SocialMediaOption>>(
 		() => selectedSocialMediaItems ?? [],
 	);
 	const [isCreateSocialMediaOpen, setIsCreateSocialMediaOpen] = useState(false);
@@ -95,9 +104,10 @@ export function SocialMediaRelationsFields(
 				setLocalSocialMediaItems((prev) => [
 					...prev,
 					{
-						description: `${result.data.type.type} · ${result.data.url}`,
+						description: `${getSocialMediaTypeLabel(result.data.type.type)} · ${result.data.url}`,
 						id: result.data.id,
 						name: result.data.name,
+						type: getSocialMediaTypeLabel(result.data.type.type),
 					},
 				]);
 				setSelectedSocialMediaIds((prev) => [...prev, result.data.id]);
@@ -109,13 +119,32 @@ export function SocialMediaRelationsFields(
 
 	return (
 		<FormSection description={description} title={t("Social media")}>
-			<AsyncMultipleSelect
+			<AsyncListSelect
+				addLabel={t("Add social media")}
 				aria-label={t("Social media")}
+				emptySelectionMessage={t("No social media linked")}
 				fetchPage={fetchSocialMediaOptionsPage}
 				initialItems={initialSocialMediaItems}
 				initialTotal={initialSocialMediaTotal}
+				isOrderable={true}
 				onChange={setSelectedSocialMediaIds}
-				placeholder={t("No social media linked")}
+				renderSelectedItem={(item) => (
+					<>
+						<GridListLabel className="truncate">{item.name}</GridListLabel>
+						{item.description != null && item.description !== "" ? (
+							<GridListDescription className="truncate">{item.description}</GridListDescription>
+						) : null}
+						<LocaleLink
+							className="mbs-1 inline-flex items-center gap-x-1 text-xs text-muted-fg inline-fit hover:text-fg hover:underline"
+							href={`/dashboard/administrator/social-media/${item.id}/edit`}
+							rel="noreferrer"
+							target="_blank"
+						>
+							<ArrowTopRightOnSquareIcon className="block-3.5 inline-3.5" />
+							{t("Open record")}
+						</LocaleLink>
+					</>
+				)}
 				selectedItems={localSocialMediaItems}
 				value={selectedSocialMediaIds}
 			/>

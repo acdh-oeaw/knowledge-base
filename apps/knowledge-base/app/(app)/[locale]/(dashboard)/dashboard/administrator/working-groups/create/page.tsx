@@ -7,6 +7,7 @@ import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getDefaultLocale } from "@/lib/data/locales";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
+import { getSocialMediaOptions } from "@/lib/data/social-media";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorCreateWorkingGroupPageProps extends PageProps<"/[locale]/dashboard/administrator/working-groups/create"> {}
@@ -27,13 +28,19 @@ export async function generateMetadata(
 export default async function DashboardAdministratorCreateWorkingGroupPage(
 	_props: Readonly<DashboardAdministratorCreateWorkingGroupPageProps>,
 ): Promise<ReactNode> {
-	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources, defaultLocale] =
-		await Promise.all([
-			getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
-			getEntityRelationOptions(),
-			getResourceRelationOptions(),
-			getDefaultLocale(),
-		]);
+	const [
+		{ items: initialAssets },
+		initialRelatedEntities,
+		initialRelatedResources,
+		initialSocialMedia,
+		defaultLocale,
+	] = await Promise.all([
+		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
+		getEntityRelationOptions(),
+		getResourceRelationOptions(),
+		getSocialMediaOptions(),
+		getDefaultLocale(),
+	]);
 
 	return (
 		<WorkingGroupCreateForm
@@ -43,6 +50,8 @@ export default async function DashboardAdministratorCreateWorkingGroupPage(
 			initialRelatedEntityTotal={initialRelatedEntities.total}
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
+			initialSocialMediaItems={initialSocialMedia.items}
+			initialSocialMediaTotal={initialSocialMedia.total}
 		/>
 	);
 }

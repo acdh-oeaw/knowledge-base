@@ -7,6 +7,7 @@ import {
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
+	PersonPositionsSchema,
 	RelatedEntitiesSchema,
 	RelatedResourcesSchema,
 } from "@/lib/schemas";
@@ -43,15 +44,7 @@ export const SpotlightArticleSchema = v.pipe(
 		contributors: v.array(
 			v.object({
 				...v.pick(schema.PersonSelectSchema, ["id", "name"]).entries,
-				position: v.nullable(
-					v.array(
-						v.object({
-							role: v.picklist(schema.personRoleTypesEnum),
-							name: v.string(),
-							type: v.picklist(schema.organisationalUnitTypesEnum),
-						}),
-					),
-				),
+				positions: PersonPositionsSchema,
 				image: v.nullable(ImageSchema),
 				slug: v.string(),
 				role: v.picklist(schema.articleContributorRolesEnum),

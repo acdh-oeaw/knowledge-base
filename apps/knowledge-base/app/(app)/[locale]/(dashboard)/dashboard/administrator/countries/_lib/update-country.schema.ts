@@ -5,8 +5,10 @@ import {
 import * as v from "valibot";
 
 import { ContentBlockInputSchema } from "@/lib/content-block-input";
+import { EntitySlugInputSchema } from "@/lib/entity-slug-input";
 
 export const UpdateCountryActionInputSchema = v.object({
+	slug: EntitySlugInputSchema,
 	...v.pick(OrganisationalUnitSelectSchema, ["id"]).entries,
 	...v.pick(OrganisationalUnitUpdateSchema, ["name", "summary"]).entries,
 	summary: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),

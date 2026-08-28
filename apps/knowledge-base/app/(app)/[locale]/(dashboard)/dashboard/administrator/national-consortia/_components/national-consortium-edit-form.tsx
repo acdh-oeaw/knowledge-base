@@ -1,6 +1,7 @@
 "use client";
 
 import type * as schema from "@dariah-eric/database/schema";
+import { Link } from "@dariah-eric/ui/link";
 import { TabList, TabPanel } from "@dariah-eric/ui/tabs";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
@@ -12,9 +13,12 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ReverseUnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/reverse-unit-relations-section";
 import { UnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/unit-relations-section";
+import { adminUnitRelationActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_lib/admin-relation-actions";
 import { NationalConsortiumForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortium-form";
 import { discardNationalConsortiumDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_lib/discard-national-consortium-draft.action";
 import { publishNationalConsortiumAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_lib/publish-national-consortium.action";
@@ -39,7 +43,8 @@ interface NationalConsortiumEditFormProps {
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
+
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -91,6 +96,13 @@ export function NationalConsortiumEditForm(
 	const t = useExtracted();
 	const formId = "national-consortium-edit-form";
 
+	// Membership in this national consortium is edited here; partner institutions (members and
+	// cooperating partners of the country) are edited on the country instead. Link there when we can
+	// resolve the consortium's country via its `is_national_consortium_of` relation.
+	const countrySlug =
+		relations.find((relation) => relation.statusType === "is_national_consortium_of")
+			?.relatedUnitSlug ?? null;
+
 	return (
 		<Fragment>
 			<EntityFormHeader title={t("Edit national consortium")} />
@@ -122,23 +134,28 @@ export function NationalConsortiumEditForm(
 						key={nationalConsortium.id}
 						formAction={updateNationalConsortiumAction}
 						formId={formId}
-						isDefaultLocale={isDefaultLocale}
 						initialAssets={initialAssets}
-						initialRelatedEntityIds={initialRelatedEntityIds}
-						initialRelatedEntityItems={initialRelatedEntityItems}
-						initialRelatedEntityTotal={initialRelatedEntityTotal}
-						initialRelatedResourceIds={initialRelatedResourceIds}
-						initialRelatedResourceItems={initialRelatedResourceItems}
-						initialRelatedResourceTotal={initialRelatedResourceTotal}
 						initialSocialMediaIds={initialSocialMediaIds}
 						initialSocialMediaItems={initialSocialMediaItems}
 						initialSocialMediaTotal={initialSocialMediaTotal}
+						isPublished={isPublished}
 						nationalConsortium={nationalConsortium}
-						selectedRelatedEntities={selectedRelatedEntities}
-						selectedRelatedResources={selectedRelatedResources}
+						isDefaultLocale={isDefaultLocale}
 						selectedSocialMediaItems={selectedSocialMediaItems}
 						showSaveAndPublish={true}
-					/>
+					>
+						<EntityRelationsFields
+							formId={formId}
+							initialRelatedEntityIds={initialRelatedEntityIds}
+							initialRelatedEntityItems={initialRelatedEntityItems}
+							initialRelatedEntityTotal={initialRelatedEntityTotal}
+							initialRelatedResourceIds={initialRelatedResourceIds}
+							initialRelatedResourceItems={initialRelatedResourceItems}
+							initialRelatedResourceTotal={initialRelatedResourceTotal}
+							selectedRelatedEntities={selectedRelatedEntities}
+							selectedRelatedResources={selectedRelatedResources}
+						/>
+					</NationalConsortiumForm>
 				</TabPanel>
 
 				<TabPanel id="relations" shouldPreserveState={true}>
@@ -149,8 +166,33 @@ export function NationalConsortiumEditForm(
 					/>
 				</TabPanel>
 
-				<TabPanel id="institutions" shouldPreserveState={true}>
+				<TabPanel
+					className="flex flex-col gap-y-(--layout-padding)"
+					id="institutions"
+					shouldPreserveState={true}
+				>
+					<p className="text-sm text-neutral-500 max-inline-3xl">
+						{countrySlug != null
+							? t.rich(
+									'Institutions listed here are members of this national consortium. To edit "partner institutions", the "national coordinating institution", or the "national representative institution", go to the country\'s <link>institutions</link>.',
+									{
+										link(chunks) {
+											return (
+												<Link
+													className="underline"
+													href={`/dashboard/administrator/countries/${countrySlug}/edit?tab=institutions`}
+												>
+													{chunks}
+												</Link>
+											);
+										},
+									},
+								)
+							: t("Institutions listed here are members of this national consortium.")}
+					</p>
+
 					<ReverseUnitRelationsSection
+						actions={adminUnitRelationActions}
 						messages={{
 							title: t("Institutions"),
 							memberLabel: t("Institution"),

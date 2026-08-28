@@ -20,6 +20,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -37,14 +38,13 @@ interface FundingCallsPageProps {
 				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
-				updatedAt: schema.Entity["updatedAt"];
 			}
 		>;
 		total: number;
 	};
 	page: number;
 	q: string;
-	sort: "title" | "updatedAt";
+	sort: "duration" | "title";
 }
 
 const pageSize = dashboardPageSize;
@@ -77,8 +77,8 @@ export function FundingCallsPage(props: Readonly<FundingCallsPageProps>): ReactN
 	return (
 		<Fragment>
 			<EntityListHeader
-				title={t("Funding Calls")}
-				description={t("Manage all funding calls in the knowledge base.")}
+				title={t("Funding calls")}
+				description={t("Manage all funding calls in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -97,18 +97,17 @@ export function FundingCallsPage(props: Readonly<FundingCallsPageProps>): ReactN
 					<TableColumn allowsSorting={true} id="title" isRowHeader={true}>
 						{t("Title")}
 					</TableColumn>
-					<TableColumn>{t("Duration")}</TableColumn>
-					<TableColumn allowsSorting={true} id="updatedAt">
-						{t("Updated")}
+					<TableColumn allowsSorting={true} id="duration">
+						{t("Duration")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow href={`/dashboard/website/funding-calls/${item.entity.slug}/details`}>
 							<TableCell>
-								<div className="max-inline-64 truncate">{item.title}</div>
+								<EntityListTitle title={item.title} />
 							</TableCell>
 							<TableCell>
 								{item.duration.end != null
@@ -117,14 +116,13 @@ export function FundingCallsPage(props: Readonly<FundingCallsPageProps>): ReactN
 										})
 									: format.dateTime(item.duration.start, { dateStyle: "short" })}
 							</TableCell>
-							<TableCell>{format.dateTime(item.updatedAt, { dateStyle: "short" })}</TableCell>
 							<TableCell>
 								<EntityLifecycleStatusBadge
 									hasDraft={item.hasDraft}
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/website/funding-calls/${item.entity.slug}/details`}

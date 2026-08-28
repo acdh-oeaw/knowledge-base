@@ -25,10 +25,5 @@ export default async function DashboardAdministratorCountryReportServicesPage(
 
 	const { id } = await params;
 
-	return (
-		<CountryReportServicesScreen
-			basePath={`/dashboard/administrator/country-reports/${id}/edit`}
-			reportId={id}
-		/>
-	);
+	return <CountryReportServicesScreen reportId={id} />;
 }

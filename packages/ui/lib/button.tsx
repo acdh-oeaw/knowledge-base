@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import {
 	Button as ButtonPrimitive,
 	type ButtonProps as ButtonPrimitiveProps,
@@ -13,7 +13,7 @@ import { cx } from "@/lib/primitive";
 export { buttonStyles };
 
 export interface ButtonProps extends ButtonPrimitiveProps, VariantProps<typeof buttonStyles> {
-	ref?: React.Ref<HTMLButtonElement>;
+	ref?: Ref<HTMLButtonElement>;
 }
 
 export function Button({

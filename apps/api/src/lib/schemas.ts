@@ -21,15 +21,36 @@ export const publicRelatedEntityTypesEnum = [
 
 export type PublicRelatedEntityType = (typeof publicRelatedEntityTypesEnum)[number];
 
+/** Entity types not in the public vocabulary (documentation and internal pages) are never exposed. */
+export function isPublicRelatedEntityType(type: string): type is PublicRelatedEntityType {
+	return (publicRelatedEntityTypesEnum as ReadonlyArray<string>).includes(type);
+}
+
 export const LicenseSchema = v.object({
 	name: v.string(),
 	url: v.string(),
 });
 
 export const ImageSchema = v.object({
-	url: v.string(),
+	url: v.pipe(v.string(), v.description("Default rendition, sized for this placement")),
+	srcUrl: v.pipe(
+		v.string(),
+		v.description(
+			"Base url of the image-variant endpoint for this asset; append `?w=` and optionally `&ar=` to request a rendition",
+		),
+	),
+	/**
+	 * Null for vectors. A consumer sizing its own renditions must not ask for a width above this:
+	 * imgproxy does not enlarge, so wider requests return the source size while a `srcset` descriptor
+	 * claims otherwise.
+	 */
+	width: v.nullable(v.pipe(v.number(), v.description("Source width in pixels; null for vectors"))),
+	height: v.nullable(
+		v.pipe(v.number(), v.description("Source height in pixels; null for vectors")),
+	),
 	alt: v.nullable(v.string()),
-	caption: v.nullable(v.string()),
+	/** Richtext caption as Tiptap JSON (bold/italic/link); consumers render it like other richtext. */
+	caption: v.nullable(v.any()),
 	license: v.nullable(LicenseSchema),
 });
 
@@ -40,22 +61,10 @@ export const PaginationQuerySchema = v.object({
 			"10",
 		),
 		v.description("Maximum number of items in paginated list"),
-		v.metadata({ ref: "LimitParam" }),
 	),
 	offset: v.pipe(
-		v.optional(v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(0)), "0"),
+		v.optional(v.pipe(v.string(), v.toNumber(), v.safeInteger(), v.minValue(0)), "0"),
 		v.description("Offset in paginated list"),
-		v.metadata({ ref: "OffsetParam" }),
-	),
-});
-
-export const LocaleQuerySchema = v.object({
-	locale: v.pipe(
-		v.optional(v.string()),
-		v.description(
-			'Locale code (e.g. "de" or "de-AT") to resolve translated content for. Falls back to the site\'s default locale.',
-		),
-		v.metadata({ ref: "LocaleParam" }),
 	),
 });
 
@@ -63,6 +72,15 @@ export const PaginatedResponseSchema = v.object({
 	limit: v.number(),
 	offset: v.number(),
 	total: v.number(),
+});
+
+export const LocaleQuerySchema = v.object({
+	locale: v.pipe(
+		v.optional(v.string()),
+		v.description(
+			'BCP 47-style locale code (e.g. "de" or "de-AT"); falls back to the default locale when omitted or unrecognized',
+		),
+	),
 });
 
 /**
@@ -77,20 +95,65 @@ export const CalendarDateSchema = v.pipe(
 	),
 );
 
-export const RelatedEntitiesSchema = v.array(
+/**
+ * A reference to another entity. Every place that points at an entity — positions, related
+ * entities, navigation items, article credits — uses this exact shape, so consumers need a single
+ * code path to render a link, and a new field (e.g. `href`) is added in one place.
+ */
+export const EntityRefSchema = v.pipe(
 	v.object({
+		/** Document id (stable across versions), not the id of a particular version. */
 		id: v.pipe(v.string(), v.uuid()),
+		type: v.picklist(publicRelatedEntityTypesEnum),
 		slug: v.string(),
-		entityType: v.picklist(publicRelatedEntityTypesEnum),
-		label: v.nullable(v.string()),
+		/**
+		 * Display name of the entity. Some embedding records, such as navigation items, may override
+		 * it.
+		 */
+		label: v.string(),
+		href: v.pipe(
+			v.nullable(v.string()),
+			v.description(
+				"Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
+			),
+		),
 	}),
+	v.description("Reference to an entity, with its website href"),
+	v.metadata({ ref: "EntityRef" }),
 );
+
+export type EntityRef = v.InferOutput<typeof EntityRefSchema>;
+
+/**
+ * A person's roles in organisational units — a relation, so the role, its note and the period it is
+ * held for sit alongside a reference to the unit itself. Whether a list holds current or former
+ * roles is carried by the field it is returned in, not by the items.
+ */
+export const PersonPositionsSchema = v.nullable(
+	v.array(
+		v.object({
+			role: v.picklist(schema.personRoleTypesEnum),
+			description: v.nullable(v.string()),
+			entity: EntityRefSchema,
+			duration: v.object({
+				start: CalendarDateSchema,
+				end: v.pipe(
+					v.optional(CalendarDateSchema),
+					v.description("Absent for an open-ended position"),
+				),
+			}),
+		}),
+	),
+);
+
+export const RelatedEntitiesSchema = v.array(EntityRefSchema);
 
 export const RelatedResourcesSchema = v.array(
 	v.object({
 		id: v.string(),
 		label: v.string(),
 		type: v.nullable(v.string()),
+		sourceUrl: v.nullable(v.string()),
 		links: v.array(v.string()),
 	}),
 );

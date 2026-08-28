@@ -5,6 +5,7 @@ import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
+import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
 import { NationalConsortiumForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortium-form";
 import { createNationalConsortiumAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_lib/create-national-consortium.action";
 
@@ -15,6 +16,8 @@ interface NationalConsortiumCreateFormProps {
 	initialRelatedEntityTotal: number;
 	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedResourceTotal: number;
+	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaTotal: number;
 }
 
 export function NationalConsortiumCreateForm(
@@ -27,6 +30,8 @@ export function NationalConsortiumCreateForm(
 		initialRelatedEntityTotal,
 		initialRelatedResourceItems,
 		initialRelatedResourceTotal,
+		initialSocialMediaItems,
+		initialSocialMediaTotal,
 	} = props;
 
 	const t = useExtracted();
@@ -41,16 +46,20 @@ export function NationalConsortiumCreateForm(
 					{ locale: defaultLocaleName },
 				)}
 			</Note>
-
 			<NationalConsortiumForm
 				formAction={createNationalConsortiumAction}
 				initialAssets={initialAssets}
-				initialRelatedEntityItems={initialRelatedEntityItems}
-				initialRelatedEntityTotal={initialRelatedEntityTotal}
-				initialRelatedResourceItems={initialRelatedResourceItems}
-				initialRelatedResourceTotal={initialRelatedResourceTotal}
+				initialSocialMediaItems={initialSocialMediaItems}
+				initialSocialMediaTotal={initialSocialMediaTotal}
 				showSaveAndPublish={true}
-			/>
+			>
+				<EntityRelationsFields
+					initialRelatedEntityItems={initialRelatedEntityItems}
+					initialRelatedEntityTotal={initialRelatedEntityTotal}
+					initialRelatedResourceItems={initialRelatedResourceItems}
+					initialRelatedResourceTotal={initialRelatedResourceTotal}
+				/>
+			</NationalConsortiumForm>
 		</Fragment>
 	);
 }

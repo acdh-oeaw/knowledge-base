@@ -1,4 +1,4 @@
-import { getFormDataValues } from "@acdh-oeaw/lib";
+import { assert, getFormDataValues } from "@acdh-oeaw/lib";
 import type { User } from "@dariah-eric/auth";
 import {
 	type ActionState,
@@ -15,6 +15,7 @@ import {
 	getAuditSummaryFromFormData,
 	recordAuditEvent,
 } from "@/lib/audit/audit-log";
+import { resolveAuditSubjectLabel } from "@/lib/data/audit-log";
 import { type Transaction, db } from "@/lib/db";
 import { type IntlLocale, getIntlLanguage } from "@/lib/i18n/locales";
 import { redirect } from "@/lib/navigation/navigation";
@@ -28,19 +29,49 @@ import { type ServerAction, createServerAction } from "@/lib/server/create-serve
  */
 export interface MutationResult<TSuccessData = unknown> {
 	subjectId: string;
+	/**
+	 * Snapshot of the subject's label for the audit row. When omitted, the wrapper resolves it from
+	 * the active transaction before writing the audit event. Set it explicitly when `mutate` already
+	 * has the better event-time label, especially before deleting a row.
+	 */
+	subjectLabel?: string | null;
+	/**
+	 * The subject's slug as stored by the database. Set this in mutations that redirect to a
+	 * slug-based route, and build the `redirect` from it via `getResultSlug`.
+	 */
+	subjectSlug?: string;
 	auditSummary?: Record<string, unknown>;
 	successMessage?: string;
 	successData?: TSuccessData;
 }
 
+/**
+ * Reads the slug of a mutated entity out of its mutate result, for building a `redirect`.
+ *
+ * Actions must route to the slug stored in the database, never to a second `slugify(title)` call or
+ * an untrusted form value: those agree only for as long as every requested slug is stored
+ * verbatim.
+ */
+export function getResultSlug(result: MutationResult): string {
+	assert(result.subjectSlug, "Actions redirecting to a slug must return `subjectSlug`.");
+	return result.subjectSlug;
+}
+
+export const getCreatedSlug = getResultSlug;
+
 export interface MutationContext {
+	/** The effective user: whom the mutation is made _as_. */
 	user: User | null;
+	/** The authenticated account behind `user`; differs only while impersonating. */
+	realUser: User | null;
+	isImpersonating: boolean;
 	formData: FormData;
 	locale: IntlLocale;
 }
 
 export interface AuthenticatedMutationContext extends MutationContext {
 	user: User;
+	realUser: User;
 }
 
 interface BaseCreateMutationActionOptions<
@@ -51,6 +82,12 @@ interface BaseCreateMutationActionOptions<
 	schema: TSchema;
 	requireAdmin?: boolean;
 	requireAuth?: boolean;
+	/**
+	 * Refuses the action while impersonating. For anything that mutates the credential behind the
+	 * session, which must never be applied to the impersonated user's account. Implies
+	 * `requireAuth`.
+	 */
+	requireNoImpersonation?: boolean;
 	audit: {
 		action: AuditLogAction;
 		subjectType: string;
@@ -140,8 +177,12 @@ export function createMutationAction<TSchema extends v.GenericSchema, TSuccessDa
 	opts: AnyCreateMutationActionOptions<TSchema, TSuccessData>,
 ): ServerAction {
 	return createServerAction(
-		{ requireAdmin: opts.requireAdmin, requireAuth: opts.requireAuth },
-		async (state, formData, { user }) => {
+		{
+			requireAdmin: opts.requireAdmin,
+			requireAuth: opts.requireAuth,
+			requireNoImpersonation: opts.requireNoImpersonation,
+		},
+		async (state, formData, { user, realUser, isImpersonating }) => {
 			const locale = await getLocale();
 			const t = await getExtracted();
 
@@ -158,7 +199,13 @@ export function createMutationAction<TSchema extends v.GenericSchema, TSuccessDa
 			}
 
 			const input = parsed.output;
-			const ctx = { user, formData, locale } as MutationContext & AuthenticatedMutationContext;
+			const ctx = {
+				user,
+				realUser,
+				isImpersonating,
+				formData,
+				locale,
+			} as MutationContext & AuthenticatedMutationContext;
 
 			if (opts.preCheck != null) {
 				const preCheckResult = await opts.preCheck({ input, ctx });
@@ -169,11 +216,17 @@ export function createMutationAction<TSchema extends v.GenericSchema, TSuccessDa
 
 			const result = await db.transaction(async (tx) => {
 				const mutationResult = await opts.mutate(tx, input, ctx);
+				const subjectLabel =
+					mutationResult.subjectLabel !== undefined
+						? mutationResult.subjectLabel
+						: await resolveAuditSubjectLabel(opts.audit.subjectType, mutationResult.subjectId, tx);
 				await recordAuditEvent(tx, {
 					actorUserId: user?.id,
+					impersonatedByUserId: isImpersonating ? realUser?.id : null,
 					action: opts.audit.action,
 					subjectType: opts.audit.subjectType,
 					subjectId: mutationResult.subjectId,
+					subjectLabel,
 					summary: {
 						...getAuditSummaryFromFormData(formData),
 						...mutationResult.auditSummary,

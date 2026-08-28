@@ -2,6 +2,10 @@ import type { NextRequest } from "next/server";
 
 import { getCountryReportDataForUser } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/get-country-report-summary-data";
 import { getCurrentSession } from "@/lib/auth/session";
+import {
+	getCountryExternalResourceSnapshots,
+	getCountryReportConsortiumBranding,
+} from "@/lib/data/report-marketplace-resources";
 
 export async function GET(
 	_request: NextRequest,
@@ -25,18 +29,34 @@ export async function GET(
 		}
 		case "ok": {
 			const report = result.data;
+			const [externalResourceSnapshots, consortium] = await Promise.all([
+				getCountryExternalResourceSnapshots(report.id),
+				getCountryReportConsortiumBranding(report.countryDocumentId, report.campaign.year),
+			]);
 
 			const payload = {
 				id: report.id,
 				status: report.status,
+				generatedAt: new Date().toISOString(),
 				country: report.country.name,
+				consortium:
+					consortium == null ? null : { name: consortium.name, acronym: consortium.acronym },
 				campaign: report.campaign.year,
 				totalContributors: report.summary.totalContributors,
 				institutions: report.summary.institutions.map((i) => {
-					return { name: i.name, acronym: i.acronym, representationType: i.representationType };
+					return {
+						name: i.name,
+						acronym: i.acronym,
+						representationTypes: i.representationTypes,
+					};
 				}),
 				contributors: report.summary.contributions.map((c) => {
-					return { name: c.personName, role: c.roleType, orgUnit: c.orgUnitName };
+					return {
+						name: c.personName,
+						role: c.roleType,
+						compensationRole: c.compensationRole,
+						orgUnit: c.orgUnitName,
+					};
 				}),
 				events: {
 					small: report.summary.smallEvents,
@@ -58,6 +78,7 @@ export async function GET(
 				services: report.summary.services.map((s) => {
 					return {
 						name: s.name,
+						costBucket: s.costBucket,
 						kpis: Object.fromEntries(
 							s.kpis.filter((k) => k.value > 0).map((k) => [k.kpi, k.value]),
 						),
@@ -65,6 +86,49 @@ export async function GET(
 				}),
 				projectContributions: report.summary.projectContributions.map((p) => {
 					return { project: p.projectName, amountEuros: p.amountEuros };
+				}),
+				operationalCost: {
+					total: report.summary.operationalCost.total,
+					threshold: report.summary.operationalCost.threshold,
+					lines: report.summary.operationalCost.lines.map((line) => {
+						return {
+							key: line.key,
+							label: line.label,
+							bucket: line.bucket ?? null,
+							quantity: line.quantity,
+							showQuantity: line.showQuantity,
+							unitAmount: line.unitAmount,
+							total: line.total,
+						};
+					}),
+				},
+				externalResources: externalResourceSnapshots.map((snapshot) => {
+					return {
+						section: snapshot.section,
+						capturedAt: snapshot.capturedAt.toISOString(),
+						capturedBy: snapshot.capturedByUserName,
+						filterBy: snapshot.filterBy,
+						actorSlugs: snapshot.actorSlugs,
+						items: snapshot.items.map((item) => {
+							return {
+								source: item.source,
+								sourceId: item.sourceId,
+								sourceUpdatedAt: item.sourceUpdatedAt,
+								importedAt: item.importedAt,
+								type: item.type,
+								sshocCategory: item.sshocCategory,
+								label: item.label,
+								description: item.description,
+								keywords: item.keywords,
+								kind: item.kind,
+								sourceUrl: item.sourceUrl,
+								links: item.links,
+								authors: item.authors,
+								year: item.year,
+								pid: item.pid,
+							};
+						}),
+					};
 				}),
 			};
 

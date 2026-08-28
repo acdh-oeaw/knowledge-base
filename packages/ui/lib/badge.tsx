@@ -1,12 +1,12 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { type VariantProps, tv } from "tailwind-variants";
 
 export const badgeStyles = tv({
 	base: [
-		"inline-flex items-center gap-x-1.5 py-0.5 font-medium text-xs/5 forced-colors:outline",
-		"inset-ring inset-ring-(--badge-ring) bg-(--badge-bg) text-(--badge-fg) [--badge-ring:transparent]",
+		"inline-flex items-center gap-x-1.5 py-0.5 text-xs/5 font-medium forced-colors:outline",
+		"bg-(--badge-bg) text-(--badge-fg) inset-ring inset-ring-(--badge-ring) [--badge-ring:transparent]",
 		"group-hover:bg-(--badge-overlay) group-focus:bg-(--badge-overlay)",
-		"*:data-[slot=icon]:block-3 *:data-[slot=icon]:inline-3 *:data-[slot=icon]:shrink-0",
+		"*:data-[slot=icon]:shrink-0 *:data-[slot=icon]:block-3 *:data-[slot=icon]:inline-3",
 		"duration-200",
 	],
 	variants: {
@@ -46,9 +46,9 @@ export const badgeStyles = tv({
 });
 
 export interface BadgeProps
-	extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeStyles> {
+	extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeStyles> {
 	className?: string;
-	children: React.ReactNode;
+	children: ReactNode;
 }
 
 export function Badge({

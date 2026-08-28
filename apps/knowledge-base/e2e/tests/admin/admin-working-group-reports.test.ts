@@ -70,12 +70,13 @@ test.describe("working group reports admin", () => {
 		db,
 	}) => {
 		const workerIndex = test.info().workerIndex;
+		const campaignYear = 3300 + workerIndex;
 		const reportsPage = createAdminWorkingGroupReportsPage(workerIndex);
 
 		await reportsPage.goto();
 
 		const workingGroup = await db.getWorkingGroupOption();
-		const deleteDialog = await reportsPage.openDeleteDialog(workingGroup.name);
+		const deleteDialog = await reportsPage.openDeleteDialog(workingGroup.name, campaignYear);
 		await expect(deleteDialog).toBeVisible();
 		await reportsPage.confirmDelete(deleteDialog);
 

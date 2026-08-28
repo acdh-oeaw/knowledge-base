@@ -17,8 +17,8 @@ import {
 interface DashboardWebsiteOpportunitiesPageProps extends PageProps<"/[locale]/dashboard/website/opportunities"> {}
 
 const pageSize = dashboardPageSize;
-const defaultSort = "updatedAt" as const;
-const validSorts = ["title", "source", "updatedAt"] as const;
+const defaultSort = "duration" as const;
+const validSorts = ["duration", "source", "title"] as const;
 
 function createListHref(
 	q: string,

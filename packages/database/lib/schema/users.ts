@@ -59,17 +59,50 @@ export const UserSelectSchema = createSelectSchema(users);
 export const UserInsertSchema = createInsertSchema(users);
 export const UserUpdateSchema = createUpdateSchema(users);
 
-export const sessions = p.snakeCase.table("sessions", {
-	id: p.text("id").primaryKey(),
-	secretHash: p.bytea("secret_hash").notNull(),
-	userId: p
-		.uuid("user_id")
-		.notNull()
-		.references(() => users.id, { onDelete: "cascade" }),
-	expiresAt: f.timestamp("expires_at").notNull(),
-	isTwoFactorVerified: p.boolean("is_two_factor_verified").notNull().default(false),
-	...f.timestamps(),
-});
+export const sessions = p.snakeCase.table(
+	"sessions",
+	{
+		id: p.text("id").primaryKey(),
+		secretHash: p.bytea("secret_hash").notNull(),
+		userId: p
+			.uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		expiresAt: f.timestamp("expires_at").notNull(),
+		isTwoFactorVerified: p.boolean("is_two_factor_verified").notNull().default(false),
+		/**
+		 * When set, the session acts as the referenced user. The session's credential is unchanged --
+		 * `userId` stays the account that actually authenticated -- so impersonation introduces no
+		 * second bearer token, and ending it is a single `UPDATE`.
+		 *
+		 * `set null` rather than `cascade`: deleting the impersonated user must not destroy the
+		 * impersonating admin's own session.
+		 */
+		impersonatedUserId: p
+			.uuid("impersonated_user_id")
+			.references(() => users.id, { onDelete: "set null" }),
+		impersonationExpiresAt: f.timestamp("impersonation_expires_at"),
+		...f.timestamps(),
+	},
+	(t) => [
+		/**
+		 * One-directional so that the `set null` above stays legal: it leaves the expiry behind, but
+		 * every read path keys off `impersonatedUserId`.
+		 */
+		p.check(
+			"sessions_impersonation_expiry_check",
+			sql`
+					${t.impersonatedUserId} IS NULL
+					OR ${t.impersonationExpiresAt} IS NOT NULL
+				`,
+		),
+		p.check(
+			"sessions_impersonation_not_self_check",
+			sql`${t.impersonatedUserId} IS DISTINCT FROM ${t.userId}`,
+		),
+		p.index("sessions_impersonated_user_id_idx").on(t.impersonatedUserId),
+	],
+);
 
 export type Session = typeof sessions.$inferSelect;
 export type SessionInput = typeof sessions.$inferInsert;

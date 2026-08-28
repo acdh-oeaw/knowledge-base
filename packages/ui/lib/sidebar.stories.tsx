@@ -110,10 +110,10 @@ export const Default: Story = {
 				<SidebarInset>
 					<SidebarNav>
 						<SidebarTrigger />
-						<span className="font-medium text-sm/6 text-fg">{"Overview"}</span>
+						<span className="text-sm/6 font-medium text-fg">{"Overview"}</span>
 					</SidebarNav>
 					<div className="p-6">
-						<p className="text-muted-fg text-sm/6">{"Main content area."}</p>
+						<p className="text-sm/6 text-muted-fg">{"Main content area."}</p>
 					</div>
 				</SidebarInset>
 			</SidebarProvider>

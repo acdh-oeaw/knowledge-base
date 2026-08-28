@@ -143,7 +143,7 @@ function NavigationItemForm(props: Readonly<NavigationItemFormProps>): ReactNode
 				</div>
 
 				{linkType === "none" && (
-					<p className="text-muted-fg text-sm">
+					<p className="text-sm text-muted-fg">
 						{t("This item opens a dropdown menu. Add child items to it after saving.")}
 					</p>
 				)}

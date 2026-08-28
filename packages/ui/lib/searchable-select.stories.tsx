@@ -159,7 +159,7 @@ export const Controlled: Story = {
 							))}
 						</SearchableSelectContent>
 					</SearchableSelect>
-					<p className="mbs-2 text-muted-fg text-sm">
+					<p className="mbs-2 text-sm text-muted-fg">
 						{"Selected: "}
 						{value ?? "none"}
 					</p>

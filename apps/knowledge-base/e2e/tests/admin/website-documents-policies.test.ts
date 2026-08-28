@@ -18,6 +18,7 @@ test.describe("website documents-policies admin", () => {
 	test.afterAll(async ({ db }, testInfo) => {
 		await db.cleanupWorkerDocumentsPoliciesLifecycleItems(testInfo.workerIndex);
 		await db.cleanupWorkerDocumentPolicyGroups(testInfo.workerIndex);
+		await db.cleanupWorkerAssets(testInfo.workerIndex);
 	});
 
 	test("should create, rename, reorder, and delete groups", async ({
@@ -48,19 +49,33 @@ test.describe("website documents-policies admin", () => {
 		await expect(docPoliciesPage.groupSection(firstLabel)).toBeHidden();
 		await expect(docPoliciesPage.groupSection(renamedLabel)).toBeVisible();
 
+		// Reproduce the position collision caused by concurrent count-then-insert requests. The old
+		// move action swapped equal values and returned 200 without changing the order.
+		const workerGroups = await db.getDocumentPolicyGroupsByLabelPrefix(
+			docPoliciesPage.workerPrefix,
+		);
+		const duplicatePosition = workerGroups.find((group) => group.label === renamedLabel)?.position;
+		// oxlint-disable-next-line playwright/no-conditional-in-test
+		if (duplicatePosition == null) {
+			throw new Error("Renamed document-policy group was not persisted.");
+		}
+		await db.setDocumentPolicyGroupPositions([renamedLabel, secondLabel], duplicatePosition);
+
+		const labelsBeforeMove = await db.getDocumentPolicyGroupLabels();
+		const secondIndexBeforeMove = labelsBeforeMove.indexOf(secondLabel);
+		expect(secondIndexBeforeMove).toBeGreaterThan(0);
+
 		await docPoliciesPage.moveGroup(secondLabel, "up");
 		await expect
 			.poll(async () => {
-				const groups = await db.getDocumentPolicyGroupsByLabelPrefix(docPoliciesPage.workerPrefix);
-				return groups.map((group) => group.label);
+				const labels = await db.getDocumentPolicyGroupLabels();
+				return labels.indexOf(secondLabel);
 			})
-			.toStrictEqual([secondLabel, renamedLabel]);
+			.toBeLessThan(secondIndexBeforeMove);
 		await docPoliciesPage.goto();
 		await expect
 			.poll(async () => docPoliciesPage.groupLabels(), { timeout: 15_000 })
 			.toContainEqual(secondLabel);
-		const orderedLabels = await docPoliciesPage.groupLabels();
-		expect(orderedLabels.indexOf(secondLabel)).toBeLessThan(orderedLabels.indexOf(renamedLabel));
 		await expect(docPoliciesPage.groupSection(secondLabel)).toBeVisible();
 		await expect(docPoliciesPage.groupSection(renamedLabel)).toBeVisible();
 
@@ -101,6 +116,32 @@ test.describe("website documents-policies admin", () => {
 		const contentBlocks = await db.getDocumentOrPolicyContentBlocksByTitle(title);
 		expect(contentBlocks).toHaveLength(1);
 		expect(JSON.stringify(contentBlocks[0]!.content)).toContain(content);
+	});
+
+	test("should upload a PDF document", async ({ createWebsiteDocumentsPoliciesPage, db }) => {
+		const docPoliciesPage = createWebsiteDocumentsPoliciesPage(test.info().workerIndex);
+		const title = `${docPoliciesPage.workerPrefix} Uploaded PDF ${randomUUID()}`;
+		const assetLabel = `${docPoliciesPage.workerPrefix} PDF asset ${randomUUID()}`;
+
+		await docPoliciesPage.gotoCreate();
+		await docPoliciesPage.fillTitle(title);
+		await docPoliciesPage.uploadDocumentFromMediaLibrary(
+			{
+				name: "policy.pdf",
+				mimeType: "application/pdf",
+				buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+			},
+			assetLabel,
+		);
+		await docPoliciesPage.submitForm();
+
+		const [asset, documentOrPolicy] = await Promise.all([
+			db.getAssetByLabel(assetLabel),
+			db.getDocumentOrPolicyByTitle(title),
+		]);
+		expect(asset).toMatchObject({ mimeType: "application/pdf" });
+		expect(asset?.key).toMatch(/^documents\//);
+		expect(documentOrPolicy?.documentId).toBe(asset?.id);
 	});
 
 	test("should edit a document or policy via inline dialog", async ({
@@ -164,7 +205,7 @@ test.describe("website documents-policies admin", () => {
 		expect(updated).toMatchObject({ summary: null, url: null });
 	});
 
-	test("should delete a document or policy", async ({ createWebsiteDocumentsPoliciesPage }) => {
+	test("should delete a document or policy", async ({ createWebsiteDocumentsPoliciesPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const docPoliciesPage = createWebsiteDocumentsPoliciesPage(workerIndex);
 
@@ -178,10 +219,17 @@ test.describe("website documents-policies admin", () => {
 		await docPoliciesPage.searchByTitle(title);
 		await expect(docPoliciesPage.rowByTitle(title)).toBeVisible();
 
+		const created = await db.getDocumentOrPolicyByTitle(title);
+		expect(created).not.toBeNull();
+
 		const deleteDialog = await docPoliciesPage.openDeleteDialog(title);
 		await expect(deleteDialog).toBeVisible();
 		await docPoliciesPage.confirmDelete(deleteDialog);
 
 		await expect(docPoliciesPage.rowByTitle(title)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getDocumentOrPolicyByTitle(title)).toBeNull();
 	});
 });

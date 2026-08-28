@@ -19,9 +19,9 @@ import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-u
 import { getPersonRelationRoleOptions, getPersonRelations } from "@/lib/data/person-relations";
 import { getUnitProjectPartnerships } from "@/lib/data/project-partners";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
+import { toSelectedImage } from "@/lib/data/selected-image";
 import { getSocialMediaOptions } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorEditInstitutionPageProps extends PageProps<"/[locale]/dashboard/administrator/institutions/[slug]/edit"> {}
@@ -145,15 +145,7 @@ export default async function DashboardAdministratorEditInstitutionPage(
 	const entityVersionSlug = institution.entityVersion.slug;
 
 	const image =
-		institution.image != null
-			? {
-					...institution.image,
-					url: images.generateSignedImageUrl({
-						key: institution.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
-			: null;
+		institution.image != null ? toSelectedImage(institution.image, imageGridOptions) : null;
 
 	return (
 		<InstitutionEditForm

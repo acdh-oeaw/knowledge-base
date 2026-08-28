@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { CountryReportSocialMediaScreen } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/screens/country-report-social-media-screen";
-import { getCountryReportEditHref, resolveCountryReportId } from "@/lib/data/reporting-urls";
+import { resolveCountryReportId } from "@/lib/data/reporting-urls";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardReportingCountryReportSocialMediaPageProps extends PageProps<"/[locale]/dashboard/reporting/country-reports/[year]/[slug]/edit/social-media"> {}
@@ -32,10 +32,5 @@ export default async function DashboardReportingCountryReportSocialMediaPage(
 		notFound();
 	}
 
-	return (
-		<CountryReportSocialMediaScreen
-			basePath={getCountryReportEditHref(Number(routeYear), slug)}
-			reportId={id}
-		/>
-	);
+	return <CountryReportSocialMediaScreen reportId={id} />;
 }

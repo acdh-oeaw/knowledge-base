@@ -1,88 +1,78 @@
 "use server";
 
-import { getFormDataValues } from "@acdh-oeaw/lib";
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import type { JSONContent } from "@tiptap/core";
-import { getLocale } from "next-intl/server";
-import { revalidatePath } from "next/cache";
+import { getExtracted } from "next-intl/server";
 import * as v from "valibot";
 
-import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
-import { assertCan } from "@/lib/auth/permissions";
-import { assertAuthenticated } from "@/lib/auth/session";
-import {
-	getWorkingGroupReportEditHrefById,
-	sanitizeReportRedirectTo,
-	workingGroupReportRevalidatePaths,
-} from "@/lib/data/reporting-urls";
-import { db } from "@/lib/db";
-import { eq } from "@/lib/db/sql";
-import { redirect } from "@/lib/navigation/navigation";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
+import { workingGroupReportRevalidatePaths } from "@/lib/data/reporting-urls";
+import { sql } from "@/lib/db/sql";
+import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 const UpsertWorkingGroupReportAnswersSchema = v.object({
 	id: v.pipe(v.string(), v.uuid()),
 	answers: v.optional(v.record(v.string(), v.string())),
 });
 
-export async function upsertWorkingGroupReportAnswersAction(formData: FormData): Promise<void> {
-	if (!(await globalPostRequestRateLimit())) {
-		return;
-	}
+export const upsertWorkingGroupReportAnswersAction = createMutationAction({
+	schema: UpsertWorkingGroupReportAnswersSchema,
+	requireAuth: true,
+	audit: { action: "update", subjectType: "working_group_report" },
+	revalidate: workingGroupReportRevalidatePaths,
 
-	const result = v.safeParse(UpsertWorkingGroupReportAnswersSchema, getFormDataValues(formData));
-	if (!result.success) {
-		return;
-	}
+	async preCheck({ input, ctx }) {
+		await assertCan(ctx.user, "update", { type: "working_group_report", id: input.id });
+		await assertReportEditable(ctx.user, { type: "working_group_report", id: input.id });
+		return undefined;
+	},
 
-	const { id: reportId, answers } = result.output;
+	async mutate(tx, input) {
+		const t = await getExtracted();
 
-	const locale = await getLocale();
-	const { user } = await assertAuthenticated();
-	await assertCan(user, "update", { type: "working_group_report", id: reportId });
+		// Only accept answers to questions that belong to this report's campaign, so a forged questionId
+		// can't store a stray answer row (e.g. referencing another campaign's question).
+		const report = await tx.query.workingGroupReports.findFirst({
+			where: { id: input.id },
+			columns: { campaignId: true },
+		});
+		assert(report, "Working group report not found.");
 
-	await db.transaction(async (tx) => {
-		for (const [questionId, answerJson] of Object.entries(answers ?? {})) {
+		const campaignQuestions = await tx.query.workingGroupReportQuestions.findMany({
+			where: { campaignId: report.campaignId },
+			columns: { id: true },
+		});
+		const allowedQuestionIds = new Set(campaignQuestions.map((question) => question.id));
+
+		const rows = Object.entries(input.answers ?? {}).flatMap(([questionId, answerJson]) => {
+			if (!allowedQuestionIds.has(questionId)) {
+				return [];
+			}
 			let answer: JSONContent;
 			try {
 				answer = JSON.parse(answerJson) as JSONContent;
 			} catch {
-				continue;
+				return [];
 			}
+			return [{ workingGroupReportId: input.id, questionId, answer }];
+		});
 
-			const existing = await tx.query.workingGroupReportAnswers.findFirst({
-				where: { workingGroupReportId: reportId, questionId },
-				columns: { id: true },
-			});
-
-			if (existing != null) {
-				await tx
-					.update(schema.workingGroupReportAnswers)
-					.set({ answer })
-					.where(eq(schema.workingGroupReportAnswers.id, existing.id));
-			} else {
-				await tx
-					.insert(schema.workingGroupReportAnswers)
-					.values({ workingGroupReportId: reportId, questionId, answer });
-			}
+		if (rows.length > 0) {
+			// Single batched upsert keyed by the (report, question) unique constraint; `excluded` is the
+			// incoming row, so each conflicting answer is replaced with its submitted value.
+			await tx
+				.insert(schema.workingGroupReportAnswers)
+				.values(rows)
+				.onConflictDoUpdate({
+					target: [
+						schema.workingGroupReportAnswers.workingGroupReportId,
+						schema.workingGroupReportAnswers.questionId,
+					],
+					set: { answer: sql`excluded.answer` },
+				});
 		}
-	});
 
-	await recordAuditEvent(db, {
-		actorUserId: user.id,
-		action: "update",
-		subjectType: "working_group_report",
-		subjectId: reportId,
-		summary: getAuditSummaryFromFormData(formData),
-	});
-
-	for (const path of workingGroupReportRevalidatePaths) {
-		revalidatePath(path, "layout");
-	}
-
-	const redirectTo = sanitizeReportRedirectTo(formData.get("redirectTo"));
-	redirect({
-		href: redirectTo ?? (await getWorkingGroupReportEditHrefById(reportId, "questions")),
-		locale,
-	});
-}
+		return { subjectId: input.id, successMessage: t("Saved.") };
+	},
+});

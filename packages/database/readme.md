@@ -1,1 +1,1 @@
-# the knowledge base database client
+# dariah knowledge base database client

@@ -24,12 +24,48 @@ export interface IngestSshocServicesParams {
 	sshocMarketplaceBaseUrl: string;
 }
 
+/** Identifies a single service in the ingest report, enough to look it up in either system. */
+export interface IngestedSshocService {
+	id: string;
+	name: string;
+	sshocMarketplaceId: string;
+}
+
+/**
+ * A service that is still published upstream but whose local status is not `live`. Ingest never
+ * promotes a status back to `live` (see the `serviceStatuses` docs), so these stay put until an
+ * admin acts on them — without this report they are invisible.
+ */
+export interface ReappearedSshocService extends IngestedSshocService {
+	status: string;
+}
+
+/**
+ * An upstream contributor whose actor id maps to no published organisational unit, so the
+ * owner/provider relation it implies could not be created.
+ */
+export interface UnmappedSshocActor {
+	id: number;
+	name: string;
+	serviceCount: number;
+}
+
 export interface IngestSshocServicesResult {
 	createdCount: number;
 	fetchedCount: number;
 	markedNeedsReviewCount: number;
 	relationCount: number;
+	/** Owner/provider relations dropped because upstream no longer lists them. */
+	removedRelationCount: number;
 	updatedCount: number;
+	/** Services inserted on this run. */
+	created: Array<IngestedSshocService>;
+	/** Services flipped from `live` to `needs_review` because they dropped out of the fetch. */
+	markedNeedsReview: Array<IngestedSshocService>;
+	/** Services returned upstream that are stuck at a non-`live` local status. */
+	reappeared: Array<ReappearedSshocService>;
+	/** Contributors that could not be resolved to an organisational unit. */
+	unmappedActors: Array<UnmappedSshocActor>;
 }
 
 function createSshocSnapshot(
@@ -118,6 +154,7 @@ export async function ingestSshocServices(
 			.select({
 				id: schema.services.id,
 				metadata: schema.services.metadata,
+				name: schema.services.name,
 				sshocMarketplaceId: schema.services.sshocMarketplaceId,
 				status: schema.serviceStatuses.status,
 			})
@@ -166,8 +203,16 @@ export async function ingestSshocServices(
 	let createdCount = 0;
 	let updatedCount = 0;
 	let relationCount = 0;
+	let removedRelationCount = 0;
 
 	const seenMarketplaceIds = new Set<string>();
+	const created: Array<IngestedSshocService> = [];
+	const reappeared: Array<ReappearedSshocService> = [];
+	/**
+	 * Keyed by actor id; the set holds marketplace ids so an actor listed under both relevant roles
+	 * on one service is still counted once.
+	 */
+	const unmappedActors = new Map<number, { id: number; name: string; services: Set<string> }>();
 
 	for (const item of sshocServices) {
 		const sshocMarketplaceId = item.persistentId;
@@ -181,9 +226,29 @@ export async function ingestSshocServices(
 		const providerUnitIds = new Set<string>();
 
 		for (const contributor of item.contributors) {
+			const isRelevantRole =
+				contributor.role.code === "reviewer" || contributor.role.code === "provider";
 			const organisationalUnitId = organisationalUnitIdsByActorId.get(contributor.actor.id);
 
 			if (organisationalUnitId == null) {
+				/**
+				 * Only owner/provider contributors imply a relation, so an unmapped actor in any other role
+				 * is expected and not worth reporting.
+				 */
+				if (isRelevantRole) {
+					const unmappedActor = unmappedActors.get(contributor.actor.id);
+
+					if (unmappedActor == null) {
+						unmappedActors.set(contributor.actor.id, {
+							id: contributor.actor.id,
+							name: contributor.actor.name,
+							services: new Set([sshocMarketplaceId]),
+						});
+					} else {
+						unmappedActor.services.add(sshocMarketplaceId);
+					}
+				}
+
 				continue;
 			}
 
@@ -220,6 +285,26 @@ export async function ingestSshocServices(
 								}
 
 								createdCount += 1;
+								created.push({
+									id: row.id,
+									name: item.label.trim(),
+									sshocMarketplaceId,
+								});
+
+								/**
+								 * Register the freshly inserted row so a marketplace id that appears more than once
+								 * in a single fetch takes the update branch on its next occurrence instead of a
+								 * second insert that would violate the `sshoc_marketplace_id` unique constraint.
+								 * Upstream deep-paging is not snapshot-isolated, so an edit landing mid-fetch can
+								 * shift an item across a page boundary and return it twice.
+								 */
+								existingServicesByMarketplaceId.set(sshocMarketplaceId, {
+									id: row.id,
+									metadata,
+									name: item.label.trim(),
+									sshocMarketplaceId,
+									status: "live",
+								});
 
 								return row.id;
 							})
@@ -242,6 +327,15 @@ export async function ingestSshocServices(
 
 								updatedCount += 1;
 
+								if (existingService.status !== "live") {
+									reappeared.push({
+										id: row.id,
+										name: item.label.trim(),
+										sshocMarketplaceId,
+										status: existingService.status,
+									});
+								}
+
 								return row.id;
 							});
 
@@ -262,39 +356,47 @@ export async function ingestSshocServices(
 				}),
 			];
 
-			if (relations.length > 0) {
-				const existingRelations = await tx
-					.select({
-						organisationalUnitDocumentId:
-							schema.servicesToOrganisationalUnits.organisationalUnitDocumentId,
-						roleId: schema.servicesToOrganisationalUnits.roleId,
-					})
-					.from(schema.servicesToOrganisationalUnits)
-					.where(eq(schema.servicesToOrganisationalUnits.serviceId, serviceId));
+			/**
+			 * Upstream is the source of truth for owner/provider relations on SSHOC services — they are
+			 * not editable locally, since the admin service forms only cover services without a
+			 * marketplace id. So reconcile rather than merge: relations the marketplace no longer lists
+			 * are removed, including ones an earlier import created. Runs unconditionally, because a
+			 * service that lost all its contributors upstream must end up with no relations here.
+			 */
+			const existingRelations = await tx
+				.select({
+					id: schema.servicesToOrganisationalUnits.id,
+					organisationalUnitDocumentId:
+						schema.servicesToOrganisationalUnits.organisationalUnitDocumentId,
+					roleId: schema.servicesToOrganisationalUnits.roleId,
+				})
+				.from(schema.servicesToOrganisationalUnits)
+				.where(eq(schema.servicesToOrganisationalUnits.serviceId, serviceId));
 
-				const existingRelationKeys = new Set(
-					existingRelations.map((relation) =>
-						[relation.organisationalUnitDocumentId, relation.roleId].join(":"),
-					),
-				);
+			const toKey = (relation: { organisationalUnitDocumentId: string; roleId: string }) =>
+				[relation.organisationalUnitDocumentId, relation.roleId].join(":");
 
-				/**
-				 * Preserve locally curated relations for now. The correct fix is to store relation
-				 * provenance, then replace only the SSHOC-managed subset here. That also depends on a
-				 * product decision: are SSHOC service relations exclusively managed upstream, or can admins
-				 * add local owner/provider links that should survive re-ingest?
-				 */
-				const missingRelations = relations.filter(
-					(relation) =>
-						!existingRelationKeys.has(
-							[relation.organisationalUnitDocumentId, relation.roleId].join(":"),
-						),
-				);
+			const existingRelationKeys = new Set(existingRelations.map((relation) => toKey(relation)));
+			const expectedRelationKeys = new Set(relations.map((relation) => toKey(relation)));
 
-				if (missingRelations.length > 0) {
-					await tx.insert(schema.servicesToOrganisationalUnits).values(missingRelations);
-					relationCount += missingRelations.length;
-				}
+			const staleRelationIds = existingRelations
+				.filter((relation) => !expectedRelationKeys.has(toKey(relation)))
+				.map((relation) => relation.id);
+
+			if (staleRelationIds.length > 0) {
+				await tx
+					.delete(schema.servicesToOrganisationalUnits)
+					.where(inArray(schema.servicesToOrganisationalUnits.id, staleRelationIds));
+				removedRelationCount += staleRelationIds.length;
+			}
+
+			const missingRelations = relations.filter(
+				(relation) => !existingRelationKeys.has(toKey(relation)),
+			);
+
+			if (missingRelations.length > 0) {
+				await tx.insert(schema.servicesToOrganisationalUnits).values(missingRelations);
+				relationCount += missingRelations.length;
 			}
 		});
 
@@ -320,11 +422,34 @@ export async function ingestSshocServices(
 			);
 	}
 
+	const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+
 	return {
 		createdCount,
 		fetchedCount: sshocServices.length,
 		markedNeedsReviewCount: servicesToMarkNeedsReview.length,
 		relationCount,
+		removedRelationCount,
 		updatedCount,
+		created: created.toSorted(byName),
+		markedNeedsReview: servicesToMarkNeedsReview
+			.flatMap((service) =>
+				service.sshocMarketplaceId == null
+					? []
+					: [
+							{
+								id: service.id,
+								name: service.name,
+								sshocMarketplaceId: service.sshocMarketplaceId,
+							},
+						],
+			)
+			.toSorted(byName),
+		reappeared: reappeared.toSorted(byName),
+		unmappedActors: [...unmappedActors.values()]
+			.map((actor) => {
+				return { id: actor.id, name: actor.name, serviceCount: actor.services.size };
+			})
+			.toSorted(byName),
 	};
 }

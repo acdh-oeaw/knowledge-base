@@ -1,16 +1,23 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import { assert } from "@acdh-oeaw/lib";
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import * as schema from "@dariah-eric/database/schema";
+import type { JSONContent } from "@tiptap/core";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { getPersonPositions } from "@/lib/persons";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
-import { mapSocialMedia } from "@/lib/social-media";
+import { mapSocialMedia, socialMediaByPosition } from "@/lib/social-media";
 import type { Database, Transaction } from "@/middlewares/db";
-import { hardcodedWorkingGroups } from "@/routes/governance-bodies/hardcoded-working-groups";
+import { hardcodedWorkingGroupsGovernanceBody } from "@/routes/governance-bodies/hardcoded-working-groups";
 import { alias, and, count, eq, inArray, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
 
@@ -27,11 +34,14 @@ interface GovernanceBodyPerson {
 	sortName: string;
 	email: string | null;
 	orcid: string | null;
-	position: Awaited<ReturnType<typeof getPersonPositions>> extends Map<string, infer T> ? T : never;
+	positions: Awaited<ReturnType<typeof getPersonPositions>> extends Map<string, infer T>
+		? T
+		: never;
 	image: { url: string } | null;
 	slug: string;
 	role: (typeof schema.personRoleTypesEnum)[number];
 	duration: { start: string; end: string | null };
+	description: string | null;
 }
 
 // Governance bodies use a single role vocabulary, and a person is not expected to hold more than one
@@ -75,12 +85,17 @@ function mapGovernanceBodyPerson(
 		orcid: string | null;
 		slug: string;
 		imageKey: string | null;
+		imageWidth: number | null;
+		imageHeight: number | null;
 		imageAlt: string | null;
-		imageCaption: string | null;
+		imageCaption: JSONContent | null;
+		personImageCaption: JSONContent | null;
+		personImageCaptionMode: ImageCaptionMode;
 		licenseName: string | null;
 		licenseUrl: string | null;
 		role: (typeof schema.personRoleTypesEnum)[number];
 		duration: { start: Date; end?: Date | null };
+		description: string | null;
 	},
 	positions: Awaited<ReturnType<typeof getPersonPositions>>,
 ): GovernanceBodyPerson {
@@ -90,15 +105,20 @@ function mapGovernanceBodyPerson(
 		sortName: row.sortName,
 		email: row.email,
 		orcid: row.orcid,
-		position: positions.get(row.id) ?? null,
+		positions: positions.get(row.id) ?? null,
 		image: generateImageUrl(
-			toImageAsset({
-				key: row.imageKey,
-				alt: row.imageAlt,
-				caption: row.imageCaption,
-				licenseName: row.licenseName,
-				licenseUrl: row.licenseUrl,
-			}),
+			withResolvedCaption(
+				toImageAsset({
+					key: row.imageKey,
+					alt: row.imageAlt,
+					caption: row.imageCaption,
+					width: row.imageWidth,
+					height: row.imageHeight,
+					licenseName: row.licenseName,
+					licenseUrl: row.licenseUrl,
+				}),
+				{ imageCaption: row.personImageCaption, imageCaptionMode: row.personImageCaptionMode },
+			),
 			imageWidth.avatar,
 		),
 		slug: row.slug,
@@ -107,21 +127,9 @@ function mapGovernanceBodyPerson(
 			start: row.duration.start.toISOString(),
 			end: row.duration.end?.toISOString() ?? null,
 		},
+		description: row.description,
 	};
 }
-
-const hardcodedWorkingGroupsGovernanceBody = {
-	id: "019b7a56-b301-7f93-9d24-91333bdc3ca8",
-	name: "Working groups",
-	acronym: null,
-	summary:
-		"Self-organised communities of practice within DARIAH which contribute to bringing together state-of-art digital arts and humanities activities and scaling their results to a European level.",
-	metadata: {},
-	image: null,
-	entity: { slug: "working-groups" },
-	publishedAt: "2026-01-01T00:00:00.000Z",
-	socialMedia: [],
-};
 
 async function getActiveWorkingGroupChairs(db: Database | Transaction) {
 	const workingGroupDocumentLifecycle = alias(
@@ -139,12 +147,17 @@ async function getActiveWorkingGroupChairs(db: Database | Transaction) {
 			orcid: schema.persons.orcid,
 			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
+			personImageCaption: schema.persons.imageCaption,
+			personImageCaptionMode: schema.persons.imageCaptionMode,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			role: schema.personRoleTypes.type,
 			duration: schema.personsToOrganisationalUnits.duration,
+			description: schema.personsToOrganisationalUnits.description,
 		})
 		.from(schema.personsToOrganisationalUnits)
 		.innerJoin(
@@ -208,8 +221,10 @@ async function getActiveWorkingGroupChairs(db: Database | Transaction) {
 }
 
 async function getHardcodedWorkingGroupsGovernanceBody(db: Database | Transaction) {
+	const { description: _description, ...governanceBody } = hardcodedWorkingGroupsGovernanceBody;
+
 	return {
-		...hardcodedWorkingGroupsGovernanceBody,
+		...governanceBody,
 		persons: await getActiveWorkingGroupChairs(db),
 	};
 }
@@ -217,7 +232,7 @@ async function getHardcodedWorkingGroupsGovernanceBody(db: Database | Transactio
 async function getHardcodedWorkingGroupsGovernanceBodyDetails(db: Database | Transaction) {
 	return {
 		...(await getHardcodedWorkingGroupsGovernanceBody(db)),
-		description: hardcodedWorkingGroups.description,
+		description: hardcodedWorkingGroupsGovernanceBody.description,
 		relatedEntities: [],
 		relatedResources: [],
 	};
@@ -256,12 +271,17 @@ async function getActiveGovernanceBodyPersons(
 			orcid: schema.persons.orcid,
 			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
+			personImageCaption: schema.persons.imageCaption,
+			personImageCaptionMode: schema.persons.imageCaptionMode,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			role: schema.personRoleTypes.type,
 			duration: schema.personsToOrganisationalUnits.duration,
+			description: schema.personsToOrganisationalUnits.description,
 		})
 		.from(schema.personsToOrganisationalUnits)
 		.innerJoin(
@@ -363,22 +383,9 @@ export async function getGovernanceBodies(
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 				socialMedia: {
+					...socialMediaByPosition,
 					columns: {
 						id: true,
 						name: true,
@@ -483,22 +490,9 @@ export async function getGovernanceBodyById(
 							},
 						},
 					},
-					image: {
-						columns: {
-							key: true,
-							alt: true,
-							caption: true,
-						},
-						with: {
-							license: {
-								columns: {
-									name: true,
-									url: true,
-								},
-							},
-						},
-					},
+					image: imageAssetColumns,
 					socialMedia: {
+						...socialMediaByPosition,
 						columns: {
 							id: true,
 							name: true,
@@ -658,22 +652,9 @@ export async function getGovernanceBodyBySlug(
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 			socialMedia: {
+				...socialMediaByPosition,
 				columns: {
 					id: true,
 					name: true,

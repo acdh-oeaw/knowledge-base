@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/website/pages";
@@ -39,8 +40,27 @@ export class WebsitePagesPage {
 		await this.page.getByLabel("Summary").fill(summary);
 	}
 
+	async fillPublicationDate(year: number, month: number, day: number): Promise<void> {
+		await clearDateSegments(this.page, "Publication date");
+
+		const group = this.page.getByRole("group", { name: "Publication date" });
+
+		const daySegment = group.getByRole("spinbutton", { name: /day/i });
+		const monthSegment = group.getByRole("spinbutton", { name: /month/i });
+		const yearSegment = group.getByRole("spinbutton", { name: /year/i });
+
+		await daySegment.click();
+		await this.page.keyboard.type(String(day).padStart(2, "0"));
+
+		await monthSegment.click();
+		await this.page.keyboard.type(String(month).padStart(2, "0"));
+
+		await yearSegment.click();
+		await this.page.keyboard.type(String(year));
+	}
+
 	async selectImageFromMediaLibrary(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Select image" }).click();
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		await dialog.waitFor({ state: "visible" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
@@ -57,11 +77,12 @@ export class WebsitePagesPage {
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -157,7 +178,7 @@ export class WebsitePagesPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

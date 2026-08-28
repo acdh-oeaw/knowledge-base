@@ -5,7 +5,7 @@ import { createActionStateError } from "@dariah-eric/next-lib/actions";
 import { getExtracted } from "next-intl/server";
 
 import { CreateWorkingGroupReportSocialMediaActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_lib/create-working-group-report-social-media.schema";
-import { assertCan } from "@/lib/auth/permissions";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
 import { workingGroupReportRevalidatePaths } from "@/lib/data/reporting-urls";
 import { db } from "@/lib/db";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
@@ -19,6 +19,10 @@ export const createWorkingGroupReportSocialMediaAction = createMutationAction({
 	async preCheck({ input, ctx }) {
 		const t = await getExtracted();
 		await assertCan(ctx.user, "update", {
+			type: "working_group_report",
+			id: input.workingGroupReportId,
+		});
+		await assertReportEditable(ctx.user, {
 			type: "working_group_report",
 			id: input.workingGroupReportId,
 		});

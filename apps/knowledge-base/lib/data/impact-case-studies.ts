@@ -4,11 +4,11 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { imageAssetWidth } from "@/config/assets.config";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
 import { images } from "@/lib/images";
 
-export type ImpactCaseStudiesSort = "title" | "updatedAt";
+export type ImpactCaseStudiesSort = "publicationDate" | "title";
 
 interface GetImpactCaseStudiesParams {
 	/** @default 10 */
@@ -21,11 +21,11 @@ interface GetImpactCaseStudiesParams {
 }
 
 export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
-	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
+	const { limit = 10, offset = 0, q, sort = "publicationDate", dir = "desc" } = params;
 	const query = q?.trim();
 	const where =
 		query != null && query !== ""
-			? unaccentIlike(schema.impactCaseStudies.title, `%${query}%`)
+			? matchesAllTerms(query, schema.impactCaseStudies.title)
 			: undefined;
 	const orderBy =
 		sort === "title"
@@ -33,8 +33,8 @@ export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
 				? schema.impactCaseStudies.title
 				: desc(schema.impactCaseStudies.title)
 			: dir === "asc"
-				? schema.entityVersions.updatedAt
-				: desc(schema.entityVersions.updatedAt);
+				? schema.impactCaseStudies.publicationDate
+				: desc(schema.impactCaseStudies.publicationDate);
 
 	const pickedVersion = sql`COALESCE(${schema.documentLifecycle.draftId}, ${schema.documentLifecycle.publishedId})`;
 
@@ -42,10 +42,11 @@ export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
 		db
 			.select({
 				id: schema.impactCaseStudies.id,
-				documentId: schema.entityVersions.entityId,
+				documentId: schema.entities.id,
 				slug: schema.slugs.value,
 				summary: schema.impactCaseStudies.summary,
 				title: schema.impactCaseStudies.title,
+				publicationDate: schema.impactCaseStudies.publicationDate,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
 				status: schema.entityStatus.type,
@@ -85,6 +86,7 @@ export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
 			summary: item.summary,
 			title: item.title,
 			isPublished: item.isPublished,
+			publicationDate: item.publicationDate,
 			status: item.status,
 			updatedAt: item.updatedAt,
 		};

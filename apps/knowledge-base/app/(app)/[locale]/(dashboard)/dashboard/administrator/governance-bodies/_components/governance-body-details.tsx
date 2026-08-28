@@ -17,6 +17,7 @@ import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 import type { PersonRelation } from "@/lib/data/person-relations";
 import type { UnitRelation } from "@/lib/data/unit-relations";
@@ -123,7 +124,7 @@ export function GovernanceBodyDetails(props: Readonly<GovernanceBodyDetailsProps
 					{governanceBody.image != null ? (
 						<img
 							alt=""
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
+							className="rounded-lg object-contain block-24 inline-auto max-inline-full"
 							src={governanceBody.image.url}
 						/>
 					) : null}
@@ -187,6 +188,7 @@ export function GovernanceBodyDetails(props: Readonly<GovernanceBodyDetailsProps
 									>
 										{relatedEntity.name}
 									</RelationLink>
+									<RelationTypeSuffix type={relatedEntity.description} />
 								</li>
 							))}
 						</ul>
@@ -200,6 +202,7 @@ export function GovernanceBodyDetails(props: Readonly<GovernanceBodyDetailsProps
 							{selectedRelatedResources.map((relatedResource) => (
 								<li key={relatedResource.id} className="text-sm">
 									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
 								</li>
 							))}
 						</ul>

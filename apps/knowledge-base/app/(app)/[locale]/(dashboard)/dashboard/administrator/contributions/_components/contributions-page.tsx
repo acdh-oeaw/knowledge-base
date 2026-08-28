@@ -8,6 +8,7 @@ import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { FormStatus } from "@dariah-eric/ui/form-status";
+import { Input } from "@dariah-eric/ui/input";
 import {
 	ModalBody,
 	ModalClose,
@@ -25,6 +26,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@dariah-eric/ui/table";
+import { TextField } from "@dariah-eric/ui/text-field";
 import type { AsyncOption, AsyncOptionsFetchPageParams } from "@dariah-eric/ui/use-async-options";
 import { PencilSquareIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { CalendarDate } from "@internationalized/date";
@@ -72,6 +74,7 @@ interface ContributionDialogState {
 	organisationalUnit: AsyncOption | null;
 	durationStart: CalendarDate | null;
 	durationEnd: CalendarDate | null;
+	description: string;
 }
 
 const emptyDialog: ContributionDialogState = {
@@ -82,6 +85,7 @@ const emptyDialog: ContributionDialogState = {
 	organisationalUnit: null,
 	durationStart: null,
 	durationEnd: null,
+	description: "",
 };
 
 function formatRoleType(type: string): string {
@@ -253,6 +257,7 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 			},
 			durationStart: dateToCalendarDate(item.durationStart),
 			durationEnd: dateToCalendarDate(item.durationEnd),
+			description: item.description ?? "",
 		});
 	}
 
@@ -276,7 +281,7 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 		<Fragment>
 			<EntityListHeader
 				title={t("Person relations")}
-				description={t("All person-to-organisation relations in the knowledge base.")}
+				description={t("All person-to-organisation relations in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -322,7 +327,7 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 					<TableColumn allowsSorting={true} id="durationEnd">
 						{t("Until")}
 					</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => {
@@ -334,7 +339,7 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 						return (
 							<TableRow id={item.id}>
 								<TableCell>
-									<div className="max-inline-80 truncate" title={item.personName}>
+									<div className="truncate max-inline-80" title={item.personName}>
 										{item.personName}
 									</div>
 								</TableCell>
@@ -345,7 +350,7 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 									</Badge>
 								</TableCell>
 								<TableCell>
-									<div className="max-inline-80 truncate" title={item.organisationalUnitName}>
+									<div className="truncate max-inline-80" title={item.organisationalUnitName}>
 										{item.organisationalUnitName}
 									</div>
 								</TableCell>
@@ -355,7 +360,7 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 										? format.dateTime(item.durationEnd, { dateStyle: "short" })
 										: t("present")}
 								</TableCell>
-								<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+								<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 									<RowActionsMenu>
 										<RowActionsMenu.Link
 											href={`/dashboard/administrator/persons/${item.personSlug}/edit`}
@@ -509,6 +514,19 @@ export function ContributionsPage(props: Readonly<ContributionsPageProps>): Reac
 							<DatePickerTrigger />
 							<FieldError />
 						</DatePicker>
+						<TextField
+							name="description"
+							onChange={(value) => {
+								setDialog((prev) => {
+									return { ...prev, description: value };
+								});
+							}}
+							value={dialog.description}
+						>
+							<Label>{t("Description")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
 						<FormStatus state={formState} />
 					</ModalBody>
 					<ModalFooter>

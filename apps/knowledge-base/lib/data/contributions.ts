@@ -4,13 +4,14 @@ import { forbidden } from "next/navigation";
 
 import { contributionOptionsPageSize } from "@/lib/constants/contributions";
 import {
+	latestEditableEntityVersionWhere,
 	localeMatch,
 	publishedEntityVersionWhere,
 	statusMatch,
 } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { alias, and, count, desc, eq, inArray, or, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 
 export type ContributionsSort =
 	| "personName"
@@ -42,6 +43,7 @@ export interface ContributionsResult {
 		organisationalUnitType: string;
 		durationStart: Date;
 		durationEnd: Date | undefined;
+		description: string | null;
 	}>;
 	limit: number;
 	offset: number;
@@ -72,16 +74,15 @@ export async function getContributions(
 	// editable version (draft when present, else published) for display.
 	const personPickedVersion = sql`COALESCE(${personDocumentLifecycle.draftId}, ${personDocumentLifecycle.publishedId})`;
 	const organisationalUnitPickedVersion = sql`COALESCE(${organisationalUnitDocumentLifecycle.draftId}, ${organisationalUnitDocumentLifecycle.publishedId})`;
-	const searchWhere =
-		query != null && query !== ""
-			? or(
-					unaccentIlike(schema.persons.name, `%${query}%`),
-					unaccentIlike(schema.persons.sortName, `%${query}%`),
-					unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
-					unaccentIlike(schema.organisationalUnitTypes.type, `%${query}%`),
-					unaccentIlike(schema.personRoleTypes.type, `%${query}%`),
-				)
-			: undefined;
+	const searchWhere = matchesAllTerms(
+		query,
+		schema.persons.name,
+		schema.persons.sortName,
+		schema.organisationalUnits.name,
+		schema.organisationalUnits.acronym,
+		schema.organisationalUnitTypes.type,
+		schema.personRoleTypes.type,
+	);
 	const where = searchWhere;
 	const orderBy =
 		sort === "roleType"
@@ -123,6 +124,7 @@ export async function getContributions(
 				organisationalUnitSlug: organisationalUnitSlugs.value,
 				organisationalUnitType: schema.organisationalUnitTypes.type,
 				duration: schema.personsToOrganisationalUnits.duration,
+				description: schema.personsToOrganisationalUnits.description,
 			})
 			.from(schema.personsToOrganisationalUnits)
 			.innerJoin(
@@ -213,6 +215,7 @@ export async function getContributions(
 				organisationalUnitType: row.organisationalUnitType,
 				durationStart: row.duration.start,
 				durationEnd: row.duration.end,
+				description: row.description,
 			};
 		}),
 		limit,
@@ -235,6 +238,14 @@ export async function getContributionsForAdmin(
  * its latest editable version in `localeId` (or the default locale when omitted), falling back to
  * the default locale per-unit when a unit has no version in `localeId` — the unit's name/slug are
  * translatable, unlike the person's own name.
+ *
+ * "Contribution" here is a data-migration leftover: these rows are simply relations between a
+ * person and an organisational unit, and not every role is a contribution to DARIAH. The same table
+ * is read from the org side as "person relations" (`lib/data/person-relations.ts`) and exposed by
+ * the api as `positions` (`apps/api/src/lib/persons.ts`) — one concept, three names.
+ *
+ * Unrelated to a person's article credits, despite `articleContributorRolesEnum` also using the
+ * word: those live in `lib/data/article-contributors.ts`.
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getPersonContributions(personDocumentId: string, localeId?: string) {
@@ -258,6 +269,7 @@ export async function getPersonContributions(personDocumentId: string, localeId?
 			organisationalUnitSlug: schema.slugs.value,
 			organisationalUnitType: schema.organisationalUnitTypes.type,
 			organisationalUnitIsLocaleFallback: sql<boolean>`(${unitSelectedDraft.id} IS NULL AND ${unitSelectedPublished.id} IS NULL)`,
+			description: schema.personsToOrganisationalUnits.description,
 		})
 		.from(schema.personsToOrganisationalUnits)
 		.innerJoin(
@@ -376,17 +388,17 @@ interface GetContributionOptionsParams {
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getContributionPersonOptions(params: GetContributionOptionsParams = {}) {
-	const { limit = contributionOptionsPageSize, offset = 0, q } = params;
+export async function getContributionPersonOptions(
+	params: GetContributionOptionsParams & { includeDrafts?: boolean } = {},
+) {
+	const { limit = contributionOptionsPageSize, offset = 0, q, includeDrafts = false } = params;
 	const query = q?.trim();
-	const searchWhere =
-		query != null && query !== ""
-			? or(
-					unaccentIlike(schema.persons.name, `%${query}%`),
-					unaccentIlike(schema.persons.sortName, `%${query}%`),
-				)
-			: undefined;
-	const lifecycleWhere = publishedEntityVersionWhere();
+	const searchWhere = matchesAllTerms(query, schema.persons.name, schema.persons.sortName);
+	// Pickers normally offer published persons only. Delegated dashboards opt in to draft-or-published so
+	// a coordinator can relate a person they just created (still a draft) — one row per document.
+	const lifecycleWhere = includeDrafts
+		? latestEditableEntityVersionWhere()
+		: publishedEntityVersionWhere();
 	const where = and(lifecycleWhere, searchWhere);
 
 	const [items, aggregate] = await Promise.all([
@@ -436,9 +448,7 @@ export async function getContributionOrganisationalUnitOptions(
 	const where = and(
 		publishedEntityVersionWhere(),
 		eq(schema.personRoleTypesToOrganisationalUnitTypesAllowedRelations.roleTypeId, roleTypeId),
-		query != null && query !== ""
-			? unaccentIlike(schema.organisationalUnits.name, `%${query}%`)
-			: undefined,
+		matchesAllTerms(query, schema.organisationalUnits.name, schema.organisationalUnits.acronym),
 	);
 
 	const [items, aggregate] = await Promise.all([
@@ -565,9 +575,7 @@ export async function getCountryOptions(params: GetContributionOptionsParams = {
 	const where = and(
 		publishedEntityVersionWhere(),
 		eq(schema.organisationalUnitTypes.type, "country"),
-		query != null && query !== ""
-			? unaccentIlike(schema.organisationalUnits.name, `%${query}%`)
-			: undefined,
+		matchesAllTerms(query, schema.organisationalUnits.name, schema.organisationalUnits.acronym),
 	);
 
 	const [items, aggregate] = await Promise.all([

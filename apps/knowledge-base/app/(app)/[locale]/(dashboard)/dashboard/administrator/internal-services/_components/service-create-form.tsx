@@ -16,7 +16,12 @@ interface ServiceCreateFormProps {
 }
 
 export function ServiceCreateForm(props: Readonly<ServiceCreateFormProps>): ReactNode {
-	const { serviceStatuses, initialOrganisationalUnitItems, initialOrganisationalUnitTotal } = props;
+	const {
+		serviceTypes,
+		serviceStatuses,
+		initialOrganisationalUnitItems,
+		initialOrganisationalUnitTotal,
+	} = props;
 
 	const t = useExtracted();
 
@@ -29,6 +34,7 @@ export function ServiceCreateForm(props: Readonly<ServiceCreateFormProps>): Reac
 				initialOrganisationalUnitItems={initialOrganisationalUnitItems}
 				initialOrganisationalUnitTotal={initialOrganisationalUnitTotal}
 				serviceStatuses={serviceStatuses}
+				serviceTypes={serviceTypes}
 			/>
 		</Fragment>
 	);

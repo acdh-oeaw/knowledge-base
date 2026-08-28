@@ -37,7 +37,7 @@ export default async function RecoveryCodePage(
 		return t("Too many requests.");
 	}
 
-	const { session, user } = await getCurrentSession();
+	const { realUser: user, session } = await getCurrentSession();
 
 	if (session == null) {
 		redirect({ href: "/auth/sign-in", locale });
@@ -58,9 +58,9 @@ export default async function RecoveryCodePage(
 	const recoveryCode = await auth.getRecoveryCode(user.id);
 
 	return (
-		<Main className="min-block-full p-6 items-center justify-center flex flex-col">
-			<div className="inline-full max-inline-sm flex flex-col gap-y-4">
-				<Link aria-label={t("Home")} className="mbe-2 rounded-xs self-start inline-block" href="/">
+		<Main className="flex flex-col items-center justify-center p-6 min-block-full">
+			<div className="flex flex-col gap-y-4 inline-full max-inline-sm">
+				<Link aria-label={t("Home")} className="mbe-2 inline-block self-start rounded-xs" href="/">
 					<Avatar
 						className="dark:invert"
 						isSquare={true}

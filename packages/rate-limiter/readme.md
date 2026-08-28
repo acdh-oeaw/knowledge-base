@@ -1,1 +1,1 @@
-# the knowledge base rate-limiter
+# dariah knowledge base rate-limiter

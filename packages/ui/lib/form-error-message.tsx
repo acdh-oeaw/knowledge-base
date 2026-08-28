@@ -18,7 +18,7 @@ export function FormErrorMessage(props: Readonly<FormErrorMessageProps>): ReactN
 			{...rest}
 			aria-atomic={true}
 			aria-live="assertive"
-			className={cn(className, !isErrorState ? "sr-only" : "text-danger-subtle-fg text-sm/6")}
+			className={cn(className, !isErrorState ? "sr-only" : "text-sm/6 text-danger-subtle-fg")}
 			role="alert"
 		>
 			<div key={state.id}>

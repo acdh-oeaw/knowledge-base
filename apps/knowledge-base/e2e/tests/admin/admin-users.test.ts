@@ -133,7 +133,7 @@ test.describe("users admin", () => {
 		});
 	});
 
-	test("should delete a user", async ({ createAdminUsersPage }) => {
+	test("should delete a user", async ({ createAdminUsersPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const usersPage = createAdminUsersPage(workerIndex);
 
@@ -149,10 +149,18 @@ test.describe("users admin", () => {
 		await usersPage.searchByName(name);
 		await expect(usersPage.rowByName(name)).toBeVisible();
 
+		expect(await db.getUserByName(name)).not.toBeNull();
+
 		const deleteDialog = await usersPage.openDeleteDialog(name);
 		await expect(deleteDialog).toBeVisible();
 		await usersPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(usersPage.rowByName(name)).toBeHidden();
+
+		// Source of truth: users are not entity documents, so the row itself must be gone.
+		expect(await db.getUserByName(name)).toBeNull();
 	});
 });

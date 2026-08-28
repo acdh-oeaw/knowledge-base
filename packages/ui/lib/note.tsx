@@ -3,10 +3,10 @@ import {
 	ExclamationCircleIcon,
 	InformationCircleIcon,
 } from "@heroicons/react/24/solid";
-import type { ReactNode } from "react";
+import type { ElementType, HtmlHTMLAttributes, ReactNode } from "react";
 import { twJoin, twMerge } from "tailwind-merge";
 
-export interface NoteProps extends React.HtmlHTMLAttributes<HTMLDivElement> {
+export interface NoteProps extends HtmlHTMLAttributes<HTMLDivElement> {
 	intent?: "default" | "info" | "warning" | "danger" | "success";
 	indicator?: boolean;
 }
@@ -14,7 +14,7 @@ export interface NoteProps extends React.HtmlHTMLAttributes<HTMLDivElement> {
 export function Note(props: Readonly<NoteProps>): ReactNode {
 	const { children, indicator = true, intent = "default", className, ...rest } = props;
 
-	const iconMap: Record<string, React.ElementType | null> = {
+	const iconMap: Record<string, ElementType | null> = {
 		info: InformationCircleIcon,
 		warning: ExclamationCircleIcon,
 		danger: ExclamationCircleIcon,
@@ -27,7 +27,7 @@ export function Note(props: Readonly<NoteProps>): ReactNode {
 	return (
 		<div
 			className={twMerge([
-				"grid inline-full grid-cols-[auto_1fr] overflow-hidden rounded-lg border border-current/15 p-[calc(--spacing(4)-1px)] backdrop-blur-2xl sm:text-sm/6",
+				"grid grid-cols-[auto_1fr] overflow-hidden rounded-lg border border-current/15 p-[calc(--spacing(4)-1px)] backdrop-blur-2xl inline-full sm:text-sm/6",
 				"*:[a]:hover:underline **:[strong]:font-medium",
 				intent === "default" && "bg-muted/50 text-secondary-fg",
 				intent === "info" &&
@@ -46,7 +46,7 @@ export function Note(props: Readonly<NoteProps>): ReactNode {
 			{IconComponent != null && indicator && (
 				<div
 					className={twJoin(
-						"me-3 grid block-8 inline-8 place-content-center rounded-full border-2",
+						"me-3 grid place-content-center rounded-full border-2 block-8 inline-8",
 						intent === "warning" && "border-warning-subtle-fg/40",
 						intent === "success" && "border-success-subtle-fg/40",
 						intent === "danger" && "border-danger-subtle-fg/40",
@@ -55,18 +55,18 @@ export function Note(props: Readonly<NoteProps>): ReactNode {
 				>
 					<div
 						className={twJoin(
-							"grid block-6 inline-6 place-content-center rounded-full border-2",
+							"grid place-content-center rounded-full border-2 block-6 inline-6",
 							intent === "warning" && "border-warning-subtle-fg/85",
 							intent === "success" && "border-success-subtle-fg/85",
 							intent === "danger" && "border-danger-subtle-fg/85",
 							intent === "info" && "border-info-subtle-fg/85",
 						)}
 					>
-						<IconComponent className="block-5 inline-5 shrink-0" />
+						<IconComponent className="shrink-0 block-5 inline-5" />
 					</div>
 				</div>
 			)}
-			<div className="text-pretty text-base/6 sm:text-sm/6 group-has-data-[slot=icon]:col-start-2">
+			<div className="text-base/6 text-pretty sm:text-sm/6 group-has-data-[slot=icon]:col-start-2">
 				{children}
 			</div>
 		</div>

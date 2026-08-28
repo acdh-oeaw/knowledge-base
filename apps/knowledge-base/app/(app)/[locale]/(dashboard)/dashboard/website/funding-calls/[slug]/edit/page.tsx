@@ -5,9 +5,27 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { FundingCallEditForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-edit";
+import { imageGridOptions } from "@/config/assets.config";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import { getMediaLibraryAssets } from "@/lib/data/assets";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
 import { fundingCallsLifecycleAdapter } from "@/lib/data/funding-calls.lifecycle-adapter";
+import { getLocales } from "@/lib/data/locales";
+import {
+	getEntityRelationOptions,
+	getEntityRelationOptionsByIds,
+	getEntityRelations,
+	getResourceRelationOptions,
+	getResourceRelationOptionsByIds,
+} from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -29,7 +47,7 @@ export async function generateMetadata(
 export default async function DashboardWebsiteEditFundingCallPage(
 	props: Readonly<DashboardWebsiteEditFundingCallPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
@@ -50,9 +68,29 @@ export default async function DashboardWebsiteEditFundingCallPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, fundingCallsLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			documentId,
+			fundingCallsLifecycleAdapter,
+			selectedLocale.id,
+		);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -60,6 +98,8 @@ export default async function DashboardWebsiteEditFundingCallPage(
 		where: { id: draftVersionId },
 		columns: {
 			id: true,
+			imageCaption: true,
+			imageCaptionMode: true,
 			duration: true,
 			title: true,
 			summary: true,
@@ -86,6 +126,10 @@ export default async function DashboardWebsiteEditFundingCallPage(
 					},
 				},
 			},
+			image: {
+				columns: selectedImageColumns,
+				with: selectedImageWith,
+			},
 		},
 	});
 
@@ -99,7 +143,22 @@ export default async function DashboardWebsiteEditFundingCallPage(
 	);
 	const entityVersionSlug = fundingCall.entityVersion.slug;
 
-	const contentBlocks = await getEntityContentBlocks(fundingCall.id, "content");
+	const image = toSelectedImage(fundingCall.image, imageGridOptions);
+
+	const [contentBlocks, { items: initialAssets }, initialRelatedEntities, initialRelatedResources] =
+		await Promise.all([
+			getEntityContentBlocks(fundingCall.id, "content"),
+			getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "images" }),
+			getEntityRelationOptions(),
+			getResourceRelationOptions(),
+		]);
+
+	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(documentId);
+
+	const [selectedRelatedEntities, selectedRelatedResources] = await Promise.all([
+		getEntityRelationOptionsByIds(relatedEntityIds),
+		getResourceRelationOptionsByIds(relatedResourceIds),
+	]);
 
 	return (
 		<FundingCallEditForm
@@ -107,10 +166,22 @@ export default async function DashboardWebsiteEditFundingCallPage(
 			documentId={documentId}
 			fundingCall={{
 				...fundingCall,
+				image,
 				entityVersion: { ...fundingCall.entityVersion, slug: entityVersionSlug },
 			}}
 			hasDraftChanges={hasDraftChanges}
+			initialAssets={initialAssets}
+			initialRelatedEntityIds={relatedEntityIds}
+			initialRelatedEntityItems={initialRelatedEntities.items}
+			initialRelatedEntityTotal={initialRelatedEntities.total}
+			initialRelatedResourceIds={relatedResourceIds}
+			initialRelatedResourceItems={initialRelatedResources.items}
+			initialRelatedResourceTotal={initialRelatedResources.total}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
+			selectedRelatedEntities={selectedRelatedEntities}
+			selectedRelatedResources={selectedRelatedResources}
 		/>
 	);
 }

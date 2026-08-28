@@ -50,6 +50,7 @@ export {
 export type {
 	SearchWebsiteParams,
 	WebsiteDocument,
+	WebsiteEntityDocument,
 	WebsiteFacet,
 	WebsiteFacetField,
 	WebsiteFilterField,

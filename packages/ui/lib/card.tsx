@@ -1,10 +1,7 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, HTMLAttributes, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 
-export function Card({
-	className,
-	...props
-}: Readonly<React.HTMLAttributes<HTMLDivElement>>): ReactNode {
+export function Card({ className, ...props }: Readonly<HTMLAttributes<HTMLDivElement>>): ReactNode {
 	return (
 		<div
 			className={twMerge(
@@ -17,7 +14,7 @@ export function Card({
 	);
 }
 
-export interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface HeaderProps extends HTMLAttributes<HTMLDivElement> {
 	title?: string;
 	description?: string;
 }
@@ -45,13 +42,10 @@ export function CardHeader({
 	);
 }
 
-export function CardTitle({
-	className,
-	...props
-}: Readonly<React.ComponentProps<"div">>): ReactNode {
+export function CardTitle({ className, ...props }: Readonly<ComponentProps<"div">>): ReactNode {
 	return (
 		<div
-			className={twMerge("text-balance font-semibold text-base/6", className)}
+			className={twMerge("text-base/6 font-semibold text-balance", className)}
 			data-slot="card-title"
 			{...props}
 		/>
@@ -61,10 +55,10 @@ export function CardTitle({
 export function CardDescription({
 	className,
 	...props
-}: Readonly<React.HTMLAttributes<HTMLDivElement>>): ReactNode {
+}: Readonly<HTMLAttributes<HTMLDivElement>>): ReactNode {
 	return (
 		<div
-			className={twMerge("row-start-2 text-pretty text-muted-fg text-sm/6", className)}
+			className={twMerge("row-start-2 text-sm/6 text-pretty text-muted-fg", className)}
 			data-slot="card-description"
 			{...props}
 		/>
@@ -74,7 +68,7 @@ export function CardDescription({
 export function CardAction({
 	className,
 	...props
-}: Readonly<React.HTMLAttributes<HTMLDivElement>>): ReactNode {
+}: Readonly<HTMLAttributes<HTMLDivElement>>): ReactNode {
 	return (
 		<div
 			className={twMerge(
@@ -90,7 +84,7 @@ export function CardAction({
 export function CardContent({
 	className,
 	...props
-}: Readonly<React.HTMLAttributes<HTMLDivElement>>): ReactNode {
+}: Readonly<HTMLAttributes<HTMLDivElement>>): ReactNode {
 	return (
 		<div
 			className={twMerge("px-(--gutter) has-[table]:border-bs", className)}
@@ -103,7 +97,7 @@ export function CardContent({
 export function CardFooter({
 	className,
 	...props
-}: Readonly<React.HTMLAttributes<HTMLDivElement>>): ReactNode {
+}: Readonly<HTMLAttributes<HTMLDivElement>>): ReactNode {
 	return (
 		<div
 			className={twMerge(

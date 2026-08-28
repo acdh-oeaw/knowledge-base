@@ -11,6 +11,7 @@ test.describe("national consortia admin", () => {
 
 	test.afterAll(async ({ db }, testInfo) => {
 		await db.cleanupWorkerNationalConsortiа(testInfo.workerIndex);
+		await db.cleanupWorkerSocialMedia(testInfo.workerIndex);
 	});
 
 	test("should create a national consortium", async ({ createAdminNationalConsortiaPage, db }) => {
@@ -23,6 +24,8 @@ test.describe("national consortia admin", () => {
 		const sshocMarketplaceActorId = 234561;
 		const summary = "E2E test national consortium summary.";
 		const description = "E2E test national consortium description.";
+		const socialMediaName = `${nationalConsortiaPage.workerPrefix} Consortium Social ${randomUUID()}`;
+		const socialMediaUrl = "https://example.com/consortium-social";
 		const testAsset = await db.getTestAsset();
 
 		await nationalConsortiaPage.gotoCreate();
@@ -34,6 +37,7 @@ test.describe("national consortia admin", () => {
 		await nationalConsortiaPage.fillSummary(summary);
 		await nationalConsortiaPage.selectTestImage();
 		await nationalConsortiaPage.fillDescription(description);
+		await nationalConsortiaPage.createSocialMediaInForm(socialMediaName, socialMediaUrl);
 
 		await nationalConsortiaPage.submitForm();
 
@@ -53,6 +57,11 @@ test.describe("national consortia admin", () => {
 		expect(JSON.stringify(await db.getNationalConsortiumDescriptionByName(name))).toContain(
 			description,
 		);
+		const socialMedia = await db.getSocialMediaByName(socialMediaName);
+		expect(socialMedia).toMatchObject({ name: socialMediaName, url: socialMediaUrl });
+		expect(await db.getOrganisationalUnitSocialMediaIds(created!.id)).toStrictEqual([
+			socialMedia!.id,
+		]);
 	});
 
 	test("should edit all national consortium form fields", async ({
@@ -170,7 +179,7 @@ test.describe("national consortia admin", () => {
 		});
 	});
 
-	test("should delete a national consortium", async ({ createAdminNationalConsortiaPage }) => {
+	test("should delete a national consortium", async ({ createAdminNationalConsortiaPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const nationalConsortiaPage = createAdminNationalConsortiaPage(workerIndex);
 
@@ -180,6 +189,9 @@ test.describe("national consortia admin", () => {
 		await nationalConsortiaPage.fillDescription("Description for delete test.");
 		await nationalConsortiaPage.submitForm();
 
+		const created = await db.getNationalConsortiumByName(name);
+		expect(created).not.toBeNull();
+
 		await nationalConsortiaPage.searchByName(name);
 		await expect(nationalConsortiaPage.rowByName(name)).toBeVisible();
 
@@ -187,7 +199,14 @@ test.describe("national consortia admin", () => {
 		await expect(deleteDialog).toBeVisible();
 		await nationalConsortiaPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(nationalConsortiaPage.rowByName(name)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getNationalConsortiumByName(name)).toBeNull();
 	});
 
 	test("version selector shows correct content per version", async ({

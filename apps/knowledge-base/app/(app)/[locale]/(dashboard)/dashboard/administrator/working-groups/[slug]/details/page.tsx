@@ -9,6 +9,7 @@ import { WorkingGroupDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/
 import { publishWorkingGroupAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_lib/publish-working-group.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
+import { resolvePlaceholderValuesInContentBlocks } from "@/lib/content-blocks-service";
 import { getOrganisationalUnitEditDataForAdmin } from "@/lib/data/admin-organisational-units";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
@@ -125,6 +126,9 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 		`Slug missing for entity version "${workingGroup.entityVersion.id}".`,
 	);
 	const entityVersionSlug = workingGroup.entityVersion.slug;
+	const descriptionContentBlocks = await resolvePlaceholderValuesInContentBlocks(
+		workingGroup.descriptionContentBlocks,
+	);
 
 	const image =
 		workingGroup.image != null
@@ -153,6 +157,7 @@ export default async function DashboardAdministratorWorkingGroupDetailsPage(
 			workingGroup={{
 				...workingGroup,
 				entityVersion: { ...workingGroup.entityVersion, slug: entityVersionSlug },
+				descriptionContentBlocks,
 				image,
 			}}
 			publishAction={publishWorkingGroupAction}

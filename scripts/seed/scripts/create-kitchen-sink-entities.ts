@@ -2,10 +2,15 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs/promises";
 import { join } from "node:path";
 
-import { log } from "@acdh-oeaw/lib";
-import { type Database, type Transaction, createDatabaseService } from "@dariah-eric/database";
+import { assert, log } from "@acdh-oeaw/lib";
+import {
+	type Database,
+	type Transaction,
+	createDatabaseService,
+	plainTextToRichText,
+} from "@dariah-eric/database";
 import * as schema from "@dariah-eric/database/schema";
-import { eq, inArray } from "@dariah-eric/database/sql";
+import { eq, inArray, sql } from "@dariah-eric/database/sql";
 import { type ResourceDocument, resourceSources, resourceTypes } from "@dariah-eric/search";
 import { createSearchAdminService } from "@dariah-eric/search/admin";
 import { createStorageService } from "@dariah-eric/storage";
@@ -113,13 +118,13 @@ async function upsertById(
 	row: Record<string, unknown> & { id: string },
 ): Promise<void> {
 	const { id: _id, ...set } = row;
-	const _table = table;
+	const targetTable = table;
 
 	await db
-		.insert(_table)
+		.insert(targetTable)
 		.values(row as never)
 		.onConflictDoUpdate({
-			target: _table.id,
+			target: targetTable.id,
 			set: set as never,
 		});
 }
@@ -237,7 +242,8 @@ async function ensureRelatedResources() {
 			description: "A seeded publication resource for API integration testing.",
 			keywords: ["kitchen-sink", "publication"],
 			kind: "article",
-			links: ["https://example.org/resources/kitchen-sink-publication"],
+			source_url: "https://example.org/resources/kitchen-sink-publication",
+			links: ["https://example.org/external/kitchen-sink-publication"],
 			authors: ["Kitchen Sink Author"],
 			year: 2026,
 			pid: "10.1234/kitchen-sink-publication",
@@ -257,7 +263,8 @@ async function ensureRelatedResources() {
 			description: "A seeded training material resource for API integration testing.",
 			keywords: ["kitchen-sink", "training"],
 			kind: null,
-			links: ["https://example.org/resources/kitchen-sink-training"],
+			source_url: "https://example.org/resources/kitchen-sink-training",
+			links: ["https://example.org/external/kitchen-sink-training"],
 			authors: ["Kitchen Sink Trainer"],
 			year: 2026,
 			pid: null,
@@ -303,6 +310,9 @@ async function main() {
 				projectScopeRows,
 				opportunitySourceRows,
 				socialMediaTypeRows,
+				serviceTypeRows,
+				serviceStatusRows,
+				organisationalUnitServiceRoleRows,
 				contentBlockTypeRows,
 				dataContentBlockTypeRows,
 				licenseRows,
@@ -318,6 +328,9 @@ async function main() {
 				tx.select().from(schema.projectScopes),
 				tx.select().from(schema.opportunitySources),
 				tx.select().from(schema.socialMediaTypes),
+				tx.select().from(schema.serviceTypes),
+				tx.select().from(schema.serviceStatuses),
+				tx.select().from(schema.organisationalUnitServiceRoles),
 				tx.select().from(schema.contentBlockTypes),
 				tx.select().from(schema.dataContentBlockTypes),
 				tx.select().from(schema.licenses),
@@ -347,6 +360,11 @@ async function main() {
 				opportunitySourceRows.map((row) => [row.source, row.id]),
 			);
 			const socialMediaTypeIds = new Map(socialMediaTypeRows.map((row) => [row.type, row.id]));
+			const serviceTypeIds = new Map(serviceTypeRows.map((row) => [row.type, row.id]));
+			const serviceStatusIds = new Map(serviceStatusRows.map((row) => [row.status, row.id]));
+			const organisationalUnitServiceRoleIds = new Map(
+				organisationalUnitServiceRoleRows.map((row) => [row.role, row.id]),
+			);
 			const contentBlockTypeIds = new Map(contentBlockTypeRows.map((row) => [row.type, row.id]));
 			const dataContentBlockTypeIds = new Map(
 				dataContentBlockTypeRows.map((row) => [row.type, row.id]),
@@ -376,7 +394,7 @@ async function main() {
 					label: "Kitchen Sink Featured Image",
 					filename: "featured-image.png",
 					mimeType: "image/png",
-					caption: "Kitchen sink featured image.",
+					caption: plainTextToRichText("Kitchen sink featured image."),
 					alt: "Kitchen sink featured illustration",
 					licenseId,
 				},
@@ -386,7 +404,7 @@ async function main() {
 					label: "Kitchen Sink Hero Image",
 					filename: "hero-image.png",
 					mimeType: "image/png",
-					caption: "Kitchen sink hero image.",
+					caption: plainTextToRichText("Kitchen sink hero image."),
 					alt: "Kitchen sink hero illustration",
 					licenseId,
 				},
@@ -396,7 +414,7 @@ async function main() {
 					label: "Kitchen Sink Avatar",
 					filename: "avatar.png",
 					mimeType: "image/png",
-					caption: "Kitchen sink avatar.",
+					caption: plainTextToRichText("Kitchen sink avatar."),
 					alt: "Kitchen sink avatar portrait",
 					licenseId,
 				},
@@ -406,7 +424,7 @@ async function main() {
 					label: "Kitchen Sink Document",
 					filename: "document.pdf",
 					mimeType: "application/pdf",
-					caption: "Kitchen sink policy PDF.",
+					caption: plainTextToRichText("Kitchen sink policy PDF."),
 					alt: "Kitchen sink policy PDF",
 					licenseId,
 				},
@@ -434,6 +452,10 @@ async function main() {
 				id: createId("entity:working-group"),
 				versionId: createId("version:working-group"),
 			};
+			const secondWorkingGroupDocument = {
+				id: createId("entity:working-group:second"),
+				versionId: createId("version:working-group:second"),
+			};
 			const governanceBodyDocument = {
 				id: createId("entity:governance-body"),
 				versionId: createId("version:governance-body"),
@@ -442,9 +464,21 @@ async function main() {
 				id: createId("entity:country"),
 				versionId: createId("version:country"),
 			};
+			const secondMemberCountryDocument = {
+				id: createId("entity:country:second"),
+				versionId: createId("version:country:second"),
+			};
 			const institutionDocument = {
 				id: createId("entity:institution"),
 				versionId: createId("version:institution"),
+			};
+			const coordinatingInstitutionDocument = {
+				id: createId("entity:institution:coordinating"),
+				versionId: createId("version:institution:coordinating"),
+			};
+			const representativeInstitutionDocument = {
+				id: createId("entity:institution:representative"),
+				versionId: createId("version:institution:representative"),
 			};
 			const consortiumDocument = {
 				id: createId("entity:national-consortium"),
@@ -472,6 +506,41 @@ async function main() {
 			};
 			const pageDocument = { id: createId("entity:page"), versionId: createId("version:page") };
 			const newsDocument = { id: createId("entity:news"), versionId: createId("version:news") };
+			/**
+			 * Extra published news items so the featured-news-items e2e test has enough options. Titles
+			 * are distinct and non-prefixing (no one is a substring of another) so Playwright's
+			 * substring-based role locators stay unambiguous, and they sort before "Kitchen Sink News".
+			 */
+			const featuredNewsDocuments = [
+				{ slug: "featured-test-news-alpha", title: "Featured Test News Alpha" },
+				{ slug: "featured-test-news-bravo", title: "Featured Test News Bravo" },
+				{ slug: "featured-test-news-charlie", title: "Featured Test News Charlie" },
+				{ slug: "featured-test-news-delta", title: "Featured Test News Delta" },
+			].map((entry) => {
+				return {
+					...entry,
+					id: createId(`entity:news:${entry.slug}`),
+					versionId: createId(`version:news:${entry.slug}`),
+				};
+			});
+			/**
+			 * Extra published events so the featured-events e2e test has enough options. Same naming
+			 * discipline as `featuredNewsDocuments` (distinct, non-prefixing titles that sort before the
+			 * "Kitchen Sink" events) so the picker's first page and Playwright's role locators stay
+			 * unambiguous.
+			 */
+			const featuredEventDocuments = [
+				{ slug: "featured-test-event-alpha", title: "Featured Test Event Alpha" },
+				{ slug: "featured-test-event-bravo", title: "Featured Test Event Bravo" },
+				{ slug: "featured-test-event-charlie", title: "Featured Test Event Charlie" },
+				{ slug: "featured-test-event-delta", title: "Featured Test Event Delta" },
+			].map((entry) => {
+				return {
+					...entry,
+					id: createId(`entity:event:${entry.slug}`),
+					versionId: createId(`version:event:${entry.slug}`),
+				};
+			});
 			const fundingCallDocument = {
 				id: createId("entity:funding-call"),
 				versionId: createId("version:funding-call"),
@@ -522,6 +591,16 @@ async function main() {
 					slug: "kitchen-sink-working-group",
 				},
 				{
+					id: secondWorkingGroupDocument.id,
+					versionId: secondWorkingGroupDocument.versionId,
+					typeId: assertLookupId(
+						entityTypeIds.get("organisational_units"),
+						'Missing entity type "organisational_units".',
+					),
+					statusId: publishedStatusId,
+					slug: "kitchen-sink-working-group-two",
+				},
+				{
 					id: governanceBodyDocument.id,
 					versionId: governanceBodyDocument.versionId,
 					typeId: assertLookupId(
@@ -542,6 +621,16 @@ async function main() {
 					slug: "kitchen-sink-country",
 				},
 				{
+					id: secondMemberCountryDocument.id,
+					versionId: secondMemberCountryDocument.versionId,
+					typeId: assertLookupId(
+						entityTypeIds.get("organisational_units"),
+						'Missing entity type "organisational_units".',
+					),
+					statusId: publishedStatusId,
+					slug: "kitchen-sink-country-two",
+				},
+				{
 					id: institutionDocument.id,
 					versionId: institutionDocument.versionId,
 					typeId: assertLookupId(
@@ -550,6 +639,26 @@ async function main() {
 					),
 					statusId: publishedStatusId,
 					slug: "kitchen-sink-institution",
+				},
+				{
+					id: coordinatingInstitutionDocument.id,
+					versionId: coordinatingInstitutionDocument.versionId,
+					typeId: assertLookupId(
+						entityTypeIds.get("organisational_units"),
+						'Missing entity type "organisational_units".',
+					),
+					statusId: publishedStatusId,
+					slug: "kitchen-sink-coordinating-institution",
+				},
+				{
+					id: representativeInstitutionDocument.id,
+					versionId: representativeInstitutionDocument.versionId,
+					typeId: assertLookupId(
+						entityTypeIds.get("organisational_units"),
+						'Missing entity type "organisational_units".',
+					),
+					statusId: publishedStatusId,
+					slug: "kitchen-sink-representative-institution",
 				},
 				{
 					id: consortiumDocument.id,
@@ -660,6 +769,24 @@ async function main() {
 					statusId: publishedStatusId,
 					slug: "kitchen-sink",
 				},
+				...featuredNewsDocuments.map((doc) => {
+					return {
+						id: doc.id,
+						versionId: doc.versionId,
+						typeId: assertLookupId(entityTypeIds.get("news"), 'Missing entity type "news".'),
+						statusId: publishedStatusId,
+						slug: doc.slug,
+					};
+				}),
+				...featuredEventDocuments.map((doc) => {
+					return {
+						id: doc.id,
+						versionId: doc.versionId,
+						typeId: assertLookupId(entityTypeIds.get("events"), 'Missing entity type "events".'),
+						statusId: publishedStatusId,
+						slug: doc.slug,
+					};
+				}),
 			];
 
 			const entityIdsBySeedId = new Map<string, { documentId: string; versionId: string }>();
@@ -675,12 +802,33 @@ async function main() {
 			const dariahEricEntityId = entityIdsBySeedId.get(dariahEricDocument.id)!.documentId;
 			const workingGroupEntityId = entityIdsBySeedId.get(workingGroupDocument.id)!.documentId;
 			const workingGroupVersionId = entityIdsBySeedId.get(workingGroupDocument.id)!.versionId;
+			const secondWorkingGroupEntityId = entityIdsBySeedId.get(
+				secondWorkingGroupDocument.id,
+			)!.documentId;
+			const secondWorkingGroupVersionId = entityIdsBySeedId.get(
+				secondWorkingGroupDocument.id,
+			)!.versionId;
 			const governanceBodyEntityId = entityIdsBySeedId.get(governanceBodyDocument.id)!.documentId;
 			const governanceBodyVersionId = entityIdsBySeedId.get(governanceBodyDocument.id)!.versionId;
 			const memberCountryEntityId = entityIdsBySeedId.get(memberCountryDocument.id)!.documentId;
 			const memberCountryVersionId = entityIdsBySeedId.get(memberCountryDocument.id)!.versionId;
+			const secondMemberCountryVersionId = entityIdsBySeedId.get(
+				secondMemberCountryDocument.id,
+			)!.versionId;
 			const institutionVersionId = entityIdsBySeedId.get(institutionDocument.id)!.versionId;
 			const institutionEntityId = entityIdsBySeedId.get(institutionDocument.id)!.documentId;
+			const coordinatingInstitutionVersionId = entityIdsBySeedId.get(
+				coordinatingInstitutionDocument.id,
+			)!.versionId;
+			const coordinatingInstitutionEntityId = entityIdsBySeedId.get(
+				coordinatingInstitutionDocument.id,
+			)!.documentId;
+			const representativeInstitutionVersionId = entityIdsBySeedId.get(
+				representativeInstitutionDocument.id,
+			)!.versionId;
+			const representativeInstitutionEntityId = entityIdsBySeedId.get(
+				representativeInstitutionDocument.id,
+			)!.documentId;
 			const consortiumVersionId = entityIdsBySeedId.get(consortiumDocument.id)!.versionId;
 			const consortiumEntityId = entityIdsBySeedId.get(consortiumDocument.id)!.documentId;
 			const kitchenSinkPersonEntityId = entityIdsBySeedId.get(
@@ -761,19 +909,43 @@ async function main() {
 				id: pageVersionId,
 				title: "Kitchen Sink Page",
 				summary: "A page seeded for API contract testing.",
+				publicationDate: new Date("2024-01-15T00:00:00.000Z"),
 				imageId: createId("asset:image"),
 			});
 			await upsertById(tx, schema.news, {
 				id: newsVersionId,
 				title: "Kitchen Sink News",
 				summary: "A news item seeded for API contract testing.",
+				publicationDate: new Date("2024-01-15T00:00:00.000Z"),
 				imageId: createId("asset:image"),
 			});
+			for (const doc of featuredNewsDocuments) {
+				await upsertById(tx, schema.news, {
+					id: entityIdsBySeedId.get(doc.id)!.versionId,
+					title: doc.title,
+					summary: "A published news item seeded for the featured-items e2e tests.",
+					publicationDate: new Date("2024-01-15T00:00:00.000Z"),
+					imageId: createId("asset:image"),
+				});
+			}
+			for (const doc of featuredEventDocuments) {
+				await upsertById(tx, schema.events, {
+					id: entityIdsBySeedId.get(doc.id)!.versionId,
+					title: doc.title,
+					summary: "A published event seeded for the featured-items e2e tests.",
+					imageId: createId("asset:image"),
+					location: "Vienna",
+					duration: createTimestampRange("2026-04-15T09:00:00.000Z", "2026-04-17T17:00:00.000Z"),
+					isFullDay: false,
+					website: `https://example.org/events/${doc.slug}`,
+				});
+			}
 			await upsertById(tx, schema.fundingCalls, {
 				id: fundingCallVersionId,
 				title: "Kitchen Sink Funding Call",
 				summary: "A funding call seeded for API contract testing.",
 				duration: createTimestampRange("2026-06-01T00:00:00.000Z", "2026-06-30T23:59:59.000Z"),
+				imageId: createId("asset:image"),
 			});
 			await upsertById(tx, schema.opportunities, {
 				id: opportunityVersionId,
@@ -785,17 +957,20 @@ async function main() {
 					'Missing opportunity source "dariah".',
 				),
 				website: "https://example.org/opportunities/kitchen-sink",
+				imageId: createId("asset:image"),
 			});
 			await upsertById(tx, schema.spotlightArticles, {
 				id: spotlightVersionId,
 				title: "Kitchen Sink Spotlight Article",
 				summary: "A spotlight article seeded for API contract testing.",
+				publicationDate: new Date("2024-01-15T00:00:00.000Z"),
 				imageId: createId("asset:image"),
 			});
 			await upsertById(tx, schema.impactCaseStudies, {
 				id: impactVersionId,
 				title: "Kitchen Sink Impact Case Study",
 				summary: "An impact case study seeded for API contract testing.",
+				publicationDate: new Date("2024-01-15T00:00:00.000Z"),
 				imageId: createId("asset:image"),
 			});
 			await upsertById(tx, schema.documentsPolicies, {
@@ -839,6 +1014,24 @@ async function main() {
 				sshocMarketplaceActorId: 9002,
 			});
 			await upsertById(tx, schema.organisationalUnits, {
+				id: secondWorkingGroupVersionId,
+				name: "Kitchen Sink Working Group Two",
+				acronym: "KSWG2",
+				summary: "A second working group for testing users who chair multiple groups.",
+				metadata: {
+					activities: "Multi-group authorization testing",
+					disciplines: "Digital humanities",
+					mailingList: "kitchen-sink-working-group-two@example.org",
+					contactEmail: "kitchen-sink-working-group-two@example.org",
+				},
+				imageId: createId("asset:image"),
+				typeId: assertLookupId(
+					unitTypeIds.get("working_group"),
+					'Missing organisational unit type "working_group".',
+				),
+				sshocMarketplaceActorId: 9007,
+			});
+			await upsertById(tx, schema.organisationalUnits, {
 				id: governanceBodyVersionId,
 				name: "Kitchen Sink Governance Body",
 				acronym: "KSGB",
@@ -865,6 +1058,19 @@ async function main() {
 				sshocMarketplaceActorId: 9004,
 			});
 			await upsertById(tx, schema.organisationalUnits, {
+				id: secondMemberCountryVersionId,
+				name: "Kitchen Sink Country Two",
+				acronym: "KSC2",
+				summary: "A second member country for testing cross-tenant report authorization.",
+				metadata: { isoCode: "K2", continent: "Europe" },
+				imageId: createId("asset:image"),
+				typeId: assertLookupId(
+					unitTypeIds.get("country"),
+					'Missing organisational unit type "country".',
+				),
+				sshocMarketplaceActorId: 9008,
+			});
+			await upsertById(tx, schema.organisationalUnits, {
 				id: institutionVersionId,
 				name: "Kitchen Sink Institution",
 				acronym: "KSI",
@@ -876,6 +1082,32 @@ async function main() {
 					'Missing organisational unit type "institution".',
 				),
 				sshocMarketplaceActorId: 9005,
+			});
+			await upsertById(tx, schema.organisationalUnits, {
+				id: coordinatingInstitutionVersionId,
+				name: "Kitchen Sink Coordinating Institution",
+				acronym: "KSCI",
+				summary: "The national coordinating institution of the member country in the ERIC.",
+				metadata: { city: "Vienna" },
+				imageId: createId("asset:image"),
+				typeId: assertLookupId(
+					unitTypeIds.get("institution"),
+					'Missing organisational unit type "institution".',
+				),
+				sshocMarketplaceActorId: 9008,
+			});
+			await upsertById(tx, schema.organisationalUnits, {
+				id: representativeInstitutionVersionId,
+				name: "Kitchen Sink Representative Institution",
+				acronym: "KSRI",
+				summary: "The national representative institution of the member country in the ERIC.",
+				metadata: { city: "Vienna" },
+				imageId: createId("asset:image"),
+				typeId: assertLookupId(
+					unitTypeIds.get("institution"),
+					'Missing organisational unit type "institution".',
+				),
+				sshocMarketplaceActorId: 9009,
 			});
 			await upsertById(tx, schema.organisationalUnits, {
 				id: consortiumVersionId,
@@ -958,6 +1190,7 @@ async function main() {
 				[dariahEricVersionId, createId("social-media:website")],
 				[workingGroupVersionId, createId("social-media:website")],
 				[workingGroupVersionId, createId("social-media:mastodon")],
+				[secondWorkingGroupVersionId, createId("social-media:website")],
 				[governanceBodyVersionId, createId("social-media:website")],
 				[governanceBodyVersionId, createId("social-media:linkedin")],
 				[memberCountryVersionId, createId("social-media:website")],
@@ -973,6 +1206,27 @@ async function main() {
 					socialMediaId,
 				});
 			}
+
+			const reportingServiceId = createId("service:reporting");
+			await upsertById(tx, schema.services, {
+				id: reportingServiceId,
+				name: "Kitchen Sink Reporting Service",
+				typeId: assertLookupId(serviceTypeIds.get("internal"), 'Missing service type "internal".'),
+				statusId: assertLookupId(serviceStatusIds.get("live"), 'Missing service status "live".'),
+				comment: "A live national-consortium service used to prepopulate country reports.",
+				dariahBranding: true,
+				monitoring: true,
+				privateSupplier: false,
+			});
+			await upsertById(tx, schema.servicesToOrganisationalUnits, {
+				id: createId("service-org:reporting-consortium"),
+				serviceId: reportingServiceId,
+				organisationalUnitDocumentId: consortiumEntityId,
+				roleId: assertLookupId(
+					organisationalUnitServiceRoleIds.get("service_provider"),
+					'Missing organisational unit service role "service_provider".',
+				),
+			});
 
 			await tx
 				.delete(schema.projectsToOrganisationalUnits)
@@ -990,8 +1244,11 @@ async function main() {
 				.where(
 					inArray(schema.organisationalUnitsRelations.unitDocumentId, [
 						workingGroupEntityId,
+						secondWorkingGroupEntityId,
 						memberCountryEntityId,
 						institutionEntityId,
+						coordinatingInstitutionEntityId,
+						representativeInstitutionEntityId,
 						consortiumEntityId,
 					]),
 				);
@@ -1000,6 +1257,16 @@ async function main() {
 				{
 					id: createId("relation:working-group-to-eric"),
 					unitDocumentId: workingGroupEntityId,
+					relatedUnitDocumentId: dariahEricEntityId,
+					status: assertLookupId(
+						unitStatusIds.get("is_part_of"),
+						'Missing organisational unit status "is_part_of".',
+					),
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
+				},
+				{
+					id: createId("relation:working-group-two-to-eric"),
+					unitDocumentId: secondWorkingGroupEntityId,
 					relatedUnitDocumentId: dariahEricEntityId,
 					status: assertLookupId(
 						unitStatusIds.get("is_part_of"),
@@ -1038,6 +1305,46 @@ async function main() {
 					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
 				},
 				{
+					id: createId("relation:coordinating-institution-to-eric"),
+					unitDocumentId: coordinatingInstitutionEntityId,
+					relatedUnitDocumentId: dariahEricEntityId,
+					status: assertLookupId(
+						unitStatusIds.get("is_national_coordinating_institution_in"),
+						'Missing organisational unit status "is_national_coordinating_institution_in".',
+					),
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
+				},
+				{
+					id: createId("relation:coordinating-institution-to-country"),
+					unitDocumentId: coordinatingInstitutionEntityId,
+					relatedUnitDocumentId: memberCountryEntityId,
+					status: assertLookupId(
+						unitStatusIds.get("is_located_in"),
+						'Missing organisational unit status "is_located_in".',
+					),
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
+				},
+				{
+					id: createId("relation:representative-institution-to-eric"),
+					unitDocumentId: representativeInstitutionEntityId,
+					relatedUnitDocumentId: dariahEricEntityId,
+					status: assertLookupId(
+						unitStatusIds.get("is_national_representative_institution_in"),
+						'Missing organisational unit status "is_national_representative_institution_in".',
+					),
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
+				},
+				{
+					id: createId("relation:representative-institution-to-country"),
+					unitDocumentId: representativeInstitutionEntityId,
+					relatedUnitDocumentId: memberCountryEntityId,
+					status: assertLookupId(
+						unitStatusIds.get("is_located_in"),
+						'Missing organisational unit status "is_located_in".',
+					),
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
+				},
+				{
 					id: createId("relation:consortium-to-country"),
 					unitDocumentId: consortiumEntityId,
 					relatedUnitDocumentId: memberCountryEntityId,
@@ -1054,6 +1361,16 @@ async function main() {
 					id: createId("person-org:wg-chair"),
 					personDocumentId: kitchenSinkPersonEntityId,
 					organisationalUnitDocumentId: workingGroupEntityId,
+					roleTypeId: assertLookupId(
+						personRoleIds.get("is_chair_of"),
+						'Missing person role type "is_chair_of".',
+					),
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
+				},
+				{
+					id: createId("person-org:working-group-two-chair"),
+					personDocumentId: relatedPersonEntityId,
+					organisationalUnitDocumentId: secondWorkingGroupEntityId,
 					roleTypeId: assertLookupId(
 						personRoleIds.get("is_chair_of"),
 						'Missing person role type "is_chair_of".',
@@ -1101,6 +1418,259 @@ async function main() {
 					duration: createTimestampRange("2025-01-01T00:00:00.000Z", null),
 				},
 			]);
+
+			const [earlierCampaign] = await tx
+				.insert(schema.reportingCampaigns)
+				.values({
+					id: createId("reporting-campaign:2025"),
+					year: 2025,
+					status: "closed",
+				})
+				.onConflictDoUpdate({
+					target: schema.reportingCampaigns.year,
+					set: { status: "closed" },
+				})
+				.returning({ id: schema.reportingCampaigns.id });
+			assert(earlierCampaign);
+
+			const [laterCampaign] = await tx
+				.insert(schema.reportingCampaigns)
+				.values({
+					id: createId("reporting-campaign:2026"),
+					year: 2026,
+					status: "open",
+				})
+				.onConflictDoUpdate({
+					target: schema.reportingCampaigns.year,
+					set: { status: "open" },
+				})
+				.returning({ id: schema.reportingCampaigns.id });
+			assert(laterCampaign);
+
+			// Campaign configuration (DARIAH "Policy on the financial value of services" lump sums).
+			// Seeded for both campaigns so the country report's operational-cost calculation produces a
+			// real total that can be compared against the per-country threshold. Amounts mirror the
+			// policy fixture used in `test/reporting/calculate-operational-cost.test.ts`.
+			for (const campaign of [
+				{ id: earlierCampaign.id, year: 2025 },
+				{ id: laterCampaign.id, year: 2026 },
+			]) {
+				await tx
+					.insert(schema.reportingCampaignContributionAmounts)
+					.values(
+						(
+							[
+								["national_coordinator", 11_000],
+								["national_coordinator_deputy", 2_500],
+								["is_chair_of_jrc", 5_500],
+								["is_chair_of_ncc", 5_500],
+								["is_chair_of_wg", 5_500],
+								["is_member_of_jrc", 8_250],
+							] as const
+						).map(([roleType, amount]) => {
+							return {
+								id: createId(`reporting-campaign-contribution-amount:${campaign.year}:${roleType}`),
+								campaignId: campaign.id,
+								roleType,
+								amount,
+							};
+						}),
+					)
+					.onConflictDoUpdate({
+						target: [
+							schema.reportingCampaignContributionAmounts.campaignId,
+							schema.reportingCampaignContributionAmounts.roleType,
+						],
+						set: { amount: sql`excluded.amount` },
+					});
+
+				await tx
+					.insert(schema.reportingCampaignEventAmounts)
+					.values(
+						(
+							[
+								["small", 500],
+								["medium", 2_500],
+								["large", 5_000],
+								["very_large", 10_000],
+								["dariah_commissioned", 50_000],
+							] as const
+						).map(([eventType, amount]) => {
+							return {
+								id: createId(`reporting-campaign-event-amount:${campaign.year}:${eventType}`),
+								campaignId: campaign.id,
+								eventType,
+								amount,
+							};
+						}),
+					)
+					.onConflictDoUpdate({
+						target: [
+							schema.reportingCampaignEventAmounts.campaignId,
+							schema.reportingCampaignEventAmounts.eventType,
+						],
+						set: { amount: sql`excluded.amount` },
+					});
+
+				await tx
+					.insert(schema.reportingCampaignSocialMediaAmounts)
+					.values(
+						(
+							[
+								["website", 5_000],
+								["other", 2_000],
+							] as const
+						).map(([category, amount]) => {
+							return {
+								id: createId(`reporting-campaign-social-media-amount:${campaign.year}:${category}`),
+								campaignId: campaign.id,
+								category,
+								amount,
+							};
+						}),
+					)
+					.onConflictDoUpdate({
+						target: [
+							schema.reportingCampaignSocialMediaAmounts.campaignId,
+							schema.reportingCampaignSocialMediaAmounts.category,
+						],
+						set: { amount: sql`excluded.amount` },
+					});
+
+				await tx
+					.insert(schema.reportingCampaignServiceSizes)
+					.values(
+						(
+							[
+								["small", null, 6_875],
+								["medium", 7_000, 20_625],
+								["large", 170_000, 41_250],
+								["very_large", 500_000, 61_875],
+								["core", null, 82_500],
+							] as const
+						).map(([serviceSize, visitsThreshold, amount]) => {
+							return {
+								id: createId(`reporting-campaign-service-size:${campaign.year}:${serviceSize}`),
+								campaignId: campaign.id,
+								serviceSize,
+								visitsThreshold,
+								amount,
+							};
+						}),
+					)
+					.onConflictDoUpdate({
+						target: [
+							schema.reportingCampaignServiceSizes.campaignId,
+							schema.reportingCampaignServiceSizes.serviceSize,
+						],
+						set: {
+							visitsThreshold: sql`excluded.visits_threshold`,
+							amount: sql`excluded.amount`,
+						},
+					});
+
+				await tx
+					.insert(schema.reportingCampaignCountryThresholds)
+					.values({
+						id: createId(`reporting-campaign-country-threshold:${campaign.year}`),
+						campaignId: campaign.id,
+						countryDocumentId: memberCountryEntityId,
+						amount: 50_000,
+					})
+					.onConflictDoUpdate({
+						target: [
+							schema.reportingCampaignCountryThresholds.campaignId,
+							schema.reportingCampaignCountryThresholds.countryDocumentId,
+						],
+						set: { amount: 50_000 },
+					});
+			}
+
+			const [countryReport] = await tx
+				.insert(schema.countryReports)
+				.values({
+					id: createId("country-report:2025"),
+					campaignId: earlierCampaign.id,
+					countryDocumentId: memberCountryEntityId,
+					status: "draft",
+					totalContributors: 12,
+					smallEvents: 4,
+					mediumEvents: 2,
+					largeEvents: 1,
+					veryLargeEvents: 0,
+				})
+				.onConflictDoUpdate({
+					target: [schema.countryReports.campaignId, schema.countryReports.countryDocumentId],
+					set: {
+						status: "draft",
+						totalContributors: 12,
+						smallEvents: 4,
+						mediumEvents: 2,
+						largeEvents: 1,
+						veryLargeEvents: 0,
+					},
+				})
+				.returning({ id: schema.countryReports.id });
+			assert(countryReport);
+
+			const [workingGroupReport] = await tx
+				.insert(schema.workingGroupReports)
+				.values({
+					id: createId("working-group-report:2025"),
+					campaignId: earlierCampaign.id,
+					workingGroupDocumentId: workingGroupEntityId,
+					status: "draft",
+					numberOfMembers: 18,
+				})
+				.onConflictDoUpdate({
+					target: [
+						schema.workingGroupReports.campaignId,
+						schema.workingGroupReports.workingGroupDocumentId,
+					],
+					set: {
+						status: "draft",
+						numberOfMembers: 18,
+					},
+				})
+				.returning({ id: schema.workingGroupReports.id });
+			assert(workingGroupReport);
+
+			await tx
+				.insert(schema.countryReportProjectContributions)
+				.values({
+					id: createId("country-report-project-contribution:2025"),
+					countryReportId: countryReport.id,
+					projectDocumentId: projectEntityId,
+					amountEuros: 48_500,
+				})
+				.onConflictDoUpdate({
+					target: [
+						schema.countryReportProjectContributions.countryReportId,
+						schema.countryReportProjectContributions.projectDocumentId,
+					],
+					set: { amountEuros: 48_500 },
+				});
+
+			await tx
+				.insert(schema.workingGroupReportSocialMedia)
+				.values([
+					{
+						id: createId("working-group-report-social:2025:website"),
+						workingGroupReportId: workingGroupReport.id,
+						socialMediaId: createId("social-media:website"),
+					},
+					{
+						id: createId("working-group-report-social:2025:mastodon"),
+						workingGroupReportId: workingGroupReport.id,
+						socialMediaId: createId("social-media:mastodon"),
+					},
+				])
+				.onConflictDoNothing({
+					target: [
+						schema.workingGroupReportSocialMedia.workingGroupReportId,
+						schema.workingGroupReportSocialMedia.socialMediaId,
+					],
+				});
 
 			await tx.insert(schema.projectsToOrganisationalUnits).values([
 				{
@@ -1191,7 +1761,12 @@ async function main() {
 				["persons", [kitchenSinkPersonVersionId]],
 				[
 					"organisational_units",
-					[workingGroupVersionId, governanceBodyVersionId, memberCountryVersionId],
+					[
+						workingGroupVersionId,
+						secondWorkingGroupVersionId,
+						governanceBodyVersionId,
+						memberCountryVersionId,
+					],
 				],
 			]);
 
@@ -1278,6 +1853,29 @@ async function main() {
 					),
 					position: 5,
 				},
+				// An accordion holds panels, and a panel holds blocks — so the kitchen sink seeds the whole
+				// subtree, which is also what makes it a fixture for nesting rather than only for the
+				// accordion itself.
+				{
+					id: createId(`block:${field.id}:accordion-item`),
+					fieldId: field.id,
+					parentBlockId: createId(`block:${field.id}:accordion`),
+					typeId: assertLookupId(
+						contentBlockTypeIds.get("accordion_item"),
+						'Missing content block type "accordion_item".',
+					),
+					position: 0,
+				},
+				{
+					id: createId(`block:${field.id}:accordion-item-body`),
+					fieldId: field.id,
+					parentBlockId: createId(`block:${field.id}:accordion-item`),
+					typeId: assertLookupId(
+						contentBlockTypeIds.get("rich_text"),
+						'Missing content block type "rich_text".',
+					),
+					position: 0,
+				},
 				{
 					id: createId(`block:${field.id}:rich-text`),
 					fieldId: field.id,
@@ -1305,6 +1903,8 @@ async function main() {
 				const embedBlockId = createId(`block:${field.id}:embed`);
 				const dataBlockId = createId(`block:${field.id}:data`);
 				const accordionBlockId = createId(`block:${field.id}:accordion`);
+				const accordionItemBlockId = createId(`block:${field.id}:accordion-item`);
+				const accordionItemBodyBlockId = createId(`block:${field.id}:accordion-item-body`);
 				const richTextBlockId = createId(`block:${field.id}:rich-text`);
 
 				await upsertById(tx, schema.heroContentBlocks, {
@@ -1320,13 +1920,14 @@ async function main() {
 				await upsertById(tx, schema.imageContentBlocks, {
 					id: imageBlockId,
 					imageId: createId("asset:image"),
-					caption: `Kitchen sink image block for ${field.fieldName}.`,
+					caption: plainTextToRichText(`Kitchen sink image block for ${field.fieldName}.`),
+					captionMode: "override",
 				});
 				await upsertById(tx, schema.embedContentBlocks, {
 					id: embedBlockId,
 					url: "https://example.org/embeds/kitchen-sink",
 					title: `Kitchen Sink ${field.fieldName} Embed`,
-					caption: `Embedded content for ${field.fieldName}.`,
+					caption: plainTextToRichText(`Embedded content for ${field.fieldName}.`),
 				});
 				await upsertById(tx, schema.dataContentBlocks, {
 					id: dataBlockId,
@@ -1337,27 +1938,17 @@ async function main() {
 					limit: 3,
 					selectedIds: null,
 				});
-				await upsertById(tx, schema.accordionContentBlocks, {
-					id: accordionBlockId,
-					items: [
-						{
-							title: `${field.fieldName} Question`,
-							content: {
-								type: "doc",
-								content: [
-									{
-										type: "paragraph",
-										content: [
-											{
-												type: "text",
-												text: `Accordion answer for ${field.fieldName}.`,
-											},
-										],
-									},
-								],
-							},
-						},
-					],
+				await tx
+					.insert(schema.accordionContentBlocks)
+					.values({ id: accordionBlockId })
+					.onConflictDoNothing();
+				await upsertById(tx, schema.accordionItemContentBlocks, {
+					id: accordionItemBlockId,
+					title: `${field.fieldName} Question`,
+				});
+				await upsertById(tx, schema.richTextContentBlocks, {
+					id: accordionItemBodyBlockId,
+					content: plainTextToRichText(`Accordion answer for ${field.fieldName}.`),
 				});
 				await upsertById(tx, schema.richTextContentBlocks, {
 					id: richTextBlockId,
@@ -1386,6 +1977,7 @@ async function main() {
 			const relatedEntityOwners = [
 				projectEntityId,
 				workingGroupEntityId,
+				secondWorkingGroupEntityId,
 				governanceBodyEntityId,
 				memberCountryEntityId,
 				eventEntityId,

@@ -1,34 +1,30 @@
 import * as schema from "@dariah-eric/database/schema";
 
-import type { EntityLifecycleAdapter } from "@/lib/data/entity-lifecycle";
+import { type EntityLifecycleAdapter, subtypePayload } from "@/lib/data/entity-lifecycle";
 import { eq } from "@/lib/db/sql";
 
 export const organisationalUnitsLifecycleAdapter: EntityLifecycleAdapter = {
 	async cloneSubtype(tx, sourceVersionId, targetVersionId) {
 		const [source] = await tx
-			.select({
-				acronym: schema.organisationalUnits.acronym,
-				ror: schema.organisationalUnits.ror,
-				imageId: schema.organisationalUnits.imageId,
-				metadata: schema.organisationalUnits.metadata,
-				name: schema.organisationalUnits.name,
-				sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
-				summary: schema.organisationalUnits.summary,
-				typeId: schema.organisationalUnits.typeId,
-			})
+			.select()
 			.from(schema.organisationalUnits)
 			.where(eq(schema.organisationalUnits.id, sourceVersionId))
 			.limit(1);
 		if (source == null) {
 			return;
 		}
-		await tx.insert(schema.organisationalUnits).values({ id: targetVersionId, ...source });
+		await tx
+			.insert(schema.organisationalUnits)
+			.values({ id: targetVersionId, ...subtypePayload(source) });
 
 		// personsToOrganisationalUnits and organisationalUnitsRelations are document-level relations
 		// (keyed by entities.id) and are not cloned per version — see the schema.
 
 		const socialMedia = await tx
-			.select({ socialMediaId: schema.organisationalUnitsToSocialMedia.socialMediaId })
+			.select({
+				position: schema.organisationalUnitsToSocialMedia.position,
+				socialMediaId: schema.organisationalUnitsToSocialMedia.socialMediaId,
+			})
 			.from(schema.organisationalUnitsToSocialMedia)
 			.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, sourceVersionId));
 
@@ -43,16 +39,7 @@ export const organisationalUnitsLifecycleAdapter: EntityLifecycleAdapter = {
 
 	async replaceSubtype(tx, sourceVersionId, targetVersionId) {
 		const [source] = await tx
-			.select({
-				acronym: schema.organisationalUnits.acronym,
-				ror: schema.organisationalUnits.ror,
-				imageId: schema.organisationalUnits.imageId,
-				metadata: schema.organisationalUnits.metadata,
-				name: schema.organisationalUnits.name,
-				sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
-				summary: schema.organisationalUnits.summary,
-				typeId: schema.organisationalUnits.typeId,
-			})
+			.select()
 			.from(schema.organisationalUnits)
 			.where(eq(schema.organisationalUnits.id, sourceVersionId))
 			.limit(1);
@@ -62,7 +49,7 @@ export const organisationalUnitsLifecycleAdapter: EntityLifecycleAdapter = {
 
 		await tx
 			.update(schema.organisationalUnits)
-			.set(source)
+			.set(subtypePayload(source))
 			.where(eq(schema.organisationalUnits.id, targetVersionId));
 
 		await tx
@@ -70,7 +57,10 @@ export const organisationalUnitsLifecycleAdapter: EntityLifecycleAdapter = {
 			.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, targetVersionId));
 
 		const socialMedia = await tx
-			.select({ socialMediaId: schema.organisationalUnitsToSocialMedia.socialMediaId })
+			.select({
+				position: schema.organisationalUnitsToSocialMedia.position,
+				socialMediaId: schema.organisationalUnitsToSocialMedia.socialMediaId,
+			})
 			.from(schema.organisationalUnitsToSocialMedia)
 			.where(eq(schema.organisationalUnitsToSocialMedia.organisationalUnitId, sourceVersionId));
 

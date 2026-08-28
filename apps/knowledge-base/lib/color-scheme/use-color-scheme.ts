@@ -26,7 +26,8 @@ interface ClientColorSchemeState extends ColorSchemeState {
 interface ServerColorSchemeState {
 	kind: "server";
 	colorScheme: null;
-	setColorScheme: () => void;
+	/** Never called, but typed like its client counterpart so the union stays callable. */
+	setColorScheme: (colorScheme: ColorScheme | null) => void;
 }
 
 export function useColorScheme(): ServerColorSchemeState | ClientColorSchemeState {

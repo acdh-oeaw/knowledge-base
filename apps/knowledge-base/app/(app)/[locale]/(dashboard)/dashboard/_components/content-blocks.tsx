@@ -1,7 +1,6 @@
-// oxlint-disable jsx-a11y/iframe-has-title
-
 "use client";
 
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type { ContentBlockTypes } from "@dariah-eric/database/schema";
 import { Button } from "@dariah-eric/ui/button";
 import { Checkbox } from "@dariah-eric/ui/checkbox";
@@ -32,6 +31,7 @@ import { ToggleGroup, ToggleGroupItem } from "@dariah-eric/ui/toggle-group";
 import {
 	ChevronDownIcon,
 	CodeBracketSquareIcon,
+	InformationCircleIcon,
 	ListBulletIcon,
 	PencilSquareIcon,
 	PhotoIcon,
@@ -40,6 +40,7 @@ import {
 	Square3Stack3DIcon,
 	Squares2X2Icon,
 	TrashIcon,
+	ViewColumnsIcon,
 } from "@heroicons/react/24/outline";
 import type { JSONContent } from "@tiptap/core";
 import { ImageIcon } from "lucide-react";
@@ -56,8 +57,17 @@ import {
 } from "react-aria-components";
 import { twMerge } from "tailwind-merge";
 
+import { BlockAssetMetadata } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/block-asset-metadata";
+import { EntityLinkDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-link-dialog";
+import { ImageCaptionModeField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-caption-mode-field";
+import { LinkTargetSummary } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/link-target-summary";
 import type { MediaLibraryAsset } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-asset";
 import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
+import {
+	type SelectedImage,
+	SelectedImageCard,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/selected-image-card";
+import { documentMimeTypes } from "@/config/assets.config";
 import {
 	type MergeableBlock,
 	mergeBlocksToDocument,
@@ -75,14 +85,22 @@ interface ImageContentBlockItem {
 	id: Key;
 	type: "image";
 	position?: number;
-	content?: { imageKey?: string; imageUrl?: string; caption?: string };
+	content?: {
+		imageKey?: string;
+		imageUrl?: string;
+		alt?: string | null;
+		assetCaption?: JSONContent | null;
+		caption?: JSONContent | null;
+		captionMode?: ImageCaptionMode;
+		layout?: "default" | "wide" | "full" | "float-start" | "float-end";
+	};
 }
 
 interface EmbedContentBlockItem {
 	id: Key;
 	type: "embed";
 	position?: number;
-	content?: { url?: string; title?: string; caption?: string };
+	content?: { url?: string; title?: string; caption?: JSONContent | null };
 }
 
 interface DataContentBlockItem {
@@ -103,6 +121,18 @@ interface DataContentBlockItem {
 	};
 }
 
+interface CalloutContentBlockItem {
+	id: Key;
+	type: "callout";
+	position?: number;
+	content?: {
+		intent?: "neutral" | "info" | "warning" | "danger" | "success";
+		title?: string;
+	};
+	/** The callout's body: flow content, each piece a block with its own storage. */
+	children?: Array<NestableContentBlock>;
+}
+
 interface HeroContentBlockItem {
 	id: Key;
 	type: "hero";
@@ -112,6 +142,10 @@ interface HeroContentBlockItem {
 		eyebrow?: string;
 		imageKey?: string;
 		imageUrl?: string;
+		/** The picked asset, for the editor's image card. Only `imageKey` is persisted. */
+		asset?: SelectedImage;
+		caption?: JSONContent | null;
+		captionMode?: ImageCaptionMode;
 		ctas?: Array<{ label: string; url: string }>;
 	};
 }
@@ -122,7 +156,16 @@ interface GalleryContentBlockItem {
 	position?: number;
 	content?: {
 		layout?: "carousel" | "grid";
-		items?: Array<{ imageKey?: string; imageUrl?: string; caption?: string }>;
+		/** The gallery's own caption — what the set shows — as opposed to an item's image credit. */
+		caption?: JSONContent | null;
+		items?: Array<{
+			imageKey?: string;
+			imageUrl?: string;
+			/** The picked asset, for the editor's image card. Only `imageKey` is persisted. */
+			asset?: SelectedImage;
+			caption?: JSONContent | null;
+			captionMode?: ImageCaptionMode;
+		}>;
 	};
 }
 
@@ -130,19 +173,48 @@ interface AccordionContentBlockItem {
 	id: Key;
 	type: "accordion";
 	position?: number;
+	children?: Array<AccordionItemContentBlockItem>;
+}
+
+interface AccordionItemContentBlockItem {
+	id: Key;
+	type: "accordion_item";
+	position?: number;
+	content?: { title?: string };
+	children?: Array<NestableContentBlock>;
+}
+
+interface MediaTextContentBlockItem {
+	id: Key;
+	type: "media_text";
+	position?: number;
 	content?: {
-		items?: Array<{ title: string; content?: JSONContent }>;
+		imageKey?: string;
+		imageUrl?: string;
+		alt?: string | null;
+		assetCaption?: JSONContent | null;
+		caption?: JSONContent | null;
+		captionMode?: ImageCaptionMode;
+		side?: "start" | "end";
+		content?: JSONContent;
 	};
 }
 
-export type ContentBlock =
+/** The blocks a container may hold — see `allowedChildBlockTypes` in `@dariah-eric/database`. */
+type NestableContentBlock =
 	| RichTextContentBlockItem
 	| ImageContentBlockItem
 	| EmbedContentBlockItem
-	| DataContentBlockItem
 	| GalleryContentBlockItem
+	| MediaTextContentBlockItem;
+
+export type ContentBlock =
+	| NestableContentBlock
+	| CalloutContentBlockItem
+	| DataContentBlockItem
 	| HeroContentBlockItem
-	| AccordionContentBlockItem;
+	| AccordionContentBlockItem
+	| AccordionItemContentBlockItem;
 
 interface UnifiedContentBlockItem {
 	id: Key;
@@ -152,7 +224,33 @@ interface UnifiedContentBlockItem {
 
 type ContentBlockListItem = ContentBlock | UnifiedContentBlockItem;
 
-const UNIFIED_BLOCK_TYPES = new Set<ContentBlock["type"]>(["rich_text", "image", "embed"]);
+/**
+ * The items the list edits through a panel of their own. Everything else is a node inside a
+ * `unified_content` document, so it never reaches the list — and a container's children never do
+ * either, since the container carries them.
+ */
+type PanelContentBlockItem = Extract<
+	ContentBlockListItem,
+	{ type: "data" | "hero" | "unified_content" }
+>;
+
+/**
+ * The block types the unified editor owns. Everything here is edited as a node inside one document
+ * rather than as a panel of its own, which is also what makes it splittable: on save each node
+ * becomes the block it stands for, so an image is an `image` block wherever an author put it.
+ *
+ * Nested types (`accordion_item`, and anything inside a container) are not listed: they never reach
+ * the list as items of their own, because their container carries them.
+ */
+const UNIFIED_BLOCK_TYPES = new Set<ContentBlock["type"]>([
+	"accordion",
+	"rich_text",
+	"image",
+	"embed",
+	"callout",
+	"media_text",
+	"gallery",
+]);
 const DATA_CONTENT_BLOCK_TYPES = [
 	"events",
 	"news",
@@ -189,6 +287,13 @@ function mergeInitialItems(items: Array<ContentBlock>): Array<ContentBlockListIt
 }
 
 export interface ContentBlocksProps {
+	/**
+	 * Whether authors of this entity may add footnotes. Off unless a form asks for it: a footnote is
+	 * a citation apparatus, which suits a case study citing its evidence and not, say, a news item —
+	 * and the whole point of the marker is that a reader finds the note at the end of the same page,
+	 * which only holds where that section is part of how the entity is presented.
+	 */
+	hasFootnotes?: boolean;
 	initialAssets?: Array<MediaLibraryAsset>;
 	items: Array<ContentBlock>;
 }
@@ -197,6 +302,7 @@ export interface ContentBlocksProps {
 const DRAG_HANDLE_DESCRIPTION_ID = "content-blocks-drag-handle-description";
 
 export function ContentBlocks({
+	hasFootnotes = false,
 	initialAssets,
 	items: initialItems,
 }: Readonly<ContentBlocksProps>): ReactNode {
@@ -266,6 +372,7 @@ export function ContentBlocks({
 				{list.items.map((item) => (
 					<ContentBlockItem
 						key={String(item.id)}
+						hasFootnotes={hasFootnotes}
 						initialAssets={initialAssets}
 						item={item}
 						onDelete={() => {
@@ -308,15 +415,17 @@ export function ContentBlocks({
 }
 
 interface ContentBlockItemProps {
+	hasFootnotes: boolean;
 	initialAssets?: Array<MediaLibraryAsset>;
 	item: ContentBlockListItem;
 	onDelete: () => void;
 	onReorder: (sourceIdStr: string, targetId: Key, position: "before" | "after") => void;
-	onUpdate: (content: NonNullable<ContentBlockListItem["content"]>) => void;
+	onUpdate: (content: NonNullable<PanelContentBlockItem["content"]>) => void;
 	onKeyboardReorder: (e: KeyboardEvent<HTMLButtonElement>, id: Key) => void;
 }
 
 function ContentBlockItem({
+	hasFootnotes,
 	initialAssets,
 	item,
 	onDelete,
@@ -383,37 +492,43 @@ function ContentBlockItem({
 
 	const contentBlockTypeNames: Record<ContentBlockTypes["type"] | "unified_content", string> = {
 		accordion: t("Accordion"),
+		accordion_item: t("Accordion panel"),
+		callout: t("Callout"),
 		data: t("Data"),
 		embed: t("Embed"),
 		gallery: t("Gallery"),
 		hero: t("Hero"),
 		image: t("Image"),
+		media_text: t("Media with text"),
 		rich_text: t("Rich text"),
 		unified_content: t("Content"),
 	};
 
 	const contentBlockTypeIcons: Record<ContentBlockTypes["type"] | "unified_content", ReactNode> = {
-		accordion: <ListBulletIcon className="block-4 inline-4 shrink-0" />,
-		data: <Square3Stack3DIcon className="block-4 inline-4 shrink-0" />,
-		embed: <CodeBracketSquareIcon className="block-4 inline-4 shrink-0" />,
-		gallery: <Squares2X2Icon className="block-4 inline-4 shrink-0" />,
-		hero: <RectangleGroupIcon className="block-4 inline-4 shrink-0" />,
-		image: <PhotoIcon className="block-4 inline-4 shrink-0" />,
-		rich_text: <PencilSquareIcon className="block-4 inline-4 shrink-0" />,
-		unified_content: <PencilSquareIcon className="block-4 inline-4 shrink-0" />,
+		accordion: <ListBulletIcon className="shrink-0 block-4 inline-4" />,
+		accordion_item: <ListBulletIcon className="shrink-0 block-4 inline-4" />,
+		callout: <InformationCircleIcon className="shrink-0 block-4 inline-4" />,
+		data: <Square3Stack3DIcon className="shrink-0 block-4 inline-4" />,
+		embed: <CodeBracketSquareIcon className="shrink-0 block-4 inline-4" />,
+		gallery: <Squares2X2Icon className="shrink-0 block-4 inline-4" />,
+		hero: <RectangleGroupIcon className="shrink-0 block-4 inline-4" />,
+		image: <PhotoIcon className="shrink-0 block-4 inline-4" />,
+		media_text: <ViewColumnsIcon className="shrink-0 block-4 inline-4" />,
+		rich_text: <PencilSquareIcon className="shrink-0 block-4 inline-4" />,
+		unified_content: <PencilSquareIcon className="shrink-0 block-4 inline-4" />,
 	};
 
 	return (
 		<>
 			{isDropTarget && dropPosition === "before" && (
-				<div aria-hidden={true} className="mx-1 block-0.5 rounded-full bg-accent" />
+				<div aria-hidden={true} className="mx-1 rounded-full bg-accent block-0.5" />
 			)}
 			{/* tabIndex={-1} makes the element programmatically focusable for DragManager
 			    keyboard navigation without adding it to the natural tab order. */}
 			<div ref={dropRef} tabIndex={-1} {...dropProps}>
 				<Disclosure
 					className={twMerge(
-						"group inset-ring inset-ring-border rounded-lg transition-opacity",
+						"group rounded-lg inset-ring inset-ring-border transition-opacity",
 						isDragging && "opacity-50",
 					)}
 					id={String(item.id)}
@@ -433,7 +548,7 @@ function ContentBlockItem({
 							onPress={dragButtonProps.onPress}
 						>
 							<svg
-								className="block-5 inline-5 text-muted-fg sm:block-4 sm:inline-4"
+								className="text-muted-fg block-5 inline-5 sm:block-4 sm:inline-4"
 								fill="none"
 								viewBox="0 0 24 24"
 								xmlns="http://www.w3.org/2000/svg"
@@ -471,13 +586,13 @@ function ContentBlockItem({
 							>
 								{contentBlockTypeIcons[item.type]}
 								<span className="flex-1">{contentBlockTypeNames[item.type]}</span>
-								<ChevronDownIcon className="block-4 inline-4 shrink-0 transition-transform group-data-expanded:rotate-180" />
+								<ChevronDownIcon className="shrink-0 transition-transform block-4 inline-4 group-data-expanded:rotate-180" />
 							</AriaButton>
 						</Heading>
 						<Modal>
 							<AriaButton
 								aria-label={t("Remove block")}
-								className="shrink-0 text-muted-fg rounded-sm hover:text-danger focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+								className="shrink-0 rounded-sm text-muted-fg hover:text-danger focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 							>
 								<TrashIcon className="block-4 inline-4" />
 							</AriaButton>
@@ -501,59 +616,61 @@ function ContentBlockItem({
 							</ModalContent>
 						</Modal>
 					</div>
-					<DisclosurePanel className="px-3 pbe-3">
-						<ContentBlockPanel initialAssets={initialAssets} item={item} onChange={onUpdate} />
+					{/* Named so the panel is announced as its own region rather than inheriting the
+					    surrounding form, and so each block's fields can be addressed unambiguously. */}
+					<DisclosurePanel aria-label={contentBlockTypeNames[item.type]} className="px-3 pbe-3">
+						<ContentBlockPanel
+							hasFootnotes={hasFootnotes}
+							initialAssets={initialAssets}
+							item={item}
+							onChange={onUpdate}
+						/>
 					</DisclosurePanel>
 				</Disclosure>
 			</div>
 			{isDropTarget && dropPosition === "after" && (
-				<div aria-hidden={true} className="mx-1 block-0.5 rounded-full bg-accent" />
+				<div aria-hidden={true} className="mx-1 rounded-full bg-accent block-0.5" />
 			)}
 		</>
 	);
 }
 
 interface ContentBlockPanelProps {
+	hasFootnotes: boolean;
 	initialAssets?: Array<MediaLibraryAsset>;
 	item: ContentBlockListItem;
-	onChange: (content: NonNullable<ContentBlockListItem["content"]>) => void;
+	onChange: (content: NonNullable<PanelContentBlockItem["content"]>) => void;
 }
 
 function ContentBlockPanel({
+	hasFootnotes,
 	initialAssets,
 	item,
 	onChange,
 }: Readonly<ContentBlockPanelProps>): ReactNode {
 	switch (item.type) {
-		case "accordion": {
-			return (
-				<AccordionContentBlockPanel initialAssets={initialAssets} item={item} onChange={onChange} />
-			);
+		// These are in `UNIFIED_BLOCK_TYPES`, so they only ever exist as nodes inside a unified
+		// document and never reach the list as items of their own — they are edited through their
+		// node views in the richtext editor. `accordion_item` never appears at this level at all: it
+		// only exists inside an accordion. The cases remain because the types stay in `ContentBlock`:
+		// that is the shape the server hands us before merging.
+		case "accordion":
+		case "accordion_item":
+		case "callout":
+		case "embed":
+		case "gallery":
+		case "image":
+		case "media_text": {
+			return null;
 		}
 
 		case "data": {
 			return <DataContentBlockPanel item={item} onChange={onChange} />;
 		}
 
-		case "embed": {
-			return <EmbedContentBlockPanel item={item} onChange={onChange} />;
-		}
-
-		case "gallery": {
-			return (
-				<GalleryContentBlockPanel initialAssets={initialAssets} item={item} onChange={onChange} />
-			);
-		}
-
 		case "hero": {
 			return (
 				<HeroContentBlockPanel initialAssets={initialAssets} item={item} onChange={onChange} />
-			);
-		}
-
-		case "image": {
-			return (
-				<ImageContentBlockPanel initialAssets={initialAssets} item={item} onChange={onChange} />
 			);
 		}
 
@@ -567,12 +684,20 @@ function ContentBlockPanel({
 					onChange={(content: JSONContent) => {
 						onChange(content);
 					}}
-					renderEmbedInsert={(insertEmbed) => (
-						<RichTextEditorToolbarButton
-							aria-label="Insert embed"
-							icon={CodeBracketSquareIcon}
-							onClick={insertEmbed}
-						/>
+					blocks={[
+						"embed",
+						"callout",
+						"accordion",
+						"mediaText",
+						"gallery",
+						"buttonLink",
+						"placeholderValue",
+						// Only where the entity's form asked for them; every other editor also refuses to take
+						// one by paste.
+						...(hasFootnotes ? (["footnote"] as const) : []),
+					]}
+					renderAssetMetadata={({ imageKey, onMetadataChange }) => (
+						<BlockAssetMetadata assetKey={imageKey} onMetadataChange={onMetadataChange} />
 					)}
 					renderImagePicker={
 						initialAssets != null
@@ -580,8 +705,8 @@ function ContentBlockPanel({
 									<MediaLibraryDialog
 										defaultPrefix="images"
 										initialAssets={initialAssets}
-										onSelect={(key, url) => {
-											insert(key, url);
+										onSelect={(key, url, asset) => {
+											insert(key, url, asset);
 										}}
 										prefixes={["avatars", "images", "logos"]}
 										trigger={({ open }) => (
@@ -595,6 +720,47 @@ function ContentBlockPanel({
 								)
 							: undefined
 					}
+					renderImageInsert={
+						initialAssets != null
+							? ({ isOpen, onOpenChange, select }) => (
+									<MediaLibraryDialog
+										defaultPrefix="images"
+										initialAssets={initialAssets}
+										isOpen={isOpen}
+										onOpenChange={onOpenChange}
+										onSelect={select}
+										prefixes={["avatars", "images", "logos"]}
+									/>
+								)
+							: undefined
+					}
+					renderDocumentPicker={
+						initialAssets != null
+							? ({ isOpen, onOpenChange, select, current }) => (
+									<MediaLibraryDialog
+										acceptedFileTypes={documentMimeTypes}
+										defaultPrefix="documents"
+										initialAssets={initialAssets}
+										isOpen={isOpen}
+										onOpenChange={onOpenChange}
+										onSelect={(key, _url, asset) => {
+											select(key, asset?.label ?? key);
+										}}
+										prefixes={["documents"]}
+										selectedKey={current}
+									/>
+								)
+							: undefined
+					}
+					renderEntityPicker={({ isOpen, onOpenChange, select, current }) => (
+						<EntityLinkDialog
+							isOpen={isOpen}
+							onOpenChange={onOpenChange}
+							onSelect={select}
+							selectedEntityId={current}
+						/>
+					)}
+					renderLinkTargetSummary={(target) => <LinkTargetSummary target={target} />}
 				/>
 			);
 		}
@@ -608,158 +774,6 @@ function ContentBlockPanel({
 interface ContentBlockEntry {
 	id: string;
 	title: string;
-}
-
-interface GalleryContentBlockPanelProps {
-	initialAssets?: Array<MediaLibraryAsset>;
-	item: GalleryContentBlockItem;
-	onChange: (content: NonNullable<GalleryContentBlockItem["content"]>) => void;
-}
-
-function GalleryContentBlockPanel({
-	initialAssets,
-	item,
-	onChange,
-}: Readonly<GalleryContentBlockPanelProps>): ReactNode {
-	const t = useExtracted();
-
-	const layout = item.content?.layout ?? "grid";
-	const items = item.content?.items ?? [];
-
-	function moveItem(index: number, direction: -1 | 1) {
-		const nextIndex = index + direction;
-		if (nextIndex < 0 || nextIndex >= items.length) {
-			return;
-		}
-
-		const next = [...items];
-		const [moved] = next.splice(index, 1);
-		if (moved == null) {
-			return;
-		}
-		next.splice(nextIndex, 0, moved);
-		onChange({ ...item.content, layout, items: next });
-	}
-
-	return (
-		<div className="flex flex-col gap-y-4">
-			<ToggleGroup
-				aria-label={t("Gallery layout")}
-				disallowEmptySelection={true}
-				onSelectionChange={(keys) => {
-					const [selectedLayout] = [...keys] as Array<"carousel" | "grid">;
-					onChange({ ...item.content, layout: selectedLayout ?? "grid", items });
-				}}
-				selectedKeys={new Set([layout])}
-				selectionMode="single"
-			>
-				<ToggleGroupItem id="grid">{t("Grid")}</ToggleGroupItem>
-				<ToggleGroupItem id="carousel">{t("Carousel")}</ToggleGroupItem>
-			</ToggleGroup>
-
-			<div className="flex flex-col gap-y-3">
-				{items.map((galleryItem, idx) => (
-					<div key={idx} className="flex flex-col gap-y-3 rounded-lg border border-border p-3">
-						<div className="flex items-center justify-between">
-							<span className="text-sm font-medium">
-								{t("Image")} {idx + 1}
-							</span>
-							<div className="flex items-center gap-x-2">
-								<Button
-									intent="outline"
-									isDisabled={idx === 0}
-									onPress={() => {
-										moveItem(idx, -1);
-									}}
-									size="sm"
-								>
-									{t("Up")}
-								</Button>
-								<Button
-									intent="outline"
-									isDisabled={idx === items.length - 1}
-									onPress={() => {
-										moveItem(idx, 1);
-									}}
-									size="sm"
-								>
-									{t("Down")}
-								</Button>
-								<Button
-									intent="outline"
-									onPress={() => {
-										onChange({
-											...item.content,
-											layout,
-											items: items.filter((_, itemIndex) => itemIndex !== idx),
-										});
-									}}
-									size="sm"
-								>
-									<TrashIcon className="block-4 inline-4" />
-								</Button>
-							</div>
-						</div>
-
-						<div className="flex items-start gap-x-4">
-							{galleryItem.imageUrl != null && (
-								<img
-									alt={galleryItem.caption ?? t("Selected image")}
-									className="block-24 inline-auto max-inline-full shrink-0 rounded-lg object-cover"
-									src={galleryItem.imageUrl}
-								/>
-							)}
-							<MediaLibraryDialog
-								defaultPrefix="images"
-								initialAssets={initialAssets ?? []}
-								onSelect={(imageKey, imageUrl) => {
-									onChange({
-										...item.content,
-										layout,
-										items: items.map((existingItem, itemIndex) =>
-											itemIndex === idx ? { ...existingItem, imageKey, imageUrl } : existingItem,
-										),
-									});
-								}}
-								prefixes={["avatars", "images", "logos"]}
-							/>
-						</div>
-
-						<TextField
-							onChange={(value) => {
-								onChange({
-									...item.content,
-									layout,
-									items: items.map((existingItem, itemIndex) =>
-										itemIndex === idx ? { ...existingItem, caption: value } : existingItem,
-									),
-								});
-							}}
-							value={galleryItem.caption ?? ""}
-						>
-							<Label>{t("Caption")}</Label>
-							<Input />
-						</TextField>
-					</div>
-				))}
-			</div>
-
-			<Button
-				intent="secondary"
-				onPress={() => {
-					onChange({
-						...item.content,
-						layout,
-						items: [...items, { imageKey: undefined, imageUrl: undefined, caption: undefined }],
-					});
-				}}
-				size="sm"
-			>
-				<PlusIcon className="block-4 inline-4" />
-				{t("Add image")}
-			</Button>
-		</div>
-	);
 }
 
 interface DataContentBlockPanelProps {
@@ -881,7 +895,7 @@ function DataContentBlockPanel({
 					>
 						<SearchInput />
 					</SearchField>
-					<div className="flex max-block-64 flex-col gap-y-2 overflow-y-auto rounded-lg border border-border p-2">
+					<div className="flex flex-col gap-y-2 overflow-y-auto rounded-lg border border-border p-2 max-block-64">
 						{entries.length === 0 ? (
 							<p className="px-2 py-1 text-sm text-muted-fg">
 								{query.trim() !== "" ? t("No entries found.") : t("Search to browse entries.")}
@@ -918,137 +932,6 @@ function DataContentBlockPanel({
 	);
 }
 
-// Normalises watch/share URLs to embed format and uses youtube-nocookie for privacy.
-function getEmbedUrl(url: string): string {
-	const watchMatch = /youtube\.com\/watch\?.*?v=([\w-]+)/.exec(url);
-	if (watchMatch != null) {
-		return `https://www.youtube-nocookie.com/embed/${watchMatch[1]!}`;
-	}
-
-	const shortMatch = /youtu\.be\/([\w-]+)/.exec(url);
-	if (shortMatch != null) {
-		return `https://www.youtube-nocookie.com/embed/${shortMatch[1]!}`;
-	}
-
-	return url;
-}
-
-interface EmbedContentBlockPanelProps {
-	item: EmbedContentBlockItem;
-	onChange: (content: NonNullable<EmbedContentBlockItem["content"]>) => void;
-}
-
-function EmbedContentBlockPanel({
-	item,
-	onChange,
-}: Readonly<EmbedContentBlockPanelProps>): ReactNode {
-	const t = useExtracted();
-
-	const url = item.content?.url;
-	const title = item.content?.title;
-	const caption = item.content?.caption;
-
-	const embedUrl = url != null && url.trim() !== "" ? getEmbedUrl(url.trim()) : null;
-
-	return (
-		<div className="flex flex-col gap-y-4">
-			<TextField
-				isRequired={true}
-				onChange={(value) => {
-					onChange({ ...item.content, url: value });
-				}}
-				value={url ?? ""}
-			>
-				<Label>{t("URL")}</Label>
-				<Input placeholder="https://" />
-			</TextField>
-			<TextField
-				isRequired={true}
-				onChange={(value) => {
-					onChange({ ...item.content, title: value });
-				}}
-				value={title ?? ""}
-			>
-				<Label>{t("Title")}</Label>
-				<Input placeholder={t("Descriptive title for screen readers")} />
-			</TextField>
-			<TextField
-				onChange={(value) => {
-					onChange({ ...item.content, caption: value });
-				}}
-				value={caption ?? ""}
-			>
-				<Label>{t("Caption")}</Label>
-				<Input />
-			</TextField>
-			{embedUrl != null && (
-				<div className="aspect-video inline-full overflow-hidden rounded-lg border border-border">
-					<iframe
-						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-						allowFullScreen={true}
-						className="block-full inline-full"
-						sandbox="allow-scripts allow-same-origin allow-presentation"
-						src={embedUrl}
-						title={title ?? embedUrl}
-					/>
-				</div>
-			)}
-		</div>
-	);
-}
-
-interface ImageContentBlockPanelProps {
-	initialAssets?: Array<MediaLibraryAsset>;
-	item: ImageContentBlockItem;
-	onChange: (content: NonNullable<ImageContentBlockItem["content"]>) => void;
-}
-
-function ImageContentBlockPanel({
-	initialAssets,
-	item,
-	onChange,
-}: Readonly<ImageContentBlockPanelProps>): ReactNode {
-	const t = useExtracted();
-
-	const imageKey = item.content?.imageKey;
-	const imageUrl = item.content?.imageUrl;
-	const caption = item.content?.caption;
-
-	return (
-		<div className="flex flex-col gap-y-4">
-			<div className="flex items-start gap-x-4">
-				{imageUrl != null && (
-					<img
-						alt={caption ?? t("Selected image")}
-						className="block-24 inline-auto max-inline-full rounded-lg object-cover shrink-0"
-						src={imageUrl}
-					/>
-				)}
-				<MediaLibraryDialog
-					defaultPrefix="images"
-					initialAssets={initialAssets ?? []}
-					onSelect={(key, url) => {
-						onChange({ ...item.content, imageKey: key, imageUrl: url });
-					}}
-					prefixes={["avatars", "images", "logos"]}
-				/>
-				{imageKey != null && (
-					<input name="imageContentBlock.imageKey" type="hidden" value={imageKey} />
-				)}
-			</div>
-			<TextField
-				onChange={(value) => {
-					onChange({ ...item.content, caption: value });
-				}}
-				value={caption ?? ""}
-			>
-				<Label>{t("Caption")}</Label>
-				<Input />
-			</TextField>
-		</div>
-	);
-}
-
 interface HeroContentBlockPanelProps {
 	initialAssets?: Array<MediaLibraryAsset>;
 	item: HeroContentBlockItem;
@@ -1066,7 +949,25 @@ function HeroContentBlockPanel({
 	const eyebrow = item.content?.eyebrow;
 	const imageKey = item.content?.imageKey;
 	const imageUrl = item.content?.imageUrl;
+	const asset = item.content?.asset;
 	const ctas = item.content?.ctas ?? [];
+
+	const picker = (
+		<MediaLibraryDialog
+			defaultPrefix="images"
+			initialAssets={initialAssets ?? []}
+			onSelect={(key, url, selected) => {
+				onChange({
+					...item.content,
+					imageKey: key,
+					imageUrl: url,
+					asset: { ...selected, key, url },
+				});
+			}}
+			prefixes={["avatars", "images", "logos"]}
+			triggerLabel={imageUrl != null ? t("Change image") : undefined}
+		/>
+	);
 
 	return (
 		<div className="flex flex-col gap-y-4">
@@ -1089,28 +990,33 @@ function HeroContentBlockPanel({
 				<Label>{t("Eyebrow")}</Label>
 				<Input />
 			</TextField>
-			<div className="flex flex-col gap-y-2">
+			<div className="flex flex-col gap-y-3">
 				<Label>{t("Image")}</Label>
-				<div className="flex items-center gap-x-4">
-					{imageUrl != null && (
-						<img
-							alt={t("Selected image")}
-							className="block-24 inline-auto max-inline-full rounded-lg object-cover shrink-0"
-							src={imageUrl}
-						/>
-					)}
-					<MediaLibraryDialog
-						defaultPrefix="images"
-						initialAssets={initialAssets ?? []}
-						onSelect={(key, url) => {
-							onChange({ ...item.content, imageKey: key, imageUrl: url });
+				{asset != null ? (
+					<SelectedImageCard
+						footer={
+							<ImageCaptionModeField
+								assetCaption={asset.caption}
+								caption={item.content?.caption ?? null}
+								captionMode={item.content?.captionMode ?? "inherit"}
+								onChange={(value) => {
+									onChange({ ...item.content, ...value });
+								}}
+							/>
+						}
+						image={asset}
+						onMetadataChange={(next) => {
+							onChange({ ...item.content, asset: next });
 						}}
-						prefixes={["avatars", "images", "logos"]}
-					/>
-					{imageKey != null && (
-						<input name="heroContentBlock.imageKey" type="hidden" value={imageKey} />
-					)}
-				</div>
+					>
+						{picker}
+					</SelectedImageCard>
+				) : (
+					picker
+				)}
+				{imageKey != null && (
+					<input name="heroContentBlock.imageKey" type="hidden" value={imageKey} />
+				)}
 			</div>
 			<div className="flex flex-col gap-y-3">
 				<Label>{t("CTAs")}</Label>
@@ -1167,102 +1073,6 @@ function HeroContentBlockPanel({
 	);
 }
 
-interface AccordionContentBlockPanelProps {
-	initialAssets?: Array<MediaLibraryAsset>;
-	item: AccordionContentBlockItem;
-	onChange: (content: NonNullable<AccordionContentBlockItem["content"]>) => void;
-}
-
-function AccordionContentBlockPanel({
-	initialAssets,
-	item,
-	onChange,
-}: Readonly<AccordionContentBlockPanelProps>): ReactNode {
-	const t = useExtracted();
-
-	const items = item.content?.items ?? [];
-
-	return (
-		<div className="flex flex-col gap-y-4">
-			{items.map((accordionItem, idx) => (
-				<div key={idx} className="flex flex-col gap-y-3 rounded-lg border border-border p-3">
-					<div className="flex items-center justify-between">
-						<span className="text-sm font-medium">
-							{t("Item")} {idx + 1}
-						</span>
-						<Button
-							intent="outline"
-							onPress={() => {
-								const next = items.filter((_, i) => i !== idx);
-								onChange({ ...item.content, items: next });
-							}}
-							size="sm"
-						>
-							<TrashIcon className="block-4 inline-4" />
-						</Button>
-					</div>
-					<TextField
-						isRequired={true}
-						onChange={(value) => {
-							const next = items.map((it, i) => (i === idx ? { ...it, title: value } : it));
-							onChange({ ...item.content, items: next });
-						}}
-						value={accordionItem.title}
-					>
-						<Label>{t("Title")}</Label>
-						<Input />
-					</TextField>
-					<div className="flex flex-col gap-y-1">
-						<Label>{t("Content")}</Label>
-						<RichTextEditor
-							className="inline-full"
-							content={accordionItem.content}
-							onChange={(content: JSONContent) => {
-								const next = items.map((it, i) => (i === idx ? { ...it, content } : it));
-								onChange({ ...item.content, items: next });
-							}}
-							renderImagePicker={
-								initialAssets != null
-									? (insert) => (
-											<MediaLibraryDialog
-												defaultPrefix="images"
-												initialAssets={initialAssets}
-												onSelect={(_key, url) => {
-													insert("", url);
-												}}
-												prefixes={["avatars", "images", "logos"]}
-												trigger={({ open }) => (
-													<RichTextEditorToolbarButton
-														aria-label="Insert image"
-														icon={ImageIcon}
-														onClick={open}
-													/>
-												)}
-											/>
-										)
-									: undefined
-							}
-						/>
-					</div>
-				</div>
-			))}
-			<Button
-				intent="secondary"
-				onPress={() => {
-					onChange({
-						...item.content,
-						items: [...items, { title: "", content: undefined }],
-					});
-				}}
-				size="sm"
-			>
-				<PlusIcon className="block-4 inline-4" />
-				{t("Add item")}
-			</Button>
-		</div>
-	);
-}
-
 interface ContentBlockMenuProps {
 	onAdd: (type: ContentBlockListItem["type"]) => void;
 }
@@ -1272,10 +1082,8 @@ const MENU_BLOCK_TYPES: Array<{
 	icon: ReactNode;
 }> = [
 	{ type: "unified_content", icon: <PencilSquareIcon /> },
-	{ type: "gallery", icon: <Squares2X2Icon /> },
 	{ type: "data", icon: <Square3Stack3DIcon /> },
 	{ type: "hero", icon: <RectangleGroupIcon /> },
-	{ type: "accordion", icon: <ListBulletIcon /> },
 ];
 
 export function ContentBlockMenu({ onAdd }: Readonly<ContentBlockMenuProps>): ReactNode {
@@ -1283,11 +1091,14 @@ export function ContentBlockMenu({ onAdd }: Readonly<ContentBlockMenuProps>): Re
 
 	const contentBlockTypeNames: Record<ContentBlockListItem["type"], string> = {
 		accordion: t("Accordion"),
+		accordion_item: t("Accordion panel"),
+		callout: t("Callout"),
 		data: t("Data"),
 		embed: t("Embed"),
 		gallery: t("Gallery"),
 		hero: t("Hero"),
 		image: t("Image"),
+		media_text: t("Media with text"),
 		rich_text: t("Rich text"),
 		unified_content: t("Content"),
 	};

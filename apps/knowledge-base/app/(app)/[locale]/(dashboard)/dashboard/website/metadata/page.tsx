@@ -11,9 +11,12 @@ import {
 import { SiteMetadataForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/metadata/_components/site-metadata-form";
 import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
-import { getNewsItemOptions } from "@/lib/data/news";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteMetadataPageProps extends PageProps<"/[locale]/dashboard/website/metadata"> {}
@@ -44,14 +47,11 @@ export default async function DashboardWebsiteMetadataPage(
 				description: true,
 				ogTitle: true,
 				ogDescription: true,
-				featuredItemIds: true,
 			},
 			with: {
 				ogImage: {
-					columns: {
-						key: true,
-						label: true,
-					},
+					columns: selectedImageColumns,
+					with: selectedImageWith,
 				},
 			},
 		}),
@@ -59,14 +59,7 @@ export default async function DashboardWebsiteMetadataPage(
 
 	const ogImage =
 		siteMetadataRow?.ogImage != null
-			? {
-					key: siteMetadataRow.ogImage.key,
-					label: siteMetadataRow.ogImage.label,
-					url: images.generateSignedImageUrl({
-						key: siteMetadataRow.ogImage.key,
-						options: imageGridOptions,
-					}).url,
-				}
+			? toSelectedImage(siteMetadataRow.ogImage, imageGridOptions)
 			: null;
 
 	const siteMetadata =
@@ -74,14 +67,11 @@ export default async function DashboardWebsiteMetadataPage(
 			? {
 					title: siteMetadataRow.title,
 					description: siteMetadataRow.description,
-					featuredItemIds: siteMetadataRow.featuredItemIds,
 					ogTitle: siteMetadataRow.ogTitle,
 					ogDescription: siteMetadataRow.ogDescription,
 					ogImage,
 				}
 			: null;
-
-	const initialFeaturedItemsOptions = await getNewsItemOptions();
 
 	return (
 		<div className="flex flex-col gap-y-6">
@@ -93,11 +83,7 @@ export default async function DashboardWebsiteMetadataPage(
 			</Header>
 
 			<div className="p-(--layout-padding)">
-				<SiteMetadataForm
-					initialAssets={initialAssets}
-					initialFeaturedItemsOptions={initialFeaturedItemsOptions}
-					siteMetadata={siteMetadata}
-				/>
+				<SiteMetadataForm initialAssets={initialAssets} siteMetadata={siteMetadata} />
 			</div>
 		</div>
 	);

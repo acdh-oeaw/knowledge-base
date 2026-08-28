@@ -21,8 +21,12 @@ import {
 	getResourceRelationOptions,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteEditEventPageProps extends PageProps<"/[locale]/dashboard/website/events/[slug]/edit"> {}
@@ -97,6 +101,8 @@ export default async function DashboardWebsiteEditEventPage(
 				where: { id: draftVersionId },
 				columns: {
 					id: true,
+					imageCaption: true,
+					imageCaptionMode: true,
 					duration: true,
 					isFullDay: true,
 					location: true,
@@ -127,10 +133,8 @@ export default async function DashboardWebsiteEditEventPage(
 						},
 					},
 					image: {
-						columns: {
-							key: true,
-							label: true,
-						},
+						columns: selectedImageColumns,
+						with: selectedImageWith,
 					},
 				},
 			}),
@@ -145,10 +149,7 @@ export default async function DashboardWebsiteEditEventPage(
 	assert(event.entityVersion.slug, `Slug missing for entity version "${event.entityVersion.id}".`);
 	const entityVersionSlug = event.entityVersion.slug;
 
-	const image = images.generateSignedImageUrl({
-		key: event.image.key,
-		options: imageGridOptions,
-	});
+	const image = toSelectedImage(event.image, imageGridOptions);
 
 	const contentBlocks = await getEntityContentBlocks(event.id, "content");
 

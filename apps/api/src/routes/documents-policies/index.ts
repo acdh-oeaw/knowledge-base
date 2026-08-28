@@ -1,8 +1,7 @@
-import { extname } from "node:path";
 import { Readable } from "node:stream";
 
 import { assert } from "@acdh-oeaw/lib";
-import slugify from "@sindresorhus/slugify";
+import { getContentDispositionHeader } from "@dariah-eric/storage/download";
 import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
@@ -13,6 +12,8 @@ import { validate, validator } from "@/lib/openapi/validator";
 import {
 	GetDocumentOrPolicyById,
 	GetDocumentOrPolicyBySlug,
+	GetDocumentOrPolicyDocumentById,
+	GetDocumentOrPolicyDocumentBySlug,
 	GetDocumentOrPolicySlugs,
 	GetDocumentsPolicies,
 	GetDocumentsPoliciesTree,
@@ -21,40 +22,15 @@ import {
 	getDocumentOrPolicyById,
 	getDocumentOrPolicyBySlug,
 	getDocumentOrPolicyDocument,
+	getDocumentOrPolicyDocumentBySlug,
 	getDocumentOrPolicySlugs,
 	getDocumentsPolicies,
 	getDocumentsPoliciesTree,
 } from "@/routes/documents-policies/service";
 import { env } from "~/config/env.config";
 
-function documentUrl(id: string) {
-	return new URL(`/api/v1/documents-policies/${id}/document`, env.API_BASE_URL).href;
-}
-
-const mimeTypeExtensions = new Map([
-	["application/pdf", ".pdf"],
-	["application/msword", ".doc"],
-	["application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"],
-	["application/vnd.ms-excel", ".xls"],
-	["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"],
-	["application/vnd.ms-powerpoint", ".ppt"],
-	["application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"],
-	["text/plain", ".txt"],
-]);
-
-function getDownloadFilename(asset: {
-	filename: string | null;
-	key: string;
-	label: string;
-	mimeType: string;
-}) {
-	if (asset.filename != null) {
-		return asset.filename;
-	}
-
-	const extension = (extname(asset.key) || mimeTypeExtensions.get(asset.mimeType)) ?? "";
-
-	return `${slugify(asset.label)}${extension}`;
+function documentUrl(slug: string) {
+	return new URL(`/api/v1/documents-policies/slugs/${slug}/document`, env.API_BASE_URL).href;
 }
 
 export const router = createRouter()
@@ -237,8 +213,8 @@ export const router = createRouter()
 		describeRoute({
 			tags: ["documents-policies"],
 			summary: "Download document or policy file",
-			description: "Stream the S3-stored file for a document or policy",
-			operationId: "getDocumentOrPolicyFile",
+			description: "Stream the S3-stored file for a document or policy by id",
+			operationId: "getDocumentOrPolicyFileById",
 			responses: {
 				200: {
 					description: "Binary file stream",
@@ -247,10 +223,11 @@ export const router = createRouter()
 						"application/octet-stream": {},
 					},
 				},
+				...BAD_REQUEST,
 				...NOT_FOUND,
 			},
 		}),
-		validator("param", GetDocumentOrPolicyById.ParamsSchema),
+		validator("param", GetDocumentOrPolicyDocumentById.ParamsSchema),
 		async (c) => {
 			const { id } = c.req.valid("param");
 
@@ -264,8 +241,6 @@ export const router = createRouter()
 			}
 
 			const { key } = item.document;
-			const filename = getDownloadFilename(item.document);
-			const disposition = item.document.mimeType === "application/pdf" ? "inline" : "attachment";
 
 			const storage = c.get("storage");
 			assert(storage, "Storage must be provided via middleware.");
@@ -274,7 +249,54 @@ export const router = createRouter()
 			const webStream = Readable.toWeb(nodeStream) as ReadableStream;
 
 			return c.body(webStream, 200, {
-				"Content-Disposition": `${disposition}; filename="${filename}"`,
+				"Content-Disposition": getContentDispositionHeader(item.document),
+				"Content-Type": item.document.mimeType,
+			});
+		},
+	)
+
+	/** GET /api/documents-policies/slugs/:slug/document */
+	.get(
+		"/slugs/:slug/document",
+		describeRoute({
+			tags: ["documents-policies"],
+			summary: "Download document or policy file by slug",
+			description: "Stream the S3-stored file for a document or policy by slug",
+			operationId: "getDocumentOrPolicyFileBySlug",
+			responses: {
+				200: {
+					description: "Binary file stream",
+					content: {
+						"application/pdf": {},
+						"application/octet-stream": {},
+					},
+				},
+				...NOT_FOUND,
+			},
+		}),
+		validator("param", GetDocumentOrPolicyDocumentBySlug.ParamsSchema),
+		async (c) => {
+			const { slug } = c.req.valid("param");
+
+			const db = c.get("db");
+			assert(db, "Database must be provided via middleware.");
+
+			const item = await getDocumentOrPolicyDocumentBySlug(db, { slug });
+
+			if (item == null) {
+				return c.notFound();
+			}
+
+			const { key } = item.document;
+
+			const storage = c.get("storage");
+			assert(storage, "Storage must be provided via middleware.");
+
+			const nodeStream = (await storage.download(key)).unwrap();
+			const webStream = Readable.toWeb(nodeStream) as ReadableStream;
+
+			return c.body(webStream, 200, {
+				"Content-Disposition": getContentDispositionHeader(item.document),
 				"Content-Type": item.document.mimeType,
 			});
 		},

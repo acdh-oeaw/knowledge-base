@@ -10,7 +10,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@dariah-eric/ui/table";
-import { EyeIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useOptimistic } from "react";
 
@@ -22,6 +22,7 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
 import { useUrlPaginatedSearch } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/use-url-paginated-search";
 import { dashboardPageSize } from "@/config/pagination.config";
+import { getServiceStatusLabel } from "@/lib/service-status-label";
 
 interface ServicesPageProps {
 	dir: "asc" | "desc";
@@ -37,10 +38,6 @@ interface ServicesPageProps {
 		total: number;
 	};
 	sort: "name" | "type" | "status" | "sshocMarketplaceId";
-}
-
-function formatServiceStatus(status: string): string {
-	return status.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function statusIntent(status: string): "success" | "warning" | "danger" | "info" {
@@ -83,7 +80,7 @@ export function ServicesPage(props: Readonly<ServicesPageProps>): ReactNode {
 		<Fragment>
 			<EntityListHeader
 				title={t("Services")}
-				description={t("Manage all SSHOC services in the knowledge base.")}
+				description={t("Manage all SSHOC services in the DARIAH knowledge base.")}
 				action={<EntityListSearchField search={search} />}
 			/>
 
@@ -106,7 +103,7 @@ export function ServicesPage(props: Readonly<ServicesPageProps>): ReactNode {
 					<TableColumn allowsSorting={true} id="sshocMarketplaceId">
 						{t("SSHOC ID")}
 					</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -115,17 +112,23 @@ export function ServicesPage(props: Readonly<ServicesPageProps>): ReactNode {
 							<TableCell>{item.type.type}</TableCell>
 							<TableCell>
 								<Badge intent={statusIntent(item.status.status)}>
-									{formatServiceStatus(item.status.status)}
+									{getServiceStatusLabel(item.status.status)}
 								</Badge>
 							</TableCell>
 							<TableCell>{item.sshocMarketplaceId ?? "—"}</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/sshoc-services/${item.id}/view`}
 										icon={<EyeIcon className="me-2 block-4 inline-4" />}
 									>
 										{t("View")}
+									</RowActionsMenu.Link>
+									<RowActionsMenu.Link
+										href={`/dashboard/administrator/sshoc-services/${item.id}/edit`}
+										icon={<PencilSquareIcon className="me-2 block-4 inline-4" />}
+									>
+										{t("Edit")}
 									</RowActionsMenu.Link>
 								</RowActionsMenu>
 							</TableCell>

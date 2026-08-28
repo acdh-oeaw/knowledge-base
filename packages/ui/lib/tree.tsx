@@ -47,10 +47,10 @@ export function TreeItem<T extends object>(props: Readonly<TreeItemProps<T>>): R
 			className={cx(
 				[
 					"shrink-0 rounded-lg px-2 py-1.5 pe-2",
-					"group/tree-item relative flex select-none rounded-lg focus:outline-hidden",
+					"group/tree-item relative flex rounded-lg select-none focus:outline-hidden",
 					"focus:bg-(--tree-active-bg) focus:text-(--tree-active-fg) focus:**:[.text-muted-fg]:text-(--tree-active-fg)",
 					"**:data-[slot=avatar]:block-6 **:data-[slot=avatar]:inline-6 **:data-[slot=avatar]:*:block-6 **:data-[slot=avatar]:*:inline-6 sm:**:data-[slot=avatar]:block-5 sm:**:data-[slot=avatar]:inline-5 sm:**:data-[slot=avatar]:*:block-5 sm:**:data-[slot=avatar]:*:inline-5",
-					"**:data-[slot=icon]:me-1 **:data-[slot=icon]:block-5 **:data-[slot=icon]:inline-5 **:data-[slot=icon]:shrink-0 sm:**:data-[slot=icon]:block-4 sm:**:data-[slot=icon]:inline-4",
+					"**:data-[slot=icon]:me-1 **:data-[slot=icon]:shrink-0 **:data-[slot=icon]:block-5 **:data-[slot=icon]:inline-5 sm:**:data-[slot=icon]:block-4 sm:**:data-[slot=icon]:inline-4",
 					"disabled:opacity-50",
 					"href" in props ? "cursor-pointer" : "cursor-default",
 				],
@@ -72,7 +72,7 @@ export function TreeContent(props: Readonly<TreeContentProps>): ReactNode {
 			{(values) => (
 				<div
 					className={twMerge(
-						"relative flex inline-full min-inline-0 items-center gap-x-1 truncate text-sm/6",
+						"relative flex items-center gap-x-1 truncate text-sm/6 inline-full min-inline-0",
 						className,
 					)}
 				>
@@ -81,7 +81,7 @@ export function TreeContent(props: Readonly<TreeContentProps>): ReactNode {
 					)}
 					<div
 						className={twJoin(
-							"relative inline-[calc(calc(var(--tree-item-level)-1)*(--spacing(5)))] shrink-0",
+							"relative shrink-0 inline-[calc(calc(var(--tree-item-level)-1)*(--spacing(5)))]",
 							"before:absolute before:inset-0 before:-ms-1 before:bg-[repeating-linear-gradient(to_right,transparent_0,transparent_calc(var(--tree-item-level)-1px),var(--border)_calc(var(--tree-item-level)-1px),var(--border)_calc(var(--tree-item-level)))]",
 						)}
 					/>
@@ -93,7 +93,7 @@ export function TreeContent(props: Readonly<TreeContentProps>): ReactNode {
 							}}
 						/>
 					) : (
-						<span aria-hidden={true} className="block inline-5 shrink-0" />
+						<span aria-hidden={true} className="block shrink-0 inline-5" />
 					)}
 					{typeof children === "function" ? children(values) : children}
 				</div>
@@ -120,7 +120,7 @@ export function TreeIndicator(props: Readonly<TreeIndicatorProps>): ReactNode {
 		>
 			<ChevronRightIcon
 				className={twJoin(
-					"-mx-0.5 block-5 inline-5 transition-transform duration-200 ease-in-out sm:block-4 sm:inline-4",
+					"-mx-0.5 transition-transform duration-200 ease-in-out block-5 inline-5 sm:block-4 sm:inline-4",
 					values.isExpanded && "rotate-90",
 				)}
 				data-slot="chevron"

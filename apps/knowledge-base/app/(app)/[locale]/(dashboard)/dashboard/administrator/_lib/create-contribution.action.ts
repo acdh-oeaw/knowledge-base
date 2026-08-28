@@ -1,6 +1,6 @@
 "use server";
 
-import { getFormDataValues } from "@acdh-oeaw/lib";
+import { assert, getFormDataValues } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import { createActionStateError, createActionStateSuccess } from "@dariah-eric/next-lib/actions";
 import { getExtracted, getLocale } from "next-intl/server";
@@ -9,15 +9,17 @@ import * as v from "valibot";
 
 import { CreateContributionActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_lib/create-contribution.schema";
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
+import { assertCan } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { isExclusionViolation } from "@/lib/db/errors";
 import { alias, and, eq, sql } from "@/lib/db/sql";
 import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 /** Uses createServerAction because the success response carries typed data. */
 export const createContributionAction = createServerAction(
-	{ requireAdmin: true },
+	{ requireAuth: true },
 	async function createContributionAction(state, formData, { user }) {
 		const locale = await getLocale();
 		const t = await getExtracted();
@@ -36,7 +38,16 @@ export const createContributionAction = createServerAction(
 			});
 		}
 
-		const { personDocumentId, roleTypeId, organisationalUnitDocumentId, duration } = result.output;
+		const { personDocumentId, roleTypeId, organisationalUnitDocumentId, duration, description } =
+			result.output;
+
+		// Admins always pass; delegated callers (working-group chairs, national coordinators) may manage
+		// people only on organisational units they are scoped to edit.
+		assert(user != null);
+		await assertCan(user, "update", {
+			type: "organisational_unit",
+			id: organisationalUnitDocumentId,
+		});
 
 		try {
 			const returned = await db.transaction(async (tx) => {
@@ -103,6 +114,7 @@ export const createContributionAction = createServerAction(
 						organisationalUnitDocumentId,
 						roleTypeId,
 						duration,
+						description,
 					})
 					.returning({ id: schema.personsToOrganisationalUnits.id })
 					.then((rows) => rows[0]!);
@@ -135,12 +147,14 @@ export const createContributionAction = createServerAction(
 			}
 
 			revalidatePath("/[locale]/dashboard/administrator", "layout");
+			await dispatchWebhook({ type: "persons" });
 
 			return createActionStateSuccess({
 				data: {
 					id: returned.row.id,
 					durationStart: duration.start.toISOString(),
 					durationEnd: duration.end?.toISOString() ?? null,
+					description,
 					targetUnitType: returned.targetUnitType,
 					organisationalUnitSlug: returned.organisationalUnitSlug,
 					personSlug: returned.personSlug,

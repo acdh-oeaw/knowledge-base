@@ -3,8 +3,8 @@ import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { alias, and, count, desc, eq, inArray, or, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 
 export type WorkingGroupsSort = "name";
 
@@ -53,9 +53,10 @@ export async function getWorkingGroups(
 						schema.organisationalUnitTypes.type,
 						"working_group" as typeof schema.organisationalUnitTypes.$inferSelect.type,
 					),
-					or(
-						unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
-						unaccentIlike(schema.organisationalUnits.acronym, `%${query}%`),
+					matchesAllTerms(
+						query,
+						schema.organisationalUnits.name,
+						schema.organisationalUnits.acronym,
 					),
 				)
 			: eq(

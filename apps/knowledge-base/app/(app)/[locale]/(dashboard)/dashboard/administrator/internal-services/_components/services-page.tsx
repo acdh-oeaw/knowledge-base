@@ -26,6 +26,7 @@ import { useUrlPaginatedSearch } from "@/app/(app)/[locale]/(dashboard)/dashboar
 import { deleteServiceAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_lib/delete-service.action";
 import { dashboardPageSize } from "@/config/pagination.config";
 import { useRouter } from "@/lib/navigation/navigation";
+import { getServiceStatusLabel } from "@/lib/service-status-label";
 
 interface ServicesPageProps {
 	dir: "asc" | "desc";
@@ -41,10 +42,6 @@ interface ServicesPageProps {
 		total: number;
 	};
 	sort: "name" | "type" | "status";
-}
-
-function formatServiceStatus(status: string): string {
-	return status.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function statusIntent(status: string): "success" | "warning" | "danger" | "info" {
@@ -90,8 +87,8 @@ export function ServicesPage(props: Readonly<ServicesPageProps>): ReactNode {
 	return (
 		<Fragment>
 			<EntityListHeader
-				title={t("Internal Services")}
-				description={t("Manage all internal services in the knowledge base.")}
+				title={t("Internal services")}
+				description={t("Manage all internal services in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -116,7 +113,7 @@ export function ServicesPage(props: Readonly<ServicesPageProps>): ReactNode {
 					<TableColumn allowsSorting={true} id="status">
 						{t("Status")}
 					</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -128,10 +125,10 @@ export function ServicesPage(props: Readonly<ServicesPageProps>): ReactNode {
 							<TableCell>{item.type.type}</TableCell>
 							<TableCell>
 								<Badge intent={statusIntent(item.status.status)}>
-									{formatServiceStatus(item.status.status)}
+									{getServiceStatusLabel(item.status.status)}
 								</Badge>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/internal-services/${item.id}/details`}

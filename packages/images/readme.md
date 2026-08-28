@@ -1,1 +1,1 @@
-# the knowledge base image service
+# dariah knowledge base image service

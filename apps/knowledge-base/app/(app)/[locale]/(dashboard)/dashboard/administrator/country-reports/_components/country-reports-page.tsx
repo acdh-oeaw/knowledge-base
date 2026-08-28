@@ -68,7 +68,7 @@ export function CountryReportsPage(props: Readonly<CountryReportsPageProps>): Re
 		<Fragment>
 			<EntityListHeader
 				title={t("Country reports")}
-				description={t("Manage all country reports in the knowledge base.")}
+				description={t("Manage all country reports in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -91,7 +91,7 @@ export function CountryReportsPage(props: Readonly<CountryReportsPageProps>): Re
 						{t("Campaign")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -99,7 +99,7 @@ export function CountryReportsPage(props: Readonly<CountryReportsPageProps>): Re
 							<TableCell>{item.country.name}</TableCell>
 							<TableCell>{item.campaign.year}</TableCell>
 							<TableCell>{formatStatus(item.status)}</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/country-reports/${item.id}`}

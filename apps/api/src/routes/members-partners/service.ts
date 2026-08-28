@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
 import { assert } from "@acdh-oeaw/lib";
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import * as schema from "@dariah-eric/database/schema";
+import type { JSONContent } from "@tiptap/core";
 
 import { type ContentBlock, getContentBlocks } from "@/lib/content-blocks";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import { generateImageUrl, toImageAsset, withResolvedCaption } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPersonPositions } from "@/lib/persons";
 import { getRelatedEntities, getRelatedResources, resolveDocumentId } from "@/lib/relations";
@@ -64,7 +66,9 @@ function eligibleMembersAndPartners(db: Database | Transaction) {
 	return db
 		.selectDistinct({
 			entityId: versions.entityId,
-			status: schema.membersAndPartners.status,
+			status: sql<
+				(typeof schema.membersAndPartnersUnitStatusEnum)[number]
+			>`${schema.membersAndPartners.status}`.as("status"),
 		})
 		.from(schema.membersAndPartners)
 		.innerJoin(versions, eq(versions.id, schema.membersAndPartners.id))
@@ -88,6 +92,8 @@ function fromMembersAndPartners(db: Database | Transaction, ctx: MembersAndPartn
 			slug: schema.slugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
@@ -133,7 +139,9 @@ interface MembersAndPartnersRow {
 	slug: string;
 	imageKey: string | null;
 	imageAlt: string | null;
-	imageCaption: string | null;
+	imageWidth: number | null;
+	imageHeight: number | null;
+	imageCaption: JSONContent | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
 }
@@ -144,6 +152,8 @@ function rowImage(row: MembersAndPartnersRow, size: number) {
 			key: row.imageKey,
 			alt: row.imageAlt,
 			caption: row.imageCaption,
+			width: row.imageWidth,
+			height: row.imageHeight,
 			licenseName: row.licenseName,
 			licenseUrl: row.licenseUrl,
 		}),
@@ -216,8 +226,6 @@ function findWebsite(
 	return socialMedia?.find((sm) => sm.type.type === "website")?.url ?? null;
 }
 
-//
-
 function mapPersonContributors(
 	rows: Array<{
 		id: string;
@@ -225,39 +233,76 @@ function mapPersonContributors(
 		slug: string;
 		imageKey: string | null;
 		imageAlt: string | null;
-		imageCaption: string | null;
+		imageCaption: JSONContent | null;
+		imageWidth: number | null;
+		imageHeight: number | null;
+		personImageCaption: JSONContent | null;
+		personImageCaptionMode: ImageCaptionMode;
 		licenseName: string | null;
 		licenseUrl: string | null;
 		role: string;
+		description: string | null;
 	}>,
-	positions: Map<string, Array<{ role: string; name: string; type: string }> | null>,
+	positions: Awaited<ReturnType<typeof getPersonPositions>>,
 ) {
-	return rows.map(({ imageKey, imageAlt, imageCaption, licenseName, licenseUrl, role, ...row }) => {
-		return {
-			...row,
-			position: positions.get(row.id) ?? null,
+	return rows.map(
+		({
+			imageKey,
+			imageAlt,
+			imageCaption,
+			imageWidth: imageSourceWidth,
+			imageHeight: imageSourceHeight,
+			personImageCaption,
+			personImageCaptionMode,
+			licenseName,
+			licenseUrl,
 			role,
-			slug: row.slug,
-			image: generateImageUrl(
-				toImageAsset({
-					key: imageKey,
-					alt: imageAlt,
-					caption: imageCaption,
-					licenseName,
-					licenseUrl,
-				}),
-				imageWidth.avatar,
-			),
-		};
-	});
+			...row
+		}) => {
+			return {
+				...row,
+				positions: positions.get(row.id) ?? null,
+				role,
+				slug: row.slug,
+				image: generateImageUrl(
+					withResolvedCaption(
+						toImageAsset({
+							key: imageKey,
+							alt: imageAlt,
+							caption: imageCaption,
+							width: imageSourceWidth,
+							height: imageSourceHeight,
+							licenseName,
+							licenseUrl,
+						}),
+						{ imageCaption: personImageCaption, imageCaptionMode: personImageCaptionMode },
+					),
+					imageWidth.avatar,
+				),
+			};
+		},
+	);
 }
 
 function hasContent(block: ContentBlock): boolean {
 	switch (block.type) {
+		// A container has content when it holds any: a callout whose body is nothing but an image
+		// counts just as much as one holding prose.
+		case "callout": {
+			return (block.title?.trim().length ?? 0) > 0 || block.blocks.some(hasContent);
+		}
 		case "rich_text": {
 			return hasRichTextContent(block.content);
 		}
+		case "media_text": {
+			return hasRichTextContent(block.content);
+		}
 		case "accordion": {
+			return block.items.some(
+				(item) => item.title.trim().length > 0 || item.blocks.some(hasContent),
+			);
+		}
+		case "gallery": {
 			return block.items.length > 0;
 		}
 		case "hero": {
@@ -300,6 +345,10 @@ function hasRichTextContent(content: unknown): boolean {
 
 function hasContentBlocks(blocks: Array<ContentBlock> | undefined): blocks is Array<ContentBlock> {
 	return blocks?.some((block) => hasContent(block)) === true;
+}
+
+function preferNonEmptyArray<T>(preferred: Array<T> | undefined, fallback: Array<T>): Array<T> {
+	return preferred != null && preferred.length > 0 ? preferred : fallback;
 }
 
 type RelationStatus =
@@ -549,7 +598,12 @@ async function getNationalConsortium(
 	db: Database | Transaction,
 	ctx: MembersAndPartnersContext,
 	countryVersionId: string,
-	options?: { imageSize?: number; includeDescription?: boolean },
+	options?: {
+		imageSize?: number;
+		includeDescription?: boolean;
+		includeRelations?: boolean;
+		includeResources?: boolean;
+	},
 ) {
 	const preferredVersion = alias(schema.entityVersions, "consortium_by_country_preferred_version");
 	const defaultVersion = alias(schema.entityVersions, "consortium_by_country_default_version");
@@ -568,6 +622,8 @@ async function getNationalConsortium(
 			slug: consortiumSlugs.value,
 			imageKey: schema.assets.key,
 			imageAlt: schema.assets.alt,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
@@ -621,9 +677,11 @@ async function getNationalConsortium(
 		return null;
 	}
 
-	const [fields, websites] = await Promise.all([
+	const [fields, websites, relatedEntities, relatedResources] = await Promise.all([
 		options?.includeDescription === true ? getContentBlocks(db, row.id) : Promise.resolve({}),
 		getSocialMediaByOrganisationalUnitIds(db, [row.id]),
+		options?.includeRelations === true ? getRelatedEntities(db, row.id) : Promise.resolve([]),
+		options?.includeResources === true ? getRelatedResources(db, row.id) : Promise.resolve([]),
 	]);
 
 	return {
@@ -631,17 +689,22 @@ async function getNationalConsortium(
 		slug: row.slug,
 		ror: row.ror,
 		website: findWebsite(websites.get(row.id)),
+		socialMedia: mapSocialMedia(websites.get(row.id) ?? []),
 		image: generateImageUrl(
 			toImageAsset({
 				key: row.imageKey,
 				alt: row.imageAlt,
 				caption: row.imageCaption,
+				width: row.imageWidth,
+				height: row.imageHeight,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
 			}),
 			options?.imageSize ?? imageWidth.preview,
 		),
 		description: (fields as { description?: Array<ContentBlock> }).description,
+		relatedEntities,
+		relatedResources,
 	};
 }
 
@@ -663,11 +726,16 @@ async function getContributors(
 			name: schema.persons.name,
 			slug: contributorSlugs.value,
 			imageKey: schema.assets.key,
+			imageWidth: schema.assets.width,
+			imageHeight: schema.assets.height,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
+			personImageCaption: schema.persons.imageCaption,
+			personImageCaptionMode: schema.persons.imageCaptionMode,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			role: schema.personRoleTypes.type,
+			description: schema.personsToOrganisationalUnits.description,
 		})
 		.from(schema.personsToOrganisationalUnits)
 		.leftJoin(
@@ -704,8 +772,10 @@ async function getContributors(
 				sql`${schema.personsToOrganisationalUnits.duration} @> NOW()::TIMESTAMPTZ`,
 				sql`
 					${schema.personRoleTypes.type} IN (
+						'is_contact_for',
 						'national_coordinator',
 						'national_coordinator_deputy',
+						'national_coordination_staff',
 						'national_representative',
 						'national_representative_deputy'
 					)
@@ -713,10 +783,10 @@ async function getContributors(
 			),
 		);
 
-	// national_coordinator(_deputy) and national_representative(_deputy) are non-exclusive: a person may
-	// legitimately hold a coordinator and a representative relation, and should then be listed once per
-	// role. Collapse only exact duplicates (same person and role) so a stray duplicate relation row
-	// cannot list the same contributor twice with an identical role.
+	// Contact, coordinator, and representative roles are non-exclusive: a person may legitimately
+	// hold multiple contributor relations and should then be listed once per role. Collapse only exact
+	// duplicates (same person and role) so a stray duplicate relation row cannot list the same
+	// contributor twice with an identical role.
 	const rowsByPersonAndRole = new Map<string, (typeof rows)[number]>();
 	for (const row of rows) {
 		const key = `${row.id}:${row.role}`;
@@ -789,19 +859,33 @@ async function buildMemberOrPartnerDetail(
 			getNationalConsortium(db, ctx, item.id, {
 				imageSize: imageWidth.featured,
 				includeDescription: true,
+				includeRelations: true,
+				includeResources: true,
 			}),
 		]);
 
 		const image = nationalConsortium?.image ?? rowImage(item, imageWidth.featured);
+		const socialMedia = preferNonEmptyArray(nationalConsortium?.socialMedia, base.socialMedia);
 		const description = hasContentBlocks(nationalConsortium?.description)
 			? nationalConsortium.description
 			: fields.description;
+		const preferredRelatedEntities = preferNonEmptyArray(
+			nationalConsortium?.relatedEntities,
+			relatedEntities,
+		);
+		const preferredRelatedResources = preferNonEmptyArray(
+			nationalConsortium?.relatedResources,
+			relatedResources,
+		);
 
 		return {
 			...base,
 			status,
 			image,
+			socialMedia,
 			description,
+			relatedEntities: preferredRelatedEntities,
+			relatedResources: preferredRelatedResources,
 			contributors,
 			institutions,
 			nationalCoordinatingInstitution,
@@ -837,7 +921,7 @@ export async function getMembersAndPartners(
 
 	const [items, aggregate] = await Promise.all([
 		fromMembersAndPartners(db, ctx)
-			.orderBy(desc(schema.entityVersions.updatedAt))
+			.orderBy(asc(schema.organisationalUnits.name))
 			.limit(limit)
 			.offset(offset),
 		db.select({ total: count() }).from(eligibleMembersAndPartners(db)),
@@ -861,7 +945,10 @@ export async function getMembersAndPartners(
 					: null;
 
 			const image = nationalConsortium?.image ?? rowImage(item, imageWidth.preview);
-			const socialMedia = mapSocialMedia(socialMediaMap.get(item.id) ?? []);
+			const socialMedia = preferNonEmptyArray(
+				nationalConsortium?.socialMedia,
+				mapSocialMedia(socialMediaMap.get(item.id) ?? []),
+			);
 
 			return {
 				id: item.id,

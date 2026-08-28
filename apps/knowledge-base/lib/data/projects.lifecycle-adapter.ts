@@ -1,36 +1,28 @@
 import * as schema from "@dariah-eric/database/schema";
 
-import type { EntityLifecycleAdapter } from "@/lib/data/entity-lifecycle";
+import { type EntityLifecycleAdapter, subtypePayload } from "@/lib/data/entity-lifecycle";
 import { eq } from "@/lib/db/sql";
 
 export const projectsLifecycleAdapter: EntityLifecycleAdapter = {
 	async cloneSubtype(tx, sourceVersionId, targetVersionId) {
 		const [source] = await tx
-			.select({
-				acronym: schema.projects.acronym,
-				call: schema.projects.call,
-				duration: schema.projects.duration,
-				funding: schema.projects.funding,
-				imageId: schema.projects.imageId,
-				metadata: schema.projects.metadata,
-				name: schema.projects.name,
-				scopeId: schema.projects.scopeId,
-				summary: schema.projects.summary,
-				topic: schema.projects.topic,
-			})
+			.select()
 			.from(schema.projects)
 			.where(eq(schema.projects.id, sourceVersionId))
 			.limit(1);
 		if (source == null) {
 			return;
 		}
-		await tx.insert(schema.projects).values({ id: targetVersionId, ...source });
+		await tx.insert(schema.projects).values({ id: targetVersionId, ...subtypePayload(source) });
 
 		// projectsToOrganisationalUnits is a document-level relation (keyed by entities.id) and is not
 		// cloned per version — see projects.ts schema.
 
 		const socialMedia = await tx
-			.select({ socialMediaId: schema.projectsToSocialMedia.socialMediaId })
+			.select({
+				position: schema.projectsToSocialMedia.position,
+				socialMediaId: schema.projectsToSocialMedia.socialMediaId,
+			})
 			.from(schema.projectsToSocialMedia)
 			.where(eq(schema.projectsToSocialMedia.projectId, sourceVersionId));
 
@@ -52,18 +44,7 @@ export const projectsLifecycleAdapter: EntityLifecycleAdapter = {
 
 	async replaceSubtype(tx, sourceVersionId, targetVersionId) {
 		const [source] = await tx
-			.select({
-				acronym: schema.projects.acronym,
-				call: schema.projects.call,
-				duration: schema.projects.duration,
-				funding: schema.projects.funding,
-				imageId: schema.projects.imageId,
-				metadata: schema.projects.metadata,
-				name: schema.projects.name,
-				scopeId: schema.projects.scopeId,
-				summary: schema.projects.summary,
-				topic: schema.projects.topic,
-			})
+			.select()
 			.from(schema.projects)
 			.where(eq(schema.projects.id, sourceVersionId))
 			.limit(1);
@@ -75,10 +56,16 @@ export const projectsLifecycleAdapter: EntityLifecycleAdapter = {
 			.delete(schema.projectsToSocialMedia)
 			.where(eq(schema.projectsToSocialMedia.projectId, targetVersionId));
 
-		await tx.update(schema.projects).set(source).where(eq(schema.projects.id, targetVersionId));
+		await tx
+			.update(schema.projects)
+			.set(subtypePayload(source))
+			.where(eq(schema.projects.id, targetVersionId));
 
 		const socialMedia = await tx
-			.select({ socialMediaId: schema.projectsToSocialMedia.socialMediaId })
+			.select({
+				position: schema.projectsToSocialMedia.position,
+				socialMediaId: schema.projectsToSocialMedia.socialMediaId,
+			})
 			.from(schema.projectsToSocialMedia)
 			.where(eq(schema.projectsToSocialMedia.projectId, sourceVersionId));
 

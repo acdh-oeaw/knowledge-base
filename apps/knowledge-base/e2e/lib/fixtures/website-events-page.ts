@@ -99,8 +99,50 @@ export class WebsiteEventsPage {
 		await this.page.keyboard.type(String(year));
 	}
 
+	/**
+	 * Fills the time segments of a timed (`granularity="minute"`) picker. Hours are 24-hour (the app
+	 * runs in the en-GB locale, so there is no AM/PM segment). Assumes the date segments are already
+	 * set — call {@link fillDatePicker} first, or use {@link fillDateTimePicker}.
+	 */
+	async fillTime(label: string, hours: number, minutes: number): Promise<void> {
+		const group = this.page.getByRole("group", { name: label });
+
+		const hourSegment = group.getByRole("spinbutton", { name: /hour/i });
+		const minuteSegment = group.getByRole("spinbutton", { name: /minute/i });
+
+		await hourSegment.click();
+		await this.page.keyboard.type(String(hours).padStart(2, "0"));
+
+		await minuteSegment.click();
+		await this.page.keyboard.type(String(minutes).padStart(2, "0"));
+	}
+
+	async fillDateTimePicker(
+		label: string,
+		year: number,
+		month: number,
+		day: number,
+		hours: number,
+		minutes: number,
+	): Promise<void> {
+		await this.fillDatePicker(label, year, month, day);
+		await this.fillTime(label, hours, minutes);
+	}
+
+	/** Reads a picker's time segments back as `HH:MM` (for asserting what the form displays). */
+	async readTime(label: string): Promise<string> {
+		const group = this.page.getByRole("group", { name: label });
+		const hour = await group
+			.getByRole("spinbutton", { name: /hour/i })
+			.getAttribute("aria-valuenow");
+		const minute = await group
+			.getByRole("spinbutton", { name: /minute/i })
+			.getAttribute("aria-valuenow");
+		return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+	}
+
 	async selectImageFromMediaLibrary(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Select image" }).click();
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		await dialog.waitFor({ state: "visible" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
@@ -123,11 +165,12 @@ export class WebsiteEventsPage {
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -223,7 +266,7 @@ export class WebsiteEventsPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

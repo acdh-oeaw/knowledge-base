@@ -8,7 +8,6 @@ import { getExtracted } from "next-intl/server";
 import { CreateServiceActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_lib/create-service.schema";
 import { arePublishedEntityDocuments } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
-import { eq } from "@/lib/db/sql";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 export const createServiceAction = createMutationAction({
@@ -16,7 +15,8 @@ export const createServiceAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "create", subjectType: "internal_services" },
 	revalidate: "/[locale]/dashboard/administrator/internal-services",
-	redirect: "/dashboard/administrator/internal-services",
+	redirect: ({ result }) =>
+		`/dashboard/administrator/internal-services/${result.subjectId}/details`,
 
 	async preCheck({ input }) {
 		const t = await getExtracted();
@@ -34,17 +34,11 @@ export const createServiceAction = createMutationAction({
 	},
 
 	async mutate(tx, input) {
-		const [serviceType] = await tx
-			.select()
-			.from(schema.serviceTypes)
-			.where(eq(schema.serviceTypes.type, "internal"));
-		assert(serviceType);
-
 		const [service] = await tx
 			.insert(schema.services)
 			.values({
 				name: input.name,
-				typeId: serviceType.id,
+				typeId: input.typeId,
 				statusId: input.statusId,
 				comment: input.comment,
 				dariahBranding: input.dariahBranding,

@@ -13,6 +13,8 @@ interface GovernanceBodyCreateFormProps {
 	initialRelatedEntityTotal: number;
 	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedResourceTotal: number;
+	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaTotal: number;
 }
 
 export function GovernanceBodyCreateForm(
@@ -24,6 +26,8 @@ export function GovernanceBodyCreateForm(
 		initialRelatedEntityTotal,
 		initialRelatedResourceItems,
 		initialRelatedResourceTotal,
+		initialSocialMediaItems,
+		initialSocialMediaTotal,
 	} = props;
 
 	const t = useExtracted();
@@ -39,6 +43,8 @@ export function GovernanceBodyCreateForm(
 				initialRelatedEntityTotal={initialRelatedEntityTotal}
 				initialRelatedResourceItems={initialRelatedResourceItems}
 				initialRelatedResourceTotal={initialRelatedResourceTotal}
+				initialSocialMediaItems={initialSocialMediaItems}
+				initialSocialMediaTotal={initialSocialMediaTotal}
 			/>
 		</Fragment>
 	);

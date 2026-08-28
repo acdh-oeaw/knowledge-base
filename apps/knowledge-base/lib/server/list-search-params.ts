@@ -34,7 +34,10 @@ export function getListSearchParams(
 	const parsedPage = Number.parseInt(rawPage ?? "1", 10);
 
 	return {
-		page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+		// Beyond the safe-integer range the derived offset no longer round-trips through Postgres'
+		// bigint parameter, so an out-of-range page falls back to the first one like any other
+		// unusable value.
+		page: Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
 		q: rawQ.trim(),
 	};
 }

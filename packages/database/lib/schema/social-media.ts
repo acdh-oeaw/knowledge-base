@@ -5,9 +5,19 @@ import { createInsertSchema, createSelectSchema, createUpdateSchema } from "driz
 import * as f from "../fields";
 import { uuidv7 } from "../functions";
 
+/**
+ * Vocabulary for {@link socialMedia}, the outbound outreach channels owned by organisational units,
+ * projects and services — the ones reports track KPIs for.
+ *
+ * A person's own accounts use a separate vocabulary (`person_social_media_types`), so that
+ * platforms only a researcher has (Google Scholar, ResearchGate) cannot be attached to an outreach
+ * channel and vice versa. The two overlap heavily but neither contains the other, and keeping them
+ * apart makes the rule a foreign key rather than a filter every picker has to remember.
+ */
 export const socialMediaTypesEnum = [
 	"bluesky",
 	"facebook",
+	"flickr",
 	"instagram",
 	"linkedin",
 	"mastodon",

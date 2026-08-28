@@ -8,6 +8,7 @@ import { type AccessibilityScanner, createAccessibilityScanner } from "@/e2e/lib
 import { AdminCountriesPage } from "@/e2e/lib/fixtures/admin-countries-page";
 import { AdminCountryReportsPage } from "@/e2e/lib/fixtures/admin-country-reports-page";
 import { AdminDocumentationPagesPage } from "@/e2e/lib/fixtures/admin-documentation-pages-page";
+import { AdminFeaturedItemsPage } from "@/e2e/lib/fixtures/admin-featured-items-page";
 import { AdminGovernanceBodiesPage } from "@/e2e/lib/fixtures/admin-governance-bodies-page";
 import { AdminInstitutionsPage } from "@/e2e/lib/fixtures/admin-institutions-page";
 import { AdminInternalPagesPage } from "@/e2e/lib/fixtures/admin-internal-pages-page";
@@ -20,6 +21,7 @@ import { AdminSocialMediaPage } from "@/e2e/lib/fixtures/admin-social-media-page
 import { AdminUsersPage } from "@/e2e/lib/fixtures/admin-users-page";
 import { AdminWorkingGroupReportsPage } from "@/e2e/lib/fixtures/admin-working-group-reports-page";
 import { AdminWorkingGroupsPage } from "@/e2e/lib/fixtures/admin-working-groups-page";
+import { AssetsPage } from "@/e2e/lib/fixtures/assets-page";
 import { ContactPage } from "@/e2e/lib/fixtures/contact-page";
 import { DatabaseService } from "@/e2e/lib/fixtures/database-service";
 import { type EmailService, createEmailService } from "@/e2e/lib/fixtures/email-service";
@@ -57,10 +59,12 @@ interface TestFixtures {
 	createAdminProjectsPage: (workerIndex: number) => AdminProjectsPage;
 	createAdminReportingCampaignsPage: (workerIndex: number) => AdminReportingCampaignsPage;
 	createAdminServicesPage: (workerIndex: number) => AdminServicesPage;
+	createAdminFeaturedItemsPage: () => AdminFeaturedItemsPage;
 	createAdminSocialMediaPage: (workerIndex: number) => AdminSocialMediaPage;
 	createAdminUsersPage: (workerIndex: number) => AdminUsersPage;
 	createAdminWorkingGroupReportsPage: (workerIndex: number) => AdminWorkingGroupReportsPage;
 	createAdminWorkingGroupsPage: (workerIndex: number) => AdminWorkingGroupsPage;
+	createAssetsPage: () => AssetsPage;
 	createWebsiteDocumentsPoliciesPage: (workerIndex: number) => WebsiteDocumentsPoliciesPage;
 	createWebsiteEventsPage: (workerIndex: number) => WebsiteEventsPage;
 	createWebsiteFundingCallsPage: (workerIndex: number) => WebsiteFundingCallsPage;
@@ -194,6 +198,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		await use((workerIndex: number) => new AdminServicesPage(page, workerIndex));
 	},
 
+	async createAdminFeaturedItemsPage({ page }, use) {
+		await use(() => new AdminFeaturedItemsPage(page));
+	},
+
 	async createAdminSocialMediaPage({ page }, use) {
 		await use((workerIndex: number) => new AdminSocialMediaPage(page, workerIndex));
 	},
@@ -208,6 +216,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 	async createAdminWorkingGroupsPage({ page }, use) {
 		await use((workerIndex: number) => new AdminWorkingGroupsPage(page, workerIndex));
+	},
+
+	async createAssetsPage({ page }, use) {
+		await use(() => new AssetsPage(page));
 	},
 
 	async createWebsiteDocumentsPoliciesPage({ page }, use) {

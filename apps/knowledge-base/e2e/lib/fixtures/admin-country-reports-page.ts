@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/administrator/country-reports";
@@ -48,7 +49,7 @@ export class AdminCountryReportsPage {
 			.locator('[data-slot="control"]')
 			.filter({ has: this.page.getByText("Country", { exact: true }) });
 		await control.locator("button").click();
-		await this.page.getByRole("option").first().click();
+		await firstSeededOption(this.page).click();
 	}
 
 	async selectStatus(status: string): Promise<void> {

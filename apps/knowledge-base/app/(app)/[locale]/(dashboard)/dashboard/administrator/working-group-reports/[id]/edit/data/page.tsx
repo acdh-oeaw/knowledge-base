@@ -25,10 +25,5 @@ export default async function DashboardAdministratorWorkingGroupReportDataPage(
 
 	const { id } = await params;
 
-	return (
-		<WorkingGroupReportDataScreen
-			basePath={`/dashboard/administrator/working-group-reports/${id}/edit`}
-			reportId={id}
-		/>
-	);
+	return <WorkingGroupReportDataScreen reportId={id} />;
 }

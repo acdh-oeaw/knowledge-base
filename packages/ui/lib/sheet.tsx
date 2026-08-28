@@ -57,7 +57,7 @@ export function SheetContent({
 	const isDismissable = isDismissableInternal ?? role !== "alertdialog";
 	return (
 		<AriaModalOverlay
-			className="fixed inset-s-0 inset-bs-0 z-50 block-full inline-full overflow-hidden bg-black/15 entering:fade-in entering:animate-in entering:duration-500 exiting:fade-out exiting:animate-out exiting:duration-300"
+			className="fixed inset-s-0 inset-bs-0 z-50 overflow-hidden bg-black/15 block-full inline-full entering:animate-in entering:duration-500 entering:fade-in exiting:animate-out exiting:duration-300 exiting:fade-out"
 			isDismissable={isDismissable}
 			{...props}
 		>
@@ -67,8 +67,8 @@ export function SheetContent({
 					"transform-gpu transition ease-in-out will-change-transform [--visual-viewport-vertical-padding:16px]",
 					"dark:data-[float=true]:ring-border data-[float=true]:rounded-lg data-[float=true]:ring data-[float=true]:ring-fg/5",
 					"border-fg/20 dark:border-border",
-					"entering:fade-in entering:animate-in entering:duration-500",
-					"exiting:fade-in exiting:animate-out exiting:duration-300",
+					"entering:animate-in entering:duration-500 entering:fade-in",
+					"exiting:animate-out exiting:duration-300 exiting:fade-in",
 					sideVariants[side],
 					className,
 				)}

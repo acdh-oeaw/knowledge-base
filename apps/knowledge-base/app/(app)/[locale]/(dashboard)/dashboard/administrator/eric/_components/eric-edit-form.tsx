@@ -12,8 +12,10 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ReverseUnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/reverse-unit-relations-section";
+import { adminUnitRelationActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_lib/admin-relation-actions";
 import { EricForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_components/eric-form";
 import { discardEricDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_lib/discard-eric-draft.action";
 import { publishEricAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_lib/publish-eric.action";
@@ -34,7 +36,7 @@ interface EricEditFormProps {
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -132,6 +134,7 @@ export function EricEditForm(props: Readonly<EricEditFormProps>): ReactNode {
 
 				<TabPanel id="countries" shouldPreserveState={true}>
 					<ReverseUnitRelationsSection
+						actions={adminUnitRelationActions}
 						messages={{
 							title: t("Countries"),
 							memberLabel: t("Country"),
@@ -147,6 +150,7 @@ export function EricEditForm(props: Readonly<EricEditFormProps>): ReactNode {
 
 				<TabPanel id="institutions" shouldPreserveState={true}>
 					<ReverseUnitRelationsSection
+						actions={adminUnitRelationActions}
 						messages={{
 							title: t("Institutions"),
 							memberLabel: t("Institution"),
@@ -162,6 +166,7 @@ export function EricEditForm(props: Readonly<EricEditFormProps>): ReactNode {
 
 				<TabPanel id="working-groups" shouldPreserveState={true}>
 					<ReverseUnitRelationsSection
+						actions={adminUnitRelationActions}
 						messages={{
 							title: t("Working groups"),
 							memberLabel: t("Working group"),
@@ -177,6 +182,7 @@ export function EricEditForm(props: Readonly<EricEditFormProps>): ReactNode {
 
 				<TabPanel id="governance-bodies" shouldPreserveState={true}>
 					<ReverseUnitRelationsSection
+						actions={adminUnitRelationActions}
 						messages={{
 							title: t("Governance bodies"),
 							memberLabel: t("Governance body"),

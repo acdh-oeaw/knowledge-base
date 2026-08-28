@@ -1,9 +1,20 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
+import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl } from "@/lib/images";
+import { generateImageUrl, imageAssetColumns, withResolvedCaption } from "@/lib/images";
 import type { Database, Transaction } from "@/middlewares/db";
+import type { Announcement } from "@/routes/announcements/schemas";
 import { imageWidth } from "~/config/api.config";
+
+const entityVersionColumns = {
+	columns: { updatedAt: true },
+	with: {
+		slug: {
+			columns: { value: true },
+		},
+	},
+} as const;
 
 export async function getFeaturedEntities(db: Database | Transaction) {
 	const metadata = await db.query.siteMetadata.findFirst({
@@ -12,16 +23,168 @@ export async function getFeaturedEntities(db: Database | Transaction) {
 		},
 	});
 
-	const featuredItemIds = (metadata?.featuredItemIds ?? []) as Array<string>;
+	const featuredNewsIds = metadata?.featuredItemIds?.news ?? [];
+	const featuredEventIds = metadata?.featuredItemIds?.events ?? [];
 
-	if (featuredItemIds.length === 0) {
-		return { data: { news: [] } };
+	const [news, events] = await Promise.all([
+		getFeaturedAnnouncements(db, featuredNewsIds),
+		getFeaturedEvents(db, featuredEventIds),
+	]);
+
+	return { data: { news, events } };
+}
+
+async function getFeaturedAnnouncements(db: Database | Transaction, ids: Array<string>) {
+	if (ids.length === 0) {
+		return [];
 	}
 
-	const items = await db.query.news.findMany({
+	const [news, opportunities, fundingCalls] = await Promise.all([
+		db.query.news.findMany({
+			where: {
+				id: {
+					in: ids,
+				},
+				entityVersion: {
+					status: {
+						type: "published",
+					},
+				},
+			},
+			columns: {
+				id: true,
+				title: true,
+				summary: true,
+				publicationDate: true,
+				imageCaption: true,
+				imageCaptionMode: true,
+			},
+			with: {
+				entityVersion: entityVersionColumns,
+				image: imageAssetColumns,
+			},
+		}),
+		db.query.opportunities.findMany({
+			where: {
+				id: {
+					in: ids,
+				},
+				entityVersion: {
+					status: {
+						type: "published",
+					},
+				},
+			},
+			columns: {
+				id: true,
+				title: true,
+				summary: true,
+				duration: true,
+				website: true,
+				imageCaption: true,
+				imageCaptionMode: true,
+			},
+			with: {
+				entityVersion: entityVersionColumns,
+				image: imageAssetColumns,
+				source: { columns: { source: true } },
+			},
+		}),
+		db.query.fundingCalls.findMany({
+			where: {
+				id: {
+					in: ids,
+				},
+				entityVersion: {
+					status: {
+						type: "published",
+					},
+				},
+			},
+			columns: {
+				id: true,
+				title: true,
+				summary: true,
+				duration: true,
+				imageCaption: true,
+				imageCaptionMode: true,
+			},
+			with: {
+				entityVersion: entityVersionColumns,
+				image: imageAssetColumns,
+			},
+		}),
+	]);
+
+	const announcementsById = new Map<string, Announcement>();
+
+	for (const item of news) {
+		if (item.entityVersion.slug == null) {
+			continue;
+		}
+
+		announcementsById.set(item.id, {
+			type: "news",
+			id: item.id,
+			title: item.title,
+			summary: item.summary,
+			image: generateImageUrl(withResolvedCaption(item.image, item), imageWidth.preview),
+			entity: { slug: item.entityVersion.slug.value },
+			publishedAt: item.publicationDate.toISOString(),
+		});
+	}
+
+	for (const item of opportunities) {
+		if (item.entityVersion.slug == null) {
+			continue;
+		}
+
+		announcementsById.set(item.id, {
+			type: "opportunities",
+			id: item.id,
+			title: item.title,
+			summary: item.summary,
+			image: generateImageUrl(withResolvedCaption(item.image, item), imageWidth.preview),
+			entity: { slug: item.entityVersion.slug.value },
+			publishedAt: item.duration.start.toISOString(),
+			duration: serializeDateRange(item.duration),
+			source: item.source.source,
+			website: item.website,
+		});
+	}
+
+	for (const item of fundingCalls) {
+		if (item.entityVersion.slug == null) {
+			continue;
+		}
+
+		announcementsById.set(item.id, {
+			type: "funding_calls",
+			id: item.id,
+			title: item.title,
+			summary: item.summary,
+			image: generateImageUrl(withResolvedCaption(item.image, item), imageWidth.preview),
+			entity: { slug: item.entityVersion.slug.value },
+			publishedAt: item.duration.start.toISOString(),
+			duration: serializeDateRange(item.duration),
+		});
+	}
+
+	return ids.flatMap((id) => {
+		const item = announcementsById.get(id);
+		return item != null ? [item] : [];
+	});
+}
+
+async function getFeaturedEvents(db: Database | Transaction, ids: Array<string>) {
+	if (ids.length === 0) {
+		return [];
+	}
+
+	const items = await db.query.events.findMany({
 		where: {
 			id: {
-				in: featuredItemIds,
+				in: ids,
 			},
 			entityVersion: {
 				status: {
@@ -33,6 +196,11 @@ export async function getFeaturedEntities(db: Database | Transaction) {
 			id: true,
 			title: true,
 			summary: true,
+			location: true,
+			isFullDay: true,
+			duration: true,
+			imageCaption: true,
+			imageCaptionMode: true,
 		},
 		with: {
 			entityVersion: {
@@ -43,34 +211,19 @@ export async function getFeaturedEntities(db: Database | Transaction) {
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 		},
 	});
 
 	const itemsById = new Map(items.map((item) => [item.id, item]));
 
-	const news = featuredItemIds
+	return ids
 		.map((id) => itemsById.get(id))
 		.filter((item): item is NonNullable<typeof item> => item != null)
 		.map((item) => {
-			const image = generateImageUrl(item.image, imageWidth.preview);
+			const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.preview);
+			const duration = serializeDateRange(item.duration);
 
-			return { ...flattenEntityVersion(item), image };
+			return { type: "events" as const, ...flattenEntityVersion(item), image, duration };
 		});
-
-	return { data: { news } };
 }

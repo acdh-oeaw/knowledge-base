@@ -1,0 +1,38 @@
+{
+	"name": "@dariah-eric/audit",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"sideEffects": false,
+	"scripts": {
+		"data:audit:country-membership": "tsx ./scripts/audit-country-membership.ts",
+		"data:audit:duplicate-entities": "tsx ./scripts/audit-duplicate-entities.ts",
+		"data:audit:heading-hierarchy": "tsx ./scripts/audit-heading-hierarchy.ts",
+		"data:audit:inactive-unit-relations": "tsx ./scripts/audit-inactive-unit-relations.ts",
+		"data:audit:mutually-exclusive-relations": "tsx ./scripts/audit-mutually-exclusive-relations.ts",
+		"data:audit:paired-relations": "tsx ./scripts/audit-paired-relations.ts",
+		"data:audit:relation-vocabulary": "tsx ./scripts/audit-relation-vocabulary.ts",
+		"data:audit:sshoc-actor-id": "tsx ./scripts/audit-sshoc-actor-id.ts",
+		"data:audit:unit-relation-requirements": "tsx ./scripts/audit-unit-relation-requirements.ts",
+		"data:audit:web-addresses": "tsx ./scripts/audit-web-addresses.ts",
+		"format:check": "oxfmt --check",
+		"format:fix": "oxfmt --write",
+		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
+		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"types:check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@acdh-oeaw/lib": "catalog:",
+		"@dariah-eric/configs": "workspace:^",
+		"@dariah-eric/database": "workspace:^",
+		"@dariah-eric/env": "workspace:^",
+		"@types/node": "catalog:",
+		"drizzle-orm": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"valibot": "catalog:"
+	},
+	"engines": {
+		"node": "24.x"
+	}
+}

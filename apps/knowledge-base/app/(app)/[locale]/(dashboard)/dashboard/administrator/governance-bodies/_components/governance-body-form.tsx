@@ -2,7 +2,6 @@
 
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
-import { Button } from "@dariah-eric/ui/button";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { Input } from "@dariah-eric/ui/input";
@@ -15,11 +14,15 @@ import { Fragment, type ReactNode, useActionState, useState } from "react";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
 import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
+import { EntitySlugField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-slug-field";
 import {
 	FormLayout,
 	FormSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
-import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
+import {
+	ImageSelectField,
+	type SelectedImage,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { RichTextContentBlocksField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/rich-text-content-blocks-field";
 import { SocialMediaRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/social-media-relations-fields";
 import type { ServerAction } from "@/lib/server/create-server-action";
@@ -29,8 +32,9 @@ interface GovernanceBodyFormProps {
 	governanceBody?: Pick<schema.OrganisationalUnit, "acronym" | "id" | "name" | "summary"> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	formId?: string;
+	isPublished?: boolean;
 	formAction: ServerAction;
 	initialRelatedEntityIds?: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -66,13 +70,14 @@ export function GovernanceBodyForm(props: Readonly<GovernanceBodyFormProps>): Re
 		selectedRelatedResources,
 		selectedSocialMediaItems,
 		showRelationFields = true,
+		isPublished,
 	} = props;
 
 	const t = useExtracted();
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
-	const [selectedImage, setSelectedImage] = useState<{ key: string; url: string } | null>(
+	const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(
 		governanceBody?.image ?? null,
 	);
 
@@ -97,44 +102,23 @@ export function GovernanceBodyForm(props: Readonly<GovernanceBodyFormProps>): Re
 						<TextArea rows={5} />
 						<FieldError />
 					</TextField>
+
+					<EntitySlugField
+						isPublished={isPublished}
+						slug={governanceBody?.entityVersion.slug.value}
+					/>
 				</FormSection>
 
 				<Separator className="my-6" />
 
 				<FormSection description={t("Select or upload an image.")} title={t("Image")}>
-					{selectedImage != null && (
-						<img
-							alt={t("Selected image")}
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-							src={selectedImage.url}
-						/>
-					)}
-					<MediaLibraryDialog
+					<ImageSelectField
+						allowRemove={true}
 						defaultPrefix="logos"
 						initialAssets={initialAssets}
-						onSelect={(key, url) => {
-							setSelectedImage({ key, url });
-						}}
+						onChange={setSelectedImage}
 						prefixes={["avatars", "images", "logos"]}
-					/>
-					{selectedImage != null ? (
-						<Button
-							intent="outline"
-							onPress={() => {
-								setSelectedImage(null);
-							}}
-						>
-							{t("Remove image")}
-						</Button>
-					) : null}
-
-					<input
-						aria-hidden={true}
-						className="sr-only"
-						name="imageKey"
-						readOnly={true}
-						tabIndex={-1}
-						value={selectedImage?.key ?? ""}
+						selectedImage={selectedImage}
 					/>
 				</FormSection>
 

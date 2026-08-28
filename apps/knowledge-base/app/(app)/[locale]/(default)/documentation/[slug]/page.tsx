@@ -2,29 +2,18 @@ import type { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
-import { Main } from "@/app/(app)/[locale]/(default)/_components/main";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { db } from "@/lib/db";
+import { DocumentationArticle } from "@/app/(app)/[locale]/(default)/documentation/_components/documentation-article";
+import {
+	documentationOverviewSlug,
+	getPublishedDocumentationPage,
+} from "@/app/(app)/[locale]/(default)/documentation/_lib/documentation-pages";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
+import type { IntlLocale } from "@/lib/i18n/locales";
+import { redirect } from "@/lib/navigation/navigation";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 async function getDocumentationPage(slug: string) {
-	const page = await db.query.documentationPages.findFirst({
-		where: {
-			entityVersion: {
-				slug: {
-					value: slug,
-				},
-				status: {
-					type: "published",
-				},
-			},
-		},
-		columns: {
-			id: true,
-			title: true,
-		},
-	});
+	const page = await getPublishedDocumentationPage(slug);
 
 	if (page == null) {
 		notFound();
@@ -53,17 +42,16 @@ export async function generateMetadata(
 export default async function DocumentationPage(
 	props: Readonly<DocumentationPageProps>,
 ): Promise<ReactNode> {
-	const { slug } = await props.params;
+	const { locale, slug } = await props.params;
+
+	// The overview page is rendered by the index, which is the address the navigation and every
+	// other page link to. Serving it here as well would put the same content at two urls.
+	if (slug === documentationOverviewSlug) {
+		redirect({ href: "/documentation", locale: locale as IntlLocale });
+	}
 
 	const page = await getDocumentationPage(slug);
-	const contentBlocks = await getEntityContentBlocks(page.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(page.id, "content");
 
-	return (
-		<Main className="container flex-1 px-8 py-12 xs:px-16">
-			<section className="flex max-inline-(--breakpoint-md) flex-col gap-y-8">
-				<h1 className="text-5xl font-extrabold tracking-tight text-text-strong">{page.title}</h1>
-				{contentBlocks.length > 0 ? <ContentBlocksView contentBlocks={contentBlocks} /> : null}
-			</section>
-		</Main>
-	);
+	return <DocumentationArticle contentBlocks={contentBlocks} title={page.title} />;
 }

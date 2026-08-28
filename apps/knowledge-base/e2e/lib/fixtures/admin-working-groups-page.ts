@@ -3,7 +3,9 @@ import type { Locator, Page } from "@playwright/test";
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
 import { E2E_TEST_ASSET_KEY } from "@/e2e/lib/fixtures/database-service";
+import { SEEDED_PERSON_SEARCH_TERM, firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
+import { createSocialMediaInForm } from "@/e2e/lib/fixtures/social-media-form";
 
 const BASE_PATH = "/en/dashboard/administrator/working-groups";
 
@@ -49,6 +51,14 @@ export class AdminWorkingGroupsPage {
 		await this.page.getByLabel("Summary").fill(text);
 	}
 
+	async fillEmail(email: string): Promise<void> {
+		await this.page.getByLabel("Email").fill(email);
+	}
+
+	async fillMailingList(mailingList: string): Promise<void> {
+		await this.page.getByLabel("Mailing list").fill(mailingList);
+	}
+
 	async selectTestImage(): Promise<void> {
 		await this.page.locator('input[name="imageKey"]').evaluate((input, value) => {
 			(input as HTMLInputElement).value = value;
@@ -66,14 +76,19 @@ export class AdminWorkingGroupsPage {
 		await this.page.keyboard.type(text);
 	}
 
+	async createSocialMediaInForm(name: string, url: string): Promise<void> {
+		await createSocialMediaInForm(this.page, name, url);
+	}
+
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -131,8 +146,13 @@ export class AdminWorkingGroupsPage {
 
 	async selectFirstRelatedUnit(): Promise<void> {
 		await this.page.getByRole("button", { name: "No related unit selected" }).click();
-		await this.page.getByRole("option").first().waitFor({ state: "visible" });
-		await this.page.getByRole("option").first().click();
+		await firstSeededOption(this.page).waitFor({ state: "visible" });
+		await firstSeededOption(this.page).click();
+		// Wait for the selection to commit (placeholder replaced) so a later submit isn't blocked by an
+		// empty required field — which would silently fire no POST and time out `waitForActionSuccess`.
+		await this.page
+			.getByRole("button", { name: "No related unit selected" })
+			.waitFor({ state: "hidden" });
 	}
 
 	async fillRelationDatePicker(
@@ -210,16 +230,26 @@ export class AdminWorkingGroupsPage {
 		await this.page.getByRole("option").first().click();
 	}
 
+	/** Any person will do, as long as it is a seeded one — see {@link firstSeededOption}. */
 	async selectFirstPerson(): Promise<void> {
 		// Scoped to the "add person" form to avoid the person picker inside the edit dialog.
 		const form = this.page
 			.locator("form")
 			.filter({ has: this.page.getByRole("button", { name: "Add person" }) });
 		await form.getByRole("button", { name: "No person selected" }).click();
-		// Search field is auto-focused; press Enter to trigger a search with an empty query.
-		await this.page.keyboard.press("Enter");
+		// `fill` rather than typing into the auto-focused field: `AsyncSelect` keeps its search text in
+		// component state, which closing the popover does not reset. A second selection on the same form
+		// would append to the first query and match nothing. The popover is portalled, so it is reached
+		// from the page rather than through `form`.
+		const search = this.page
+			.getByRole("dialog", { name: "No person selected" })
+			.getByRole("searchbox");
+		await search.fill(SEEDED_PERSON_SEARCH_TERM);
+		await search.press("Enter");
 		await this.page.getByRole("option").first().waitFor({ state: "visible" });
 		await this.page.getByRole("option").first().click();
+		// Wait for the selection to commit before the caller submits (see selectFirstRelatedUnit).
+		await form.getByRole("button", { name: "No person selected" }).waitFor({ state: "hidden" });
 	}
 
 	async fillPersonRelationDatePicker(
@@ -360,7 +390,7 @@ export class AdminWorkingGroupsPage {
 	}
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

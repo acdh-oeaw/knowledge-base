@@ -12,7 +12,7 @@ interface CountryReportStepNavProps {
 	/** The `/edit` base path; per-screen routes are appended to it. */
 	editBasePath: string;
 	/**
-	 * - `reporting`: the user-facing flow — ends with a "Confirm" step.
+	 * - `reporting`: the user-facing flow.
 	 * - `admin`: starts with a "Status" tab (status editor at the edit index) and has no confirm step.
 	 */
 	variant: "admin" | "reporting";
@@ -25,15 +25,15 @@ export function CountryReportStepNav(props: Readonly<CountryReportStepNavProps>)
 
 	const steps: Array<ReportStep> = [
 		...(variant === "admin" ? [{ href: editBasePath, label: t("Status") }] : []),
-		{ href: `${editBasePath}/institutions`, label: t("Institutions") },
 		{ href: `${editBasePath}/contributors`, label: t("Contributors") },
+		{ href: `${editBasePath}/institutions`, label: t("Institutions") },
 		{ href: `${editBasePath}/events`, label: t("Events") },
 		{ href: `${editBasePath}/social-media`, label: t("Social media") },
 		{ href: `${editBasePath}/services`, label: t("Services") },
-		{ href: `${editBasePath}/software`, label: t("Software") },
+		{ href: `${editBasePath}/software`, label: t("SSHOC resources") },
 		{ href: `${editBasePath}/publications`, label: t("Publications") },
 		{ href: `${editBasePath}/projects`, label: t("Projects") },
-		...(variant === "reporting" ? [{ href: `${editBasePath}/confirm`, label: t("Confirm") }] : []),
+		{ href: `${editBasePath}/summary`, label: t("Summary") },
 	];
 
 	return <ReportStepTabs aria-label={t("Report sections")} steps={steps} />;

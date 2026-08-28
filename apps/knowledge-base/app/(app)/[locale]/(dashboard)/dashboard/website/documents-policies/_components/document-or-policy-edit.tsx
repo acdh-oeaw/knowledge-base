@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { DocumentOrPolicyForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_components/document-or-policy-form";
 import { discardDocumentOrPolicyDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/discard-document-or-policy-draft.action";
 import { publishDocumentOrPolicyAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/publish-document-or-policy.action";
@@ -17,6 +18,8 @@ interface DocumentOrPolicyEditFormProps {
 	documentId: string;
 	hasDraftChanges: boolean;
 	isPublished: boolean;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	documentOrPolicy: Pick<
 		schema.DocumentOrPolicy,
 		"id" | "title" | "summary" | "url" | "groupId"
@@ -38,6 +41,8 @@ export function DocumentOrPolicyEditForm(
 		documentId,
 		hasDraftChanges,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		documentOrPolicy,
 		groups,
 	} = props;
@@ -55,11 +60,15 @@ export function DocumentOrPolicyEditForm(
 					publishAction: publishDocumentOrPolicyAction,
 					discardDraftAction: discardDocumentOrPolicyDraftAction,
 				}}
+				localeSelector={
+					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+				}
 			/>
 
 			<DocumentOrPolicyForm
 				contentBlocks={contentBlocks}
 				documentOrPolicy={documentOrPolicy}
+				isPublished={isPublished}
 				formAction={updateDocumentOrPolicyAction}
 				groups={groups}
 				initialAssets={initialAssets}

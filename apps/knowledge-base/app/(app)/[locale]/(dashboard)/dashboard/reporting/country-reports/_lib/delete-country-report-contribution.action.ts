@@ -5,11 +5,11 @@ import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
 import { revalidatePath } from "next/cache";
 
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
-import { assertCan } from "@/lib/auth/permissions";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { countryReportRevalidatePaths } from "@/lib/data/reporting-urls";
 import { db } from "@/lib/db";
-import { eq } from "@/lib/db/sql";
+import { and, eq } from "@/lib/db/sql";
 
 export async function deleteCountryReportContributionAction(formData: FormData): Promise<void> {
 	if (!(await globalPostRequestRateLimit())) {
@@ -24,10 +24,18 @@ export async function deleteCountryReportContributionAction(formData: FormData):
 
 	const { user } = await assertAuthenticated();
 	await assertCan(user, "update", { type: "country_report", id: countryReportId });
+	await assertReportEditable(user, { type: "country_report", id: countryReportId });
 
+	// Scope by both ids so a row can only be removed via the report it actually belongs to (the authz
+	// check is on countryReportId, so matching on the row id alone would allow cross-report deletes).
 	await db
 		.delete(schema.countryReportContributions)
-		.where(eq(schema.countryReportContributions.id, contributionId));
+		.where(
+			and(
+				eq(schema.countryReportContributions.id, contributionId),
+				eq(schema.countryReportContributions.countryReportId, countryReportId),
+			),
+		);
 
 	await recordAuditEvent(db, {
 		actorUserId: user.id,

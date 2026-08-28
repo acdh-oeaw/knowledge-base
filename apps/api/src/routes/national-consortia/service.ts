@@ -2,6 +2,7 @@
 
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
+import type { JSONContent } from "@tiptap/core";
 
 import { generateImageUrl, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
@@ -69,6 +70,8 @@ function selectNationalConsortiumRows() {
 		acronym: schema.organisationalUnits.acronym,
 		slug: consortiumSlugs.value,
 		logoKey: schema.assets.key,
+		logoWidth: schema.assets.width,
+		logoHeight: schema.assets.height,
 		logoAlt: schema.assets.alt,
 		logoCaption: schema.assets.caption,
 		licenseName: schema.licenses.name,
@@ -87,8 +90,10 @@ interface NationalConsortiumRow {
 	acronym: string | null;
 	slug: string;
 	logoKey: string | null;
+	logoWidth: number | null;
+	logoHeight: number | null;
 	logoAlt: string | null;
-	logoCaption: string | null;
+	logoCaption: JSONContent | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
 	countryId: string | null;
@@ -196,6 +201,8 @@ function mapNationalConsortiumRow(row: NationalConsortiumRow) {
 				key: row.logoKey,
 				alt: row.logoAlt,
 				caption: row.logoCaption,
+				width: row.logoWidth,
+				height: row.logoHeight,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
 			}),

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
 import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
@@ -11,22 +12,36 @@ import { Separator } from "@dariah-eric/ui/separator";
 import { TextField } from "@dariah-eric/ui/text-field";
 import { TextArea } from "@dariah-eric/ui/textarea";
 import { CalendarDate } from "@internationalized/date";
+import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
-import { Fragment, type ReactNode, useActionState } from "react";
+import { Fragment, type ReactNode, useActionState, useState } from "react";
 
 import {
 	type ContentBlock,
 	ContentBlocks,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
+import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
+import { EntitySlugField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-slug-field";
 import {
 	FormLayout,
 	FormSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
+import {
+	ImageSelectField,
+	type SelectedImage,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface OpportunityFormProps {
 	contentBlocks?: Array<ContentBlock>;
+	initialAssets: Array<{ key: string; label: string; url: string }>;
+	initialRelatedEntityIds?: Array<string>;
+	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedEntityTotal: number;
+	initialRelatedResourceIds?: Array<string>;
+	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
+	initialRelatedResourceTotal: number;
 	opportunity?: Pick<schema.Opportunity, "id" | "duration" | "title" | "summary" | "website"> & {
 		entityVersion: {
 			entity: Pick<schema.Entity, "id">;
@@ -34,17 +49,44 @@ interface OpportunityFormProps {
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		source: Pick<schema.OpportunitySource, "id" | "source">;
+	} & {
+		image: SelectedImage;
+		imageCaption?: JSONContent | null;
+		imageCaptionMode?: ImageCaptionMode;
 	};
+	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
+	isPublished?: boolean;
 	formAction: ServerAction;
+	selectedRelatedEntities?: Array<{ id: string; name: string; description?: string }>;
+	selectedRelatedResources?: Array<{ id: string; name: string; description?: string }>;
 	sources: Array<Pick<schema.OpportunitySource, "id" | "source">>;
 }
 
 export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNode {
-	const { contentBlocks, formAction, opportunity, sources } = props;
+	const {
+		initialAssets,
+		contentBlocks,
+		formAction,
+		initialRelatedEntityIds,
+		initialRelatedEntityItems,
+		initialRelatedEntityTotal,
+		initialRelatedResourceIds,
+		initialRelatedResourceItems,
+		initialRelatedResourceTotal,
+		opportunity,
+		selectedRelatedEntities,
+		selectedRelatedResources,
+		sources,
+		isPublished,
+	} = props;
 
 	const t = useExtracted();
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
+
+	const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(
+		opportunity?.image ?? null,
+	);
 
 	return (
 		<FormLayout>
@@ -73,7 +115,11 @@ export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNod
 						</SelectContent>
 					</Select>
 
-					<TextField defaultValue={opportunity?.summary ?? undefined} name="summary">
+					<TextField
+						defaultValue={opportunity?.summary ?? undefined}
+						isRequired={true}
+						name="summary"
+					>
 						<Label>{t("Summary")}</Label>
 						<TextArea rows={5} />
 						<FieldError />
@@ -117,6 +163,28 @@ export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNod
 						<Input placeholder="https://" />
 						<FieldError />
 					</TextField>
+
+					<EntitySlugField isPublished={isPublished} slug={opportunity?.entityVersion.slug.value} />
+				</FormSection>
+
+				<Separator className="my-6" />
+
+				<FormSection
+					description={t("Select or upload an image.")}
+					isRequired={true}
+					title={t("Image")}
+				>
+					<ImageSelectField
+						captionName="imageCaption"
+						defaultCaption={opportunity?.imageCaption}
+						defaultCaptionMode={opportunity?.imageCaptionMode}
+						defaultPrefix="images"
+						initialAssets={initialAssets}
+						isRequired={true}
+						onChange={setSelectedImage}
+						prefixes={["avatars", "images", "logos"]}
+						selectedImage={selectedImage}
+					/>
 				</FormSection>
 
 				<Separator className="my-6" />
@@ -124,6 +192,19 @@ export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNod
 				<FormSection description={t("Add the content.")} title={t("Content")} variant="stacked">
 					<ContentBlocks items={contentBlocks ?? []} />
 				</FormSection>
+
+				<Separator className="my-6" />
+
+				<EntityRelationsFields
+					initialRelatedEntityIds={initialRelatedEntityIds}
+					initialRelatedEntityItems={initialRelatedEntityItems}
+					initialRelatedEntityTotal={initialRelatedEntityTotal}
+					initialRelatedResourceIds={initialRelatedResourceIds}
+					initialRelatedResourceItems={initialRelatedResourceItems}
+					initialRelatedResourceTotal={initialRelatedResourceTotal}
+					selectedRelatedEntities={selectedRelatedEntities}
+					selectedRelatedResources={selectedRelatedResources}
+				/>
 
 				{opportunity != null ? (
 					<Fragment>

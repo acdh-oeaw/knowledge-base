@@ -6,6 +6,7 @@ import { GovernanceBodyCreateForm } from "@/app/(app)/[locale]/(dashboard)/dashb
 import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
+import { getSocialMediaOptions } from "@/lib/data/social-media";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 export async function generateMetadata(
@@ -22,12 +23,17 @@ export async function generateMetadata(
 }
 
 export default async function DashboardAdministratorCreateGovernanceBodyPage(): Promise<ReactNode> {
-	const [{ items: initialAssets }, initialRelatedEntities, initialRelatedResources] =
-		await Promise.all([
-			getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
-			getEntityRelationOptions(),
-			getResourceRelationOptions(),
-		]);
+	const [
+		{ items: initialAssets },
+		initialRelatedEntities,
+		initialRelatedResources,
+		initialSocialMedia,
+	] = await Promise.all([
+		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "logos" }),
+		getEntityRelationOptions(),
+		getResourceRelationOptions(),
+		getSocialMediaOptions(),
+	]);
 
 	return (
 		<GovernanceBodyCreateForm
@@ -36,6 +42,8 @@ export default async function DashboardAdministratorCreateGovernanceBodyPage(): 
 			initialRelatedEntityTotal={initialRelatedEntities.total}
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
+			initialSocialMediaItems={initialSocialMedia.items}
+			initialSocialMediaTotal={initialSocialMedia.total}
 		/>
 	);
 }

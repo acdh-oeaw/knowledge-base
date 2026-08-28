@@ -7,13 +7,16 @@ import {
 	DescriptionTerm,
 } from "@dariah-eric/ui/description-list";
 import { Note } from "@dariah-eric/ui/note";
-import { useExtracted } from "next-intl";
+import { useExtracted, useFormatter } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-summary";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { FeaturedImageDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/featured-image-details";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 
 interface NewsItemDetailsProps {
@@ -25,9 +28,12 @@ interface NewsItemDetailsProps {
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
 	selectedVersion: "draft" | "published";
-	newsItem: Pick<schema.NewsItem, "id" | "title" | "summary"> & {
+	newsItem: Pick<
+		schema.NewsItem,
+		"id" | "publicationDate" | "title" | "summary" | "imageCaption" | "imageCaptionMode"
+	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } };
+	} & { image: SelectedImage };
 	publishAction: (documentId: string) => Promise<unknown>;
 	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
 	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
@@ -52,6 +58,7 @@ export function NewsItemDetails(props: Readonly<NewsItemDetailsProps>): ReactNod
 	} = props;
 
 	const t = useExtracted();
+	const format = useFormatter();
 
 	return (
 		<Fragment>
@@ -90,12 +97,17 @@ export function NewsItemDetails(props: Readonly<NewsItemDetailsProps>): ReactNod
 				<DescriptionTerm>{t("Summary")}</DescriptionTerm>
 				<DescriptionDetails>{newsItem.summary}</DescriptionDetails>
 
+				<DescriptionTerm>{t("Publication date")}</DescriptionTerm>
+				<DescriptionDetails>
+					{format.dateTime(newsItem.publicationDate, { dateStyle: "short", timeZone: "UTC" })}
+				</DescriptionDetails>
+
 				<DescriptionTerm>{t("Image")}</DescriptionTerm>
 				<DescriptionDetails>
-					<img
-						alt=""
-						className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-						src={newsItem.image.url}
+					<FeaturedImageDetails
+						image={newsItem.image}
+						imageCaption={newsItem.imageCaption}
+						imageCaptionMode={newsItem.imageCaptionMode}
 					/>
 				</DescriptionDetails>
 
@@ -111,6 +123,7 @@ export function NewsItemDetails(props: Readonly<NewsItemDetailsProps>): ReactNod
 							{selectedRelatedEntities.map((relatedEntity) => (
 								<li key={relatedEntity.id} className="text-sm">
 									<span className="font-medium">{relatedEntity.name}</span>
+									<RelationTypeSuffix type={relatedEntity.description} />
 								</li>
 							))}
 						</ul>
@@ -124,6 +137,7 @@ export function NewsItemDetails(props: Readonly<NewsItemDetailsProps>): ReactNod
 							{selectedRelatedResources.map((relatedResource) => (
 								<li key={relatedResource.id} className="text-sm">
 									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
 								</li>
 							))}
 						</ul>

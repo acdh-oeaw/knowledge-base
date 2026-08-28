@@ -1,34 +1,34 @@
-import { assert } from "@acdh-oeaw/lib";
 import { serviceKpiCategoryEnum } from "@dariah-eric/database/schema";
-import { Button } from "@dariah-eric/ui/button";
-import { Label } from "@dariah-eric/ui/field";
-import { Input } from "@dariah-eric/ui/input";
-import { TextField } from "@dariah-eric/ui/text-field";
-import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ReportScreenCommentSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_components/report-screen-comment-section";
+import { CountryReportServicesForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-services-form";
+import { addCountryReportServiceAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/add-country-report-service.action";
+import { deleteCountryReportServiceAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/delete-country-report-service.action";
 import { getAuthorizedCountryReportForUser } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/get-country-report-summary-data";
 import { upsertCountryReportServiceKpisAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/upsert-country-report-service-kpis.action";
 import { assertAuthenticated } from "@/lib/auth/session";
+import {
+	getAvailableServicesForReport,
+	getCountryReportServices,
+} from "@/lib/data/report-services";
 import { db } from "@/lib/db";
 
 interface CountryReportServicesScreenProps {
 	reportId: string;
-	/** Edit base path; the save action returns here (e.g. `${basePath}/services`). */
-	basePath: string;
 }
 
-function formatKpi(kpi: string): string {
-	return kpi.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
-}
-
-/** Shared "services" screen. See {@link getAuthorizedCountryReportForUser} for authorization. */
+/**
+ * Shared "services" screen. See {@link getAuthorizedCountryReportForUser} for authorization.
+ *
+ * The report owns a curated service membership, initially seeded from current consortium services
+ * and the previous year's report. Each member service has a small set of on-demand KPI metrics.
+ */
 export async function CountryReportServicesScreen(
 	props: Readonly<CountryReportServicesScreenProps>,
 ): Promise<ReactNode> {
-	const { reportId, basePath } = props;
+	const { reportId } = props;
 
 	const { user } = await assertAuthenticated();
 	const result = await getAuthorizedCountryReportForUser(
@@ -38,19 +38,6 @@ export async function CountryReportServicesScreen(
 			db.query.countryReports.findFirst({
 				where: { id },
 				columns: { id: true },
-				with: {
-					country: {
-						columns: { id: true },
-						with: {
-							services: {
-								columns: { id: true, name: true },
-							},
-						},
-					},
-					serviceKpis: {
-						columns: { serviceId: true, kpi: true, value: true },
-					},
-				},
 			}),
 		"update",
 	);
@@ -63,50 +50,22 @@ export async function CountryReportServicesScreen(
 		notFound();
 	}
 
-	const t = await getExtracted();
-
-	const kpiMap = new Map(report.serviceKpis.map((k) => [`${k.serviceId}-${k.kpi}`, k.value]));
-
-	// A country report always references a published country.
-	assert(report.country, "Country report is missing its published country.");
-	const services = report.country.services;
+	const [services, availableServices] = await Promise.all([
+		getCountryReportServices(report.id),
+		getAvailableServicesForReport(report.id),
+	]);
 
 	return (
 		<div className="flex flex-col gap-y-8">
-			{services.length === 0 ? (
-				<p className="text-sm text-muted-fg">{t("No services linked to this country.")}</p>
-			) : (
-				<form action={upsertCountryReportServiceKpisAction}>
-					<input name="id" type="hidden" value={report.id} />
-					<input name="redirectTo" type="hidden" value={`${basePath}/services`} />
-					<div className="flex flex-col gap-y-8">
-						{services.map((service) => (
-							<section key={service.id} className="flex flex-col gap-y-4">
-								<h2 className="text-sm font-semibold text-fg">{service.name}</h2>
-								<div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-									{serviceKpiCategoryEnum.map((kpi) => {
-										const existing = kpiMap.get(`${service.id}-${kpi}`);
-										return (
-											<TextField
-												key={kpi}
-												defaultValue={existing != null ? String(existing) : undefined}
-												name={`kpis.${service.id}.${kpi}`}
-												type="number"
-											>
-												<Label className="text-xs">{formatKpi(kpi)}</Label>
-												<Input min={0} />
-											</TextField>
-										);
-									})}
-								</div>
-							</section>
-						))}
-					</div>
-					<div className="mbs-6">
-						<Button type="submit">{t("Save")}</Button>
-					</div>
-				</form>
-			)}
+			<CountryReportServicesForm
+				addAction={addCountryReportServiceAction}
+				availableServices={availableServices}
+				deleteAction={deleteCountryReportServiceAction}
+				kpiCategories={serviceKpiCategoryEnum}
+				reportId={report.id}
+				saveKpisAction={upsertCountryReportServiceKpisAction}
+				services={services}
+			/>
 
 			<ReportScreenCommentSection reportId={report.id} reportType="country" screenKey="services" />
 		</div>

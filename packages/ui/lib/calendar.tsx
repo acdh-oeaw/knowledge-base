@@ -3,7 +3,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/solid";
 import { type CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
 import { useExtracted } from "next-intl";
-import { type ReactNode, use } from "react";
+import { type ComponentProps, type ContextType, type ReactNode, use } from "react";
 import { useDateFormatter } from "react-aria";
 import {
 	CalendarCell,
@@ -13,7 +13,6 @@ import {
 	CalendarHeaderCell,
 	Calendar as CalendarPrimitive,
 	type CalendarProps as CalendarPrimitiveProps,
-	type CalendarState,
 	CalendarStateContext,
 	type DateValue,
 	Heading,
@@ -24,6 +23,8 @@ import { twMerge } from "tailwind-merge";
 
 import { Button } from "./button";
 import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger } from "./select";
+
+type CalendarContextState = NonNullable<ContextType<typeof CalendarStateContext>>;
 
 export interface CalendarProps<T extends DateValue> extends Omit<
 	CalendarPrimitiveProps<T>,
@@ -48,12 +49,12 @@ export function Calendar<T extends DateValue>({
 						<CalendarCell
 							className={composeRenderProps(className, (className, { isSelected, isDisabled }) =>
 								twMerge(
-									"relative flex block-11 inline-11 cursor-default items-center justify-center rounded-lg text-fg tabular-nums outline-hidden hover:bg-secondary-fg/15 sm:block-9 sm:inline-9 sm:text-sm/6 forced-colors:text-[ButtonText] forced-colors:outline-0",
+									"relative flex cursor-default items-center justify-center rounded-lg text-fg tabular-nums outline-hidden block-11 inline-11 hover:bg-secondary-fg/15 sm:text-sm/6 sm:block-9 sm:inline-9 forced-colors:text-[ButtonText] forced-colors:outline-0",
 									isSelected &&
-										"bg-primary text-primary-fg pressed:bg-primary hover:bg-primary/90 data-invalid:bg-danger data-invalid:text-danger-fg forced-colors:bg-[Highlight] forced-colors:text-[Highlight] forced-colors:data-invalid:bg-[Mark]",
+										"bg-primary text-primary-fg hover:bg-primary/90 data-invalid:bg-danger data-invalid:text-danger-fg forced-colors:bg-[Highlight] forced-colors:text-[Highlight] forced-colors:data-invalid:bg-[Mark] pressed:bg-primary",
 									isDisabled && "text-muted-fg forced-colors:text-[GrayText]",
 									date.compare(now) === 0 &&
-										"after:pointer-events-none after:absolute after:inset-s-1/2 after:inset-be-1 after:z-10 after:block-[3px] after:inline-[3px] after:-translate-x-1/2 after:rounded-full after:bg-primary selected:after:bg-primary-fg focus-visible:after:bg-primary-fg",
+										"after:pointer-events-none after:absolute after:inset-s-1/2 after:inset-be-1 after:z-10 after:-translate-x-1/2 after:rounded-full after:bg-primary after:block-[3px] after:inline-[3px] focus-visible:after:bg-primary-fg selected:after:bg-primary-fg",
 									className,
 								),
 							)}
@@ -70,7 +71,7 @@ export function CalendarHeader({
 	isRange,
 	className,
 	...props
-}: Readonly<React.ComponentProps<"header"> & { isRange?: boolean }>): ReactNode {
+}: Readonly<ComponentProps<"header"> & { isRange?: boolean }>): ReactNode {
 	const t = useExtracted("ui");
 	const { direction } = useLocale();
 	const state = use(CalendarStateContext)!;
@@ -78,7 +79,7 @@ export function CalendarHeader({
 	return (
 		<header
 			className={twMerge(
-				"flex inline-full justify-between gap-1.5 pbs-1 pe-1 pbe-5 ps-1.5 sm:pbe-4",
+				"flex justify-between gap-1.5 ps-1.5 pe-1 pbs-1 pbe-5 inline-full sm:pbe-4",
 				className,
 			)}
 			data-slot="calendar-header"
@@ -100,7 +101,7 @@ export function CalendarHeader({
 			<div className="flex items-center gap-1">
 				<Button
 					aria-label={t("Previous month")}
-					className="block-8 inline-8 sm:block-7 sm:inline-7 **:data-[slot=icon]:text-fg"
+					className="block-8 inline-8 **:data-[slot=icon]:text-fg sm:block-7 sm:inline-7"
 					intent="plain"
 					isCircle={true}
 					size="sq-sm"
@@ -110,7 +111,7 @@ export function CalendarHeader({
 				</Button>
 				<Button
 					aria-label={t("Next month")}
-					className="block-8 inline-8 sm:block-7 sm:inline-7 **:data-[slot=icon]:text-fg"
+					className="block-8 inline-8 **:data-[slot=icon]:text-fg sm:block-7 sm:inline-7"
 					intent="plain"
 					isCircle={true}
 					size="sq-sm"
@@ -123,7 +124,7 @@ export function CalendarHeader({
 	);
 }
 
-export function SelectMonth({ state }: Readonly<{ state: CalendarState }>): ReactNode {
+export function SelectMonth({ state }: Readonly<{ state: CalendarContextState }>): ReactNode {
 	const months = [];
 
 	const t = useExtracted("ui");
@@ -147,7 +148,7 @@ export function SelectMonth({ state }: Readonly<{ state: CalendarState }>): Reac
 			}}
 			value={state.focusedDate.month.toString()}
 		>
-			<SelectTrigger className="inline-22 text-sm/5 sm:px-2.5 sm:py-1.5 sm:*:text-sm/5 **:data-[slot=select-value]:inline-block **:data-[slot=select-value]:truncate" />
+			<SelectTrigger className="text-sm/5 inline-22 **:data-[slot=select-value]:inline-block **:data-[slot=select-value]:truncate sm:px-2.5 sm:py-1.5 sm:*:text-sm/5" />
 			<SelectContent className="min-inline-0">
 				{months.map((month, index) => (
 					<SelectItem key={index} id={(index + 1).toString()} textValue={month}>
@@ -159,7 +160,7 @@ export function SelectMonth({ state }: Readonly<{ state: CalendarState }>): Reac
 	);
 }
 
-export function SelectYear({ state }: Readonly<{ state: CalendarState }>): ReactNode {
+export function SelectYear({ state }: Readonly<{ state: CalendarContextState }>): ReactNode {
 	const t = useExtracted("ui");
 	const years: Array<{ value: CalendarDate; formatted: string }> = [];
 	const formatter = useDateFormatter({
@@ -201,7 +202,7 @@ export function CalendarGridHeader(): ReactNode {
 	return (
 		<CalendarGridHeaderPrimitive>
 			{(day) => (
-				<CalendarHeaderCell className="pbe-2 text-center font-semibold text-muted-fg text-sm/6 sm:px-0 sm:py-0.5 lg:text-xs">
+				<CalendarHeaderCell className="pbe-2 text-center text-sm/6 font-semibold text-muted-fg sm:px-0 sm:py-0.5 lg:text-xs">
 					{day}
 				</CalendarHeaderCell>
 			)}

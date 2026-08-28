@@ -3,12 +3,12 @@ import { tv } from "tailwind-variants";
 export const buttonStyles = tv({
 	base: [
 		"[--btn-border:var(--color-fg)]/15 [--btn-icon-active:var(--btn-fg)] [--btn-outline:var(--btn-bg)] [--btn-radius:calc(var(--radius-lg)-1px)] [--btn-ring:var(--btn-bg)]/20",
-		"bg-(--btn-bg) text-(--btn-fg) outline-(--btn-outline) ring-(--btn-ring) hover:bg-(--btn-overlay)",
-		"relative isolate inline-flex items-center justify-center border border-(--btn-border) font-medium hover:no-underline",
-		"focus:outline-0 focus-visible:outline focus-visible:outline-offset-2 focus-visible:ring-2 focus-visible:ring-offset-3 focus-visible:ring-offset-bg",
-		"forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText] *:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 hover:*:data-[slot=icon]:text-(--btn-icon-active)/90",
+		"bg-(--btn-bg) text-(--btn-fg) ring-(--btn-ring) outline-(--btn-outline) hover:bg-(--btn-overlay)",
+		"relative isolate inline-flex items-center justify-center border border-(--btn-border) font-medium whitespace-nowrap hover:no-underline",
+		"focus:outline-0 focus-visible:ring-2 focus-visible:ring-offset-3 focus-visible:ring-offset-bg focus-visible:outline focus-visible:outline-offset-2",
+		"*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) hover:*:data-[slot=icon]:text-(--btn-icon-active)/90 focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText]",
 		"*:data-[slot=loader]:-mx-0.5 *:data-[slot=loader]:shrink-0 *:data-[slot=loader]:self-center *:data-[slot=loader]:text-(--btn-icon)",
-		"pending:opacity-50 disabled:opacity-50 forced-colors:disabled:text-[GrayText]",
+		"disabled:opacity-50 forced-colors:disabled:text-[GrayText] pending:opacity-50",
 		"*:data-[slot=color-swatch]:-mx-0.5 *:data-[slot=color-swatch]:shrink-0 *:data-[slot=color-swatch]:self-center *:data-[slot=color-swatch]:[--color-swatch-size:--spacing(5)]",
 	],
 	variants: {
@@ -28,22 +28,22 @@ export const buttonStyles = tv({
 		},
 		size: {
 			xs: [
-				"min-block-8 gap-x-1.5 px-[calc(--spacing(3)-1px)] py-[calc(--spacing(1.5)-1px)] text-sm sm:min-block-7 sm:px-2 sm:py-[calc(--spacing(1.5)-1px)] sm:text-xs/4",
+				"gap-x-1.5 px-[calc(--spacing(3)-1px)] py-[calc(--spacing(1.5)-1px)] text-sm min-block-8 sm:px-2 sm:py-[calc(--spacing(1.5)-1px)] sm:text-xs/4 sm:min-block-7",
 				"*:data-[slot=icon]:-mx-px *:data-[slot=icon]:block-3.5 *:data-[slot=icon]:inline-3.5 sm:*:data-[slot=icon]:block-3 sm:*:data-[slot=icon]:inline-3",
 				"*:data-[slot=loader]:-mx-px *:data-[slot=loader]:block-3.5 *:data-[slot=loader]:inline-3.5 sm:*:data-[slot=loader]:block-3 sm:*:data-[slot=loader]:inline-3",
 			],
 			sm: [
-				"min-block-9 gap-x-1.5 px-3 py-[calc(--spacing(2)-1px)] sm:min-block-8 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/5",
+				"gap-x-1.5 px-3 py-[calc(--spacing(2)-1px)] min-block-9 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/5 sm:min-block-8",
 				"*:data-[slot=icon]:block-4.5 *:data-[slot=icon]:inline-4.5 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4",
 				"*:data-[slot=loader]:block-4.5 *:data-[slot=loader]:inline-4.5 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
 			],
 			md: [
-				"min-block-10 gap-x-2 px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:min-block-9 sm:px-3 sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6",
+				"gap-x-2 px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] min-block-10 sm:px-3 sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6 sm:min-block-9",
 				"*:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4",
 				"*:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
 			],
 			lg: [
-				"min-block-10 gap-x-2 px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(3)-1px)] sm:min-block-9 sm:px-3 sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/7",
+				"gap-x-2 px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(3)-1px)] min-block-10 sm:px-3 sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/7 sm:min-block-9",
 				"*:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 sm:*:data-[slot=icon]:block-4.5 sm:*:data-[slot=icon]:inline-4.5",
 				"*:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:*:data-[slot=loader]:block-4.5 sm:*:data-[slot=loader]:inline-4.5",
 			],

@@ -1,3 +1,4 @@
+import { optimizeReactAriaLocales } from "@dariah-eric/configs/nextjs/react-aria-optimize-locales";
 import type { NextConfig as Config } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
@@ -6,6 +7,12 @@ import createNextIntlPlugin from "next-intl/plugin";
  * `--experimental-next-config-strip-types` next.js cli option.
  */
 import { env } from "./config/env.config.ts";
+import { languages } from "./lib/i18n/locales.ts";
+
+const localeOptimization = optimizeReactAriaLocales([
+	{ condition: "browser", locales: [] },
+	{ condition: { not: "browser" }, locales: languages },
+]);
 
 const config: Config = {
 	allowedDevOrigins: ["127.0.0.1"],
@@ -15,16 +22,14 @@ const config: Config = {
 	experimental: {
 		authInterrupts: true,
 		globalNotFound: true,
-		rootParams: true,
 		serverActions: {
 			/**
 			 * Must be larger than `imageSizeLimit` in `config/assets.config.ts` to allow multipart
 			 * form-data overhead.
 			 */
-			bodySizeLimit: "8mb",
+			bodySizeLimit: "24mb",
 		},
-		turbopackFileSystemCacheForDev: true,
-		viewTransition: true,
+		// turbopackRustReactCompiler: true,
 	},
 	headers() {
 		const headers: Awaited<ReturnType<NonNullable<Config["headers"]>>> = [
@@ -52,20 +57,11 @@ const config: Config = {
 	serverExternalPackages: ["pdfkit"],
 	turbopack: {
 		rules: {
-			/** @see {@link https://github.com/vercel/next.js/discussions/77721#discussioncomment-14576268} */
-			"*": {
-				condition: {
-					all: [
-						"foreign",
-						"browser",
-						{
-							path: /(@react-stately|@react-aria|@react-spectrum|react-aria-components)\/.*\/[a-z]{2}-[A-Z]{2}/,
-						},
-					],
-				},
-				loaders: ["null-loader"],
-				as: "*.js",
+			"*.css": {
+				loaders: ["@tailwindcss/turbopack"],
+				as: "*.css",
 			},
+			...localeOptimization.rules,
 		},
 	},
 	// typedRoutes: true,
@@ -79,14 +75,13 @@ const plugins: Array<(config: Config) => Config> = [
 		experimental: {
 			/** @see {@link https://next-intl.dev/docs/workflows/typescript#messages-arguments} */
 			createMessagesDeclaration: ["./messages/metadata/en/index.json"],
-			extract: {
-				sourceLocale: "en",
-			},
+			extract: true,
 			messages: {
 				format: "po",
 				locales: "infer",
 				path: "./messages",
 				precompile: true,
+				sourceLocale: "en",
 			},
 			// The app imports the published ui bundle, so the extractor needs to scan it too.
 			srcPath: ["./app", "./components", "./lib", "../../packages/ui/lib"],

@@ -9,7 +9,7 @@ import { NewsItemDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/webs
 import { discardNewsItemDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/discard-news-item-draft.action";
 import { publishNewsItemAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/news/_lib/publish-news-item.action";
 import { imageGridOptions } from "@/config/assets.config";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import {
@@ -17,8 +17,12 @@ import {
 	getEntityRelations,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteNewsItemDetailsPageProps extends PageProps<"/[locale]/dashboard/website/news/[slug]/details"> {}
@@ -98,7 +102,10 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 	const newsItem = await db.query.news.findFirst({
 		where: { id: versionId },
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
+			publicationDate: true,
 			title: true,
 			summary: true,
 		},
@@ -125,10 +132,8 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 				},
 			},
 			image: {
-				columns: {
-					key: true,
-					label: true,
-				},
+				columns: selectedImageColumns,
+				with: selectedImageWith,
 			},
 		},
 	});
@@ -143,12 +148,9 @@ export default async function DashboardWebsiteNewsItemDetailsPage(
 	);
 	const entityVersionSlug = newsItem.entityVersion.slug;
 
-	const image = images.generateSignedImageUrl({
-		key: newsItem.image.key,
-		options: imageGridOptions,
-	});
+	const image = toSelectedImage(newsItem.image, imageGridOptions);
 
-	const contentBlocks = await getEntityContentBlocks(newsItem.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(newsItem.id, "content");
 
 	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(doc.id);
 

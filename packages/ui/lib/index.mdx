@@ -1,1 +1,1 @@
-# the knowledge base component library
+# dariah knowledge base component library

@@ -21,6 +21,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -39,14 +40,13 @@ interface OpportunitiesPageProps {
 				hasDraft: boolean;
 				isPublished: boolean;
 				source: Pick<schema.OpportunitySource, "id" | "source">;
-				updatedAt: schema.Entity["updatedAt"];
 			}
 		>;
 		total: number;
 	};
 	page: number;
 	q: string;
-	sort: "title" | "source" | "updatedAt";
+	sort: "duration" | "source" | "title";
 }
 
 const pageSize = dashboardPageSize;
@@ -80,7 +80,7 @@ export function OpportunitiesPage(props: Readonly<OpportunitiesPageProps>): Reac
 		<Fragment>
 			<EntityListHeader
 				title={t("Opportunities")}
-				description={t("Manage all opportunities in the knowledge base.")}
+				description={t("Manage all opportunities in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -102,18 +102,17 @@ export function OpportunitiesPage(props: Readonly<OpportunitiesPageProps>): Reac
 					<TableColumn allowsSorting={true} id="source">
 						{t("Source")}
 					</TableColumn>
-					<TableColumn>{t("Duration")}</TableColumn>
-					<TableColumn allowsSorting={true} id="updatedAt">
-						{t("Updated")}
+					<TableColumn allowsSorting={true} id="duration">
+						{t("Duration")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow href={`/dashboard/website/opportunities/${item.entity.slug}/details`}>
 							<TableCell>
-								<div className="max-inline-64 truncate">{item.title}</div>
+								<EntityListTitle title={item.title} />
 							</TableCell>
 							<TableCell>
 								<Badge intent={item.source.source === "dariah" ? "danger" : "info"}>
@@ -127,14 +126,13 @@ export function OpportunitiesPage(props: Readonly<OpportunitiesPageProps>): Reac
 										})
 									: format.dateTime(item.duration.start, { dateStyle: "short" })}
 							</TableCell>
-							<TableCell>{format.dateTime(item.updatedAt, { dateStyle: "short" })}</TableCell>
 							<TableCell>
 								<EntityLifecycleStatusBadge
 									hasDraft={item.hasDraft}
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/website/opportunities/${item.entity.slug}/details`}

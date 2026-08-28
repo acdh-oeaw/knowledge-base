@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ServiceDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/sshoc-services/_components/service-details";
+import { env } from "@/config/env.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getServiceForAdmin } from "@/lib/data/services";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -33,14 +34,15 @@ export default async function DashboardAdministratorEditServicePage(
 	const { user } = await assertAuthenticated();
 	const serviceData = await getServiceForAdmin(user, id);
 
-	if (serviceData == null) {
+	if (serviceData?.service.sshocMarketplaceId == null) {
 		notFound();
 	}
 
 	return (
 		<ServiceDetails
-			service={serviceData.service}
 			selectedOrganisationalUnitItems={serviceData.selectedOrganisationalUnits}
+			service={serviceData.service}
+			sshocMarketplaceBaseUrl={env.SSHOC_MARKETPLACE_BASE_URL ?? null}
 		/>
 	);
 }

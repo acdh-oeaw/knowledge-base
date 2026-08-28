@@ -202,7 +202,7 @@ export function ProjectPartnersSection(props: Readonly<ProjectPartnersSectionPro
 
 	return (
 		<Fragment>
-			<div className="max-inline-3xl space-y-6">
+			<div className="space-y-6 max-inline-3xl">
 				<div className="space-y-1">
 					<FormSectionTitle title={t("Project partners")} />
 				</div>
@@ -227,14 +227,14 @@ export function ProjectPartnersSection(props: Readonly<ProjectPartnersSectionPro
 							<TableColumn allowsSorting={true} id="until">
 								{t("Until")}
 							</TableColumn>
-							<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+							<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 						</TableHeader>
 						<TableBody items={table.pageItems}>
 							{(item) => (
 								<TableRow id={item.id}>
 									<TableCell>{formatValue(item.roleName)}</TableCell>
 									<TableCell>
-										<div className="max-inline-80 truncate" title={item.unitName}>
+										<div className="truncate max-inline-80" title={item.unitName}>
 											{item.unitName}
 										</div>
 									</TableCell>
@@ -250,7 +250,7 @@ export function ProjectPartnersSection(props: Readonly<ProjectPartnersSectionPro
 												? t("present")
 												: "—"}
 									</TableCell>
-									<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+									<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 										<RowActionsMenu>
 											<RowActionsMenu.Action
 												icon={<PencilSquareIcon className="me-2 block-4 inline-4" />}

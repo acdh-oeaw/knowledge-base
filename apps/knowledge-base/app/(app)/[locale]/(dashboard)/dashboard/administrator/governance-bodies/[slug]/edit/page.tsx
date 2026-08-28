@@ -20,10 +20,14 @@ import {
 	getResourceRelationOptions,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { getUnitRelationStatusOptions, getUnitRelations } from "@/lib/data/unit-relations";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorEditGovernanceBodyPageProps extends PageProps<"/[locale]/dashboard/administrator/governance-bodies/[slug]/edit"> {}
@@ -112,10 +116,8 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-						label: true,
-					},
+					columns: selectedImageColumns,
+					with: selectedImageWith,
 				},
 			},
 		}),
@@ -144,6 +146,7 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 		getEntityContentBlocks(governanceBody.id, "description"),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: governanceBody.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
 	]);
@@ -164,15 +167,7 @@ export default async function DashboardAdministratorEditGovernanceBodyPage(
 	const entityVersionSlug = governanceBody.entityVersion.slug;
 
 	const image =
-		governanceBody.image != null
-			? {
-					...governanceBody.image,
-					url: images.generateSignedImageUrl({
-						key: governanceBody.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
-			: null;
+		governanceBody.image != null ? toSelectedImage(governanceBody.image, imageGridOptions) : null;
 
 	return (
 		<GovernanceBodyEditForm

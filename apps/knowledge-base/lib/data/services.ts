@@ -9,18 +9,15 @@ import {
 	getOrganisationalUnitOptionsByDocumentIds,
 } from "@/lib/data/organisational-units";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { and, count, desc, eq, isNotNull, isNull, sql } from "@/lib/db/sql";
 import {
 	toOrganisationalUnitDocumentOption,
 	toOrganisationalUnitDocumentOptionsPage,
 } from "@/lib/organisational-unit-options";
+import { getServiceStatusLabel } from "@/lib/service-status-label";
 
 export type ServicesSort = "name" | "type" | "status" | "sshocMarketplaceId";
-type ServiceTypes = (typeof schema.serviceTypesEnum)[number];
-
-const InternalServiceTypes: Array<ServiceTypes> = ["internal"];
-const SSHOCServiceTypes: Array<ServiceTypes> = ["community", "core"];
 
 interface GetServicesParams {
 	limit: number;
@@ -52,11 +49,11 @@ function assertAdminUser(user: Pick<User, "role">): void {
 export async function getServices(params: Readonly<GetServicesParams>): Promise<ServicesResult> {
 	const { limit, offset, q, sort = "name", type, dir = "asc" } = params;
 	const query = q?.trim();
-	const serviceTypes: Array<ServiceTypes> =
-		type === "internal" ? InternalServiceTypes : SSHOCServiceTypes;
 	const where = and(
-		query != null && query !== "" ? unaccentIlike(schema.services.name, `%${query}%`) : undefined,
-		inArray(schema.serviceTypes.type, serviceTypes),
+		matchesAllTerms(query, schema.services.name),
+		type === "internal"
+			? isNull(schema.services.sshocMarketplaceId)
+			: isNotNull(schema.services.sshocMarketplaceId),
 	);
 	const orderBy =
 		sort === "type"
@@ -111,6 +108,76 @@ export async function getServices(params: Readonly<GetServicesParams>): Promise<
 		}),
 		limit,
 		offset,
+		total: aggregate.at(0)?.total ?? 0,
+	};
+}
+
+export interface ServiceOption {
+	id: string;
+	name: string;
+	/** Display line: "<type> · <status>", plus the marketplace id when the service was ingested. */
+	description: string;
+	status: string;
+	sshocMarketplaceId: string | null;
+}
+
+interface GetServiceOptionsParams {
+	limit?: number;
+	offset?: number;
+	q?: string;
+}
+
+/**
+ * Services for the admin maintenance picker. Unlike {@link getServices} this spans every type —
+ * merging an internal duplicate into a marketplace-ingested service (or the reverse) is the main
+ * reason the tool exists, so it must not be scoped to one tab's type filter.
+ */
+export async function getServiceOptions(
+	params: GetServiceOptionsParams = {},
+): Promise<{ items: Array<ServiceOption>; total: number }> {
+	const { limit = 20, offset = 0, q } = params;
+	const query = q?.trim();
+	const where = matchesAllTerms(query, schema.services.name, schema.services.sshocMarketplaceId);
+
+	const [rows, aggregate] = await Promise.all([
+		db
+			.select({
+				id: schema.services.id,
+				name: schema.services.name,
+				sshocMarketplaceId: schema.services.sshocMarketplaceId,
+				status: schema.serviceStatuses.status,
+				type: schema.serviceTypes.type,
+			})
+			.from(schema.services)
+			.innerJoin(schema.serviceTypes, eq(schema.services.typeId, schema.serviceTypes.id))
+			.innerJoin(schema.serviceStatuses, eq(schema.services.statusId, schema.serviceStatuses.id))
+			.where(where)
+			.orderBy(schema.services.name)
+			.limit(limit)
+			.offset(offset),
+		db
+			.select({ total: count() })
+			.from(schema.services)
+			.innerJoin(schema.serviceTypes, eq(schema.services.typeId, schema.serviceTypes.id))
+			.innerJoin(schema.serviceStatuses, eq(schema.services.statusId, schema.serviceStatuses.id))
+			.where(where),
+	]);
+
+	return {
+		items: rows.map((row) => {
+			const parts = [row.type, getServiceStatusLabel(row.status)];
+			if (row.sshocMarketplaceId != null) {
+				parts.push(`SSHOC ${row.sshocMarketplaceId}`);
+			}
+
+			return {
+				id: row.id,
+				name: row.name,
+				description: parts.join(" · "),
+				status: row.status,
+				sshocMarketplaceId: row.sshocMarketplaceId,
+			};
+		}),
 		total: aggregate.at(0)?.total ?? 0,
 	};
 }

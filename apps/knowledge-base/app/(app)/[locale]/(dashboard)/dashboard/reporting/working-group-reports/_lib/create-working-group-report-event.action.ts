@@ -4,7 +4,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { getExtracted } from "next-intl/server";
 
 import { CreateWorkingGroupReportEventActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_lib/create-working-group-report-event.schema";
-import { assertCan } from "@/lib/auth/permissions";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
 import { workingGroupReportRevalidatePaths } from "@/lib/data/reporting-urls";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
 
@@ -16,6 +16,10 @@ export const createWorkingGroupReportEventAction = createMutationAction({
 
 	async preCheck({ input, ctx }) {
 		await assertCan(ctx.user, "update", {
+			type: "working_group_report",
+			id: input.workingGroupReportId,
+		});
+		await assertReportEditable(ctx.user, {
 			type: "working_group_report",
 			id: input.workingGroupReportId,
 		});

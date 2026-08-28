@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
@@ -21,6 +22,7 @@ const opportunityBaseObject = v.object({
 	}),
 	entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	publishedAt: v.pipe(v.string(), v.isoTimestamp()),
+	image: ImageSchema,
 });
 
 export const OpportunityBaseSchema = v.pipe(
@@ -99,14 +101,12 @@ export const OpportunitiesQuerySchema = v.object({
 		v.description(
 			"Filter by opportunity status relative to the current time. Can be provided multiple times, e.g. `?status=upcoming&status=open`.",
 		),
-		v.metadata({ ref: "OpportunityStatusParam" }),
 	),
 	source: v.pipe(
 		v.optional(OpportunitySourceQuerySchema),
 		v.description(
 			"Filter by opportunity source. Can be provided multiple times, e.g. `?source=dariah&source=external`.",
 		),
-		v.metadata({ ref: "OpportunitySourceParam" }),
 	),
 });
 

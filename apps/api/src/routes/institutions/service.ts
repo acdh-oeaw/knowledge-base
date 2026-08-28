@@ -2,6 +2,7 @@
 
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
+import type { JSONContent } from "@tiptap/core";
 
 import { generateImageUrl, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
@@ -185,6 +186,14 @@ function countryRelationSubquery(
 		.as("country_relation");
 }
 
+/** Published institutions, regardless of their relation to DARIAH-EU. */
+function baseInstitutionFilter(): SQL | undefined {
+	return and(
+		eq(schema.organisationalUnitTypes.type, "institution"),
+		eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
+	);
+}
+
 /**
  * Narrows institutions to the requested DARIAH-EU statuses (the union of the requested values).
  * `none` matches institutions with no active partner/cooperating-partner relation, i.e. a missing
@@ -235,6 +244,8 @@ function institutionQuery(
 			ror: schema.organisationalUnits.ror,
 			slug: institutionSlugs.value,
 			logoKey: schema.assets.key,
+			logoWidth: schema.assets.width,
+			logoHeight: schema.assets.height,
 			logoAlt: schema.assets.alt,
 			logoCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
@@ -313,8 +324,10 @@ interface InstitutionRow {
 	ror: string | null;
 	slug: string;
 	logoKey: string | null;
+	logoWidth: number | null;
+	logoHeight: number | null;
 	logoAlt: string | null;
-	logoCaption: string | null;
+	logoCaption: JSONContent | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
 	status: (typeof schema.organisationalUnitStatusEnum)[number] | null;
@@ -347,6 +360,8 @@ function mapInstitutionRow(row: InstitutionRow) {
 				key: row.logoKey,
 				alt: row.logoAlt,
 				caption: row.logoCaption,
+				width: row.logoWidth,
+				height: row.logoHeight,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
 			}),
@@ -377,7 +392,9 @@ export async function getInstitutions(db: Database | Transaction, params: GetIns
 			.orderBy(desc(schema.entityVersions.updatedAt))
 			.limit(limit)
 			.offset(offset),
-		aggregate.query.where(and(aggregate.baseFilter, statusFilter(aggregate.ericRelation, status))),
+		aggregate.query.where(
+			and(baseInstitutionFilter(), statusFilter(aggregate.ericRelation, status)),
+		),
 	]);
 
 	const total = totals.at(0)?.total ?? 0;
@@ -487,7 +504,7 @@ export async function getInstitutionSlugs(
 				schema.documentLifecycle,
 				eq(schema.documentLifecycle.publishedId, schema.entityVersions.id),
 			)
-			.where(eq(schema.organisationalUnitTypes.type, "institution")),
+			.where(baseInstitutionFilter()),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;

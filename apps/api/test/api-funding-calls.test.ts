@@ -55,15 +55,18 @@ function addDays(date: Date, days: number) {
 }
 
 async function seed(db: Database, items: ReturnType<typeof createItems>) {
-	const [status, type, defaultLocale] = await Promise.all([
+	const [status, type, asset, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "funding_calls" } }),
+		db.query.assets.findFirst({ columns: { id: true } }),
 		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(type, "No entity type in database.");
+	assert(asset, "No assets in database.");
 	assert(defaultLocale, "No default locale in database.");
+
 	const localeId = defaultLocale.id;
 
 	await db.insert(schema.entities).values(
@@ -91,7 +94,11 @@ async function seed(db: Database, items: ReturnType<typeof createItems>) {
 		}),
 	);
 
-	await db.insert(schema.fundingCalls).values(items.map((item) => item.fundingCall));
+	await db.insert(schema.fundingCalls).values(
+		items.map((item) => {
+			return { ...item.fundingCall, imageId: asset.id };
+		}),
+	);
 
 	await Promise.all(items.map((item) => seedContentBlock(db, item.version.id, type.id, "content")));
 }

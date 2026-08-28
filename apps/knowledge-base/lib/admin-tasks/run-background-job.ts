@@ -2,6 +2,10 @@ import { log } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import { after } from "next/server";
 
+import {
+	type BackgroundJobError,
+	toBackgroundJobError,
+} from "@/lib/admin-tasks/background-job-error";
 import { db } from "@/lib/db";
 import { and, eq, lt, sql } from "@/lib/db/sql";
 
@@ -41,7 +45,7 @@ export async function runBackgroundJob<T>(
 		.set({
 			status: "failed",
 			finishedAt: new Date(),
-			error: "Marked as failed: exceeded stuck threshold (worker likely terminated).",
+			error: { kind: "stuck" } satisfies BackgroundJobError,
 		})
 		.where(
 			and(
@@ -77,7 +81,7 @@ export async function runBackgroundJob<T>(
 				.set({
 					status: "succeeded",
 					finishedAt: new Date(),
-					result: result as Record<string, unknown>,
+					result,
 				})
 				.where(eq(schema.backgroundJobs.id, jobId));
 		} catch (error) {
@@ -87,13 +91,7 @@ export async function runBackgroundJob<T>(
 				.set({
 					status: "failed",
 					finishedAt: new Date(),
-					error:
-						// oxlint-disable-next-line unicorn/no-instanceof-builtins
-						error instanceof Error
-							? (error.stack ?? error.message)
-							: typeof error === "string"
-								? error
-								: JSON.stringify(error),
+					error: toBackgroundJobError(error),
 				})
 				.where(eq(schema.backgroundJobs.id, jobId));
 		}

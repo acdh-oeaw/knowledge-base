@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 
 export interface AvatarProps {
@@ -31,13 +31,13 @@ export function Avatar({
 	alt = "",
 	className,
 	...props
-}: Readonly<AvatarProps & React.ComponentPropsWithoutRef<"span">>): ReactNode {
+}: Readonly<AvatarProps & ComponentPropsWithoutRef<"span">>): ReactNode {
 	return (
 		<span
 			data-slot="avatar"
 			{...props}
 			className={twMerge(
-				"inline-grid block-(--avatar-size) inline-(--avatar-size) shrink-0 align-middle outline-1 outline-fg/(--ring-opacity) -outline-offset-1 [--avatar-radius:20%] [--ring-opacity:20%] *:col-start-1 *:row-start-1 *:block-(--avatar-size) *:inline-(--avatar-size)",
+				"inline-grid shrink-0 align-middle outline-1 -outline-offset-1 outline-fg/(--ring-opacity) [--avatar-radius:20%] [--ring-opacity:20%] block-(--avatar-size) inline-(--avatar-size) *:col-start-1 *:row-start-1 *:block-(--avatar-size) *:inline-(--avatar-size)",
 				size === "xs" && "[--avatar-size:--spacing(5)]",
 				size === "sm" && "[--avatar-size:--spacing(6)]",
 				size === "md" && "[--avatar-size:--spacing(8)]",
@@ -60,7 +60,7 @@ export function Avatar({
 			{initials !== undefined && (
 				<svg
 					aria-hidden={alt ? undefined : "true"}
-					className="block-full inline-full select-none fill-current p-[5%] text-base text-[48px] uppercase"
+					className="fill-current p-[5%] text-base text-[48px] uppercase select-none block-full inline-full"
 					viewBox="0 0 100 100"
 				>
 					{alt && <title>{alt}</title>}
@@ -77,7 +77,7 @@ export function Avatar({
 				</svg>
 			)}
 			{src !== null && (
-				<img alt={alt} className="block-full inline-full object-cover object-center" src={src} />
+				<img alt={alt} className="object-cover object-center block-full inline-full" src={src} />
 			)}
 		</span>
 	);

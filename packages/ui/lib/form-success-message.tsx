@@ -20,7 +20,7 @@ export function FormSuccessMessage(props: Readonly<FormSuccessMessageProps>): Re
 			{...rest}
 			aria-atomic={true}
 			aria-live="polite"
-			className={cn(className, !isSuccessState ? "sr-only" : "text-success-subtle-fg text-sm/6")}
+			className={cn(className, !isSuccessState ? "sr-only" : "text-sm/6 text-success-subtle-fg")}
 			role="status"
 		>
 			<div key={state.id}>

@@ -1,14 +1,18 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { imageAssetWidth } from "@/config/assets.config";
+import { relationOptionsPageSize } from "@/lib/constants/relations";
+import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { and, count, desc, eq, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
+import { getEntityTypeLabel } from "@/lib/entity-type-label";
 import { images } from "@/lib/images";
 
-export type EventsSort = "title" | "updatedAt";
+export type EventsSort = "duration" | "title";
 
 interface GetEventsParams {
 	/** @default 10 */
@@ -21,18 +25,17 @@ interface GetEventsParams {
 }
 
 export async function getEvents(params: GetEventsParams) {
-	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
+	const { limit = 10, offset = 0, q, sort = "duration", dir = "desc" } = params;
 	const query = q?.trim();
-	const where =
-		query != null && query !== "" ? unaccentIlike(schema.events.title, `%${query}%`) : undefined;
+	const where = matchesAllTerms(query, schema.events.title);
 	const orderBy =
 		sort === "title"
 			? dir === "asc"
 				? schema.events.title
 				: desc(schema.events.title)
 			: dir === "asc"
-				? schema.entityVersions.updatedAt
-				: desc(schema.entityVersions.updatedAt);
+				? sql<Date>`lower(${schema.events.duration})`
+				: desc(sql<Date>`lower(${schema.events.duration})`);
 
 	const pickedVersion = sql`COALESCE(${schema.documentLifecycle.draftId}, ${schema.documentLifecycle.publishedId})`;
 
@@ -40,13 +43,13 @@ export async function getEvents(params: GetEventsParams) {
 		db
 			.select({
 				duration: schema.events.duration,
+				isFullDay: schema.events.isFullDay,
 				id: schema.events.id,
 				documentId: schema.entities.id,
 				location: schema.events.location,
 				slug: schema.slugs.value,
 				summary: schema.events.summary,
 				title: schema.events.title,
-				updatedAt: schema.entityVersions.updatedAt,
 				website: schema.events.website,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
@@ -81,6 +84,7 @@ export async function getEvents(params: GetEventsParams) {
 	const data = items.map((item) => {
 		return {
 			duration: item.duration,
+			isFullDay: item.isFullDay,
 			id: item.id,
 			documentId: item.documentId,
 			location: item.location,
@@ -88,7 +92,6 @@ export async function getEvents(params: GetEventsParams) {
 			hasDraft: item.hasDraft,
 			summary: item.summary,
 			title: item.title,
-			updatedAt: item.updatedAt,
 			isPublished: item.isPublished,
 			website: item.website,
 		};
@@ -137,9 +140,78 @@ export async function getEventById(params: GetEventByIdParams) {
 	});
 
 	const { entityVersion, ...rest } = item;
-	const data = { ...rest, entity: { slug: entityVersion.slug?.value ?? "" }, image };
+	assert(entityVersion.slug, `Event "${id}" has no slug.`);
+	const data = { ...rest, entity: { slug: entityVersion.slug.value }, image };
 
 	return data;
+}
+
+export interface EventOption {
+	description: string;
+	id: string;
+	name: string;
+}
+
+interface GetEventOptionsParams {
+	limit?: number;
+	offset?: number;
+	q?: string;
+}
+
+export async function getEventOptions(
+	params: GetEventOptionsParams = {},
+): Promise<{ items: Array<EventOption>; total: number }> {
+	const { limit = relationOptionsPageSize, offset = 0, q } = params;
+	const query = q?.trim();
+	const searchWhere = matchesAllTerms(query, schema.events.title);
+	const where = and(publishedEntityVersionWhere(), searchWhere);
+
+	const [rows, aggregate] = await Promise.all([
+		db
+			.select({ id: schema.events.id, name: schema.events.title })
+			.from(schema.events)
+			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(where)
+			.orderBy(desc(sql<Date>`lower(${schema.events.duration})`), schema.events.id)
+			.limit(limit)
+			.offset(offset),
+		db
+			.select({ total: count() })
+			.from(schema.events)
+			.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(where),
+	]);
+
+	const description = getEntityTypeLabel({ entityType: "events" });
+	const items = rows.map((item) => {
+		return { ...item, description };
+	});
+
+	return { items, total: aggregate.at(0)?.total ?? 0 };
+}
+
+export async function getEventOptionsByIds(ids: ReadonlyArray<string>) {
+	if (ids.length === 0) {
+		return [];
+	}
+
+	const rows = await db
+		.select({ id: schema.events.id, name: schema.events.title })
+		.from(schema.events)
+		.innerJoin(schema.entityVersions, eq(schema.events.id, schema.entityVersions.id))
+		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+		.where(and(publishedEntityVersionWhere(), inArray(schema.events.id, [...ids])))
+		.orderBy(schema.events.title);
+
+	const itemById = new Map(rows.map((row) => [row.id, row] as const));
+	const description = getEntityTypeLabel({ entityType: "events" });
+
+	return ids.flatMap((id) => {
+		const item = itemById.get(id);
+		return item != null ? [{ ...item, description }] : [];
+	});
 }
 
 export type EventsWithEntities = Awaited<ReturnType<typeof getEvents>>;

@@ -59,7 +59,7 @@ export function SelectContent<T extends object>(props: Readonly<SelectContentPro
 	return (
 		<PopoverContent
 			className={cx(
-				"min-inline-(--trigger-width) scroll-py-1 overflow-y-auto overscroll-contain",
+				"scroll-py-1 overflow-y-auto overscroll-contain min-inline-(--trigger-width)",
 				popover?.className,
 			)}
 			placement={popover?.placement ?? "bottom"}
@@ -67,7 +67,7 @@ export function SelectContent<T extends object>(props: Readonly<SelectContentPro
 		>
 			<AriaListBox
 				className={cx(
-					"grid max-block-96 inline-full grid-cols-[auto_1fr] flex-col gap-y-1 p-1 outline-hidden *:[[role='group']+[role=group]]:mbs-4 *:[[role='group']+[role=separator]]:mbs-1",
+					"grid grid-cols-[auto_1fr] flex-col gap-y-1 p-1 outline-hidden inline-full max-block-96 *:[[role='group']+[role=group]]:mbs-4 *:[[role='group']+[role=separator]]:mbs-1",
 					className,
 				)}
 				items={items}
@@ -80,7 +80,7 @@ export function SelectContent<T extends object>(props: Readonly<SelectContentPro
 }
 
 export interface SelectTriggerProps extends ComponentProps<typeof AriaButton> {
-	prefix?: React.ReactNode;
+	prefix?: ReactNode;
 	className?: string;
 }
 
@@ -92,15 +92,15 @@ export function SelectTrigger(props: Readonly<SelectTriggerProps>): ReactNode {
 			<AriaButton
 				className={cx(
 					[
-						"group/select-trigger flex inline-full min-inline-0 cursor-default items-center gap-x-2 rounded-lg border border-input px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-start text-fg outline-hidden transition duration-200 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6 sm:*:text-sm/6 dark:shadow-none",
+						"group/select-trigger flex cursor-default items-center gap-x-2 rounded-lg border border-input px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-start text-fg outline-hidden transition duration-200 inline-full min-inline-0 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6 sm:*:text-sm/6 dark:shadow-none",
 						"group-disabled/select:opacity-50 forced-colors:group-disabled/select:border-[GrayText] forced-colors:group-disabled/select:text-[GrayText]",
 						"focus:border-ring/70 focus:bg-primary-subtle/5 focus:ring-3 focus:ring-ring/20",
-						"hover:border-muted-fg/30 group-hover/select:invalid:border-danger-subtle-fg/70",
+						"group-hover/select:invalid:border-danger-subtle-fg/70 hover:border-muted-fg/30",
 						"group-open/select:border-ring/70 group-open/select:bg-primary-subtle/5 group-open/select:ring-3 group-open/select:ring-ring/20 group-open/select:hover:border-ring/70",
-						"group-invalid/select:border-danger-subtle-fg/70 group-invalid/select:bg-danger-subtle/5 group-invalid/select:ring-danger-subtle-fg/20 group-invalid/select:hover:border-danger-subtle-fg/70 group-open/select:invalid:border-danger-subtle-fg/70 group-open/select:invalid:bg-danger-subtle/5 group-open/select:invalid:ring-3 group-open/select:invalid:ring-danger-subtle-fg/20 group-focus/select:group-invalid/select:border-danger-subtle-fg/70 group-focus/select:group-invalid/select:ring-danger-subtle-fg/20",
-						"forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText] *:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) pressed:*:data-[slot=icon]:text-(--btn-icon-active) focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 hover:*:data-[slot=icon]:text-(--btn-icon-active)/90 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4",
-						"*:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 *:data-[slot=loader]:shrink-0 *:data-[slot=loader]:self-center *:data-[slot=loader]:text-(--btn-icon) sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
-						"forced-colors:group-focus/select:border-[Highlight] forced-colors:group-focus/select:group-invalid/select:border-[Mark] forced-colors:group-invalid/select:border-[Mark]",
+						"group-invalid/select:border-danger-subtle-fg/70 group-invalid/select:bg-danger-subtle/5 group-invalid/select:ring-danger-subtle-fg/20 group-invalid/select:hover:border-danger-subtle-fg/70 group-focus/select:group-invalid/select:border-danger-subtle-fg/70 group-focus/select:group-invalid/select:ring-danger-subtle-fg/20 group-open/select:invalid:border-danger-subtle-fg/70 group-open/select:invalid:bg-danger-subtle/5 group-open/select:invalid:ring-3 group-open/select:invalid:ring-danger-subtle-fg/20",
+						"*:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) *:data-[slot=icon]:block-5 *:data-[slot=icon]:inline-5 hover:*:data-[slot=icon]:text-(--btn-icon-active)/90 focus-visible:*:data-[slot=icon]:text-(--btn-icon-active)/80 sm:*:data-[slot=icon]:block-4 sm:*:data-[slot=icon]:inline-4 forced-colors:[--btn-icon:ButtonText] forced-colors:hover:[--btn-icon:ButtonText] pressed:*:data-[slot=icon]:text-(--btn-icon-active)",
+						"*:data-[slot=loader]:shrink-0 *:data-[slot=loader]:self-center *:data-[slot=loader]:text-(--btn-icon) *:data-[slot=loader]:block-5 *:data-[slot=loader]:inline-5 sm:*:data-[slot=loader]:block-4 sm:*:data-[slot=loader]:inline-4",
+						"forced-colors:group-invalid/select:border-[Mark] forced-colors:group-focus/select:border-[Highlight] forced-colors:group-focus/select:group-invalid/select:border-[Mark]",
 					],
 					className,
 				)}
@@ -124,7 +124,7 @@ export function SelectTrigger(props: Readonly<SelectTriggerProps>): ReactNode {
 									data-slot="select-value"
 								/>
 								<ChevronUpDownIcon
-									className="-me-1 ms-auto block-5 inline-5 text-muted-fg sm:block-4 sm:inline-4"
+									className="ms-auto -me-1 text-muted-fg block-5 inline-5 sm:block-4 sm:inline-4"
 									data-slot="chevron"
 								/>
 							</Fragment>

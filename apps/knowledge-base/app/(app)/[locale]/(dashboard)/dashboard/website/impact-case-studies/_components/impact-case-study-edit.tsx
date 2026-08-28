@@ -1,7 +1,9 @@
 "use client";
 
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { TabList, TabPanel } from "@dariah-eric/ui/tabs";
+import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,6 +14,8 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-edit-tabs";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { ArticleContributorsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/_components/article-contributors-section";
 import { ImpactCaseStudyForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_components/impact-case-study-form";
 import { createImpactCaseStudyContributorAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_lib/create-impact-case-study-contributor.action";
@@ -27,9 +31,15 @@ interface ImpactCaseStudyEditFormProps {
 	documentId: string;
 	hasDraftChanges: boolean;
 	isPublished: boolean;
-	impactCaseStudy: Pick<schema.ImpactCaseStudy, "id" | "title" | "summary"> & {
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
+	impactCaseStudy: Pick<schema.ImpactCaseStudy, "id" | "publicationDate" | "title" | "summary"> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } };
+	} & {
+		image: SelectedImage;
+		imageCaption: JSONContent | null;
+		imageCaptionMode: ImageCaptionMode;
+	};
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -50,6 +60,8 @@ export function ImpactCaseStudyEditForm(props: Readonly<ImpactCaseStudyEditFormP
 		documentId,
 		hasDraftChanges,
 		isPublished,
+		locales,
+		selectedLocaleCode,
 		impactCaseStudy,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -82,7 +94,8 @@ export function ImpactCaseStudyEditForm(props: Readonly<ImpactCaseStudyEditFormP
 					id="details"
 					shouldPreserveState={true}
 				>
-					<div className="flex justify-end">
+					<div className="flex items-center justify-end gap-x-4">
+						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
 							discardDraftAction={discardImpactCaseStudyDraftAction}
 							documentId={documentId}
@@ -94,6 +107,7 @@ export function ImpactCaseStudyEditForm(props: Readonly<ImpactCaseStudyEditFormP
 
 					<ImpactCaseStudyForm
 						contentBlocks={contentBlocks}
+						isPublished={isPublished}
 						formAction={updateImpactCaseStudyAction}
 						formId={formId}
 						impactCaseStudy={impactCaseStudy}

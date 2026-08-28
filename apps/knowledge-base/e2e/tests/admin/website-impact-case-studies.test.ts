@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { expectDetailsTermsInOrder } from "@/e2e/lib/fixtures/details-order";
 import { expect, test } from "@/e2e/lib/test";
 
 test.describe("website impact case studies admin", () => {
@@ -16,6 +17,7 @@ test.describe("website impact case studies admin", () => {
 
 	test.afterAll(async ({ db }, testInfo) => {
 		await db.cleanupWorkerImpactCaseStudies(testInfo.workerIndex);
+		await db.cleanupWorkerPersons(testInfo.workerIndex);
 	});
 
 	test("should create an impact case study", async ({ createWebsiteImpactCaseStudiesPage, db }) => {
@@ -31,6 +33,7 @@ test.describe("website impact case studies admin", () => {
 
 		await impactCaseStudiesPage.fillTitle(title);
 		await impactCaseStudiesPage.fillSummary(summary);
+		await impactCaseStudiesPage.fillPublicationDate(2025, 1, 15);
 		await impactCaseStudiesPage.selectImageFromMediaLibrary("E2E Test Asset");
 		await impactCaseStudiesPage.addContentBlock(content);
 
@@ -40,10 +43,23 @@ test.describe("website impact case studies admin", () => {
 		await expect(impactCaseStudiesPage.rowByTitle(title)).toBeVisible();
 
 		const created = await db.getImpactCaseStudyByTitle(title);
-		expect(created).toMatchObject({ imageId: testAsset.id, summary });
+		expect(created).toMatchObject({
+			imageId: testAsset.id,
+			publicationDate: new Date("2025-01-15T00:00:00.000Z"),
+			summary,
+		});
 		const contentBlocks = await db.getImpactCaseStudyContentBlocksByTitle(title);
 		expect(contentBlocks).toHaveLength(1);
 		expect(JSON.stringify(contentBlocks[0]!.content)).toContain(content);
+
+		await impactCaseStudiesPage.gotoDetailsFromList(title);
+		await expectDetailsTermsInOrder(impactCaseStudiesPage.page, [
+			"Image",
+			"Contributors",
+			"Content",
+			"Related entities",
+			"Related resources",
+		]);
 	});
 
 	test("should edit an impact case study title", async ({
@@ -78,6 +94,7 @@ test.describe("website impact case studies admin", () => {
 		const testAsset = await db.getTestAsset();
 		await page.getByLabel("Title").fill(updatedTitle);
 		await impactCaseStudiesPage.fillSummary(updatedSummary);
+		await impactCaseStudiesPage.fillPublicationDate(2026, 2, 16);
 		await impactCaseStudiesPage.selectImageFromMediaLibrary("E2E Test Asset");
 		await impactCaseStudiesPage.updateContentBlockText(updatedContent);
 
@@ -89,7 +106,11 @@ test.describe("website impact case studies admin", () => {
 		await expect(impactCaseStudiesPage.rowByTitle(originalTitle)).toBeHidden();
 
 		const updated = await db.getImpactCaseStudyByTitle(updatedTitle);
-		expect(updated).toMatchObject({ imageId: testAsset.id, summary: updatedSummary });
+		expect(updated).toMatchObject({
+			imageId: testAsset.id,
+			publicationDate: new Date("2026-02-16T00:00:00.000Z"),
+			summary: updatedSummary,
+		});
 		const contentBlocks = await db.getImpactCaseStudyContentBlocksByTitle(updatedTitle);
 		expect(contentBlocks).toHaveLength(1);
 		expect(JSON.stringify(contentBlocks[0]!.content)).toContain(updatedContent);
@@ -124,7 +145,77 @@ test.describe("website impact case studies admin", () => {
 		expect(await db.getImpactCaseStudyContentBlocksByTitle(title)).toHaveLength(0);
 	});
 
-	test("should delete an impact case study", async ({ createWebsiteImpactCaseStudiesPage }) => {
+	test("should show contributors on the details screen", async ({
+		createWebsiteImpactCaseStudiesPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const impactCaseStudiesPage = createWebsiteImpactCaseStudiesPage(workerIndex);
+
+		/**
+		 * Two contributors whose insertion order is the reverse of their sort order, so the assertion
+		 * below pins the `sortName` ordering rather than passing on insertion order by accident.
+		 */
+		const lastPerson = {
+			name: `${impactCaseStudiesPage.workerPrefix} Zeta Contributor ${randomUUID()}`,
+			slug: `e2e-impact-contributor-zeta-${randomUUID()}`,
+		};
+		const firstPerson = {
+			name: `${impactCaseStudiesPage.workerPrefix} Alpha Contributor ${randomUUID()}`,
+			slug: `e2e-impact-contributor-alpha-${randomUUID()}`,
+		};
+		await db.createPublishedPerson({
+			name: lastPerson.name,
+			sortName: `${impactCaseStudiesPage.workerPrefix} Zzz ${randomUUID()}`,
+			slug: lastPerson.slug,
+		});
+		await db.createPublishedPerson({
+			name: firstPerson.name,
+			sortName: `${impactCaseStudiesPage.workerPrefix} Aaa ${randomUUID()}`,
+			slug: firstPerson.slug,
+		});
+
+		const title = `${impactCaseStudiesPage.workerPrefix} Contributors ${randomUUID()}`;
+		await impactCaseStudiesPage.gotoCreate();
+		await impactCaseStudiesPage.fillTitle(title);
+		await impactCaseStudiesPage.fillSummary("E2E impact case study with contributors");
+		await impactCaseStudiesPage.selectImageFromMediaLibrary("E2E Test Asset");
+		await impactCaseStudiesPage.submitForm();
+
+		await impactCaseStudiesPage.searchByTitle(title);
+		await impactCaseStudiesPage.gotoDetailsFromList(title);
+
+		// The row is rendered even with no contributors, so its absence would fail here rather than
+		// silently passing the assertions below.
+		await expect(impactCaseStudiesPage.detailsContributors()).toBeEmpty();
+
+		await impactCaseStudiesPage.gotoEditFromDetails();
+		await impactCaseStudiesPage.goToContributorsTab();
+		await impactCaseStudiesPage.addContributor(lastPerson.name, "Author");
+		await impactCaseStudiesPage.addContributor(firstPerson.name, "Editor");
+
+		await impactCaseStudiesPage.goto();
+		await impactCaseStudiesPage.searchByTitle(title);
+		await impactCaseStudiesPage.gotoDetailsFromList(title);
+
+		const contributors = impactCaseStudiesPage.detailsContributors().getByRole("listitem");
+		await expect(contributors).toHaveCount(2);
+		await expect(contributors.nth(0)).toContainText(firstPerson.name);
+		await expect(contributors.nth(1)).toContainText(lastPerson.name);
+
+		await expect(impactCaseStudiesPage.detailsContributor(lastPerson.name)).toContainText("author");
+		await expect(impactCaseStudiesPage.detailsContributor(firstPerson.name)).toContainText(
+			"editor",
+		);
+
+		// The link proves the person's slug was resolved from the contributor edge, not just the name.
+		await expect(impactCaseStudiesPage.detailsContributorLink(firstPerson.name)).toHaveAttribute(
+			"href",
+			new RegExp(`/dashboard/administrator/persons/${firstPerson.slug}/details$`),
+		);
+	});
+
+	test("should delete an impact case study", async ({ createWebsiteImpactCaseStudiesPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const impactCaseStudiesPage = createWebsiteImpactCaseStudiesPage(workerIndex);
 
@@ -138,10 +229,20 @@ test.describe("website impact case studies admin", () => {
 		await impactCaseStudiesPage.searchByTitle(title);
 		await expect(impactCaseStudiesPage.rowByTitle(title)).toBeVisible();
 
+		const created = await db.getImpactCaseStudyByTitle(title);
+		expect(created).not.toBeNull();
+
 		const deleteDialog = await impactCaseStudiesPage.openDeleteDialog(title);
 		await expect(deleteDialog).toBeVisible();
 		await impactCaseStudiesPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(impactCaseStudiesPage.rowByTitle(title)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getImpactCaseStudyByTitle(title)).toBeNull();
 	});
 });

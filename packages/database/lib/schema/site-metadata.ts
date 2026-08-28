@@ -5,6 +5,18 @@ import { createInsertSchema, createSelectSchema, createUpdateSchema } from "driz
 import * as f from "../fields";
 import { assets } from "./assets";
 
+/**
+ * Shape of the `featured_item_ids` jsonb column: ordered entity-version ids featured on the public
+ * landing page, grouped by landing-page section. The `news` section renders announcement items
+ * (news, opportunities, funding calls). Each list is capped in the dashboard UI.
+ */
+export interface FeaturedItems {
+	news: Array<string>;
+	events: Array<string>;
+}
+
+export const emptyFeaturedItems: FeaturedItems = { news: [], events: [] };
+
 export const siteMetadata = p.snakeCase.table(
 	"site_metadata",
 	{
@@ -14,7 +26,7 @@ export const siteMetadata = p.snakeCase.table(
 		ogTitle: p.text("og_title"),
 		ogDescription: p.text("og_description"),
 		ogImageId: p.uuid("og_image_id").references(() => assets.id),
-		featuredItemIds: p.jsonb("featured_item_ids"),
+		featuredItemIds: p.jsonb("featured_item_ids").$type<FeaturedItems>(),
 		...f.timestamps(),
 	},
 	(t) => [p.check("site_metadata_singleton", sql`${t.id} = 1`)],

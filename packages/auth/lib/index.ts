@@ -19,7 +19,7 @@ import { hash, verify } from "@node-rs/argon2";
 import { decodeBase64, encodeBase32UpperCaseNoPadding, encodeBase64 } from "@oslojs/encoding";
 import { createTOTPKeyURI, verifyTOTP } from "@oslojs/otp";
 
-import { InvalidUserIdError } from "./errors";
+import { ImpersonationNotAllowedError, InvalidUserIdError } from "./errors";
 
 interface CookieConfig {
 	name: string;
@@ -48,6 +48,13 @@ interface AuthServiceConfig {
 	};
 	sessions: {
 		cookie: CookieConfig;
+		impersonation: {
+			/**
+			 * Bounded independently of the session lifetime, and much shorter, so that acting as someone
+			 * else cannot persist indefinitely on an otherwise long-lived session.
+			 */
+			durationMs: number;
+		};
 	};
 }
 
@@ -96,16 +103,33 @@ export interface User extends Pick<
 export interface Session extends Pick<
 	schema.Session,
 	"id" | "secretHash" | "expiresAt" | "isTwoFactorVerified"
-> {}
+> {
+	impersonatedUserId: string | null;
+	impersonationExpiresAt: Date | null;
+}
 
 export interface AuthenticatedSession {
 	session: Session;
+	/**
+	 * The _effective_ user: the impersonated user while impersonating, the account holder otherwise.
+	 * Authorisation and UI should read this, so that impersonation is reproduced faithfully -- an
+	 * admin acting as a national coordinator also loses their admin privileges for the duration.
+	 */
 	user: User;
+	/**
+	 * The account that actually authenticated; identical to `user` when not impersonating. Anything
+	 * concerning the credential itself -- two-factor state, email verification, account settings --
+	 * must read this instead.
+	 */
+	realUser: User;
+	isImpersonating: boolean;
 }
 
 export interface UnauthenticatedSession {
 	session: null;
 	user: null;
+	realUser: null;
+	isImpersonating: false;
 }
 
 export type SessionValidationResult = AuthenticatedSession | UnauthenticatedSession;
@@ -177,6 +201,28 @@ async function generatePasswordHash(password: string): Promise<string> {
 	});
 }
 
+/** The columns making up a {@link User}. */
+function userColumns() {
+	return {
+		id: schema.users.id,
+		email: schema.users.email,
+		name: schema.users.name,
+		role: schema.users.role,
+		canManageAdmins: schema.users.canManageAdmins,
+		isEmailVerified: schema.users.isEmailVerified,
+		personDocumentId: schema.users.personDocumentId,
+		organisationalUnitDocumentId: schema.users.organisationalUnitDocumentId,
+		isTwoFactorRegistered: sql<boolean>`${schema.users.twoFactorTotpKey} IS NOT NULL`,
+	};
+}
+
+const unauthenticated: UnauthenticatedSession = {
+	session: null,
+	user: null,
+	realUser: null,
+	isImpersonating: false,
+};
+
 export async function createUserWithPassword(params: CreateUserWithPasswordParams): Promise<User> {
 	const { db, email, encryptionKey, name, password } = params;
 
@@ -191,17 +237,7 @@ export async function createUserWithPassword(params: CreateUserWithPasswordParam
 			name,
 			twoFactorRecoveryCode,
 		})
-		.returning({
-			id: schema.users.id,
-			email: schema.users.email,
-			name: schema.users.name,
-			role: schema.users.role,
-			canManageAdmins: schema.users.canManageAdmins,
-			isEmailVerified: schema.users.isEmailVerified,
-			personDocumentId: schema.users.personDocumentId,
-			organisationalUnitDocumentId: schema.users.organisationalUnitDocumentId,
-			isTwoFactorRegistered: sql<boolean>`${schema.users.twoFactorTotpKey} IS NOT NULL`,
-		});
+		.returning(userColumns());
 
 	if (user == null) {
 		throw new DatabaseError({ message: "Failed to create user" });
@@ -268,6 +304,8 @@ export function createAuthService(params: CreateAuthServiceParams) {
 				secretHash: schema.sessions.secretHash,
 				expiresAt: schema.sessions.expiresAt,
 				isTwoFactorVerified: schema.sessions.isTwoFactorVerified,
+				impersonatedUserId: schema.sessions.impersonatedUserId,
+				impersonationExpiresAt: schema.sessions.impersonationExpiresAt,
 			});
 
 		if (session == null) {
@@ -279,6 +317,8 @@ export function createAuthService(params: CreateAuthServiceParams) {
 			secretHash: session.secretHash,
 			expiresAt: session.expiresAt,
 			isTwoFactorVerified: session.isTwoFactorVerified,
+			impersonatedUserId: session.impersonatedUserId,
+			impersonationExpiresAt: session.impersonationExpiresAt,
 			token,
 		};
 	}
@@ -288,13 +328,13 @@ export function createAuthService(params: CreateAuthServiceParams) {
 		const [id, secret] = segments;
 
 		if (segments.length !== 2 || id == null || secret == null) {
-			return { session: null, user: null };
+			return unauthenticated;
 		}
 
 		const result = await getSession(id);
 
 		if (result.session == null) {
-			return { session: null, user: null };
+			return unauthenticated;
 		}
 
 		const secretHash = hashSessionSecret(secret);
@@ -304,7 +344,7 @@ export function createAuthService(params: CreateAuthServiceParams) {
 		if (!isValidSession) {
 			await deleteSessionCookie();
 
-			return { session: null, user: null };
+			return unauthenticated;
 		}
 
 		return result;
@@ -315,22 +355,14 @@ export function createAuthService(params: CreateAuthServiceParams) {
 
 		const [result] = await db
 			.select({
-				user: {
-					id: schema.users.id,
-					email: schema.users.email,
-					name: schema.users.name,
-					role: schema.users.role,
-					canManageAdmins: schema.users.canManageAdmins,
-					isEmailVerified: schema.users.isEmailVerified,
-					personDocumentId: schema.users.personDocumentId,
-					organisationalUnitDocumentId: schema.users.organisationalUnitDocumentId,
-					isTwoFactorRegistered: sql<boolean>`${schema.users.twoFactorTotpKey} IS NOT NULL`,
-				},
+				realUser: userColumns(),
 				session: {
 					id: schema.sessions.id,
 					secretHash: schema.sessions.secretHash,
 					expiresAt: schema.sessions.expiresAt,
 					isTwoFactorVerified: schema.sessions.isTwoFactorVerified,
+					impersonatedUserId: schema.sessions.impersonatedUserId,
+					impersonationExpiresAt: schema.sessions.impersonationExpiresAt,
 				},
 			})
 			.from(schema.sessions)
@@ -338,13 +370,13 @@ export function createAuthService(params: CreateAuthServiceParams) {
 			.where(eq(schema.sessions.id, id));
 
 		if (result == null) {
-			return { session: null, user: null };
+			return unauthenticated;
 		}
 
 		if (now >= result.session.expiresAt.getTime()) {
 			await deleteSession(result.session.id);
 
-			return { session: null, user: null };
+			return unauthenticated;
 		}
 
 		// TODO: inactivity timeout
@@ -357,7 +389,50 @@ export function createAuthService(params: CreateAuthServiceParams) {
 				.where(eq(schema.sessions.id, result.session.id));
 		}
 
-		return result;
+		/**
+		 * Resolved separately rather than by joining an alias of `users`: the extra roundtrip is only
+		 * paid while impersonating, and it keeps the impersonated user honestly nullable instead of
+		 * relying on left-join null-collapsing, which a computed column like `isTwoFactorRegistered`
+		 * (`false`, never null, for a missing row) would quietly defeat.
+		 */
+		let impersonatedUser =
+			result.session.impersonatedUserId == null
+				? null
+				: await getUserById(result.session.impersonatedUserId);
+
+		if (impersonatedUser != null) {
+			const hasLapsed =
+				result.session.impersonationExpiresAt == null ||
+				now >= result.session.impersonationExpiresAt.getTime();
+
+			/**
+			 * Re-authorised on every request rather than only at the point it starts, so that demoting an
+			 * admin -- or promoting the person they are acting as -- ends live impersonations without
+			 * anyone having to hunt down sessions to revoke.
+			 */
+			const isNoLongerPermitted =
+				result.realUser.role !== "admin" || impersonatedUser.role === "admin";
+
+			if (hasLapsed || isNoLongerPermitted) {
+				/**
+				 * Fails closed, but softly: a lapsed impersonation drops the admin back into their own
+				 * account rather than invalidating the session. Being silently signed out mid-form is worse
+				 * than being silently un-impersonated, which the UI banner makes visible anyway.
+				 */
+				await clearImpersonation(result.session.id);
+
+				result.session.impersonatedUserId = null;
+				result.session.impersonationExpiresAt = null;
+				impersonatedUser = null;
+			}
+		}
+
+		return {
+			session: result.session,
+			user: impersonatedUser ?? result.realUser,
+			realUser: result.realUser,
+			isImpersonating: impersonatedUser != null,
+		};
 	}
 
 	async function deleteSession(id: string): Promise<void> {
@@ -366,6 +441,79 @@ export function createAuthService(params: CreateAuthServiceParams) {
 
 	async function deleteUserSessions(userId: string): Promise<void> {
 		await db.delete(schema.sessions).where(eq(schema.sessions.userId, userId));
+
+		/** "Sign out everywhere" has to mean everywhere, including admins currently acting as them. */
+		await clearImpersonationOfUser(userId);
+	}
+
+	async function clearImpersonation(sessionId: string): Promise<void> {
+		await db
+			.update(schema.sessions)
+			.set({ impersonatedUserId: null, impersonationExpiresAt: null })
+			.where(eq(schema.sessions.id, sessionId));
+	}
+
+	async function clearImpersonationOfUser(userId: string): Promise<void> {
+		await db
+			.update(schema.sessions)
+			.set({ impersonatedUserId: null, impersonationExpiresAt: null })
+			.where(eq(schema.sessions.impersonatedUserId, userId));
+	}
+
+	/**
+	 * Re-points an existing session at another user. Deliberately issues no new token and touches no
+	 * cookie: the admin's credential is unchanged, so impersonation adds nothing new to steal and can
+	 * be revoked with a single `UPDATE`.
+	 */
+	async function startImpersonation(sessionId: string, targetUserId: string): Promise<void> {
+		const current = await getSession(sessionId);
+
+		if (current.session == null) {
+			throw new ImpersonationNotAllowedError({ reason: "no_session" });
+		}
+
+		if (current.isImpersonating) {
+			throw new ImpersonationNotAllowedError({ reason: "already_impersonating" });
+		}
+
+		if (current.realUser.role !== "admin") {
+			throw new ImpersonationNotAllowedError({ reason: "not_admin" });
+		}
+
+		/** Impersonation inherits the session's trust level, so the admin's own step-up must be done. */
+		if (!current.session.isTwoFactorVerified) {
+			throw new ImpersonationNotAllowedError({ reason: "two_factor_required" });
+		}
+
+		if (current.realUser.id === targetUserId) {
+			throw new ImpersonationNotAllowedError({ reason: "self" });
+		}
+
+		const [target] = await db
+			.select({ id: schema.users.id, role: schema.users.role })
+			.from(schema.users)
+			.where(eq(schema.users.id, targetUserId));
+
+		if (target == null) {
+			throw new InvalidUserIdError({ id: targetUserId, message: "Invalid user" });
+		}
+
+		/** Admin-on-admin impersonation would turn the audit trail into a laundering device. */
+		if (target.role === "admin") {
+			throw new ImpersonationNotAllowedError({ reason: "target_is_admin" });
+		}
+
+		await db
+			.update(schema.sessions)
+			.set({
+				impersonatedUserId: target.id,
+				impersonationExpiresAt: new Date(Date.now() + config.sessions.impersonation.durationMs),
+			})
+			.where(eq(schema.sessions.id, sessionId));
+	}
+
+	async function stopImpersonation(sessionId: string): Promise<void> {
+		await clearImpersonation(sessionId);
 	}
 
 	async function setSessionCookie(token: string, expiresAt: Date): Promise<void> {
@@ -387,7 +535,7 @@ export function createAuthService(params: CreateAuthServiceParams) {
 		const token = await getSessionCookie();
 
 		if (token == null) {
-			return { session: null, user: null };
+			return unauthenticated;
 		}
 
 		const session = await validateSessionToken(token);
@@ -404,17 +552,7 @@ export function createAuthService(params: CreateAuthServiceParams) {
 
 	async function getUserByEmail(email: string): Promise<User | null> {
 		const [user] = await db
-			.select({
-				id: schema.users.id,
-				email: schema.users.email,
-				name: schema.users.name,
-				role: schema.users.role,
-				canManageAdmins: schema.users.canManageAdmins,
-				isEmailVerified: schema.users.isEmailVerified,
-				personDocumentId: schema.users.personDocumentId,
-				organisationalUnitDocumentId: schema.users.organisationalUnitDocumentId,
-				isTwoFactorRegistered: sql<boolean>`${schema.users.twoFactorTotpKey} IS NOT NULL`,
-			})
+			.select(userColumns())
 			.from(schema.users)
 			.where(eq(schema.users.email, email));
 
@@ -423,6 +561,12 @@ export function createAuthService(params: CreateAuthServiceParams) {
 		}
 
 		return user;
+	}
+
+	async function getUserById(id: string): Promise<User | null> {
+		const [user] = await db.select(userColumns()).from(schema.users).where(eq(schema.users.id, id));
+
+		return user ?? null;
 	}
 
 	async function getUserPasswordHash(userId: string): Promise<string> {
@@ -552,9 +696,10 @@ export function createAuthService(params: CreateAuthServiceParams) {
 	async function getEmailVerificationRequestFromRequest(): Promise<
 		(EmailVerificationRequest & { token: string }) | null
 	> {
-		const { user } = await getCurrentSession();
+		/** Email verification is about the credential, so it always concerns the authenticated account. */
+		const { realUser } = await getCurrentSession();
 
-		if (user == null) {
+		if (realUser == null) {
 			return null;
 		}
 
@@ -564,7 +709,7 @@ export function createAuthService(params: CreateAuthServiceParams) {
 			return null;
 		}
 
-		const request = await getEmailVerificationRequest(user.id, token);
+		const request = await getEmailVerificationRequest(realUser.id, token);
 
 		if (request == null) {
 			await deleteEmailVerificationRequestCookie();
@@ -927,12 +1072,16 @@ export function createAuthService(params: CreateAuthServiceParams) {
 		validateSessionToken,
 		deleteSession,
 		deleteUserSessions,
+		startImpersonation,
+		stopImpersonation,
+		clearImpersonationOfUser,
 		setSessionTwoFactorVerified,
 		setSessionCookie,
 		deleteSessionCookie,
 		getSessionCookie,
 		getCurrentSession,
 		getUserByEmail,
+		getUserById,
 		getUserPasswordHash,
 		updatePassword,
 		verifyPasswordHash,

@@ -92,10 +92,10 @@ export function AssetPreview(props: Readonly<AssetPreviewProps>): ReactNode {
 			role="img"
 		>
 			<div className="flex flex-col items-center gap-2">
-				<FallbackIcon aria-hidden={true} className="block-8 inline-8 shrink-0" />
+				<FallbackIcon aria-hidden={true} className="shrink-0 block-8 inline-8" />
 				<span
 					className={cn(
-						"rounded-full border border-border bg-bg px-2 py-0.5 font-medium text-[10px] tracking-wide",
+						"rounded-full border border-border bg-bg px-2 py-0.5 text-[10px] font-medium tracking-wide",
 						kindLabelClassName,
 					)}
 				>

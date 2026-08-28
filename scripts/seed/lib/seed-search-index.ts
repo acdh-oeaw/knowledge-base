@@ -29,7 +29,8 @@ export async function seed(client: Client, config: SeedConfig = {}): Promise<voi
 				label: f.lorem.sentence(),
 				description: f.lorem.paragraphs(2, "\n\n"),
 				keywords: f.helpers.multiple(() => f.lorem.word(), { count: { min: 3, max: 8 } }),
-				links: f.helpers.multiple(() => f.internet.url(), { count: { min: 1, max: 3 } }),
+				source_url: f.helpers.maybe(() => f.internet.url(), { probability: 0.8 }) ?? null,
+				links: f.helpers.multiple(() => f.internet.url(), { count: { min: 0, max: 3 } }),
 			} satisfies Partial<ResourceDocument>;
 
 			switch (type) {
@@ -37,7 +38,7 @@ export async function seed(client: Client, config: SeedConfig = {}): Promise<voi
 					return {
 						...document,
 						type,
-						source: f.helpers.arrayElement(["zotero"]),
+						source: f.helpers.arrayElement(["open-aire", "zotero"]),
 						source_id: f.string.alphanumeric(12),
 						national_consortia: [],
 						working_groups: [],

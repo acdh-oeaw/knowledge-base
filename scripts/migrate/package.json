@@ -5,11 +5,20 @@
 	"type": "module",
 	"sideEffects": false,
 	"scripts": {
+		"data:clean:wordpress": "tsx ./scripts/clean-wordpress-content.ts",
+		"data:migrate:clamp-image-resolution": "tsx ./scripts/clamp-image-resolution.ts",
 		"data:migrate:clariah-at": "tsx ./scripts/migrate-clariah-at-website.ts",
+		"data:migrate:fix-event-durations": "tsx ./scripts/fix-event-durations.ts",
+		"data:migrate:get-unr-schema": "drizzle-kit introspect --config=./config/unr-db.config.ts",
+		"data:migrate:legacy-footnotes": "tsx ./scripts/convert-legacy-footnotes.ts",
+		"data:migrate:unr": "tsx ./scripts/migrate-unr.ts",
+		"data:migrate:wordpress": "tsx ./scripts/migrate-wordpress.ts",
+		"data:migrate:wordpress-news-item": "tsx ./scripts/migrate-wordpress-news-item.ts",
 		"format:check": "oxfmt --check",
 		"format:fix": "oxfmt --write",
 		"lint:check": "oxlint --report-unused-disable-directives --type-aware --type-check",
 		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
+		"test": "vitest run",
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -20,11 +29,13 @@
 		"@sindresorhus/slugify": "catalog:",
 		"@tiptap/core": "catalog:",
 		"@tiptap/extension-image": "catalog:",
+		"@tiptap/extension-table": "catalog:",
 		"@tiptap/html": "catalog:",
 		"@tiptap/starter-kit": "catalog:",
 		"drizzle-orm": "catalog:",
 		"hast-util-to-text": "catalog:",
 		"rehype-parse": "catalog:",
+		"sharp": "catalog:",
 		"unified": "catalog:",
 		"valibot": "catalog:"
 	},
@@ -34,6 +45,7 @@
 		"drizzle-kit": "catalog:",
 		"tsx": "catalog:",
 		"typescript": "catalog:",
+		"vitest": "catalog:",
 		"wp-types": "catalog:"
 	},
 	"engines": {

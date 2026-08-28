@@ -29,7 +29,7 @@ export function ListBox<T extends object>(props: Readonly<ListBoxProps<T>>): Rea
 		<AriaListBox
 			{...rest}
 			className={cx(
-				"grid max-block-96 inline-full min-inline-56 scroll-py-1 grid-cols-[auto_1fr] flex-col gap-y-1 overflow-y-auto overscroll-contain rounded-xl border bg-bg p-1 outline-hidden scrollbar-thin *:[[role='group']+[role=group]]:mbs-4 *:[[role='group']+[role=separator]]:mbs-1 has-data-[slot=drag-icon]:grid-cols-[auto_auto_1fr] [&::-webkit-scrollbar]:block-0.5 [&::-webkit-scrollbar]:inline-0.5",
+				"grid scroll-py-1 scrollbar-thin grid-cols-[auto_1fr] flex-col gap-y-1 overflow-y-auto overscroll-contain rounded-xl border bg-bg p-1 outline-hidden inline-full max-block-96 min-inline-56 *:[[role='group']+[role=group]]:mbs-4 *:[[role='group']+[role=separator]]:mbs-1 has-data-[slot=drag-icon]:grid-cols-[auto_auto_1fr] [&::-webkit-scrollbar]:block-0.5 [&::-webkit-scrollbar]:inline-0.5",
 				className,
 			)}
 		/>
@@ -68,7 +68,7 @@ export function ListBoxItem<T extends object>(props: Readonly<ListBoxItemProps<T
 					<Fragment>
 						{allowsDragging === true ? (
 							<svg
-								className="me-2 inline-5 block-lh text-muted-fg sm:inline-4"
+								className="me-2 text-muted-fg block-lh inline-5 sm:inline-4"
 								data-slot="drag-icon"
 								fill="none"
 								viewBox="0 0 24 24"
@@ -103,11 +103,11 @@ export function ListBoxItem<T extends object>(props: Readonly<ListBoxItemProps<T
 						{isSelected ? (
 							<CheckIcon
 								className={twJoin(
-									"-mx-0.5 me-2 block-4 inline-4 shrink-0 group-allows-dragging:col-start-2 sm:inline-4",
-									"group-has-[[slot=description]]:self-start group-has-[[slot=description]]:mbs-1",
-									"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:inset-bs-1/2 group-has-data-[slot=icon]:inset-e-0.5 group-has-data-[slot=icon]:-translate-y-1/2",
+									"-mx-0.5 me-2 shrink-0 block-4 inline-4 group-allows-dragging:col-start-2 sm:inline-4",
+									"group-has-[[slot=description]]:mbs-1 group-has-[[slot=description]]:self-start",
+									"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:inset-e-0.5 group-has-data-[slot=icon]:inset-bs-1/2 group-has-data-[slot=icon]:-translate-y-1/2",
 									"sm:group-has-data-[slot=icon]:group-has-[[slot=description]]:inset-bs-2.5 group-has-data-[slot=icon]:group-has-[[slot=description]]:inset-bs-3 group-has-data-[slot=icon]:group-has-[[slot=description]]:translate-y-0",
-									"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:inset-bs-1/2 group-has-data-[slot=avatar]:inset-e-0.5 group-has-data-[slot=avatar]:-translate-y-1/2",
+									"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:inset-e-0.5 group-has-data-[slot=avatar]:inset-bs-1/2 group-has-data-[slot=avatar]:-translate-y-1/2",
 									"sm:group-has-data-[slot=avatar]:group-has-[[slot=description]]:inset-bs-2.5 group-has-data-[slot=avatar]:group-has-[[slot=description]]:inset-bs-3 group-has-data-[slot=avatar]:group-has-[[slot=description]]:translate-y-0",
 								)}
 								data-slot="check-icon"

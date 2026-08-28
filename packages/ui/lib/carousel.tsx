@@ -185,7 +185,7 @@ export function CarouselItem({ className, ...props }: Readonly<ComponentProps<"d
 	return (
 		<div
 			className={twMerge(
-				"group/carousel-item relative min-inline-0 shrink-0 grow-0 basis-full focus:outline-hidden focus-visible:outline-hidden",
+				"group/carousel-item relative shrink-0 grow-0 basis-full min-inline-0 focus:outline-hidden focus-visible:outline-hidden",
 				orientation === "horizontal" ? "ps-4" : "pbs-4",
 				className,
 			)}

@@ -4,11 +4,11 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { imageAssetWidth } from "@/config/assets.config";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
 import { images } from "@/lib/images";
 
-export type SpotlightArticlesSort = "title" | "updatedAt";
+export type SpotlightArticlesSort = "publicationDate" | "title";
 
 interface GetSpotlightArticlesParams {
 	/** @default 10 */
@@ -21,11 +21,11 @@ interface GetSpotlightArticlesParams {
 }
 
 export async function getSpotlightArticles(params: GetSpotlightArticlesParams) {
-	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
+	const { limit = 10, offset = 0, q, sort = "publicationDate", dir = "desc" } = params;
 	const query = q?.trim();
 	const where =
 		query != null && query !== ""
-			? unaccentIlike(schema.spotlightArticles.title, `%${query}%`)
+			? matchesAllTerms(query, schema.spotlightArticles.title)
 			: undefined;
 	const orderBy =
 		sort === "title"
@@ -33,8 +33,8 @@ export async function getSpotlightArticles(params: GetSpotlightArticlesParams) {
 				? schema.spotlightArticles.title
 				: desc(schema.spotlightArticles.title)
 			: dir === "asc"
-				? schema.entityVersions.updatedAt
-				: desc(schema.entityVersions.updatedAt);
+				? schema.spotlightArticles.publicationDate
+				: desc(schema.spotlightArticles.publicationDate);
 
 	const pickedVersion = sql`COALESCE(${schema.documentLifecycle.draftId}, ${schema.documentLifecycle.publishedId})`;
 
@@ -46,6 +46,7 @@ export async function getSpotlightArticles(params: GetSpotlightArticlesParams) {
 				slug: schema.slugs.value,
 				summary: schema.spotlightArticles.summary,
 				title: schema.spotlightArticles.title,
+				publicationDate: schema.spotlightArticles.publicationDate,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
 				status: schema.entityStatus.type,
@@ -86,6 +87,7 @@ export async function getSpotlightArticles(params: GetSpotlightArticlesParams) {
 			summary: item.summary,
 			title: item.title,
 			isPublished: item.isPublished,
+			publicationDate: item.publicationDate,
 			status: item.status,
 			updatedAt: item.updatedAt,
 		};

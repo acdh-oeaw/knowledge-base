@@ -8,6 +8,7 @@ import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { FormStatus } from "@dariah-eric/ui/form-status";
+import { Input } from "@dariah-eric/ui/input";
 import {
 	ModalBody,
 	ModalClose,
@@ -25,6 +26,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@dariah-eric/ui/table";
+import { TextField } from "@dariah-eric/ui/text-field";
 import type { AsyncOption, AsyncOptionsFetchPageParams } from "@dariah-eric/ui/use-async-options";
 import { ArchiveBoxXMarkIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { CalendarDate } from "@internationalized/date";
@@ -109,6 +111,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 	const [editUnitItem, setEditUnitItem] = useState<AsyncOption | null>(null);
 	const [editStartDate, setEditStartDate] = useState<CalendarDate | null>(null);
 	const [editEndDate, setEditEndDate] = useState<CalendarDate | null>(null);
+	const [editDescription, setEditDescription] = useState("");
 
 	const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
 	const [selectedUnitItem, setSelectedUnitItem] = useState<AsyncOption | null>(null);
@@ -144,6 +147,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 							id: string;
 							durationStart: string;
 							durationEnd: string | null;
+							description: UnitRelation["description"];
 							relatedUnitType: UnitRelation["relatedUnitType"];
 							relatedUnitSlug: UnitRelation["relatedUnitSlug"];
 					  }
@@ -165,6 +169,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 								start: new Date(data.durationStart),
 								...(data.durationEnd != null ? { end: new Date(data.durationEnd) } : {}),
 							},
+							description: data.description,
 						},
 					]);
 				}
@@ -186,6 +191,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 		});
 		setEditStartDate(dateToCalendarDate(relation.duration.start));
 		setEditEndDate(dateToCalendarDate(relation.duration.end));
+		setEditDescription(relation.description ?? "");
 	}
 
 	function editFormAction(formData: FormData) {
@@ -216,6 +222,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 									relatedUnitDocumentId: relatedUnit.id,
 									relatedUnitName: relatedUnit.name,
 									duration: { start, ...(end != null ? { end } : {}) },
+									description: editDescription.trim() !== "" ? editDescription.trim() : null,
 								}
 							: relation,
 					),
@@ -227,7 +234,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 
 	return (
 		<Fragment>
-			<div className="max-inline-3xl space-y-6">
+			<div className="space-y-6 max-inline-3xl">
 				<div className="space-y-1">
 					<FormSectionTitle title={t("Relations")} />
 				</div>
@@ -255,7 +262,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 							<TableColumn allowsSorting={true} id="until">
 								{t("Until")}
 							</TableColumn>
-							<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+							<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 						</TableHeader>
 						<TableBody items={table.pageItems}>
 							{(relation) => (
@@ -274,7 +281,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 										<Badge intent="slate">{formatUnitType(relation.relatedUnitType)}</Badge>
 									</TableCell>
 									<TableCell>
-										<div className="max-inline-80 truncate" title={relation.relatedUnitName}>
+										<div className="truncate max-inline-80" title={relation.relatedUnitName}>
 											{relation.relatedUnitName}
 										</div>
 									</TableCell>
@@ -286,7 +293,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 											? format.dateTime(relation.duration.end, { dateStyle: "short" })
 											: t("present")}
 									</TableCell>
-									<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+									<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 										<RowActionsMenu>
 											<RowActionsMenu.Action
 												icon={<PencilSquareIcon className="me-2 block-4 inline-4" />}
@@ -405,6 +412,12 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 									<DatePickerTrigger />
 									<FieldError />
 								</DatePicker>
+
+								<TextField name="description">
+									<Label>{t("Description")}</Label>
+									<Input />
+									<FieldError />
+								</TextField>
 
 								<input name="unitDocumentId" type="hidden" value={unitDocumentId} />
 							</FormSection>
@@ -566,6 +579,11 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 							<DatePickerTrigger />
 							<FieldError />
 						</DatePicker>
+						<TextField name="description" onChange={setEditDescription} value={editDescription}>
+							<Label>{t("Description")}</Label>
+							<Input />
+							<FieldError />
+						</TextField>
 						<FormStatus className="self-start" state={editState} />
 					</ModalBody>
 					<ModalFooter>

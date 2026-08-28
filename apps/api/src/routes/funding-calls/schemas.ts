@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
@@ -19,6 +20,7 @@ const fundingCallBaseObject = v.object({
 	}),
 	entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 	publishedAt: v.pipe(v.string(), v.isoTimestamp()),
+	image: ImageSchema,
 });
 
 export const FundingCallBaseSchema = v.pipe(
@@ -87,7 +89,6 @@ export const FundingCallQuerySchema = v.object({
 		v.description(
 			"Filter by funding call status relative to the current time. Can be provided multiple times, e.g. `?status=upcoming&status=open`.",
 		),
-		v.metadata({ ref: "FundingCallStatusParam" }),
 	),
 });
 

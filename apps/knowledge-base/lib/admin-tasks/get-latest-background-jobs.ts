@@ -1,5 +1,9 @@
 import * as schema from "@dariah-eric/database/schema";
 
+import {
+	type BackgroundJobError,
+	coerceBackgroundJobError,
+} from "@/lib/admin-tasks/background-job-error";
 import { db } from "@/lib/db";
 import { desc, eq } from "@/lib/db/sql";
 
@@ -10,7 +14,7 @@ export interface LatestBackgroundJob {
 	startedAt: Date;
 	finishedAt: Date | null;
 	result: unknown;
-	error: string | null;
+	error: BackgroundJobError | null;
 	triggeredByName: string | null;
 }
 
@@ -45,7 +49,7 @@ export async function getLatestBackgroundJobs(): Promise<
 			startedAt: row.startedAt,
 			finishedAt: row.finishedAt,
 			result: row.result,
-			error: row.error,
+			error: row.error != null ? coerceBackgroundJobError(row.error) : null,
 			triggeredByName: row.triggeredByName,
 		});
 	}

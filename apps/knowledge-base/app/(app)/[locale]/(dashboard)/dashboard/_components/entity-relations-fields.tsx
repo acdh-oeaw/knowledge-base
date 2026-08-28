@@ -1,6 +1,6 @@
 "use client";
 
-import { AsyncMultipleSelect } from "@dariah-eric/ui/async-multiple-select";
+import { AsyncListSelect } from "@dariah-eric/ui/async-list-select";
 import { Separator } from "@dariah-eric/ui/separator";
 import type { AsyncOption, AsyncOptionsFetchPageParams } from "@dariah-eric/ui/use-async-options";
 import { useExtracted } from "next-intl";
@@ -68,17 +68,22 @@ export function EntityRelationsFields(props: Readonly<EntityRelationsFieldsProps
 
 	return (
 		<Fragment>
-			<FormSection description={t("Link related entities.")} title={t("Related entities")}>
-				<AsyncMultipleSelect
+			<FormSection
+				description={t("Link related entities to display on the website.")}
+				title={t("Related entities")}
+			>
+				<AsyncListSelect
+					addLabel={t("Add related entity")}
 					aria-label={t("Related entities")}
 					emptyMessage={t("No related entities found.")}
+					emptySelectionMessage={t("No related entities")}
 					fetchPage={(params) => fetchRelationOptionsPage("entities", params)}
 					initialItems={initialRelatedEntityItems}
 					initialTotal={initialRelatedEntityTotal}
+					isOrderable={true}
 					onChange={(ids) => {
 						setSelectedEntityIds(ids);
 					}}
-					placeholder={t("No related entities")}
 					selectedItems={selectedRelatedEntities}
 					value={selectedEntityIds}
 				/>
@@ -95,17 +100,22 @@ export function EntityRelationsFields(props: Readonly<EntityRelationsFieldsProps
 
 			<Separator className="my-6" />
 
-			<FormSection description={t("Link related resources.")} title={t("Related resources")}>
-				<AsyncMultipleSelect
+			<FormSection
+				description={t("Link related resources to display on the website.")}
+				title={t("Related resources")}
+			>
+				<AsyncListSelect
+					addLabel={t("Add related resource")}
 					aria-label={t("Related resources")}
 					emptyMessage={t("No related resources found.")}
+					emptySelectionMessage={t("No related resources")}
 					fetchPage={(params) => fetchRelationOptionsPage("resources", params)}
 					initialItems={initialRelatedResourceItems}
 					initialTotal={initialRelatedResourceTotal}
+					isOrderable={true}
 					onChange={(ids) => {
 						setSelectedResourceIds(ids);
 					}}
-					placeholder={t("No related resources")}
 					selectedItems={selectedRelatedResources}
 					value={selectedResourceIds}
 				/>

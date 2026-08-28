@@ -42,7 +42,7 @@ export const getSyncableWebsiteEntityIdsByType =
 	websiteSearchIndex.getSyncableWebsiteEntityIdsByType;
 export const getWebsiteDocumentDescriptorByEntityId =
 	websiteSearchIndex.getWebsiteDocumentDescriptorByEntityId;
-export const getWebsiteDocumentForEntity = websiteSearchIndex.getWebsiteDocumentForEntity;
+export const getWebsiteDocumentsForEntity = websiteSearchIndex.getWebsiteDocumentsForEntity;
 export const syncWebsiteDocumentForEntity = websiteSearchIndex.syncWebsiteDocumentForEntity;
 export const syncWebsiteDocumentForEntityWithResult =
 	websiteSearchIndex.syncWebsiteDocumentForEntityWithResult;

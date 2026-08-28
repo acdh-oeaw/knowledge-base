@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@dariah-eric/ui/button";
-import { type ErrorInfo, unstable_catchError } from "next/error";
+import { type ErrorInfo, catchError } from "next/error";
 import type { ReactNode } from "react";
 
 interface LiveReportResourcesErrorBoundaryProps {
@@ -23,7 +23,7 @@ function LiveReportResourcesErrorFallback(
 				<p className="text-sm text-muted-fg">{description}</p>
 			</div>
 			<div>
-				<Button intent="secondary" size="sm" onPress={errorInfo.unstable_retry}>
+				<Button intent="secondary" size="sm" onPress={errorInfo.retry}>
 					{retryLabel}
 				</Button>
 			</div>
@@ -31,6 +31,4 @@ function LiveReportResourcesErrorFallback(
 	);
 }
 
-export const LiveReportResourcesErrorBoundary = unstable_catchError(
-	LiveReportResourcesErrorFallback,
-);
+export const LiveReportResourcesErrorBoundary = catchError(LiveReportResourcesErrorFallback);

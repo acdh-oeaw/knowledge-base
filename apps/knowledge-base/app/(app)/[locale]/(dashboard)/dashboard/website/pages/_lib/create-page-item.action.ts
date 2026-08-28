@@ -1,18 +1,17 @@
 "use server";
 
-import { assert, keyBy } from "@acdh-oeaw/lib";
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import slugify from "@sindresorhus/slugify";
 
 import { CreatePageItemActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_lib/create-page-item.schema";
-import { upsertTypedContentBlock } from "@/lib/content-blocks-service";
-import { createDraftDocument, publishVersion } from "@/lib/data/entity-lifecycle";
+import { createDraftDocumentWithSlug, publishVersion } from "@/lib/data/entity-lifecycle";
+import { insertContentBlockTree } from "@/lib/data/entity-version-fields";
 import { pagesLifecycleAdapter } from "@/lib/data/pages.lifecycle-adapter";
 import { filterToPublishedDocumentIds } from "@/lib/data/relations";
-import { db } from "@/lib/db";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getCreatedSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const createPageItemAction = createMutationAction({
@@ -20,18 +19,19 @@ export const createPageItemAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "create", subjectType: "pages" },
 	revalidate: "/[locale]/dashboard/website/pages",
-	redirect: "/dashboard/website/pages",
+	redirect: ({ result }) => `/dashboard/website/pages/${getCreatedSlug(result)}/details`,
 
 	async mutate(tx, input, { formData }) {
-		const slug = slugify(input.title);
-
 		const type = await tx.query.entityTypes.findFirst({
 			where: { type: "pages" },
 			columns: { id: true },
 		});
 		assert(type);
 
-		const { documentId, versionId } = await createDraftDocument(tx, type.id, slug);
+		const { documentId, versionId, slug } = await createDraftDocumentWithSlug(tx, type.id, {
+			requestedSlug: getRequestedSlug(input.slug),
+			title: input.title,
+		});
 
 		let imageId: string | undefined;
 		if (input.imageKey != null) {
@@ -46,6 +46,9 @@ export const createPageItemAction = createMutationAction({
 		await tx.insert(schema.pages).values({
 			id: versionId,
 			imageId,
+			imageCaption: input.imageCaption,
+			imageCaptionMode: input.imageCaptionMode,
+			publicationDate: input.publicationDate,
 			title: input.title,
 			summary: input.summary,
 		});
@@ -56,16 +59,16 @@ export const createPageItemAction = createMutationAction({
 		);
 		if (publishedRelatedEntityIds.length > 0) {
 			await tx.insert(schema.entitiesToEntities).values(
-				publishedRelatedEntityIds.map((relatedEntityId) => {
-					return { entityId: documentId, relatedEntityId };
+				publishedRelatedEntityIds.map((relatedEntityId, position) => {
+					return { entityId: documentId, position, relatedEntityId };
 				}),
 			);
 		}
 
 		if (input.relatedResourceIds.length > 0) {
 			await tx.insert(schema.entitiesToResources).values(
-				input.relatedResourceIds.map((resourceId) => {
-					return { entityId: documentId, resourceId };
+				input.relatedResourceIds.map((resourceId, position) => {
+					return { entityId: documentId, position, resourceId };
 				}),
 			);
 		}
@@ -82,23 +85,7 @@ export const createPageItemAction = createMutationAction({
 			.returning({ id: schema.fields.id });
 		assert(contentField);
 
-		const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-		const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
-
-		await Promise.all(
-			input.contentBlocks.map(async (contentBlock, index) => {
-				const [added] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						fieldId: contentField.id,
-						typeId: contentBlockTypesByType[contentBlock.type].id,
-						position: index,
-					})
-					.returning({ id: schema.contentBlocks.id });
-				assert(added);
-				await upsertTypedContentBlock(tx, contentBlock, added.id, true);
-			}),
-		);
+		await insertContentBlockTree(tx, contentField.id, input.contentBlocks);
 
 		if (shouldSaveAndPublish(formData)) {
 			await publishVersion(tx, documentId, pagesLifecycleAdapter);
@@ -106,6 +93,7 @@ export const createPageItemAction = createMutationAction({
 
 		return {
 			subjectId: documentId,
+			subjectSlug: slug,
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

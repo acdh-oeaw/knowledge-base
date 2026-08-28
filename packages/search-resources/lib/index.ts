@@ -1,3 +1,7 @@
+export { createCampusCurriculum, createCampusResource } from "./campus";
+export { createEpisciencesDocument } from "./episciences";
+export { createHalItem, type HalIngestDocument } from "./hal";
+export { createOpenAirePublication } from "./openaire";
 export {
 	createSearchIndexResourceDocuments,
 	type CreateSearchIndexResourceDocumentsParams,
@@ -15,6 +19,7 @@ export {
 } from "./service";
 export { loadOrgUnitLookups } from "./org-units";
 export { createSshocItem, type SshocOrgUnitLookups } from "./sshoc";
+export { createZenodoRecord } from "./zenodo";
 export {
 	createZoteroItem,
 	type ZoteroCollectionLookup,

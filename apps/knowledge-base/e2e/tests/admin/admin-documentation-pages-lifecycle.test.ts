@@ -159,4 +159,34 @@ test.describe("admin documentation pages lifecycle", () => {
 		await page.waitForURL((url) => url.searchParams.get("version") == null);
 		await expect(page.getByText(updatedTitle)).toBeVisible();
 	});
+
+	test("should delete a documentation page", async ({ createAdminDocumentationPagesPage, db }) => {
+		const workerIndex = test.info().workerIndex;
+		const docPagesPage = createAdminDocumentationPagesPage(workerIndex);
+
+		const title = `${docPagesPage.workerPrefix} Delete Me ${randomUUID()}`;
+		await docPagesPage.gotoCreate();
+		await docPagesPage.fillTitle(title);
+		await docPagesPage.addContentBlock(`Content for delete test ${randomUUID()}`);
+		await docPagesPage.submitForm();
+
+		const created = await db.getDocumentationPageByTitle(title);
+		expect(created).not.toBeNull();
+
+		await docPagesPage.searchByTitle(title);
+		await expect(docPagesPage.rowByTitle(title)).toBeVisible();
+
+		const deleteDialog = await docPagesPage.openDeleteDialog(title);
+		await expect(deleteDialog).toBeVisible();
+		await docPagesPage.confirmDelete(deleteDialog);
+
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
+		await expect(docPagesPage.rowByTitle(title)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getDocumentationPageByTitle(title)).toBeNull();
+	});
 });

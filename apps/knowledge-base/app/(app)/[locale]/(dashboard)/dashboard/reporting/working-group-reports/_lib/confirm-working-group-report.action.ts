@@ -3,11 +3,14 @@
 import * as schema from "@dariah-eric/database/schema";
 import { getLocale } from "next-intl/server";
 import { revalidatePath } from "next/cache";
+import { forbidden } from "next/navigation";
 
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
-import { assertCan } from "@/lib/auth/permissions";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { getWorkingGroupReportEditHrefById } from "@/lib/data/reporting-urls";
+import {
+	getWorkingGroupReportEditHrefById,
+	workingGroupReportRevalidatePaths,
+} from "@/lib/data/reporting-urls";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
 import { redirect } from "@/lib/navigation/navigation";
@@ -20,7 +23,19 @@ export async function confirmWorkingGroupReportAction(formData: FormData): Promi
 
 	const locale = await getLocale();
 	const { user } = await assertAuthenticated();
-	await assertCan(user, "confirm", { type: "working_group_report", id });
+	// Accepting a submitted report is admin-only.
+	if (user.role !== "admin") {
+		forbidden();
+	}
+
+	const report = await db.query.workingGroupReports.findFirst({
+		where: { id },
+		columns: { status: true },
+	});
+	// Only a submitted report can be accepted.
+	if (report?.status !== "submitted") {
+		return;
+	}
 
 	await db
 		.update(schema.workingGroupReports)
@@ -34,11 +49,13 @@ export async function confirmWorkingGroupReportAction(formData: FormData): Promi
 		subjectId: id,
 		summary: {
 			...getAuditSummaryFromFormData(formData),
-			status: "confirmed",
+			status: "accepted",
 		},
 	});
 
-	revalidatePath("/[locale]/dashboard/reporting", "layout");
+	for (const path of workingGroupReportRevalidatePaths) {
+		revalidatePath(path, "layout");
+	}
 
 	redirect({ href: await getWorkingGroupReportEditHrefById(id, "confirm"), locale });
 }

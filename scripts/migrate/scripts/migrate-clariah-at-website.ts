@@ -154,6 +154,9 @@ async function main() {
 	const socialMediaTypes = await db.query.socialMediaTypes.findMany();
 	const socialMediaTypesByType = keyBy(socialMediaTypes, (item) => item.type);
 
+	const personSocialMediaTypes = await db.query.personSocialMediaTypes.findMany();
+	const personSocialMediaTypesByType = keyBy(personSocialMediaTypes, (item) => item.type);
+
 	const personSlugDocumentIds = new Map<string, string>();
 	const personLocaleSlugDocumentIds = new Map<string, string>();
 	const organisationalUnitsSlugDocumentIds = new Map<string, string>();
@@ -658,8 +661,9 @@ async function main() {
 
 					for (const link of person.links) {
 						const socialMediaType =
-							socialMediaTypesByType[link.kind as keyof typeof socialMediaTypesByType] ??
-							socialMediaTypesByType.other;
+							personSocialMediaTypesByType[
+								link.kind as keyof typeof personSocialMediaTypesByType
+							] ?? personSocialMediaTypesByType.other;
 
 						await addSocialMediaRelationForPerson(
 							tx,
@@ -824,7 +828,8 @@ async function main() {
 					title: newsItemTitle,
 					summary: newsItemData.summary ?? "",
 					imageId: assetId ?? placeholderAsset.id,
-					createdAt: newsItemData.date != null ? new Date(newsItemData.date) : new Date(Date.now()),
+					publicationDate:
+						newsItemData.date != null ? new Date(newsItemData.date) : new Date(Date.now()),
 				});
 
 				await createFieldAndContentBlock(
@@ -1000,7 +1005,7 @@ async function main() {
 					contentBlockTypesByType.rich_text,
 				);
 
-				for (const [index, person] of projectData.responsiblePersons.entries()) {
+				/*for (const [index, person] of projectData.responsiblePersons.entries()) {
 					// FIX: if we already resolved this position on an earlier locale
 					// pass for this project, reuse that id — don't re-derive from name.
 					const previouslyResolvedPersonDocumentId = responsiblePersonDocumentIds[index];
@@ -1079,7 +1084,7 @@ async function main() {
 							roleId: projectRolesByRole.affiliated.id,
 						})
 						.onConflictDoNothing();
-				}
+				}*/
 
 				for (const [index, institution] of projectData.hostingOrganizations.entries()) {
 					// FIX: same pattern — reuse the id resolved on an earlier locale
@@ -1219,6 +1224,7 @@ async function main() {
 					title: pageTitle,
 					summary: pageData.summary ?? "",
 					imageId: assetId ?? placeholderAsset.id,
+					publicationDate: new Date(Date.now()),
 				});
 
 				await createFieldAndContentBlock(

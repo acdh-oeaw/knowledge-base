@@ -10,8 +10,14 @@ import type { Page } from "@playwright/test";
 export async function clearDateSegments(page: Page, label: string): Promise<void> {
 	const group = page.getByRole("group", { name: label });
 
-	for (const segmentName of [/day/i, /month/i, /year/i]) {
+	// Include the time segments: a timed picker (granularity "minute") leaves the value _partial_
+	// (hence invalid, blocking submit) if only the date segments are cleared. Time segments are
+	// absent on date-only pickers, so skip whatever this picker does not have.
+	for (const segmentName of [/day/i, /month/i, /year/i, /hour/i, /minute/i]) {
 		const segment = group.getByRole("spinbutton", { name: segmentName });
+		if ((await segment.count()) === 0) {
+			continue;
+		}
 		for (let i = 0; i < 5; i += 1) {
 			const value = await segment.getAttribute("aria-valuenow");
 			if (value === null) {

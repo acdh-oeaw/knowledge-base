@@ -18,7 +18,6 @@
 		"lint:fix": "run-p --continue-on-error \"lint:*:fix\"",
 		"lint:styles:check": "stylelint \"./styles/**/*.css\" --cache --ignore-path ./../../.gitignore",
 		"lint:styles:fix": "stylelint \"./styles/**/*.css\" --cache --fix --ignore-path ./../../.gitignore",
-		"prepare": "run-s types:prepare",
 		"start": "PORT=3001 next start --experimental-next-config-strip-types",
 		"test": "dotenvx run -q -f ./.env.local --ignore MISSING_ENV_FILE -- vitest run",
 		"test:e2e": "PORT=3001 playwright test --config ./e2e/playwright.config.ts",
@@ -35,7 +34,10 @@
 		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-oeaw/style-variants": "catalog:",
 		"@dariah-eric/auth": "workspace:^",
+		"@dariah-eric/client-campus": "workspace:^",
+		"@dariah-eric/client-episciences": "workspace:^",
 		"@dariah-eric/client-sshoc": "workspace:^",
+		"@dariah-eric/client-zenodo": "workspace:^",
 		"@dariah-eric/client-zotero": "workspace:^",
 		"@dariah-eric/database": "workspace:^",
 		"@dariah-eric/email": "workspace:^",
@@ -52,9 +54,11 @@
 		"@dariah-eric/ui": "workspace:^",
 		"@heroicons/react": "catalog:",
 		"@internationalized/date": "catalog:",
+		"@opentelemetry/sdk-trace-base": "catalog:",
 		"@react-aria/utils": "catalog:",
 		"@sindresorhus/slugify": "catalog:",
 		"@tiptap/core": "catalog:",
+		"@tiptap/html": "catalog:",
 		"@tiptap/starter-kit": "catalog:",
 		"@tiptap/static-renderer": "catalog:",
 		"@valibot/i18n": "catalog:",
@@ -89,8 +93,7 @@
 		"@dotenvx/dotenvx": "catalog:",
 		"@faker-js/faker": "catalog:",
 		"@playwright/test": "catalog:",
-		"@react-aria/optimize-locales-plugin": "catalog:",
-		"@tailwindcss/postcss": "catalog:",
+		"@tailwindcss/turbopack": "catalog:",
 		"@types/node": "catalog:",
 		"@types/nodemailer": "catalog:",
 		"@types/pdfkit": "catalog:",
@@ -101,9 +104,7 @@
 		"babel-plugin-react-compiler": "catalog:",
 		"concurrently": "catalog:",
 		"is-in-ci": "catalog:",
-		"next-devtools-mcp": "catalog:",
 		"npm-run-all2": "catalog:",
-		"null-loader": "catalog:",
 		"po-parser": "catalog:",
 		"schema-dts": "catalog:",
 		"stylelint": "catalog:",
@@ -112,7 +113,6 @@
 		"tsx": "catalog:",
 		"tw-animate-css": "catalog:",
 		"typescript": "catalog:",
-		"vite-tsconfig-paths": "catalog:",
 		"vitest": "catalog:"
 	},
 	"stylelint": {
@@ -120,10 +120,5 @@
 	},
 	"engines": {
 		"node": "24.x"
-	},
-	"postcss": {
-		"plugins": {
-			"@tailwindcss/postcss": {}
-		}
 	}
 }

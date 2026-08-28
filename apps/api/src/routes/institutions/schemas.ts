@@ -93,7 +93,6 @@ export const InstitutionQuerySchema = v.object({
 	status: v.pipe(
 		v.optional(InstitutionStatusFilterSchema),
 		v.description("Filter institutions by their relation to the DARIAH-EU ERIC (repeatable)"),
-		v.metadata({ ref: "InstitutionStatusParam" }),
 	),
 });
 

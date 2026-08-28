@@ -284,13 +284,13 @@ export function ProjectPartnersPage(props: Readonly<ProjectPartnersPageProps>): 
 					<TableColumn allowsSorting={true} id="durationEnd">
 						{t("Until")}
 					</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow id={item.id}>
 							<TableCell>
-								<div className="max-inline-80 truncate" title={item.projectName}>
+								<div className="truncate max-inline-80" title={item.projectName}>
 									{item.projectAcronym ?? item.projectName}
 								</div>
 							</TableCell>
@@ -301,7 +301,7 @@ export function ProjectPartnersPage(props: Readonly<ProjectPartnersPageProps>): 
 								</Badge>
 							</TableCell>
 							<TableCell>
-								<div className="max-inline-80 truncate" title={item.unitName}>
+								<div className="truncate max-inline-80" title={item.unitName}>
 									{item.unitName}
 								</div>
 							</TableCell>
@@ -317,7 +317,7 @@ export function ProjectPartnersPage(props: Readonly<ProjectPartnersPageProps>): 
 										? t("present")
 										: "—"}
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Action
 										icon={<PencilSquareIcon className="me-2 block-4 inline-4" />}

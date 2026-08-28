@@ -1,23 +1,40 @@
-import * as schema from "@dariah-eric/database/schema";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ReportScreenCommentSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_components/report-screen-comment-section";
 import { CountryReportClaimedContributorsForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-claimed-contributors-form";
 import { CountryReportContributorsForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-contributors-form";
+import { CountryReportContributorsSnapshotForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-contributors-snapshot-form";
 import { createCountryReportContributionAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/create-country-report-contribution.action";
 import { deleteCountryReportContributionAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/delete-country-report-contribution.action";
 import { getAuthorizedCountryReportForUser } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/get-country-report-summary-data";
+import { refreshCountryReportContributionsAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/refresh-country-report-contributions.action";
 import { updateCountryReportContributorsAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_lib/update-country-report-contributors.action";
 import { assertAuthenticated } from "@/lib/auth/session";
+import {
+	getCountryReportContributions,
+	getManualContributionCandidates,
+	getSnapshotContributionCandidates,
+	isSnapshotRole,
+} from "@/lib/data/report-contributions";
 import { db } from "@/lib/db";
-import { alias, and, eq, inArray, notInArray, or, sql } from "@/lib/db/sql";
 
 interface CountryReportContributorsScreenProps {
 	reportId: string;
 }
 
-/** Shared "contributors" screen. See {@link getAuthorizedCountryReportForUser} for authorization. */
+/**
+ * Shared "contributors" screen rendered by both the reporting flow and the admin tree.
+ * Self-authorizes via {@link getAuthorizedCountryReportForUser} (admins pass `can`; others get
+ * `notFound`).
+ *
+ * Two kinds of compensated contributions are handled separately: - Section 1 (snapshot): national
+ * coordinator + deputy, bound to the country. Read-only here, edited on the person form; the
+ * "refresh" mutation re-captures them from the current relations. - Section 2 (manual):
+ * cross-cutting roles (JRC/NCC/working-group chairs, JRC members) that are not inherently tied to a
+ * country, so the reporter claims/removes them here. The total-contributors scalar is a separate,
+ * manually-entered figure.
+ */
 export async function CountryReportContributorsScreen(
 	props: Readonly<CountryReportContributorsScreenProps>,
 ): Promise<ReactNode> {
@@ -27,88 +44,14 @@ export async function CountryReportContributorsScreen(
 	const result = await getAuthorizedCountryReportForUser(
 		user,
 		reportId,
-		async (id) => {
-			const base = await db.query.countryReports.findFirst({
+		(id) =>
+			db.query.countryReports.findFirst({
 				where: { id },
 				// countryDocumentId is the country's document id (entities.id), used to match
-				// document-level person↔org relations below.
+				// document-level person↔org relations.
 				columns: { id: true, totalContributors: true, countryDocumentId: true },
-				with: {
-					campaign: { columns: { year: true } },
-				},
-			});
-
-			if (base == null) {
-				return null;
-			}
-
-			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
-			const organisationalUnitDocumentLifecycle = alias(
-				schema.documentLifecycle,
-				"organisational_unit_document_lifecycle",
-			);
-			const claimedRows = await db
-				.select({
-					id: schema.countryReportContributions.id,
-					personToOrgUnitId: schema.countryReportContributions.personToOrgUnitId,
-					personName: schema.persons.name,
-					orgUnitName: schema.organisationalUnits.name,
-					roleType: schema.personRoleTypes.type,
-				})
-				.from(schema.countryReportContributions)
-				.innerJoin(
-					schema.personsToOrganisationalUnits,
-					eq(
-						schema.personsToOrganisationalUnits.id,
-						schema.countryReportContributions.personToOrgUnitId,
-					),
-				)
-				.innerJoin(
-					personDocumentLifecycle,
-					eq(
-						personDocumentLifecycle.documentId,
-						schema.personsToOrganisationalUnits.personDocumentId,
-					),
-				)
-				.innerJoin(
-					schema.persons,
-					sql`${schema.persons.id} = COALESCE(${personDocumentLifecycle.draftId}, ${personDocumentLifecycle.publishedId})`,
-				)
-				.innerJoin(
-					organisationalUnitDocumentLifecycle,
-					eq(
-						organisationalUnitDocumentLifecycle.documentId,
-						schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
-					),
-				)
-				.innerJoin(
-					schema.organisationalUnits,
-					sql`${schema.organisationalUnits.id} = COALESCE(${organisationalUnitDocumentLifecycle.draftId}, ${organisationalUnitDocumentLifecycle.publishedId})`,
-				)
-				.innerJoin(
-					schema.personRoleTypes,
-					eq(schema.personRoleTypes.id, schema.personsToOrganisationalUnits.roleTypeId),
-				)
-				.where(eq(schema.countryReportContributions.countryReportId, id));
-
-			return {
-				id: base.id,
-				totalContributors: base.totalContributors,
-				campaign: base.campaign,
-				country: { id: base.countryDocumentId },
-				contributions: claimedRows.map((row) => {
-					return {
-						id: row.id,
-						personToOrgUnit: {
-							id: row.personToOrgUnitId,
-							person: { name: row.personName },
-							organisationalUnit: { name: row.orgUnitName },
-							roleType: { type: row.roleType },
-						},
-					};
-				}),
-			};
-		},
+				with: { campaign: { columns: { year: true } } },
+			}),
 		"update",
 	);
 
@@ -121,100 +64,70 @@ export async function CountryReportContributorsScreen(
 	}
 
 	const { year } = report.campaign;
-	const claimedIds = report.contributions.map((c) => c.personToOrgUnit.id);
 
-	const availablePersonDocumentLifecycle = alias(
-		schema.documentLifecycle,
-		"available_person_document_lifecycle",
+	// The report's stored contributions, resolved to their effective compensation role, split into the
+	// country-bound snapshot roles vs the manually-claimed cross-cutting ones.
+	const contributions = await getCountryReportContributions(report.id);
+	const snapshotContributions = contributions.filter((c) => isSnapshotRole(c.compensationRole));
+	const manualContributions = contributions.filter((c) => !isSnapshotRole(c.compensationRole));
+
+	// Section 1 drift: the country's current coordinator/deputy relations for the year.
+	const snapshotCandidates = await getSnapshotContributionCandidates(
+		report.countryDocumentId,
+		year,
 	);
-	const availableOrganisationalUnitDocumentLifecycle = alias(
-		schema.documentLifecycle,
-		"available_organisational_unit_document_lifecycle",
+	const snapshotCandidateIds = new Set(snapshotCandidates.map((c) => c.personToOrgUnitId));
+	const snapshotContributionIds = new Set(snapshotContributions.map((c) => c.personToOrgUnitId));
+
+	const snapshotContributors = snapshotContributions.map((contribution) => {
+		return {
+			id: contribution.id,
+			personName: contribution.personName,
+			personSlug: contribution.personSlug,
+			compensationRole: contribution.compensationRole,
+			isCurrent: snapshotCandidateIds.has(contribution.personToOrgUnitId),
+		};
+	});
+	const missingSnapshotContributors = snapshotCandidates
+		.filter((candidate) => !snapshotContributionIds.has(candidate.personToOrgUnitId))
+		.map((candidate) => {
+			return {
+				personToOrgUnitId: candidate.personToOrgUnitId,
+				personName: candidate.personName,
+				personSlug: candidate.personSlug,
+				compensationRole: candidate.compensationRole,
+			};
+		});
+
+	// Section 2 candidates: cross-cutting compensated relations active in the year, minus the ones
+	// already claimed for this report.
+	const claimedManualIds = new Set(manualContributions.map((c) => c.personToOrgUnitId));
+	const manualCandidates = (await getManualContributionCandidates(year)).filter(
+		(candidate) => !claimedManualIds.has(candidate.personToOrgUnitId),
 	);
-	const availablePersonToOrgUnits = await db
-		.select({
-			id: schema.personsToOrganisationalUnits.id,
-			personName: schema.persons.name,
-			orgUnitName: schema.organisationalUnits.name,
-			roleType: schema.personRoleTypes.type,
-		})
-		.from(schema.personsToOrganisationalUnits)
-		.innerJoin(
-			availablePersonDocumentLifecycle,
-			eq(
-				availablePersonDocumentLifecycle.documentId,
-				schema.personsToOrganisationalUnits.personDocumentId,
-			),
-		)
-		.innerJoin(
-			schema.persons,
-			sql`${schema.persons.id} = COALESCE(${availablePersonDocumentLifecycle.draftId}, ${availablePersonDocumentLifecycle.publishedId})`,
-		)
-		.innerJoin(
-			availableOrganisationalUnitDocumentLifecycle,
-			eq(
-				availableOrganisationalUnitDocumentLifecycle.documentId,
-				schema.personsToOrganisationalUnits.organisationalUnitDocumentId,
-			),
-		)
-		.innerJoin(
-			schema.organisationalUnits,
-			sql`${schema.organisationalUnits.id} = COALESCE(${availableOrganisationalUnitDocumentLifecycle.draftId}, ${availableOrganisationalUnitDocumentLifecycle.publishedId})`,
-		)
-		.innerJoin(
-			schema.organisationalUnitTypes,
-			eq(schema.organisationalUnits.typeId, schema.organisationalUnitTypes.id),
-		)
-		.innerJoin(
-			schema.personRoleTypes,
-			eq(schema.personsToOrganisationalUnits.roleTypeId, schema.personRoleTypes.id),
-		)
-		.where(
-			and(
-				or(
-					and(
-						inArray(schema.personRoleTypes.type, [
-							"national_coordinator",
-							"national_coordinator_deputy",
-							"national_coordination_staff",
-							"national_representative",
-							"national_representative_deputy",
-						]),
-						eq(schema.personsToOrganisationalUnits.organisationalUnitDocumentId, report.country.id),
-					),
-					and(
-						inArray(schema.personRoleTypes.type, ["is_chair_of", "is_vice_chair_of"]),
-						eq(schema.organisationalUnitTypes.type, "working_group"),
-					),
-					and(
-						eq(schema.personRoleTypes.type, "is_member_of"),
-						eq(schema.organisationalUnitTypes.type, "governance_body"),
-					),
-				),
-				sql`
-					${schema.personsToOrganisationalUnits.duration} && tstzrange (
-						MAKE_DATE(${year}, 1, 1)::TIMESTAMPTZ,
-						MAKE_DATE(${year + 1}, 1, 1)::TIMESTAMPTZ
-					)
-				`,
-				...(claimedIds.length > 0
-					? [notInArray(schema.personsToOrganisationalUnits.id, claimedIds)]
-					: []),
-			),
-		)
-		.orderBy(schema.persons.sortName, schema.personRoleTypes.type);
+
+	const canManageRelations = user.role === "admin";
 
 	return (
 		<div className="flex flex-col gap-y-12">
+			<CountryReportContributorsSnapshotForm
+				canManageRelations={canManageRelations}
+				contributors={snapshotContributors}
+				countryReportId={report.id}
+				missing={missingSnapshotContributors}
+				refreshAction={refreshCountryReportContributionsAction}
+			/>
+
 			<CountryReportClaimedContributorsForm
 				addAction={createCountryReportContributionAction}
-				availablePersonToOrgUnits={availablePersonToOrgUnits}
+				availableContributions={manualCandidates}
 				deleteAction={deleteCountryReportContributionAction}
-				report={report}
+				report={{ id: report.id, contributions: manualContributions }}
 			/>
+
 			<CountryReportContributorsForm
 				formAction={updateCountryReportContributorsAction}
-				report={report}
+				report={{ id: report.id, totalContributors: report.totalContributors }}
 			/>
 
 			<ReportScreenCommentSection

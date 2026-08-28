@@ -28,6 +28,7 @@ test.describe("website funding calls lifecycle", () => {
 		await fundingCallsPage.fillDatePicker("Start date", 2025, 6, 1);
 		await fundingCallsPage.fillDatePicker("End date", 2025, 7, 1);
 		await fundingCallsPage.addContentBlock(content);
+		await fundingCallsPage.selectImageFromMediaLibrary("E2E Test Asset");
 		await fundingCallsPage.submitForm();
 
 		let fundingCall = await db.getFundingCallByTitle(title);
@@ -46,6 +47,7 @@ test.describe("website funding calls lifecycle", () => {
 		// Details: "Draft" badge, Publish button, no Discard button.
 		await fundingCallsPage.gotoDetailsFromList(title);
 		await expect(fundingCallsPage.detailsDraftBadge()).toBeVisible();
+		await expect(fundingCallsPage.detailsImage()).toBeVisible();
 		await expect(page.getByRole("button", { name: "Publish" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Discard draft" })).toBeHidden();
 
@@ -128,6 +130,7 @@ test.describe("website funding calls lifecycle", () => {
 		await fundingCallsPage.fillSummary("Original E2E funding call summary");
 		await fundingCallsPage.fillDatePicker("Start date", 2025, 6, 1);
 		await fundingCallsPage.addContentBlock(originalContent);
+		await fundingCallsPage.selectImageFromMediaLibrary("E2E Test Asset");
 		await fundingCallsPage.submitForm();
 
 		await fundingCallsPage.searchByTitle(originalTitle);
@@ -191,6 +194,7 @@ test.describe("website funding calls lifecycle", () => {
 		await fundingCallsPage.fillDatePicker("Start date", 2025, 6, 1);
 		await fundingCallsPage.fillDatePicker("End date", 2025, 7, 1);
 		await fundingCallsPage.addContentBlock("Optional funding call content");
+		await fundingCallsPage.selectImageFromMediaLibrary("E2E Test Asset");
 		await fundingCallsPage.submitForm();
 
 		await fundingCallsPage.searchByTitle(title);
@@ -201,13 +205,12 @@ test.describe("website funding calls lifecycle", () => {
 			page.getByRole("menuitem", { name: "Edit" }).click(),
 		]);
 
-		await fundingCallsPage.fillSummary("");
+		// Summary and image are required, so only the end date and content remain optional.
 		await fundingCallsPage.clearDatePicker("End date");
 		await fundingCallsPage.removeFirstContentBlock();
 		await fundingCallsPage.submitForm();
 
 		const updated = await db.getFundingCallByTitle(title);
-		expect(updated?.summary).toBeNull();
 		expect(updated?.duration.end).toBeUndefined();
 		expect(await db.getFundingCallContentBlocksByTitle(title)).toHaveLength(0);
 	});

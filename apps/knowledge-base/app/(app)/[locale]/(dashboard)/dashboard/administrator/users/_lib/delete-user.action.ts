@@ -21,12 +21,15 @@ export async function deleteUserAction(id: string): Promise<void> {
 
 	const user = await db.query.users.findFirst({
 		where: { id },
-		columns: { role: true, canManageAdmins: true },
+		columns: { role: true, canManageAdmins: true, name: true, email: true },
 	});
 
 	if (user == null) {
 		throw new Error("User not found.");
 	}
+
+	// Snapshot the label now: once the row is gone the audit log can only show the uuid.
+	const subjectLabel = `${user.name} (${user.email})`;
 
 	if (user.role === "admin" && !canManageAdminAccounts(currentUser)) {
 		throw new Error("You are not allowed to delete admin accounts.");
@@ -43,6 +46,7 @@ export async function deleteUserAction(id: string): Promise<void> {
 		action: "delete",
 		subjectType: "users",
 		subjectId: id,
+		subjectLabel,
 		summary: {},
 	});
 

@@ -2,7 +2,7 @@
 
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
-import { AsyncMultipleSelect } from "@dariah-eric/ui/async-multiple-select";
+import { AsyncListSelect } from "@dariah-eric/ui/async-list-select";
 import { Button } from "@dariah-eric/ui/button";
 import { Checkbox } from "@dariah-eric/ui/checkbox";
 import { FieldError, Label } from "@dariah-eric/ui/field";
@@ -27,15 +27,24 @@ import {
 	toOrganisationalUnitDocumentOptionsPage,
 } from "@/lib/organisational-unit-options";
 import type { ServerAction } from "@/lib/server/create-server-action";
+import { getServiceStatusLabel } from "@/lib/service-status-label";
 
 interface ServiceFormProps {
 	service?: Pick<
 		schema.Service,
-		"id" | "name" | "statusId" | "comment" | "dariahBranding" | "monitoring" | "privateSupplier"
+		| "id"
+		| "name"
+		| "typeId"
+		| "statusId"
+		| "comment"
+		| "dariahBranding"
+		| "monitoring"
+		| "privateSupplier"
 	> & {
 		ownerUnitDocumentIds: Array<string>;
 		providerUnitDocumentIds: Array<string>;
 	};
+	serviceTypes: Array<Pick<schema.ServiceType, "id" | "type">>;
 	serviceStatuses: Array<Pick<schema.ServiceStatus, "id" | "status">>;
 	initialOrganisationalUnitItems: Array<AsyncOption>;
 	initialOrganisationalUnitTotal: number;
@@ -68,13 +77,10 @@ async function fetchOrganisationalUnitOptionsPage(
 	);
 }
 
-function formatServiceStatus(status: string): string {
-	return status.replaceAll("_", " ").replaceAll(/\b\w/g, (c) => c.toUpperCase());
-}
-
 export function ServiceForm(props: Readonly<ServiceFormProps>): ReactNode {
 	const {
 		service,
+		serviceTypes,
 		serviceStatuses,
 		initialOrganisationalUnitItems,
 		initialOrganisationalUnitTotal,
@@ -86,6 +92,11 @@ export function ServiceForm(props: Readonly<ServiceFormProps>): ReactNode {
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
+	const defaultTypeId =
+		service?.typeId ??
+		serviceTypes.find((serviceType) => serviceType.type === "internal")?.id ??
+		"";
+	const [selectedTypeId, setSelectedTypeId] = useState<string>(defaultTypeId);
 	const [selectedStatusId, setSelectedStatusId] = useState<string>(service?.statusId ?? "");
 	const [selectedOwnerUnitDocumentIds, setSelectedOwnerUnitDocumentIds] = useState<Array<string>>(
 		service?.ownerUnitDocumentIds ?? [],
@@ -106,6 +117,25 @@ export function ServiceForm(props: Readonly<ServiceFormProps>): ReactNode {
 					<Select
 						isRequired={true}
 						onChange={(key) => {
+							setSelectedTypeId(String(key));
+						}}
+						value={selectedTypeId || null}
+					>
+						<Label>{t("Type")}</Label>
+						<SelectTrigger />
+						<FieldError />
+						<SelectContent>
+							{serviceTypes.map((serviceType) => (
+								<SelectItem key={serviceType.id} id={serviceType.id}>
+									{serviceType.type}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<input name="typeId" type="hidden" value={selectedTypeId} />
+					<Select
+						isRequired={true}
+						onChange={(key) => {
 							setSelectedStatusId(String(key));
 						}}
 						value={selectedStatusId || null}
@@ -116,7 +146,7 @@ export function ServiceForm(props: Readonly<ServiceFormProps>): ReactNode {
 						<SelectContent>
 							{serviceStatuses.map((status) => (
 								<SelectItem key={status.id} id={status.id}>
-									{formatServiceStatus(status.status)}
+									{getServiceStatusLabel(status.status)}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -160,14 +190,15 @@ export function ServiceForm(props: Readonly<ServiceFormProps>): ReactNode {
 					description={t("Link organisational units as service owners or providers.")}
 					title={t("Organisational units")}
 				>
-					<AsyncMultipleSelect
+					<AsyncListSelect
+						addLabel={t("Add service owner")}
 						aria-label={t("Service owners")}
+						emptySelectionMessage={t("No service owners")}
 						fetchPage={fetchOrganisationalUnitOptionsPage}
 						initialItems={initialOrganisationalUnitItems}
 						initialTotal={initialOrganisationalUnitTotal}
 						label={t("Service owners")}
 						onChange={setSelectedOwnerUnitDocumentIds}
-						placeholder={t("No service owners")}
 						selectedItems={selectedOrganisationalUnits}
 						value={selectedOwnerUnitDocumentIds}
 					/>
@@ -180,14 +211,15 @@ export function ServiceForm(props: Readonly<ServiceFormProps>): ReactNode {
 						/>
 					))}
 
-					<AsyncMultipleSelect
+					<AsyncListSelect
+						addLabel={t("Add service provider")}
 						aria-label={t("Service providers")}
+						emptySelectionMessage={t("No service providers")}
 						fetchPage={fetchOrganisationalUnitOptionsPage}
 						initialItems={initialOrganisationalUnitItems}
 						initialTotal={initialOrganisationalUnitTotal}
 						label={t("Service providers")}
 						onChange={setSelectedProviderUnitDocumentIds}
-						placeholder={t("No service providers")}
 						selectedItems={selectedOrganisationalUnits}
 						value={selectedProviderUnitDocumentIds}
 					/>

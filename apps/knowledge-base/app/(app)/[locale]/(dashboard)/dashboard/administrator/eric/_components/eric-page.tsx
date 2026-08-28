@@ -45,7 +45,7 @@ export function EricPage(props: Readonly<EricPageProps>): ReactNode {
 				<TableHeader>
 					<TableColumn isRowHeader={true}>{t("Name")}</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody>
 					<TableRow href={detailsHref}>
@@ -53,7 +53,7 @@ export function EricPage(props: Readonly<EricPageProps>): ReactNode {
 						<TableCell>
 							<EntityLifecycleStatusBadge hasDraft={eric.hasDraft} isPublished={eric.isPublished} />
 						</TableCell>
-						<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+						<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 							<RowActionsMenu>
 								<RowActionsMenu.Link
 									href={detailsHref}

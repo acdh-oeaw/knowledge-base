@@ -24,7 +24,17 @@ export function Dialog({
 	return (
 		<AriaDialog
 			className={twMerge(
-				"peer/dialog group/dialog relative flex max-block-[calc(var(--visual-viewport-height)-var(--visual-viewport-vertical-padding))] flex-col overflow-hidden outline-hidden [--gutter:--spacing(6)] sm:[--gutter:--spacing(8)]",
+				"peer/dialog group/dialog relative flex flex-col overflow-hidden outline-hidden [--gutter:--spacing(6)] max-block-[calc(var(--visual-viewport-height)-var(--visual-viewport-vertical-padding))] sm:[--gutter:--spacing(8)]",
+				/**
+				 * Dialogs that submit a form wrap header, body and footer in one — so the column that caps
+				 * at the viewport height is the dialog, but the element actually holding the three regions
+				 * is the form. Left as a plain block it sizes to its content, overflows the capped dialog,
+				 * and is clipped by `overflow-hidden`: the body's `overflow-auto` never gets a constrained
+				 * height to scroll within, and the footer's buttons end up below the viewport with no way
+				 * to reach them. Handing the form the same column layout puts the regions back under the
+				 * cap.
+				 */
+				"[&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:min-block-0",
 				className,
 			)}
 			data-slot="dialog"
@@ -72,7 +82,7 @@ export function DialogTitle({ className, ref, ...props }: Readonly<DialogTitlePr
 	return (
 		<AriaHeading
 			ref={ref}
-			className={twMerge("text-balance font-semibold text-fg text-lg/6 sm:text-base/6", className)}
+			className={twMerge("text-lg/6 font-semibold text-balance text-fg sm:text-base/6", className)}
 			slot="title"
 			{...props}
 		/>
@@ -91,7 +101,7 @@ export function DialogDescription({
 		<p
 			ref={ref}
 			className={twMerge(
-				"text-pretty text-base/6 text-muted-fg group-disabled:opacity-50 sm:text-sm/6",
+				"text-base/6 text-pretty text-muted-fg group-disabled:opacity-50 sm:text-sm/6",
 				className,
 			)}
 			data-slot="description"
@@ -105,7 +115,7 @@ export function DialogBody({ className, ...props }: Readonly<DialogBodyProps>): 
 	return (
 		<div
 			className={twMerge(
-				"isolate flex min-block-0 flex-1 flex-col overflow-auto px-(--gutter) py-1",
+				"isolate flex flex-1 flex-col overflow-auto px-(--gutter) py-1 min-block-0",
 				"**:data-[slot=dialog-footer]:px-0 **:data-[slot=dialog-footer]:pbs-0",
 				className,
 			)}
@@ -148,7 +158,7 @@ export function DialogCloseIcon({
 		<AriaButton
 			aria-label={t("Close")}
 			className={cx(
-				"absolute inset-e-1 inset-bs-1 z-50 grid block-8 inline-8 place-content-center rounded-xl hover:bg-secondary focus:bg-secondary focus:outline-hidden focus-visible:ring-1 focus-visible:ring-primary sm:inset-bs-2 sm:block-7 sm:inline-7 sm:rounded-md",
+				"absolute inset-e-1 inset-bs-1 z-50 grid place-content-center rounded-xl block-8 inline-8 hover:bg-secondary focus:bg-secondary focus:outline-hidden focus-visible:ring-1 focus-visible:ring-primary sm:inset-bs-2 sm:rounded-md sm:block-7 sm:inline-7",
 				className,
 			)}
 			slot="close"

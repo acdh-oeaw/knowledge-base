@@ -1,10 +1,16 @@
 "use client";
 
+import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
 import { Button } from "@dariah-eric/ui/button";
+import { Form } from "@dariah-eric/ui/form";
+import { FormStatus } from "@dariah-eric/ui/form-status";
+import { ProgressCircle } from "@dariah-eric/ui/progress-circle";
 import { RichTextEditor } from "@dariah-eric/ui/rich-text-editor";
 import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode, useActionState } from "react";
+
+import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface Question {
 	id: string;
@@ -16,22 +22,20 @@ interface WorkingGroupReportQuestionsFormProps {
 	reportId: string;
 	questions: Array<Question>;
 	answerMap: Record<string, unknown>;
-	formAction: (formData: FormData) => Promise<void>;
-	/** Where the save action should return to (defaults to the reporting flow when omitted). */
-	redirectTo?: string;
+	formAction: ServerAction;
 }
 
 export function WorkingGroupReportQuestionsForm(
 	props: Readonly<WorkingGroupReportQuestionsFormProps>,
 ): ReactNode {
-	const { reportId, questions, answerMap, formAction, redirectTo } = props;
+	const { reportId, questions, answerMap, formAction } = props;
 
 	const t = useExtracted();
+	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
 	return (
-		<form action={formAction} className="flex flex-col gap-y-8">
+		<Form action={action} className="flex flex-col gap-y-8 max-inline-3xl" state={state}>
 			<input name="id" type="hidden" value={reportId} />
-			{redirectTo != null && <input name="redirectTo" type="hidden" value={redirectTo} />}
 
 			{questions.map((question) => {
 				const existingAnswer = answerMap[question.id];
@@ -43,6 +47,7 @@ export function WorkingGroupReportQuestionsForm(
 								aria-label={`Question ${String(question.position)}`}
 								content={question.question as JSONContent}
 								isEditable={false}
+								size="sm"
 							/>
 						</div>
 						<RichTextEditor
@@ -54,9 +59,19 @@ export function WorkingGroupReportQuestionsForm(
 				);
 			})}
 
-			<div>
-				<Button type="submit">{t("Save")}</Button>
+			<div className="flex flex-col gap-y-3">
+				<Button className="self-start" isPending={isPending} type="submit">
+					{isPending ? (
+						<Fragment>
+							<ProgressCircle aria-label={t("Saving...")} isIndeterminate={true} />
+							<span aria-hidden={true}>{t("Saving...")}</span>
+						</Fragment>
+					) : (
+						t("Save")
+					)}
+				</Button>
+				<FormStatus className="self-start" state={state} />
 			</div>
-		</form>
+		</Form>
 	);
 }

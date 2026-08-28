@@ -39,7 +39,7 @@ export function SearchInput(props: Readonly<InputProps>): ReactNode {
 			<AriaButton
 				aria-label={t("Clear search")}
 				className={twJoin(
-					"touch-area grid place-content-center text-muted-fg pressed:text-fg hover:text-fg group-empty/search-field:invisible",
+					"touch-area grid place-content-center text-muted-fg group-empty/search-field:invisible hover:text-fg pressed:text-fg",
 					"px-3 py-2 sm:px-2.5 sm:py-1.5 sm:text-sm/5",
 				)}
 			>

@@ -11,15 +11,13 @@ import { db } from "@/lib/db";
 
 interface WorkingGroupReportQuestionsScreenProps {
 	reportId: string;
-	/** Edit base path; the save action returns here (e.g. `${basePath}/questions`). */
-	basePath: string;
 }
 
 /** Shared "questions" screen. See {@link getAuthorizedWorkingGroupReportForUser} for authorization. */
 export async function WorkingGroupReportQuestionsScreen(
 	props: Readonly<WorkingGroupReportQuestionsScreenProps>,
 ): Promise<ReactNode> {
-	const { reportId, basePath } = props;
+	const { reportId } = props;
 
 	const { user } = await assertAuthenticated();
 	const result = await getAuthorizedWorkingGroupReportForUser(
@@ -78,7 +76,6 @@ export async function WorkingGroupReportQuestionsScreen(
 				answerMap={Object.fromEntries(answerMap)}
 				formAction={upsertWorkingGroupReportAnswersAction}
 				questions={questions}
-				redirectTo={`${basePath}/questions`}
 				reportId={report.id}
 			/>
 

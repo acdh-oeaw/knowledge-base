@@ -3,7 +3,7 @@ import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { type ReactNode, Suspense } from "react";
+import type { ReactNode } from "react";
 
 import {
 	Header,
@@ -14,9 +14,14 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/header";
 import {
 	LiveReportResources,
-	LiveReportResourcesFallback,
+	getLiveReportResourceNavLinks,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_components/live-report-resources";
 import { LiveReportResourcesErrorBoundary } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_components/live-report-resources-error-boundary";
+import {
+	ReportCommentsSection,
+	reportCommentsSectionId,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_components/report-comments-section";
+import { getReportScreenComments } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_lib/report-screen-comments";
 import { WorkingGroupReportSummary } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_components/working-group-report-summary";
 import { getWorkingGroupReportDataForUser } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_lib/get-working-group-report-summary-data";
 import { assertAuthenticated } from "@/lib/auth/session";
@@ -62,6 +67,12 @@ export default async function DashboardAdministratorWorkingGroupReportPage(
 	const report = result.data;
 
 	const t = await getExtracted();
+	const liveResourceNavLinks = await getLiveReportResourceNavLinks("workingGroup");
+	const comments = await getReportScreenComments("working_group", report.id);
+	const extraSectionLinks = [
+		...liveResourceNavLinks,
+		...(comments.length > 0 ? [{ id: reportCommentsSectionId, label: t("Comments") }] : []),
+	];
 
 	return (
 		<div>
@@ -94,29 +105,18 @@ export default async function DashboardAdministratorWorkingGroupReportPage(
 				</HeaderAction>
 			</Header>
 
-			<div className="mbs-8 flex flex-col gap-y-10 px-(--layout-padding)">
-				<WorkingGroupReportSummary data={report.summary} />
+			<div className="mbs-8 flex flex-col gap-y-10 px-(--layout-padding) max-inline-4xl">
+				<WorkingGroupReportSummary data={report.summary} extraSectionLinks={extraSectionLinks} />
 				<LiveReportResourcesErrorBoundary
 					description={t(
-						"Live external data could not be loaded. Stored report data is unaffected.",
+						"External data snapshots could not be loaded. Stored report data is unaffected.",
 					)}
 					retryLabel={t("Retry")}
-					title={t("Live external data")}
+					title={t("External data snapshots")}
 				>
-					<Suspense
-						fallback={
-							<LiveReportResourcesFallback
-								description={t(
-									"This fetches current search-index data on demand. These results are not stored as a report snapshot in the database.",
-								)}
-								loadingLabel={t("Loading live external data…")}
-								title={t("Live external data")}
-							/>
-						}
-					>
-						<LiveReportResources reportId={id} reportKind="workingGroup" />
-					</Suspense>
+					<LiveReportResources reportId={id} reportKind="workingGroup" />
 				</LiveReportResourcesErrorBoundary>
+				<ReportCommentsSection comments={comments} />
 			</div>
 		</div>
 	);

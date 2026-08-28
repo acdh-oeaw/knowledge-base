@@ -17,8 +17,8 @@ import {
 interface DashboardWebsitePagesPageProps extends PageProps<"/[locale]/dashboard/website/pages"> {}
 
 const pageSize = dashboardPageSize;
-const defaultSort = "updatedAt" as const;
-const validSorts = ["title", "updatedAt"] as const;
+const defaultSort = "publicationDate" as const;
+const validSorts = ["publicationDate", "title"] as const;
 
 function createListHref(
 	q: string,

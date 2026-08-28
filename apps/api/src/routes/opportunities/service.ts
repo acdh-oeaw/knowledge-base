@@ -6,6 +6,12 @@ import * as schema from "@dariah-eric/database/schema";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -22,6 +28,16 @@ import {
 	or,
 	sql,
 } from "@/services/db/sql";
+import { imageWidth } from "~/config/api.config";
+
+interface GetOpportunitiesParams {
+	/** @default 10 */
+	limit?: number;
+	/** @default 0 */
+	offset?: number;
+	status?: OpportunityStatus | Array<OpportunityStatus>;
+	source?: OpportunitySource | Array<OpportunitySource>;
+}
 
 function buildStatusFilter(duration: SQLWrapper, statuses: Array<OpportunityStatus>): SQL {
 	const lower = sql`LOWER(${duration})`;
@@ -94,6 +110,11 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 	const { localeId, defaultLocaleId, typeId, statusId, preferredVersion, defaultVersion } =
 		await resolvePublishedOpportunitiesLookup(db, requestedLocaleId);
 
+	const statusFilter =
+		statuses.length > 0 ? buildStatusFilter(schema.opportunities.duration, statuses) : undefined;
+	const sourceFilter =
+		sources.length > 0 ? inArray(schema.opportunitySources.source, sources) : undefined;
+
 	const [items, aggregate] = await Promise.all([
 		db
 			.select({
@@ -106,6 +127,15 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 				slug: schema.slugs.value,
 				sourceId: schema.opportunitySources.id,
 				source: schema.opportunitySources.source,
+				imageKey: schema.assets.key,
+				imageAlt: schema.assets.alt,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
+				assetCaption: schema.assets.caption,
+				imageCaption: schema.opportunities.imageCaption,
+				imageCaptionMode: schema.opportunities.imageCaptionMode,
+				licenseName: schema.licenses.name,
+				licenseUrl: schema.licenses.url,
 			})
 			.from(schema.entities)
 			.leftJoin(
@@ -134,15 +164,9 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 				schema.opportunitySources,
 				eq(schema.opportunities.sourceId, schema.opportunitySources.id),
 			)
-			.where(
-				and(
-					eq(schema.entities.typeId, typeId),
-					statuses.length > 0
-						? buildStatusFilter(schema.opportunities.duration, statuses)
-						: undefined,
-					sources.length > 0 ? inArray(schema.opportunitySources.source, sources) : undefined,
-				),
-			)
+			.leftJoin(schema.assets, eq(schema.opportunities.imageId, schema.assets.id))
+			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
+			.where(and(eq(schema.entities.typeId, typeId), statusFilter, sourceFilter))
 			.orderBy(desc(sql`LOWER(${schema.opportunities.duration})`), desc(schema.opportunities.id))
 			.limit(limit)
 			.offset(offset),
@@ -158,20 +182,28 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 				schema.opportunitySources,
 				eq(schema.opportunities.sourceId, schema.opportunitySources.id),
 			)
-			.where(
-				and(
-					statuses.length > 0
-						? buildStatusFilter(schema.opportunities.duration, statuses)
-						: undefined,
-					sources.length > 0 ? inArray(schema.opportunitySources.source, sources) : undefined,
-				),
-			),
+			.where(and(statusFilter, sourceFilter)),
 	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
 
 	const data = items.map((item) => {
 		const duration = serializeDateRange(item.duration);
+		const image = generateImageUrl(
+			withResolvedCaption(
+				toImageAsset({
+					key: item.imageKey,
+					alt: item.imageAlt,
+					caption: item.assetCaption,
+					width: item.imageWidth,
+					height: item.imageHeight,
+					licenseName: item.licenseName,
+					licenseUrl: item.licenseUrl,
+				}),
+				{ imageCaption: item.imageCaption, imageCaptionMode: item.imageCaptionMode },
+			),
+			imageWidth.preview,
+		);
 
 		return {
 			id: item.id,
@@ -179,9 +211,10 @@ export async function getOpportunities(db: Database | Transaction, params: GetOp
 			summary: item.summary,
 			website: item.website,
 			duration,
-			source: { id: item.sourceId, source: item.source },
 			entity: { slug: item.slug },
 			publishedAt: item.updatedAt.toISOString(),
+			source: { id: item.sourceId, source: item.source },
+			image,
 		};
 	});
 
@@ -211,6 +244,8 @@ export async function getOpportunityById(
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
 				title: true,
 				summary: true,
@@ -226,6 +261,7 @@ export async function getOpportunityById(
 						},
 					},
 				},
+				image: imageAssetColumns,
 				source: {
 					columns: {
 						id: true,
@@ -247,10 +283,12 @@ export async function getOpportunityById(
 	]);
 
 	const duration = serializeDateRange(item.duration);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
 	return {
 		...flattenEntityVersion(item),
 		duration,
+		image,
 		...fields,
 		relatedEntities,
 		relatedResources,
@@ -353,6 +391,8 @@ export async function getOpportunityBySlug(
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			title: true,
 			summary: true,
@@ -368,6 +408,7 @@ export async function getOpportunityBySlug(
 					},
 				},
 			},
+			image: imageAssetColumns,
 			source: {
 				columns: {
 					id: true,
@@ -388,10 +429,12 @@ export async function getOpportunityBySlug(
 	]);
 
 	const duration = serializeDateRange(item.duration);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
 	return {
 		...flattenEntityVersion(item),
 		duration,
+		image,
 		...fields,
 		relatedEntities,
 		relatedResources,

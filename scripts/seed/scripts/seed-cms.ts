@@ -30,7 +30,6 @@ const entityTypeFieldMappings: Array<{ entityType: EntityType; fieldName: string
 	{ entityType: "documentation_pages", fieldName: "content" },
 	{ entityType: "documents_policies", fieldName: "description" },
 	{ entityType: "events", fieldName: "content" },
-	{ entityType: "external_links", fieldName: "description" },
 	{ entityType: "funding_calls", fieldName: "content" },
 	{ entityType: "impact_case_studies", fieldName: "content" },
 	{ entityType: "internal_pages", fieldName: "content" },
@@ -383,6 +382,15 @@ async function seedCms(tx: Transaction) {
 		.insert(schema.socialMediaTypes)
 		.values(
 			schema.socialMediaTypesEnum.map((type) => {
+				return { type };
+			}),
+		)
+		.onConflictDoNothing();
+
+	await tx
+		.insert(schema.personSocialMediaTypes)
+		.values(
+			schema.personSocialMediaTypesEnum.map((type) => {
 				return { type };
 			}),
 		)

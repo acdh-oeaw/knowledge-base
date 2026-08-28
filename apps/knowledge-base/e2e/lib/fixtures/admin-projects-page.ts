@@ -3,7 +3,9 @@ import { type Locator, type Page, expect } from "@playwright/test";
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
 import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
+import { dragGridRowDownByName } from "@/e2e/lib/fixtures/reorder";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
+import { createSocialMediaInForm } from "@/e2e/lib/fixtures/social-media-form";
 
 const BASE_PATH = "/en/dashboard/administrator/projects";
 
@@ -95,7 +97,7 @@ export class AdminProjectsPage {
 	}
 
 	async selectImageFromMediaLibrary(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Select image" }).click();
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
 		await this.page.waitForSelector('[role="dialog"]');
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
@@ -111,9 +113,11 @@ export class AdminProjectsPage {
 	}
 
 	async insertImageInDescription(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Insert image" }).click();
-		await this.page.waitForSelector('[role="dialog"]');
+		/** The insert menu opens the picker directly; the image lands finished. */
+		await this.page.getByRole("button", { name: "Insert", exact: true }).click();
+		await this.page.getByRole("menuitem", { name: "Image", exact: true }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
+		await dialog.waitFor({ state: "visible" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
 		await expect(asset).toHaveCount(1);
 		await asset.click();
@@ -145,31 +149,111 @@ export class AdminProjectsPage {
 		await this.page.getByRole("button", { name: "Remove image" }).click();
 	}
 
-	async removeAllTagsInControl(label: string): Promise<void> {
-		const control = this.page
-			.locator('[data-slot="control"]')
-			.filter({ has: this.page.getByText(label, { exact: true }) })
-			.last();
-		// Remove tag's aria-label extracts as "ui" (i18n build bug); match by slot="remove" instead.
-		const removeButtons = control.locator('button[slot="remove"]');
+	async removeAllSelectedInControl(label: string): Promise<void> {
+		// Selected items render as rows in an orderable grid list (aria-label === the control label);
+		// each row has a drag handle (slot="drag") alongside its Remove button, so target the non-drag
+		// button.
+		const list = this.page.getByRole("grid", { name: label });
+		const removeButtons = list.getByRole("row").locator('button:not([slot="drag"])');
 		while ((await removeButtons.count()) > 0) {
 			await removeButtons.first().click();
 		}
 	}
 
-	async createSocialMediaInForm(name: string, url: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Create social media" }).click();
-		const dialog = this.page.getByRole("dialog", { name: "Create social media" });
-		await dialog.getByLabel("Name", { exact: true }).fill(name);
-		await dialog.getByLabel("URL").fill(url);
-		const typeControl = dialog
-			.locator('[data-slot="control"]')
-			.filter({ has: this.page.locator('[data-slot="label"]', { hasText: "Type" }) });
-		await typeControl.locator("button[aria-expanded]:not([slot])").click();
-		await this.page.getByRole("option").first().click();
-		await dialog.getByRole("button", { name: "Create" }).click();
+	async removeSelectedInControlByName(label: string, name: string): Promise<void> {
+		// Remove a single selected row identified by its visible name. Each row has a drag handle
+		// (slot="drag") alongside its Remove button, so target the row's non-drag button.
+		const list = this.page.getByRole("grid", { name: label });
+		const row = list.getByRole("row").filter({ hasText: name });
+		await row.locator('button:not([slot="drag"])').click();
+		await expect(row).toBeHidden();
+	}
+
+	/** Names of the currently-selected rows in an orderable control, in display order. */
+	async getSelectedNamesInControl(label: string): Promise<Array<string>> {
+		const rows = this.page.getByRole("grid", { name: label }).getByRole("row");
+		const texts = await rows.allInnerTexts();
+		return texts.map((text) => text.trim()).filter((text) => text !== "");
+	}
+
+	/** Drag a selected row one position down past the row below it, within the given control. */
+	async moveSelectedInControlDown(label: string, name: string): Promise<void> {
+		await dragGridRowDownByName(
+			this.page,
+			this.page.getByRole("grid", { name: label }).getByRole("row"),
+			name,
+		);
+	}
+
+	// ---------------------------------------------------------------------------
+	// Related entities / resources
+	// ---------------------------------------------------------------------------
+
+	private relatedEntitiesSection(): Locator {
+		return this.page
+			.locator("section")
+			.filter({ has: this.page.getByRole("heading", { name: "Related entities", level: 2 }) });
+	}
+
+	private relatedEntitiesDialog(): Locator {
+		return this.page
+			.getByRole("dialog")
+			.filter({ has: this.page.getByRole("listbox", { name: "Related entities" }) });
+	}
+
+	private relatedEntitiesControl(): Locator {
+		return this.relatedEntitiesSection().getByRole("button", { name: "Add related entity" });
+	}
+
+	private async closeRelatedEntitiesDialog(dialog: Locator): Promise<void> {
+		await this.page.mouse.click(1, 1);
 		await dialog.waitFor({ state: "hidden" });
-		await expect(this.page.getByText(name, { exact: true })).toBeVisible();
+	}
+
+	async selectRelatedEntity(entityName: string): Promise<void> {
+		const trigger = this.relatedEntitiesControl();
+		const dialog = this.relatedEntitiesDialog();
+
+		await trigger.click();
+		await dialog.waitFor({ state: "visible" });
+
+		const searchbox = dialog.getByRole("searchbox");
+		await searchbox.fill(entityName);
+
+		const option = dialog.getByRole("option", { name: entityName, exact: true });
+		await option.waitFor({ state: "visible" });
+		await option.click();
+		await this.closeRelatedEntitiesDialog(dialog);
+	}
+
+	async removeRelatedEntity(entityName: string): Promise<void> {
+		// Selected items render as rows in an orderable grid list; each row has a drag handle
+		// (slot="drag") plus a Remove button whose aria-label is not locator-friendly in the e2e
+		// build, so target the row by name and the non-drag button.
+		const row = this.relatedEntitiesSection().getByRole("row", { name: entityName });
+		await row.waitFor({ state: "visible" });
+		await row.locator('button:not([slot="drag"])').click();
+		await row.waitFor({ state: "hidden" });
+	}
+
+	/** Names of the currently-selected related entities, in display order. */
+	async getRelatedEntityNames(): Promise<Array<string>> {
+		const rows = this.relatedEntitiesSection().getByRole("row");
+		const texts = await rows.allInnerTexts();
+		return texts.map((text) => text.trim()).filter((text) => text !== "");
+	}
+
+	/** Drag a related-entity row one position down past the row below it. */
+	async moveRelatedEntityDown(entityName: string): Promise<void> {
+		await dragGridRowDownByName(
+			this.page,
+			this.relatedEntitiesSection().getByRole("row"),
+			entityName,
+		);
+	}
+
+	async createSocialMediaInForm(name: string, url: string): Promise<void> {
+		await createSocialMediaInForm(this.page, name, url);
 	}
 
 	async goToProjectPartnersTab(): Promise<void> {
@@ -192,11 +276,14 @@ export class AdminProjectsPage {
 		const option = this.page.getByRole("option", { name: unitName, exact: true });
 		await expect(option).toBeVisible();
 		await option.click();
+		await expect(this.page.getByRole("option", { name: unitName, exact: true })).toBeHidden();
 		const roleControl = dialog
 			.locator('[data-slot="control"]')
 			.filter({ has: this.page.locator('[data-slot="label"]', { hasText: "Role" }) });
 		await roleControl.locator("button[aria-expanded]:not([slot])").click();
-		await this.page.getByRole("option").first().click();
+		const roleOption = this.page.getByRole("option").first();
+		await roleOption.click();
+		await expect(roleOption).toBeHidden();
 		await this.fillProjectPartnerDate("Start date", 2024, 3, 1);
 		await this.fillProjectPartnerDate("End date", 2024, 9, 30);
 		await waitForActionSuccess({
@@ -271,11 +358,12 @@ export class AdminProjectsPage {
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -310,6 +398,15 @@ export class AdminProjectsPage {
 		await row.getByRole("button", { name: "Open actions menu" }).click();
 		await this.page.getByRole("menuitem", { name: "View" }).click();
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
+	}
+
+	async gotoEditFromList(name: string): Promise<void> {
+		const row = this.projectRowByName(name);
+		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await Promise.all([
+			this.page.waitForURL(`**${BASE_PATH}/**/edit`),
+			this.page.getByRole("menuitem", { name: "Edit" }).click(),
+		]);
 	}
 
 	async gotoEditFromDetails(): Promise<void> {
@@ -371,7 +468,7 @@ export class AdminProjectsPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

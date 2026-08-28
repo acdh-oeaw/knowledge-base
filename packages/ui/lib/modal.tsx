@@ -73,11 +73,11 @@ export function ModalContent(props: Readonly<ModalContentProps>): ReactNode {
 	return (
 		<AriaModalOverlay
 			className={twJoin(
-				"fixed inset-0 z-50 block-(--visual-viewport-height,100vh) bg-black/15",
+				"fixed inset-0 z-50 bg-black/15 block-(--visual-viewport-height,100vh)",
 				"grid grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr]",
 				size === "fullscreen" ? "md:p-3" : "md:p-4",
-				"entering:fade-in entering:animate-in entering:duration-300 entering:ease-out",
-				"exiting:fade-out exiting:animate-out exiting:ease-in",
+				"entering:animate-in entering:duration-300 entering:ease-out entering:fade-in",
+				"exiting:animate-out exiting:ease-in exiting:fade-out",
 				isBlurred && "backdrop-blur-[1px]",
 			)}
 			data-slot="modal-overlay"
@@ -86,7 +86,7 @@ export function ModalContent(props: Readonly<ModalContentProps>): ReactNode {
 		>
 			<AriaModal
 				className={cx(
-					"row-start-2 inline-full text-start align-middle",
+					"row-start-2 text-start align-middle inline-full",
 					"[--visual-viewport-vertical-padding:16px]",
 					size === "fullscreen"
 						? "sm:rounded-md sm:[--visual-viewport-vertical-padding:16px]"
@@ -95,8 +95,8 @@ export function ModalContent(props: Readonly<ModalContentProps>): ReactNode {
 					"rounded-t-2xl shadow-lg ring ring-fg/5 dark:ring-border",
 					sizes[size],
 
-					"entering:slide-in-from-bottom entering:animate-in entering:duration-300 entering:ease-out sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0",
-					"exiting:slide-out-to-bottom exiting:animate-out exiting:ease-in sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0",
+					"entering:animate-in entering:duration-300 entering:ease-out entering:slide-in-from-bottom sm:entering:slide-in-from-bottom-0 sm:entering:zoom-in-95",
+					"exiting:animate-out exiting:ease-in exiting:slide-out-to-bottom sm:exiting:slide-out-to-bottom-0 sm:exiting:zoom-out-95",
 					className,
 				)}
 				data-slot="modal-content"

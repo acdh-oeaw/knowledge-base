@@ -6,13 +6,14 @@ import * as schema from "@dariah-eric/database/schema";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { type ImageAsset, generateImageUrl, toImageAsset } from "@/lib/images";
+import { type ImageAsset, generateImageUrl, imageAssetColumns, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import {
 	getPublishedProjectPartners,
 	getPublishedProjectPartnersByDocuments,
 } from "@/lib/project-partners";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
+import { socialMediaByPosition } from "@/lib/social-media";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, and, count, desc, eq, inArray, not, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
@@ -159,6 +160,8 @@ export async function getDariahProjects(
 				slug: schema.slugs.value,
 				scope: schema.projectScopes.scope,
 				imageKey: schema.assets.key,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
 				imageAlt: schema.assets.alt,
 				imageCaption: schema.assets.caption,
 				licenseName: schema.licenses.name,
@@ -229,6 +232,8 @@ export async function getDariahProjects(
 				key: item.imageKey,
 				alt: item.imageAlt,
 				caption: item.imageCaption,
+				width: item.imageWidth,
+				height: item.imageHeight,
 				licenseName: item.licenseName,
 				licenseUrl: item.licenseUrl,
 			}),
@@ -306,27 +311,14 @@ export async function getDariahProjectById(
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 				scope: {
 					columns: {
 						scope: true,
 					},
 				},
 				socialMedia: {
+					...socialMediaByPosition,
 					columns: {
 						id: true,
 						url: true,
@@ -490,27 +482,14 @@ export async function getDariahProjectBySlug(
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 			scope: {
 				columns: {
 					scope: true,
 				},
 			},
 			socialMedia: {
+				...socialMediaByPosition,
 				columns: {
 					id: true,
 					url: true,

@@ -11,6 +11,7 @@ test.describe("governance bodies admin", () => {
 
 	test.afterAll(async ({ db }, testInfo) => {
 		await db.cleanupWorkerGovernanceBodies(testInfo.workerIndex);
+		await db.cleanupWorkerSocialMedia(testInfo.workerIndex);
 	});
 
 	test("should create a governance body", async ({ createAdminGovernanceBodiesPage, db }) => {
@@ -21,6 +22,8 @@ test.describe("governance bodies admin", () => {
 		const acronym = "E2EGB";
 		const summary = "E2E test governance body summary.";
 		const description = "E2E test governance body description.";
+		const socialMediaName = `${governanceBodiesPage.workerPrefix} Governance Social ${randomUUID()}`;
+		const socialMediaUrl = "https://example.com/governance-social";
 		const testAsset = await db.getTestAsset();
 
 		await governanceBodiesPage.gotoCreate();
@@ -30,6 +33,7 @@ test.describe("governance bodies admin", () => {
 		await governanceBodiesPage.fillSummary(summary);
 		await governanceBodiesPage.selectTestImage();
 		await governanceBodiesPage.fillDescription(description);
+		await governanceBodiesPage.createSocialMediaInForm(socialMediaName, socialMediaUrl);
 
 		await governanceBodiesPage.submitForm();
 
@@ -42,6 +46,11 @@ test.describe("governance bodies admin", () => {
 		expect(JSON.stringify(await db.getGovernanceBodyDescriptionByName(name))).toContain(
 			description,
 		);
+		const socialMedia = await db.getSocialMediaByName(socialMediaName);
+		expect(socialMedia).toMatchObject({ name: socialMediaName, url: socialMediaUrl });
+		expect(await db.getOrganisationalUnitSocialMediaIds(created!.id)).toStrictEqual([
+			socialMedia!.id,
+		]);
 	});
 
 	test("should edit all governance body form fields", async ({

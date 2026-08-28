@@ -6,248 +6,428 @@ msgstr ""
 "X-Generator: next-intl\n"
 "X-Crowdin-SourceKey: msgstr\n"
 
-#: lib/async-multiple-select.tsx:163
-#: lib/async-select.tsx:131
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
+#: lib/async-select.tsx
 msgctxt "ui"
 msgid "JDP92p"
 msgstr "Could not load options."
 
-#: lib/async-multiple-select.tsx:193
-#: lib/multiple-select.tsx:121
+#: lib/async-list-select.tsx
+#: lib/inline-rich-text-editor.tsx
+#: lib/rich-text-editor.tsx
 msgctxt "ui"
-msgid "ch1L7M"
-msgstr "Selected items"
+msgid "G_yZLu"
+msgstr "Remove"
 
-#: lib/async-multiple-select.tsx:207
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
 msgctxt "ui"
-msgid "Klxvi/"
+msgid "Klxvi_"
 msgstr "No selected items"
 
-#: lib/async-multiple-select.tsx:215
-#: lib/multiple-select.tsx:141
-#: lib/searchable-select.tsx:92
+#: lib/async-list-select.tsx
 msgctxt "ui"
-msgid "hBhV8k"
-msgstr "Open options"
+msgid "2_2yg-"
+msgstr "Add"
 
-#: lib/async-multiple-select.tsx:240
-#: lib/async-select.tsx:193
-#: lib/multiple-select.tsx:166
-#: lib/search-field.tsx:26
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
+#: lib/async-select.tsx
+#: lib/multiple-select.tsx
+#: lib/search-field.tsx
 msgctxt "ui"
 msgid "xmcVZ0"
 msgstr "Search"
 
-#: lib/async-multiple-select.tsx:289
-#: lib/async-multiple-select.tsx:295
-#: lib/async-select.tsx:239
-#: lib/async-select.tsx:245
-#: lib/loader.tsx:95
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
+#: lib/async-select.tsx
+#: lib/loader.tsx
 msgctxt "ui"
 msgid "99OtWT"
 msgstr "Pending..."
 
-#: lib/async-multiple-select.tsx:299
-#: lib/async-select.tsx:249
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
+#: lib/async-select.tsx
 msgctxt "ui"
 msgid "GEi2T8"
 msgstr "No options found."
 
-#: lib/async-multiple-select.tsx:311
-#: lib/async-select.tsx:261
-#: lib/pagination.tsx:153
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
+#: lib/async-select.tsx
+#: lib/pagination.tsx
 msgctxt "ui"
 msgid "k9hDFZ"
 msgstr "Previous page"
 
-#: lib/async-multiple-select.tsx:319
-#: lib/async-select.tsx:269
-#: lib/pagination.tsx:199
+#: lib/async-list-select.tsx
+#: lib/async-multiple-select.tsx
+#: lib/async-select.tsx
+#: lib/pagination.tsx
 msgctxt "ui"
 msgid "rBj9Ib"
 msgstr "Next page"
 
-#: lib/calendar.tsx:102
+#: lib/async-multiple-select.tsx
+#: lib/multiple-select.tsx
+msgctxt "ui"
+msgid "ch1L7M"
+msgstr "Selected items"
+
+#: lib/async-multiple-select.tsx
+#: lib/multiple-select.tsx
+#: lib/searchable-select.tsx
+msgctxt "ui"
+msgid "hBhV8k"
+msgstr "Open options"
+
+#: lib/breadcrumbs.tsx
+msgctxt "ui"
+msgid "ByoZDD"
+msgstr "Breadcrumbs"
+
+#: lib/calendar.tsx
 msgctxt "ui"
 msgid "8mRNBD"
 msgstr "Previous month"
 
-#: lib/calendar.tsx:112
+#: lib/calendar.tsx
 msgctxt "ui"
 msgid "PqmLVn"
 msgstr "Next month"
 
-#: lib/calendar.tsx:143
+#: lib/calendar.tsx
 msgctxt "ui"
-msgid "pig+2F"
+msgid "pig-2F"
 msgstr "Select month"
 
-#: lib/calendar.tsx:179
+#: lib/calendar.tsx
 msgctxt "ui"
 msgid "HppWvq"
 msgstr "Select year"
 
-#: lib/carousel.tsx:237
+#: lib/carousel.tsx
 msgctxt "ui"
 msgid "Y9bYKH"
 msgstr "Next slide"
 
-#: lib/carousel.tsx:237
+#: lib/carousel.tsx
 msgctxt "ui"
 msgid "MH3koz"
 msgstr "Previous slide"
 
-#: lib/command-menu.tsx:131
+#: lib/command-menu.tsx
 msgctxt "ui"
 msgid "tCOYpl"
 msgstr "Command menu"
 
-#: lib/command-menu.tsx:159
+#: lib/command-menu.tsx
 msgctxt "ui"
 msgid "49vo8t"
 msgstr "Quick search"
 
-#: lib/command-menu.tsx:174
+#: lib/command-menu.tsx
 msgctxt "ui"
 msgid "0BUTMv"
 msgstr "Search..."
 
-#: lib/date-picker.tsx:67
+#: lib/date-picker.tsx
 msgctxt "ui"
 msgid "WZXD9N"
 msgstr "Date picker"
 
-#: lib/date-picker.tsx:102
+#: lib/date-picker.tsx
 msgctxt "ui"
 msgid "OHAWov"
 msgstr "Open calendar"
 
-#: lib/dialog.tsx:149
-#: lib/toast.tsx:58
+#: lib/dialog.tsx
+#: lib/toast.tsx
 msgctxt "ui"
 msgid "rbrahO"
 msgstr "Close"
 
-#: lib/empty-state.tsx:177
+#: lib/empty-state.tsx
 msgctxt "ui"
 msgid "u4jsnc"
 msgstr "No data found"
 
-#: lib/empty-state.tsx:179
+#: lib/empty-state.tsx
 msgctxt "ui"
-msgid "2I546+"
+msgid "2I546-"
 msgstr "No information is currently available in this section."
 
-#: lib/grid-list.tsx:98
+#: lib/grid-list.tsx
 msgctxt "ui"
 msgid "4ZUjCU"
 msgstr "Reorder item"
 
-#: lib/pagination.tsx:20
-#: lib/pagination.tsx:53
-msgctxt "ui"
-msgid "ZATT08"
-msgstr "Pagination"
-
-#: lib/pagination.tsx:104
-msgctxt "ui"
-msgid "A64Z+T"
-msgstr "First page"
-
-#: lib/pagination.tsx:245
-msgctxt "ui"
-msgid "N8BBfe"
-msgstr "Last page"
-
-#: lib/rich-text-editor.tsx:848
+#: lib/inline-rich-text-editor.tsx
+#: lib/rich-text-actions.tsx
 msgctxt "ui"
 msgid "Dkkmwm"
 msgstr "Bold"
 
-#: lib/rich-text-editor.tsx:856
+#: lib/inline-rich-text-editor.tsx
+#: lib/rich-text-actions.tsx
 msgctxt "ui"
-msgid "g2V+es"
+msgid "g2V-es"
 msgstr "Italic"
 
-#: lib/rich-text-editor.tsx:864
-msgctxt "ui"
-msgid "h2vipu"
-msgstr "Code"
-
-#: lib/rich-text-editor.tsx:873
-msgctxt "ui"
-msgid "Zqekct"
-msgstr "Heading 2"
-
-#: lib/rich-text-editor.tsx:881
-msgctxt "ui"
-msgid "BDbgCL"
-msgstr "Heading 3"
-
-#: lib/rich-text-editor.tsx:889
-msgctxt "ui"
-msgid "BKF2fN"
-msgstr "Heading 4"
-
-#: lib/rich-text-editor.tsx:898
-msgctxt "ui"
-msgid "6sdKFe"
-msgstr "Bullet List"
-
-#: lib/rich-text-editor.tsx:906
-msgctxt "ui"
-msgid "rU4xig"
-msgstr "Ordered List"
-
-#: lib/rich-text-editor.tsx:914
-msgctxt "ui"
-msgid "+RDJVD"
-msgstr "Blockquote"
-
-#: lib/rich-text-editor.tsx:925
-#: lib/rich-text-editor.tsx:933
+#: lib/inline-rich-text-editor.tsx
+#: lib/rich-text-editor.tsx
 msgctxt "ui"
 msgid "JBWS0c"
 msgstr "Link"
 
-#: lib/rich-text-editor.tsx:955
+#: lib/inline-rich-text-editor.tsx
+#: lib/rich-text-editor.tsx
 msgctxt "ui"
-msgid "EWw/tK"
+msgid "EWw_tK"
 msgstr "Apply"
 
-#: lib/rich-text-editor.tsx:959
+#: lib/inline-rich-text-editor.tsx
+#: lib/rich-text-actions.tsx
 msgctxt "ui"
-msgid "G/yZLu"
-msgstr "Remove"
+msgid "fhp4gl"
+msgstr "Footnote"
 
-#: lib/search-field.tsx:40
+#: lib/pagination.tsx
+msgctxt "ui"
+msgid "ZATT08"
+msgstr "Pagination"
+
+#: lib/pagination.tsx
+msgctxt "ui"
+msgid "A64Z-T"
+msgstr "First page"
+
+#: lib/pagination.tsx
+msgctxt "ui"
+msgid "N8BBfe"
+msgstr "Last page"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "h2vipu"
+msgstr "Code"
+
+#: lib/rich-text-actions.tsx
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "qKqtMC"
+msgstr "Paragraph"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "Zqekct"
+msgstr "Heading 2"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "BDbgCL"
+msgstr "Heading 3"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "BKF2fN"
+msgstr "Heading 4"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "drh2NU"
+msgstr "Bullet list"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "5j_gIz"
+msgstr "Ordered list"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "-RDJVD"
+msgstr "Blockquote"
+
+#: lib/rich-text-actions.tsx
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "IeBejt"
+msgstr "Table"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "0XWmRm"
+msgstr "Divider"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "-0zv6g"
+msgstr "Image"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "bp3HuS"
+msgstr "Embed"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "fErjHU"
+msgstr "Callout"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "ryK3qR"
+msgstr "Accordion"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "1EqXlD"
+msgstr "Media and text"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "WExVSr"
+msgstr "Gallery"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
+msgid "KP63fg"
+msgstr "Button"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "hBrEtp"
+msgstr "Text style"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "ZgFjjD"
+msgstr "This link points to a document."
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "TANa98"
+msgstr "This link points to another page."
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "y8KNhq"
+msgstr "Change document"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "KDqj1t"
+msgstr "Change page"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "yy68o_"
+msgstr "Toggle header row"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "Lag3AX"
+msgstr "Add row above"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "-MYMhj"
+msgstr "Add row below"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "w19eTC"
+msgstr "Delete row"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "UNGmTw"
+msgstr "Add column before"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "X6kBtc"
+msgstr "Add column after"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "qfX6ms"
+msgstr "Delete column"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "2CyUQr"
+msgstr "Delete table"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "freMIM"
+msgstr "Insert"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "nxS3sg"
+msgstr "Link to document"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "_GpEhj"
+msgstr "Link to page"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "ojUXiU"
+msgstr "Placeholder value"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "t1Ql7Y"
+msgstr "Footnotes"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "cZp00l"
+msgstr "Empty note"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "VXTh3F"
+msgstr "No matching blocks"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "FeZ3P6"
+msgstr "Insert block"
+
+#: lib/search-field.tsx
 msgctxt "ui"
 msgid "4YJHut"
 msgstr "Clear search"
 
-#: lib/sidebar.tsx:239
+#: lib/sidebar.tsx
 msgctxt "ui"
 msgid "JZy6jo"
 msgstr "Sidebar"
 
-#: lib/sidebar.tsx:736
-#: lib/sidebar.tsx:780
+#: lib/sidebar.tsx
 msgctxt "ui"
 msgid "6D4Ghb"
 msgstr "Toggle sidebar"
 
-#: lib/sidebar.tsx:760
-#: lib/sidebar.tsx:792
+#: lib/sidebar.tsx
 msgctxt "ui"
 msgid "kh4wt0"
 msgstr "Toggle Sidebar"
 
-#: lib/table.tsx:288
+#: lib/table.tsx
 msgctxt "ui"
 msgid "8epGWu"
 msgstr "Reorder row"
 
-#: lib/tag-group.tsx:72
+#: lib/tag-group.tsx
 msgctxt "ui"
 msgid "NNbHjg"
 msgstr "Remove tag"

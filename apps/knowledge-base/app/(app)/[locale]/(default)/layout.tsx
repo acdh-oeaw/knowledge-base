@@ -17,7 +17,7 @@ export default function DefaultLayout(props: Readonly<DefaultLayoutProps>): Reac
 		<Fragment>
 			<SkipLink href={`#${mainContentId}`}>{t("Skip to main content")}</SkipLink>
 
-			<div className="relative isolate flex min-block-full flex-col">
+			<div className="relative isolate flex flex-col min-block-full">
 				<DefaultHeader />
 
 				{children}

@@ -6,9 +6,27 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { OpportunityEditForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_components/opportunity-edit";
+import { imageGridOptions } from "@/config/assets.config";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import { getMediaLibraryAssets } from "@/lib/data/assets";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
+import { getLocales } from "@/lib/data/locales";
 import { opportunitiesLifecycleAdapter } from "@/lib/data/opportunities.lifecycle-adapter";
+import {
+	getEntityRelationOptions,
+	getEntityRelationOptionsByIds,
+	getEntityRelations,
+	getResourceRelationOptions,
+	getResourceRelationOptionsByIds,
+} from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteEditOpportunityPageProps extends PageProps<"/[locale]/dashboard/website/opportunities/[slug]/edit"> {}
@@ -29,7 +47,7 @@ export async function generateMetadata(
 export default async function DashboardWebsiteEditOpportunityPage(
 	props: Readonly<DashboardWebsiteEditOpportunityPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
@@ -50,9 +68,29 @@ export default async function DashboardWebsiteEditOpportunityPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(tx, documentId, opportunitiesLifecycleAdapter);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			documentId,
+			opportunitiesLifecycleAdapter,
+			selectedLocale.id,
+		);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -60,6 +98,8 @@ export default async function DashboardWebsiteEditOpportunityPage(
 		where: { id: draftVersionId },
 		columns: {
 			id: true,
+			imageCaption: true,
+			imageCaptionMode: true,
 			duration: true,
 			sourceId: true,
 			title: true,
@@ -94,6 +134,10 @@ export default async function DashboardWebsiteEditOpportunityPage(
 					source: true,
 				},
 			},
+			image: {
+				columns: selectedImageColumns,
+				with: selectedImageWith,
+			},
 		},
 	});
 
@@ -107,12 +151,30 @@ export default async function DashboardWebsiteEditOpportunityPage(
 	);
 	const entityVersionSlug = opportunity.entityVersion.slug;
 
-	const [contentBlocks, sources] = await Promise.all([
+	const image = toSelectedImage(opportunity.image, imageGridOptions);
+
+	const [
+		contentBlocks,
+		sources,
+		{ items: initialAssets },
+		initialRelatedEntities,
+		initialRelatedResources,
+	] = await Promise.all([
 		getEntityContentBlocks(opportunity.id, "content"),
 		db.query.opportunitySources.findMany({
 			orderBy: { source: "asc" },
 			columns: { id: true, source: true },
 		}),
+		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "images" }),
+		getEntityRelationOptions(),
+		getResourceRelationOptions(),
+	]);
+
+	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(documentId);
+
+	const [selectedRelatedEntities, selectedRelatedResources] = await Promise.all([
+		getEntityRelationOptionsByIds(relatedEntityIds),
+		getResourceRelationOptionsByIds(relatedResourceIds),
 	]);
 
 	return (
@@ -123,8 +185,20 @@ export default async function DashboardWebsiteEditOpportunityPage(
 			isPublished={publishedId != null}
 			opportunity={{
 				...opportunity,
+				image,
 				entityVersion: { ...opportunity.entityVersion, slug: entityVersionSlug },
 			}}
+			initialAssets={initialAssets}
+			initialRelatedEntityIds={relatedEntityIds}
+			initialRelatedEntityItems={initialRelatedEntities.items}
+			initialRelatedEntityTotal={initialRelatedEntities.total}
+			initialRelatedResourceIds={relatedResourceIds}
+			initialRelatedResourceItems={initialRelatedResources.items}
+			initialRelatedResourceTotal={initialRelatedResources.total}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
+			selectedRelatedEntities={selectedRelatedEntities}
+			selectedRelatedResources={selectedRelatedResources}
 			sources={sources}
 		/>
 	);

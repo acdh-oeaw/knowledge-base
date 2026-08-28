@@ -1,1 +1,1 @@
-# the knowledge base object store
+# dariah knowledge base object store

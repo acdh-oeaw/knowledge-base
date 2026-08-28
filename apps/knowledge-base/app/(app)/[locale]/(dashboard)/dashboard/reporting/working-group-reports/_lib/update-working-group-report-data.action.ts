@@ -1,66 +1,36 @@
 "use server";
 
-import { getFormDataValues } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import { globalPostRequestRateLimit } from "@dariah-eric/next-lib/rate-limiter";
-import { getLocale } from "next-intl/server";
-import { revalidatePath } from "next/cache";
-import * as v from "valibot";
+import { getExtracted } from "next-intl/server";
 
-import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
-import { assertCan } from "@/lib/auth/permissions";
-import { assertAuthenticated } from "@/lib/auth/session";
-import {
-	getWorkingGroupReportEditHrefById,
-	sanitizeReportRedirectTo,
-	workingGroupReportRevalidatePaths,
-} from "@/lib/data/reporting-urls";
-import { db } from "@/lib/db";
+import { UpdateWorkingGroupReportDataActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_lib/update-working-group-report-data.schema";
+import { assertCan, assertReportEditable } from "@/lib/auth/permissions";
+import { workingGroupReportRevalidatePaths } from "@/lib/data/reporting-urls";
 import { eq } from "@/lib/db/sql";
-import { redirect } from "@/lib/navigation/navigation";
+import { createMutationAction } from "@/lib/server/create-mutation-action";
 
-const UpdateWorkingGroupReportDataSchema = v.object({
-	id: v.pipe(v.string(), v.uuid()),
-	numberOfMembers: v.optional(v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(0))),
-	mailingList: v.optional(v.string()),
+export const updateWorkingGroupReportDataAction = createMutationAction({
+	schema: UpdateWorkingGroupReportDataActionInputSchema,
+	requireAuth: true,
+	audit: { action: "update", subjectType: "working_group_report" },
+	revalidate: workingGroupReportRevalidatePaths,
+
+	async preCheck({ input, ctx }) {
+		await assertCan(ctx.user, "update", { type: "working_group_report", id: input.id });
+		await assertReportEditable(ctx.user, { type: "working_group_report", id: input.id });
+		return undefined;
+	},
+
+	async mutate(tx, input) {
+		const t = await getExtracted();
+
+		await tx
+			.update(schema.workingGroupReports)
+			.set({
+				numberOfMembers: input.numberOfMembers ?? null,
+			})
+			.where(eq(schema.workingGroupReports.id, input.id));
+
+		return { subjectId: input.id, successMessage: t("Saved.") };
+	},
 });
-
-export async function updateWorkingGroupReportDataAction(formData: FormData): Promise<void> {
-	if (!(await globalPostRequestRateLimit())) {
-		return;
-	}
-
-	const result = v.safeParse(UpdateWorkingGroupReportDataSchema, getFormDataValues(formData));
-	if (!result.success) {
-		return;
-	}
-
-	const { id, numberOfMembers, mailingList } = result.output;
-
-	const locale = await getLocale();
-	const { user } = await assertAuthenticated();
-	await assertCan(user, "update", { type: "working_group_report", id });
-
-	await db
-		.update(schema.workingGroupReports)
-		.set({
-			numberOfMembers: numberOfMembers ?? null,
-			mailingList: mailingList ?? null,
-		})
-		.where(eq(schema.workingGroupReports.id, id));
-
-	await recordAuditEvent(db, {
-		actorUserId: user.id,
-		action: "update",
-		subjectType: "working_group_report",
-		subjectId: id,
-		summary: getAuditSummaryFromFormData(formData),
-	});
-
-	for (const path of workingGroupReportRevalidatePaths) {
-		revalidatePath(path, "layout");
-	}
-
-	const redirectTo = sanitizeReportRedirectTo(formData.get("redirectTo"));
-	redirect({ href: redirectTo ?? (await getWorkingGroupReportEditHrefById(id, "data")), locale });
-}

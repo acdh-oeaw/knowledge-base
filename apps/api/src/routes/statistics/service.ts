@@ -6,6 +6,7 @@ export async function getStatistics(db: Database | Transaction) {
 	const item = await db.query.statistics.findFirst({
 		columns: {
 			memberCountries: true,
+			observerCountries: true,
 			partnerInstitutions: true,
 			cooperatingPartners: true,
 			workingGroups: true,
@@ -15,6 +16,7 @@ export async function getStatistics(db: Database | Transaction) {
 	return (
 		item ?? {
 			memberCountries: 0,
+			observerCountries: 0,
 			partnerInstitutions: 0,
 			cooperatingPartners: 0,
 			workingGroups: 0,

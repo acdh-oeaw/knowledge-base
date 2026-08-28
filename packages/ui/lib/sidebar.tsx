@@ -175,7 +175,7 @@ export function SidebarProvider(props: Readonly<SidebarProviderProps>): ReactNod
 				ref={ref}
 				className={twMerge(
 					"@container **:data-[slot=icon]:shrink-0",
-					"flex inline-full text-sidebar-fg",
+					"flex text-sidebar-fg inline-full",
 					"group/sidebar-root peer/sidebar-root dark:has-data-[intent=inset]:bg-bg has-data-[intent=inset]:bg-sidebar",
 					className,
 				)}
@@ -218,7 +218,7 @@ export function Sidebar(props: Readonly<SidebarProps>): ReactNode {
 		return (
 			<div
 				className={twMerge(
-					"flex block-full inline-(--sidebar-width) flex-col bg-sidebar text-sidebar-fg",
+					"flex flex-col bg-sidebar text-sidebar-fg block-full inline-(--sidebar-width)",
 					className,
 				)}
 				data-collapsible="none"
@@ -237,7 +237,7 @@ export function Sidebar(props: Readonly<SidebarProps>): ReactNode {
 				<span aria-hidden={true} className="sr-only" data-intent={intent} />
 				<SheetContent
 					aria-label={t("Sidebar")}
-					className="inline-(--sidebar-width) [--sidebar-width:18rem] entering:blur-in exiting:blur-out has-data-[slot=calendar]:[--sidebar-width:23rem]"
+					className="[--sidebar-width:18rem] inline-(--sidebar-width) entering:blur-in exiting:blur-out has-data-[slot=calendar]:[--sidebar-width:23rem]"
 					closeButton={closeButton}
 					data-intent="default"
 					data-slot="sidebar"
@@ -267,7 +267,7 @@ export function Sidebar(props: Readonly<SidebarProps>): ReactNode {
 				className={twMerge([
 					"inline-(--sidebar-width) group-data-[collapsible=hidden]:inline-0",
 					"group-data-[side=right]:-rotate-180",
-					"relative block-svh bg-transparent transition-[width] duration-200 ease-linear",
+					"relative bg-transparent transition-[width] duration-200 ease-linear block-svh",
 					intent === "default" && "group-data-[collapsible=dock]:inline-(--sidebar-width-dock)",
 					intent === "float" &&
 						"group-data-[collapsible=dock]:inline-[calc(var(--sidebar-width-dock)+(--spacing(4)))]",
@@ -278,7 +278,7 @@ export function Sidebar(props: Readonly<SidebarProps>): ReactNode {
 			/>
 			<div
 				className={twMerge(
-					"fixed inset-y-0 z-10 hidden inline-(--sidebar-width) bg-sidebar md:flex not-has-data-[slot=sidebar-footer]:pbe-2",
+					"fixed inset-y-0 z-10 hidden bg-sidebar inline-(--sidebar-width) md:flex not-has-data-[slot=sidebar-footer]:pbe-2",
 					"transition-[left,right,width] duration-200 ease-linear",
 					side === "left" && "inset-s-0 group-data-[collapsible=hidden]:-inset-s-(--sidebar-width)",
 					side === "right" &&
@@ -298,7 +298,7 @@ export function Sidebar(props: Readonly<SidebarProps>): ReactNode {
 			>
 				<div
 					className={twJoin(
-						"flex block-full inline-full flex-col text-sidebar-fg",
+						"flex flex-col text-sidebar-fg block-full inline-full",
 						"group-data-[intent=float]:rounded-lg group-data-[intent=float]:border group-data-[intent=float]:border-sidebar-border group-data-[intent=float]:bg-sidebar group-data-[intent=float]:shadow-xs",
 					)}
 					data-sidebar="default"
@@ -387,7 +387,7 @@ export function SidebarContent(props: Readonly<SidebarContentProps>): ReactNode 
 		<div
 			ref={ref}
 			className={twMerge(
-				"flex min-block-0 flex-1 scroll-mbe-96 flex-col overflow-auto *:data-[slot=sidebar-section]:border-s-0",
+				"flex flex-1 scroll-mbe-96 flex-col overflow-auto min-block-0 *:data-[slot=sidebar-section]:border-s-0",
 				state === "collapsed" ? "items-center" : !isAtBottom && "mask-b-from-95%",
 				className,
 			)}
@@ -410,7 +410,7 @@ export function SidebarSectionGroup(props: Readonly<SidebarSectionGroupProps>): 
 	return (
 		<section
 			className={twMerge(
-				"flex inline-full min-inline-0 flex-col gap-y-0.5",
+				"flex flex-col gap-y-0.5 inline-full min-inline-0",
 				collapsed && "items-center justify-center",
 				className,
 			)}
@@ -432,7 +432,7 @@ export function SidebarSection(props: Readonly<SidebarSectionProps>): ReactNode 
 	return (
 		<div
 			className={twMerge(
-				"col-span-full flex min-inline-0 flex-col gap-y-0.5 **:data-[slot=sidebar-section]:**:gap-y-0",
+				"col-span-full flex flex-col gap-y-0.5 min-inline-0 **:data-[slot=sidebar-section]:**:gap-y-0",
 				"p-4 in-data-[state=collapsed]:p-2",
 				className,
 			)}
@@ -440,7 +440,7 @@ export function SidebarSection(props: Readonly<SidebarSectionProps>): ReactNode 
 			{...rest}
 		>
 			{state !== "collapsed" && label != null && (
-				<AriaHeader className="mbe-1 flex shrink-0 items-center rounded-md px-2 text-sidebar-fg/70 text-xs/6 outline-none ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear *:data-[slot=icon]:block-4 *:data-[slot=icon]:inline-4 *:data-[slot=icon]:shrink-0 group-data-[collapsible=dock]:-mbs-8 group-data-[collapsible=dock]:opacity-0">
+				<AriaHeader className="mbe-1 flex shrink-0 items-center rounded-md px-2 text-xs/6 text-sidebar-fg/70 ring-sidebar-ring transition-[margin,opa] duration-200 ease-linear outline-none *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:block-4 *:data-[slot=icon]:inline-4 group-data-[collapsible=dock]:-mbs-8 group-data-[collapsible=dock]:opacity-0">
 					{label}
 				</AriaHeader>
 			)}
@@ -478,9 +478,9 @@ export function SidebarItem(props: Readonly<SidebarItemProps>): ReactNode {
 				className,
 				(className, { isFocusVisible, isPressed, isHovered, isDisabled }) =>
 					twMerge(
-						"inline-full min-inline-0 items-center rounded-lg p-2 text-start font-medium text-base/6 text-sidebar-fg has-[a]:p-0",
+						"items-center rounded-lg p-2 text-start text-base/6 font-medium text-sidebar-fg inline-full min-inline-0 has-[a]:p-0",
 						"group/sidebar-item relative col-span-full overflow-hidden focus-visible:outline-hidden",
-						"grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] sm:text-sm/5 **:last:data-[slot=icon]:ms-auto supports-[grid-template-columns:subgrid]:grid-cols-subgrid",
+						"grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] **:last:data-[slot=icon]:ms-auto sm:text-sm/5 supports-[grid-template-columns:subgrid]:grid-cols-subgrid",
 						// icon
 						// eslint-disable-next-line better-tailwindcss/enforce-consistent-class-order
 						"sm:[&_[data-slot='icon']:not([class*='size-'])]:block-4 sm:[&_[data-slot='icon']:not([class*='size-'])]:inline-4 [&_[data-slot='icon']:not([class*='size-'])]:block-5 [&_[data-slot='icon']:not([class*='size-'])]:inline-5 [&_[data-slot='icon']:not([class*='text-'])]:text-muted-fg **:data-[slot=icon]:shrink-0",
@@ -512,7 +512,7 @@ export function SidebarItem(props: Readonly<SidebarItemProps>): ReactNode {
 					{badge != null &&
 						(state !== "collapsed" ? (
 							<span
-								className="absolute inset-ring-1 inset-ring-sidebar-border inset-y-1/2 inset-e-1.5 block-5.5 inline-auto -translate-y-1/2 rounded-full bg-fg/5 px-2 text-[10px]/5.5 group-hover/sidebar-item:inset-ring-muted-fg/30 group-current:inset-ring-transparent"
+								className="absolute inset-y-1/2 inset-e-1.5 -translate-y-1/2 rounded-full bg-fg/5 px-2 text-[10px]/5.5 inset-ring-1 inset-ring-sidebar-border block-5.5 inline-auto group-hover/sidebar-item:inset-ring-muted-fg/30 group-current:inset-ring-transparent"
 								data-slot="sidebar-badge"
 							>
 								{badge}
@@ -520,7 +520,7 @@ export function SidebarItem(props: Readonly<SidebarItemProps>): ReactNode {
 						) : (
 							<div
 								aria-hidden={true}
-								className="absolute inset-e-1 inset-bs-1 block-1.5 inline-1.5 rounded-full bg-primary"
+								className="absolute inset-e-1 inset-bs-1 rounded-full bg-primary block-1.5 inline-1.5"
 							/>
 						))}
 				</Fragment>
@@ -558,7 +558,7 @@ export function SidebarLink(props: Readonly<SidebarLinkProps>): ReactNode {
 	return (
 		<Link
 			className={cx(
-				"col-span-full min-inline-0 shrink-0 items-center p-2 focus:outline-hidden",
+				"col-span-full shrink-0 items-center p-2 min-inline-0 focus:outline-hidden",
 				"grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] supports-[grid-template-columns:subgrid]:grid-cols-subgrid",
 				className,
 			)}
@@ -575,7 +575,7 @@ export function SidebarInset(props: Readonly<SidebarInsetProps>): ReactNode {
 	return (
 		<main
 			className={twMerge(
-				"relative flex inline-full flex-1 flex-col bg-bg lg:min-inline-0",
+				"relative flex flex-1 flex-col bg-bg inline-full lg:min-inline-0",
 				"group-has-data-[intent=inset]/sidebar-root:border group-has-data-[intent=inset]/sidebar-root:border-sidebar-border group-has-data-[intent=inset]/sidebar-root:bg-overlay",
 				"md:group-has-data-[intent=inset]/sidebar-root:m-2",
 				"md:group-has-data-[side=left]:group-has-data-[intent=inset]/sidebar-root:ms-0",
@@ -599,7 +599,7 @@ export function SidebarDisclosureGroup(props: Readonly<SidebarDisclosureGroupPro
 		<AriaDisclosureGroup
 			allowsMultipleExpanded={allowsMultipleExpanded}
 			className={cx(
-				"col-span-full flex min-inline-0 flex-col gap-y-0.5 in-data-[state=collapsed]:gap-y-1.5",
+				"col-span-full flex flex-col gap-y-0.5 min-inline-0 in-data-[state=collapsed]:gap-y-1.5",
 				className,
 			)}
 			data-slot="sidebar-disclosure-group"
@@ -647,12 +647,12 @@ export function SidebarDisclosureTrigger(
 					className,
 					(className, { isPressed, isFocusVisible, isHovered, isDisabled }) =>
 						twMerge(
-							"flex inline-full min-inline-0 items-center rounded-lg text-start font-medium text-base/6 text-sidebar-fg",
+							"flex items-center rounded-lg text-start text-base/6 font-medium text-sidebar-fg inline-full min-inline-0",
 							"group/sidebar-disclosure-trigger relative col-span-full overflow-hidden focus-visible:outline-hidden",
-							"**:data-[slot=icon]:block-5 **:data-[slot=icon]:inline-5 **:data-[slot=icon]:shrink-0 **:data-[slot=icon]:text-muted-fg sm:**:data-[slot=icon]:block-4 sm:**:data-[slot=icon]:inline-4",
+							"**:data-[slot=icon]:shrink-0 **:data-[slot=icon]:text-muted-fg **:data-[slot=icon]:block-5 **:data-[slot=icon]:inline-5 sm:**:data-[slot=icon]:block-4 sm:**:data-[slot=icon]:inline-4",
 							"**:last:data-[slot=icon]:block-5 **:last:data-[slot=icon]:inline-5 sm:**:last:data-[slot=icon]:block-4 sm:**:last:data-[slot=icon]:inline-4",
 							"**:data-[slot=avatar]:block-6 **:data-[slot=avatar]:inline-6 sm:**:data-[slot=avatar]:block-5 sm:**:data-[slot=avatar]:inline-5",
-							"col-span-full gap-3 p-2 sm:gap-2 sm:text-sm/5 **:last:data-[slot=icon]:ms-auto **:data-[slot=chevron]:text-muted-fg",
+							"col-span-full gap-3 p-2 **:last:data-[slot=icon]:ms-auto **:data-[slot=chevron]:text-muted-fg sm:gap-2 sm:text-sm/5",
 
 							isFocusVisible && "inset-ring inset-ring-ring/70",
 							(isPressed || isHovered) &&
@@ -669,7 +669,7 @@ export function SidebarDisclosureTrigger(
 						{typeof props.children === "function" ? props.children(values) : props.children}
 						{state !== "collapsed" && (
 							<ChevronDownIcon
-								className="z-10 ms-auto block-3.5 inline-3.5 transition-transform duration-200 group-aria-expanded/sidebar-disclosure-trigger:rotate-180"
+								className="z-10 ms-auto transition-transform duration-200 block-3.5 inline-3.5 group-aria-expanded/sidebar-disclosure-trigger:rotate-180"
 								data-slot="chevron"
 							/>
 						)}
@@ -688,7 +688,7 @@ export function SidebarDisclosurePanel(props: Readonly<SidebarDisclosurePanelPro
 	return (
 		<AriaDisclosurePanel
 			className={cx(
-				"block-(--disclosure-panel-height) overflow-clip transition-[height] duration-200",
+				"overflow-clip transition-[height] duration-200 block-(--disclosure-panel-height)",
 				className,
 			)}
 			data-slot="sidebar-disclosure-panel"
@@ -712,7 +712,7 @@ export function SidebarSeparator(props: Readonly<SidebarSeparatorProps>): ReactN
 	return (
 		<AriaSeparator
 			className={twMerge(
-				"mx-auto block-px inline-[calc(var(--sidebar-width)-(--spacing(10)))] border-0 bg-sidebar-border forced-colors:bg-[ButtonBorder]",
+				"mx-auto border-0 bg-sidebar-border block-px inline-[calc(var(--sidebar-width)-(--spacing(10)))] forced-colors:bg-[ButtonBorder]",
 				className,
 			)}
 			data-slot="sidebar-separator"
@@ -779,10 +779,10 @@ export function SidebarRail(props: Readonly<SidebarRailProps>): ReactNode {
 				ref={ref}
 				aria-label={t("Toggle sidebar")}
 				className={twMerge(
-					"absolute inset-y-0 z-20 hidden inline-4 -translate-x-1/2 outline-hidden transition-all ease-linear after:absolute after:inset-y-0 after:inset-s-1/2 after:inline-0.5 sm:flex hover:after:bg-transparent group-data-[side=left]:-inset-e-4 group-data-[side=right]:inset-s-0",
+					"absolute inset-y-0 z-20 hidden -translate-x-1/2 outline-hidden transition-all ease-linear inline-4 after:absolute after:inset-y-0 after:inset-s-1/2 after:inline-0.5 hover:after:bg-transparent sm:flex group-data-[side=left]:-inset-e-4 group-data-[side=right]:inset-s-0",
 					"in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
 					"[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-					"group-data-[collapsible=hidden]:translate-x-0 group-data-[collapsible=hidden]:hover:bg-sidebar-accent group-data-[collapsible=hidden]:after:inset-s-full",
+					"group-data-[collapsible=hidden]:translate-x-0 group-data-[collapsible=hidden]:after:inset-s-full group-data-[collapsible=hidden]:hover:bg-sidebar-accent",
 					"[[data-side=left][data-collapsible=hidden]_&]:-inset-e-2 [[data-side=right][data-collapsible=hidden]_&]:-inset-s-2",
 					className,
 				)}
@@ -854,12 +854,12 @@ export function SidebarMenuTrigger(props: Readonly<SidebarMenuTriggerProps>): Re
 		<AriaButton
 			className={cx(
 				!alwaysVisible &&
-					"text-muted-fg opacity-0 pressed:text-fg pressed:opacity-100 hover:text-fg",
-				"absolute inset-e-0 flex block-full inline-[calc(var(--sidebar-width)-90%)] items-center justify-end pe-2.5 outline-hidden",
+					"text-muted-fg opacity-0 hover:text-fg pressed:text-fg pressed:opacity-100",
+				"absolute inset-e-0 flex items-center justify-end pe-2.5 outline-hidden block-full inline-[calc(var(--sidebar-width)-90%)]",
 				// eslint-disable-next-line better-tailwindcss/enforce-consistent-class-order
 				"sm:[&_[data-slot='icon']:not([class*='size-'])]:block-4 sm:[&_[data-slot='icon']:not([class*='size-'])]:inline-4 [&_[data-slot='icon']:not([class*='size-'])]:block-5 [&_[data-slot='icon']:not([class*='size-'])]:inline-5 pressed:[&_[data-slot='icon']:not([class*='text-'])]:text-fg **:data-[slot=icon]:shrink-0",
-				"group-hover/sidebar-item:opacity-100 group-focus-visible/sidebar-item:opacity-100 group/sidebar-item:pressed:opacity-100",
-				"group-hover/tree-item:opacity-100 group-focus-visible/tree-item:opacity-100 group/tree-item:pressed:opacity-100",
+				"group/sidebar-item:pressed:opacity-100 group-hover/sidebar-item:opacity-100 group-focus-visible/sidebar-item:opacity-100",
+				"group/tree-item:pressed:opacity-100 group-hover/tree-item:opacity-100 group-focus-visible/tree-item:opacity-100",
 				className,
 			)}
 			{...rest}
@@ -875,7 +875,7 @@ export function SidebarTree<T extends object>(props: Readonly<SidebarTreeProps<T
 	return (
 		<AriaTree
 			className={cx(
-				"col-span-full flex inline-full min-inline-0 cursor-default flex-col gap-y-0.5 p-4 outline-hidden forced-color-adjust-none in-data-[state=collapsed]:p-2",
+				"col-span-full flex cursor-default flex-col gap-y-0.5 p-4 outline-hidden forced-color-adjust-none inline-full min-inline-0 in-data-[state=collapsed]:p-2",
 				className,
 			)}
 			selectionMode={selectionMode}
@@ -893,7 +893,7 @@ export function SidebarTreeItem<T extends object>({
 	return (
 		<AriaTreeItem
 			className={cx(
-				"min-inline-0 shrink-0 cursor-default select-none outline-hidden",
+				"shrink-0 cursor-default outline-hidden select-none min-inline-0",
 				"href" in props && "cursor-pointer",
 				className,
 			)}
@@ -913,7 +913,7 @@ export function SidebarTreeContent(props: Readonly<SidebarTreeContentProps>): Re
 	return (
 		<AriaTreeItemContent data-slot="sidebar-item-content" {...rest}>
 			{(values) => (
-				<div className="relative flex inline-full min-inline-0 items-center">
+				<div className="relative flex items-center inline-full min-inline-0">
 					<div
 						aria-hidden={true}
 						className="shrink-0"
@@ -923,7 +923,7 @@ export function SidebarTreeContent(props: Readonly<SidebarTreeContentProps>): Re
 					/>
 					<div
 						className={twMerge(
-							"group/tree-item flex min-inline-0 flex-1 items-center gap-x-2 rounded-lg p-2 font-medium text-base/6 text-sidebar-fg sm:text-sm/5",
+							"group/tree-item flex flex-1 items-center gap-x-2 rounded-lg p-2 text-base/6 font-medium text-sidebar-fg min-inline-0 sm:text-sm/5",
 							// eslint-disable-next-line better-tailwindcss/enforce-consistent-class-order
 							"**:data-[slot=icon]:-mx-0.5 **:data-[slot=icon]:shrink-0 [&_[data-slot='icon']:not([class*='size-'])]:block-5 [&_[data-slot='icon']:not([class*='size-'])]:inline-5 [&_[data-slot='icon']:not([class*='text-'])]:text-muted-fg sm:[&_[data-slot='icon']:not([class*='size-'])]:block-4 sm:[&_[data-slot='icon']:not([class*='size-'])]:inline-4",
 							"hover:bg-sidebar-accent hover:text-sidebar-accent-fg hover:[&_[data-slot='icon']:not([class*='text-'])]:text-sidebar-accent-fg",

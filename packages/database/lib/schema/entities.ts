@@ -10,7 +10,6 @@ export const entityTypesEnum = [
 	"documentation_pages",
 	"documents_policies",
 	"events",
-	"external_links",
 	"funding_calls",
 	"impact_case_studies",
 	"internal_pages",
@@ -69,6 +68,14 @@ export const entities = p.snakeCase.table("entities", {
 		.uuid("type_id")
 		.notNull()
 		.references(() => entityTypes.id),
+	/**
+	 * Denormalized human-readable title/name of the document's _published_ version, kept in sync by
+	 * database triggers on the subtype tables (see the `add_entity_label` migration). Project and
+	 * organisational-unit labels include their acronym in parentheses when present. Lets pickers and
+	 * lists search/display a document by name or acronym without joining the per-type subtype tables.
+	 * Null until the document has a published version.
+	 */
+	label: p.text("label"),
 	...f.timestamps(),
 });
 
@@ -202,6 +209,7 @@ export const entitiesToEntities = p.snakeCase.table(
 			.uuid("related_entity_id")
 			.notNull()
 			.references(() => entities.id),
+		position: p.integer("position").notNull().default(0),
 		...f.timestamps(),
 	},
 	(t) => [
@@ -221,6 +229,7 @@ export const entitiesToResources = p.snakeCase.table(
 			.notNull()
 			.references(() => entities.id),
 		resourceId: p.text("resource_id").notNull(),
+		position: p.integer("position").notNull().default(0),
 		...f.timestamps(),
 	},
 	(t) => [

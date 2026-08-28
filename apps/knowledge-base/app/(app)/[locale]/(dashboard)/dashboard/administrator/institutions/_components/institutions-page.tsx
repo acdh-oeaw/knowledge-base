@@ -35,6 +35,7 @@ interface InstitutionsPageProps {
 				schema.OrganisationalUnit,
 				"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId"
 			> & {
+				documentId: string;
 				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
@@ -64,7 +65,7 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 	const [items, optimisticallyRemoveItem] = useOptimistic(institutions.data, (state, id: string) =>
 		state.filter((item) => item.id !== id),
 	);
-	const [itemToDelete, setItemToDelete] = useState<{ id: string } | null>(null);
+	const [itemToDelete, setItemToDelete] = useState<{ id: string; documentId: string } | null>(null);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
 	const search = useUrlPaginatedSearch({
 		dir: initialDir,
@@ -78,7 +79,7 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 		<Fragment>
 			<EntityListHeader
 				title={t("Institutions")}
-				description={t("Manage all institutions in the knowledge base.")}
+				description={t("Manage all institutions in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -101,7 +102,7 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 					<TableColumn>{t("ROR")}</TableColumn>
 					<TableColumn>{t("SSHOC actor ID")}</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -116,7 +117,7 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/institutions/${item.entity.slug}/details`}
@@ -135,7 +136,7 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 										danger={true}
 										icon={<TrashIcon className="me-2 block-4 inline-4" />}
 										onAction={() => {
-											setItemToDelete({ id: item.id });
+											setItemToDelete({ id: item.id, documentId: item.documentId });
 										}}
 									>
 										{t("Delete")}
@@ -163,13 +164,13 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 						return;
 					}
 
-					const id = itemToDelete.id;
+					const { id, documentId } = itemToDelete;
 					setDeleteError(null);
 
 					startDeleteTransition(async () => {
 						optimisticallyRemoveItem(id);
 						try {
-							const state = await deleteInstitutionAction(id);
+							const state = await deleteInstitutionAction(documentId);
 							if (isActionStateError(state)) {
 								const message = Array.isArray(state.message) ? state.message[0] : state.message;
 								setDeleteError(message ?? t("Could not delete institution. Please try again."));

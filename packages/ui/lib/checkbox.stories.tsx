@@ -21,3 +21,22 @@ export const Default: Story = {
 		return <Checkbox {...rest}>{children}</Checkbox>;
 	},
 };
+
+export const WithDescription: Story = {
+	args: {
+		children: "Monitoring",
+		description: "Ping the service endpoint once per hour.",
+	},
+	render(props) {
+		const { children, ...rest } = props;
+		return <Checkbox {...rest}>{children}</Checkbox>;
+	},
+};
+
+export const Indeterminate: Story = {
+	args: { children: "lorem ipsum", isIndeterminate: true },
+	render(props) {
+		const { children, ...rest } = props;
+		return <Checkbox {...rest}>{children}</Checkbox>;
+	},
+};

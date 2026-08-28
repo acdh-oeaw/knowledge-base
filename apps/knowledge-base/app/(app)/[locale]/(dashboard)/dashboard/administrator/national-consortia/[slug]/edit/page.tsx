@@ -16,13 +16,13 @@ import {
 import { getLocales } from "@/lib/data/locales";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
+import { toSelectedImage } from "@/lib/data/selected-image";
 import { getSocialMediaOptions } from "@/lib/data/social-media";
 import {
 	getReverseUnitRelationStatusOptions,
 	getReverseUnitRelations,
 } from "@/lib/data/unit-relations";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorEditNationalConsortiumPageProps extends PageProps<"/[locale]/dashboard/administrator/national-consortia/[slug]/edit"> {}
@@ -138,13 +138,7 @@ export default async function DashboardAdministratorEditNationalConsortiumPage(
 
 	const image =
 		nationalConsortium.image != null
-			? {
-					...nationalConsortium.image,
-					url: images.generateSignedImageUrl({
-						key: nationalConsortium.image.key,
-						options: imageGridOptions,
-					}).url,
-				}
+			? toSelectedImage(nationalConsortium.image, imageGridOptions)
 			: null;
 
 	return (

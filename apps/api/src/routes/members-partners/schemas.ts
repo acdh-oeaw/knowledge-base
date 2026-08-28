@@ -8,6 +8,7 @@ import {
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
+	PersonPositionsSchema,
 	RelatedEntitiesSchema,
 	RelatedResourcesSchema,
 } from "@/lib/schemas";
@@ -48,23 +49,18 @@ export type MemberOrPartnerBase = v.InferOutput<typeof MemberOrPartnerBaseSchema
 export const ContributorSchema = v.pipe(
 	v.object({
 		...v.pick(schema.PersonSelectSchema, ["id", "name"]).entries,
-		position: v.nullable(
-			v.array(
-				v.object({
-					role: v.picklist(schema.personRoleTypesEnum),
-					name: v.string(),
-					type: v.picklist(schema.organisationalUnitTypesEnum),
-				}),
-			),
-		),
+		positions: PersonPositionsSchema,
 		image: v.nullable(ImageSchema),
 		slug: v.string(),
 		role: v.picklist([
+			"is_contact_for",
 			"national_coordinator",
 			"national_coordinator_deputy",
+			"national_coordination_staff",
 			"national_representative",
 			"national_representative_deputy",
 		] as const),
+		description: v.nullable(v.string()),
 	}),
 	v.description("Contributor"),
 	v.metadata({ ref: "Contributor" }),

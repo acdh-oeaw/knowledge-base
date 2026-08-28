@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { CountryReportServicesScreen } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/screens/country-report-services-screen";
-import { getCountryReportEditHref, resolveCountryReportId } from "@/lib/data/reporting-urls";
+import { resolveCountryReportId } from "@/lib/data/reporting-urls";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardReportingCountryReportServicesPageProps extends PageProps<"/[locale]/dashboard/reporting/country-reports/[year]/[slug]/edit/services"> {}
@@ -32,10 +32,5 @@ export default async function DashboardReportingCountryReportServicesPage(
 		notFound();
 	}
 
-	return (
-		<CountryReportServicesScreen
-			basePath={getCountryReportEditHref(Number(routeYear), slug)}
-			reportId={id}
-		/>
-	);
+	return <CountryReportServicesScreen reportId={id} />;
 }

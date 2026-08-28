@@ -3,7 +3,12 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
-import { deleteDocumentRelations, getDocumentVersions } from "@/lib/data/entity-lifecycle";
+import { resolveEntityDocumentLabel } from "@/lib/data/audit-log";
+import {
+	assertDocumentNotLinkedToUser,
+	deleteDocumentRelations,
+	getDocumentVersions,
+} from "@/lib/data/entity-lifecycle";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { eq, inArray, or } from "@/lib/db/sql";
 import {
@@ -24,6 +29,11 @@ export const deleteInstitutionAction = createCommandAction({
 			columns: { id: true },
 		});
 		assert(entity, "Document not found.");
+
+		await assertDocumentNotLinkedToUser(tx, documentId);
+
+		// Snapshot the label before deletion so the audit log doesn't fall back to the uuid.
+		const subjectLabel = await resolveEntityDocumentLabel(tx, documentId);
 
 		const descriptor = await getWebsiteDocumentDescriptorByEntityId(documentId);
 
@@ -63,6 +73,7 @@ export const deleteInstitutionAction = createCommandAction({
 			);
 
 		if (versionIds.length > 0) {
+			await tx.delete(schema.slugs).where(inArray(schema.slugs.entityVersionId, versionIds));
 			await tx.delete(schema.entityVersions).where(inArray(schema.entityVersions.id, versionIds));
 		}
 
@@ -73,6 +84,7 @@ export const deleteInstitutionAction = createCommandAction({
 
 		return {
 			subjectId: documentId,
+			subjectLabel,
 			descriptor,
 		};
 	},

@@ -1,6 +1,6 @@
 "use client";
 
-import type * as schema from "@dariah-eric/database/schema";
+import { Badge } from "@dariah-eric/ui/badge";
 import {
 	Table,
 	TableBody,
@@ -9,7 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@dariah-eric/ui/table";
-import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PencilSquareIcon, TrashIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useOptimistic, useState, useTransition } from "react";
 
@@ -21,9 +21,14 @@ import {
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
+import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { useUrlPaginatedSearch } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/use-url-paginated-search";
 import { deleteUserAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_lib/delete-user.action";
+import { startImpersonationAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_lib/start-impersonation.action";
 import { dashboardPageSize } from "@/config/pagination.config";
+import type { UsersResult } from "@/lib/data/users";
+import { getEntityDetailHref } from "@/lib/entity-detail-href";
+import { getEntityTypeLabel } from "@/lib/entity-type-label";
 import { useRouter } from "@/lib/navigation/navigation";
 
 interface UsersPageProps {
@@ -34,9 +39,7 @@ interface UsersPageProps {
 	q: string;
 	sort: "name" | "email" | "role" | "canManageAdmins" | "isEmailVerified";
 	users: {
-		data: Array<
-			Pick<schema.User, "id" | "name" | "email" | "role" | "canManageAdmins" | "isEmailVerified">
-		>;
+		data: UsersResult["data"];
 		total: number;
 	};
 }
@@ -68,12 +71,13 @@ export function UsersPage(props: Readonly<UsersPageProps>): ReactNode {
 		sort: initialSort,
 	});
 	const [isDeletePending, startDeleteTransition] = useTransition();
+	const [, startImpersonationTransition] = useTransition();
 
 	return (
 		<Fragment>
 			<EntityListHeader
 				title={t("Users")}
-				description={t("Manage all users in the knowledge base.")}
+				description={t("Manage all users in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -104,17 +108,40 @@ export function UsersPage(props: Readonly<UsersPageProps>): ReactNode {
 					<TableColumn allowsSorting={true} id="isEmailVerified">
 						{t("Email verified")}
 					</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn id="actor">{t("Linked actor")}</TableColumn>
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow id={item.id}>
 							<TableCell>{item.name}</TableCell>
 							<TableCell>{item.email}</TableCell>
-							<TableCell>{item.role}</TableCell>
-							<TableCell>{item.canManageAdmins ? t("Yes") : t("No")}</TableCell>
-							<TableCell>{item.isEmailVerified ? t("Yes") : t("No")}</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell>
+								<Badge intent={item.role === "admin" ? "primary" : "secondary"}>
+									{item.role === "admin" ? t("Admin") : t("User")}
+								</Badge>
+							</TableCell>
+							<TableCell>
+								<Badge intent={item.canManageAdmins ? "info" : "secondary"}>
+									{item.canManageAdmins ? t("Yes") : t("No")}
+								</Badge>
+							</TableCell>
+							<TableCell>
+								<Badge intent={item.isEmailVerified ? "success" : "warning"}>
+									{item.isEmailVerified ? t("Yes") : t("No")}
+								</Badge>
+							</TableCell>
+							<TableCell>
+								{item.actor != null ? (
+									<span className="inline-flex items-center gap-x-2">
+										<RelationLink href={getEntityDetailHref(item.actor)}>
+											{item.actor.name}
+										</RelationLink>
+										<Badge intent="slate">{getEntityTypeLabel(item.actor)}</Badge>
+									</span>
+								) : null}
+							</TableCell>
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/users/${item.id}/edit`}
@@ -123,6 +150,22 @@ export function UsersPage(props: Readonly<UsersPageProps>): ReactNode {
 									>
 										{t("Edit")}
 									</RowActionsMenu.Link>
+									<RowActionsMenu.Separator />
+									<RowActionsMenu.Action
+										icon={<UserIcon className="me-2 block-4 inline-4" />}
+										/**
+										 * Admin accounts are excluded by the auth service too; disabling here only
+										 * saves the round trip.
+										 */
+										isDisabled={item.id === currentUserId || item.role === "admin"}
+										onAction={() => {
+											startImpersonationTransition(async () => {
+												await startImpersonationAction(item.id);
+											});
+										}}
+									>
+										{t("Sign in as this user")}
+									</RowActionsMenu.Action>
 									<RowActionsMenu.Separator />
 									<RowActionsMenu.Action
 										danger={true}

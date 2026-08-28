@@ -20,6 +20,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -32,19 +33,21 @@ interface EventsPageProps {
 	dir: "asc" | "desc";
 	events: {
 		data: Array<
-			Pick<schema.Event, "id" | "duration" | "location" | "title" | "summary" | "website"> & {
+			Pick<
+				schema.Event,
+				"id" | "duration" | "isFullDay" | "location" | "title" | "summary" | "website"
+			> & {
 				documentId: string;
 				entity: { slug: string };
 				hasDraft: boolean;
 				isPublished: boolean;
-				updatedAt: schema.Entity["updatedAt"];
 			}
 		>;
 		total: number;
 	};
 	page: number;
 	q: string;
-	sort: "title" | "updatedAt";
+	sort: "duration" | "title";
 }
 
 const pageSize = dashboardPageSize;
@@ -72,7 +75,7 @@ export function EventsPage(props: Readonly<EventsPageProps>): ReactNode {
 		<Fragment>
 			<EntityListHeader
 				title={t("Events")}
-				description={t("Manage all events in the knowledge base.")}
+				description={t("Manage all events in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -91,36 +94,43 @@ export function EventsPage(props: Readonly<EventsPageProps>): ReactNode {
 					<TableColumn allowsSorting={true} id="title" isRowHeader={true}>
 						{t("Title")}
 					</TableColumn>
-					<TableColumn>{t("Duration")}</TableColumn>
-					<TableColumn>{t("Location")}</TableColumn>
-					<TableColumn allowsSorting={true} id="updatedAt">
-						{t("Updated")}
+					<TableColumn allowsSorting={true} id="duration">
+						{t("Duration")}
 					</TableColumn>
+					<TableColumn>{t("Location")}</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow href={`/dashboard/website/events/${item.entity.slug}/details`}>
 							<TableCell>
-								<div className="max-inline-96 truncate">{item.title}</div>
+								<EntityListTitle title={item.title} />
 							</TableCell>
 							<TableCell>
 								{item.duration.end != null
-									? format.dateTimeRange(item.duration.start, item.duration.end, {
-											dateStyle: "short",
-										})
-									: format.dateTime(item.duration.start, { dateStyle: "short" })}
+									? format.dateTimeRange(
+											item.duration.start,
+											item.duration.end,
+											item.isFullDay
+												? { dateStyle: "short" }
+												: { dateStyle: "short", timeStyle: "short" },
+										)
+									: format.dateTime(
+											item.duration.start,
+											item.isFullDay
+												? { dateStyle: "short" }
+												: { dateStyle: "short", timeStyle: "short" },
+										)}
 							</TableCell>
 							<TableCell>{item.location}</TableCell>
-							<TableCell>{format.dateTime(item.updatedAt, { dateStyle: "short" })}</TableCell>
 							<TableCell>
 								<EntityLifecycleStatusBadge
 									hasDraft={item.hasDraft}
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/website/events/${item.entity.slug}/details`}

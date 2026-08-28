@@ -42,7 +42,7 @@ export default async function DashboardAdministratorCountryReportEditLayout(
 				</HeaderContent>
 			</Header>
 
-			<div className="flex flex-col gap-y-6 px-(--layout-padding) pbs-6">
+			<div className="flex flex-col gap-y-6 px-(--layout-padding) pbs-6 max-inline-4xl">
 				<ReportEditGuard>
 					<CountryReportStepNav
 						editBasePath={`/dashboard/administrator/country-reports/${id}/edit`}

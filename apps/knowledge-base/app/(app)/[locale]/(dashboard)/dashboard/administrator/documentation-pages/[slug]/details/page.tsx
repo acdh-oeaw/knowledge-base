@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { DocumentationPageDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/documentation-pages/_components/documentation-page-details";
 import { discardDocumentationPageDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/documentation-pages/_lib/discard-documentation-page-draft.action";
 import { publishDocumentationPageAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/documentation-pages/_lib/publish-documentation-page.action";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/server/create-metadata";
@@ -113,7 +113,7 @@ export default async function DashboardAdministratorDocumentationPageDetailsPage
 	);
 	const entityVersionSlug = documentationPage.entityVersion.slug;
 
-	const contentBlocks = await getEntityContentBlocks(documentationPage.id, "content");
+	const contentBlocks = await getResolvedEntityContentBlocks(documentationPage.id, "content");
 	const hasPublishableDraft = draftId != null && (publishedId == null || hasDraftChanges);
 
 	return (

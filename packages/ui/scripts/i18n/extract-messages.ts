@@ -7,8 +7,8 @@ async function main() {
 			format: "po",
 			locales: "infer",
 			path: "./messages",
+			sourceLocale: "en",
 		},
-		sourceLocale: "en",
 		srcPath: ["./lib"],
 	});
 

@@ -51,6 +51,7 @@ function createChair() {
 			orcid: `0000-000${String(f.number.int({ min: 1, max: 9 }))}-${String(f.number.int({ min: 1000, max: 9999 }))}-${String(f.number.int({ min: 1000, max: 9999 }))}`,
 			imageId: assetId,
 		},
+		description: f.lorem.sentence(),
 	};
 }
 
@@ -137,6 +138,7 @@ async function seedWorkingGroupChair(
 		organisationalUnitDocumentId: workingGroup.entity.id,
 		roleTypeId: chairRoleType.id,
 		duration: { start: f.date.past({ years: 5 }) },
+		description: chair.description,
 	});
 
 	return { chair, workingGroup };
@@ -176,6 +178,7 @@ describe("governance-bodies", () => {
 							id: chair.person.id,
 							name: chair.person.name,
 							role: "is_chair_of",
+							description: chair.description,
 						}),
 					]),
 				);
@@ -207,6 +210,7 @@ describe("governance-bodies", () => {
 							id: chair.person.id,
 							name: chair.person.name,
 							role: "is_chair_of",
+							description: chair.description,
 						}),
 					]),
 				);

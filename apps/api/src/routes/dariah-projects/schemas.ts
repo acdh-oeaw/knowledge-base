@@ -130,7 +130,6 @@ export const DariahProjectQuerySchema = v.object({
 		v.description(
 			"Filter by active (project duration contains current time) or inactive (project duration has ended)",
 		),
-		v.metadata({ ref: "DariahProjectStatusParam" }),
 	),
 });
 

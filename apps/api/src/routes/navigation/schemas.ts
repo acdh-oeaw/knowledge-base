@@ -1,36 +1,13 @@
 import * as schema from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
-import { LocaleQuerySchema } from "@/lib/schemas";
-
-const publicNavigationEntityTypesEnum = [
-	"documents_policies",
-	"events",
-	"external_links",
-	"funding_calls",
-	"impact_case_studies",
-	"news",
-	"opportunities",
-	"pages",
-	"persons",
-	"projects",
-	"spotlight_articles",
-	...schema.organisationalUnitTypesEnum,
-] as const satisfies ReadonlyArray<
-	(typeof schema.entityTypesEnum)[number] | (typeof schema.organisationalUnitTypesEnum)[number]
->;
-
-const EntityRefSchema = v.nullable(
-	v.object({
-		type: v.picklist(publicNavigationEntityTypesEnum),
-		slug: v.string(),
-	}),
-);
+import { EntityRefSchema, LocaleQuerySchema } from "@/lib/schemas";
 
 const NavigationItemBaseSchema = v.object({
 	...v.pick(schema.NavigationItemSelectSchema, ["id", "label", "href", "isExternal", "position"])
 		.entries,
-	entity: EntityRefSchema,
+	/** Null for external links and for items whose href is typed in by hand. */
+	entity: v.nullable(EntityRefSchema),
 });
 
 const NavigationItemSchema = v.pipe(
@@ -64,7 +41,10 @@ export type NavigationMenuList = v.InferOutput<typeof NavigationMenuListSchema>;
 export const GetNavigation = {
 	QuerySchema: v.pipe(
 		v.object({
-			menu: v.optional(v.string()),
+			menu: v.pipe(
+				v.optional(v.string()),
+				v.description("Filter to a single menu by name; returns every menu when omitted"),
+			),
 			...LocaleQuerySchema.entries,
 		}),
 		v.description("Get navigation query params"),

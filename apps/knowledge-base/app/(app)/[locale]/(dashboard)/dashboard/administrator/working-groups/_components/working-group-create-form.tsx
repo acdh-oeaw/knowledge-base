@@ -5,6 +5,7 @@ import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
+import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
 import { WorkingGroupForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-group-form";
 import { createWorkingGroupAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_lib/create-working-group.action";
 
@@ -15,6 +16,8 @@ interface WorkingGroupCreateFormProps {
 	initialRelatedEntityTotal: number;
 	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedResourceTotal: number;
+	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialSocialMediaTotal: number;
 }
 
 export function WorkingGroupCreateForm(props: Readonly<WorkingGroupCreateFormProps>): ReactNode {
@@ -25,6 +28,8 @@ export function WorkingGroupCreateForm(props: Readonly<WorkingGroupCreateFormPro
 		initialRelatedEntityTotal,
 		initialRelatedResourceItems,
 		initialRelatedResourceTotal,
+		initialSocialMediaItems,
+		initialSocialMediaTotal,
 	} = props;
 
 	const t = useExtracted();
@@ -39,15 +44,19 @@ export function WorkingGroupCreateForm(props: Readonly<WorkingGroupCreateFormPro
 					{ locale: defaultLocaleName },
 				)}
 			</Note>
-
 			<WorkingGroupForm
 				formAction={createWorkingGroupAction}
 				initialAssets={initialAssets}
-				initialRelatedEntityItems={initialRelatedEntityItems}
-				initialRelatedEntityTotal={initialRelatedEntityTotal}
-				initialRelatedResourceItems={initialRelatedResourceItems}
-				initialRelatedResourceTotal={initialRelatedResourceTotal}
-			/>
+				initialSocialMediaItems={initialSocialMediaItems}
+				initialSocialMediaTotal={initialSocialMediaTotal}
+			>
+				<EntityRelationsFields
+					initialRelatedEntityItems={initialRelatedEntityItems}
+					initialRelatedEntityTotal={initialRelatedEntityTotal}
+					initialRelatedResourceItems={initialRelatedResourceItems}
+					initialRelatedResourceTotal={initialRelatedResourceTotal}
+				/>
+			</WorkingGroupForm>
 		</Fragment>
 	);
 }

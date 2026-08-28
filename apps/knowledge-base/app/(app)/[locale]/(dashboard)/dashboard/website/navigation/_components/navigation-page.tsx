@@ -92,12 +92,12 @@ function ItemRow(props: Readonly<ItemRowProps>): ReactNode {
 				className="flex items-center gap-x-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
 				style={{ paddingLeft: `${String((depth + 1) * 1.25)}rem` }}
 			>
-				{depth > 0 && <ChevronRightIcon className="text-muted-fg me-1 block-3 inline-3 shrink-0" />}
+				{depth > 0 && <ChevronRightIcon className="me-1 shrink-0 text-muted-fg block-3 inline-3" />}
 
-				<div className="min-inline-0 flex-1">
+				<div className="flex-1 min-inline-0">
 					<span className="text-sm font-medium">{node.label}</span>
 					{linkDescription != null && (
-						<span className="text-muted-fg ms-2 truncate text-xs">{linkDescription}</span>
+						<span className="ms-2 truncate text-xs text-muted-fg">{linkDescription}</span>
 					)}
 				</div>
 
@@ -162,7 +162,7 @@ function ItemRow(props: Readonly<ItemRowProps>): ReactNode {
 							}}
 							size="sq-sm"
 						>
-							<TrashIcon className="block-4 inline-4 text-danger" />
+							<TrashIcon className="text-danger block-4 inline-4" />
 						</Button>
 						<TooltipContent inverse={true}>{t("Delete")}</TooltipContent>
 					</Tooltip>
@@ -220,7 +220,7 @@ function MenuTabPanel(props: Readonly<MenuTabPanelProps>): ReactNode {
 		<Fragment>
 			<div className="flex flex-col gap-y-1">
 				{tree.length === 0 ? (
-					<p className="text-muted-fg px-2 py-4 text-sm">{t("No items yet.")}</p>
+					<p className="px-2 py-4 text-sm text-muted-fg">{t("No items yet.")}</p>
 				) : (
 					tree.map((node, index) => (
 						<ItemRow
@@ -333,7 +333,7 @@ export function NavigationPage(props: Readonly<NavigationPageProps>): ReactNode 
 
 			<div className="p-(--layout-padding)">
 				{menus.length === 0 ? (
-					<p className="text-muted-fg py-8 text-center text-sm">
+					<p className="py-8 text-center text-sm text-muted-fg">
 						{t("No menus yet. Create your first menu to get started.")}
 					</p>
 				) : (
@@ -348,8 +348,8 @@ export function NavigationPage(props: Readonly<NavigationPageProps>): ReactNode 
 
 						{menus.map((menu) => (
 							<TabPanel key={menu.id} id={menu.id}>
-								<div className="flex items-center justify-between mbe-4">
-									<span className="text-muted-fg text-sm">
+								<div className="mbe-4 flex items-center justify-between">
+									<span className="text-sm text-muted-fg">
 										{menu.items.length === 1
 											? t("1 item")
 											: `${String(menu.items.length)} ${t("items")}`}
@@ -362,7 +362,7 @@ export function NavigationPage(props: Readonly<NavigationPageProps>): ReactNode 
 										}}
 										size="sm"
 									>
-										<TrashIcon className="me-2 block-4 inline-4 text-danger" />
+										<TrashIcon className="me-2 text-danger block-4 inline-4" />
 										<span className="text-danger">{t("Delete menu")}</span>
 									</Button>
 								</div>

@@ -16,8 +16,9 @@ import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_
 import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-mark";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
-import { getEntityDetailHref, getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
+import { getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
 import { formatRoleType } from "@/lib/format-role-type";
 
 interface ProjectDetailsProps {
@@ -48,13 +49,6 @@ interface ProjectDetailsProps {
 			duration: { start: Date; end?: Date | null | undefined } | null;
 			unitIsLocaleFallback: boolean;
 		}>;
-		persons: Array<{
-			id: string;
-			personName: string;
-			personSlug: string;
-			roleName: string;
-			duration: { start: Date; end?: Date | null | undefined } | null;
-		}>;
 		socialMedia: Array<{
 			id: string;
 			name: string;
@@ -64,6 +58,8 @@ interface ProjectDetailsProps {
 	} & { image: { key: string; label: string; url: string } | null };
 	publishAction: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
+	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
+	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
 }
 
 export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode {
@@ -77,6 +73,8 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 		publishAction,
 		discardDraftAction,
 		selectedLocaleCode,
+		selectedRelatedEntities,
+		selectedRelatedResources,
 		selectedVersion,
 	} = props;
 
@@ -150,7 +148,7 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 					{project.image ? (
 						<img
 							alt=""
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
+							className="rounded-lg object-contain block-24 inline-auto max-inline-full"
 							src={project.image.url}
 						/>
 					) : null}
@@ -212,23 +210,30 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 						</ul>
 					) : null}
 				</DescriptionDetails>
-				<DescriptionTerm>{t("Persons")}</DescriptionTerm>
+
+				<DescriptionTerm>{t("Related entities")}</DescriptionTerm>
 				<DescriptionDetails>
-					{project.persons.length > 0 ? (
+					{selectedRelatedEntities.length > 0 ? (
 						<ul className="flex flex-col gap-1">
-							{project.persons.map((person) => (
-								<RelationStatement
-									key={person.id}
-									duration={person.duration ?? undefined}
-									relation={person.roleName}
-									showSource={false}
-									source={project.name}
-									target={person.personName}
-									targetHref={getEntityDetailHref({
-										entityType: "persons",
-										slug: person.personSlug,
-									})}
-								/>
+							{selectedRelatedEntities.map((relatedEntity) => (
+								<li key={relatedEntity.id} className="text-sm">
+									<span className="font-medium">{relatedEntity.name}</span>
+									<RelationTypeSuffix type={relatedEntity.description} />
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Related resources")}</DescriptionTerm>
+				<DescriptionDetails>
+					{selectedRelatedResources.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{selectedRelatedResources.map((relatedResource) => (
+								<li key={relatedResource.id} className="text-sm">
+									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
+								</li>
 							))}
 						</ul>
 					) : null}

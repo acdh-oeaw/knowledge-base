@@ -1,11 +1,14 @@
 "use client";
 
+import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
+import type { JSONContent } from "@tiptap/core";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { PageItemForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_components/page-item-form";
 import { discardPageItemDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_lib/discard-page-item-draft.action";
@@ -20,9 +23,13 @@ interface PageItemEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
-	pageItem: Pick<schema.Page, "id" | "title" | "summary"> & {
+	pageItem: Pick<schema.Page, "id" | "publicationDate" | "title" | "summary"> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & {
+		image: SelectedImage | null;
+		imageCaption: JSONContent | null;
+		imageCaptionMode: ImageCaptionMode;
+	};
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -75,6 +82,7 @@ export function PageItemEditForm(props: Readonly<PageItemEditFormProps>): ReactN
 			<PageItemForm
 				key={pageItem.id}
 				contentBlocks={contentBlocks}
+				isPublished={isPublished}
 				formAction={updatePageItemAction}
 				formId={formId}
 				initialAssets={initialAssets}

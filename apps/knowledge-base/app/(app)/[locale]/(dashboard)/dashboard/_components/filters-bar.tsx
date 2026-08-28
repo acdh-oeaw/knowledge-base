@@ -36,7 +36,7 @@ export function FiltersRight({
 		<Group
 			{...props}
 			className={cn(
-				"grid inline-full grid-cols-2 gap-2 self-end sm:inline-auto sm:*:data-[slot=select]:min-inline-40 sm:*:data-[slot=select]:max-inline-40",
+				"grid grid-cols-2 gap-2 self-end inline-full sm:inline-auto sm:*:data-[slot=select]:max-inline-40 sm:*:data-[slot=select]:min-inline-40",
 				cols === 1 && "sm:grid-cols-1",
 				cols === 2 && "sm:grid-cols-2",
 				cols === 3 && "sm:grid-cols-3",

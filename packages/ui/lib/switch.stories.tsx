@@ -40,3 +40,14 @@ export const Disabled: Story = {
 		return <Switch {...rest}>{children}</Switch>;
 	},
 };
+
+export const WithDescription: Story = {
+	args: {
+		children: "Enable notifications",
+		description: "Get account updates and feature announcements.",
+	},
+	render(props) {
+		const { children, ...rest } = props;
+		return <Switch {...rest}>{children}</Switch>;
+	},
+};

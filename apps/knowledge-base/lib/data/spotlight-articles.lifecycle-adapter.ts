@@ -1,23 +1,21 @@
 import * as schema from "@dariah-eric/database/schema";
 
-import type { EntityLifecycleAdapter } from "@/lib/data/entity-lifecycle";
+import { type EntityLifecycleAdapter, subtypePayload } from "@/lib/data/entity-lifecycle";
 import { eq } from "@/lib/db/sql";
 
 export const spotlightArticlesLifecycleAdapter: EntityLifecycleAdapter = {
 	async cloneSubtype(tx, sourceVersionId, targetVersionId) {
 		const [source] = await tx
-			.select({
-				title: schema.spotlightArticles.title,
-				summary: schema.spotlightArticles.summary,
-				imageId: schema.spotlightArticles.imageId,
-			})
+			.select()
 			.from(schema.spotlightArticles)
 			.where(eq(schema.spotlightArticles.id, sourceVersionId))
 			.limit(1);
 		if (source == null) {
 			return;
 		}
-		await tx.insert(schema.spotlightArticles).values({ id: targetVersionId, ...source });
+		await tx
+			.insert(schema.spotlightArticles)
+			.values({ id: targetVersionId, ...subtypePayload(source) });
 
 		// Contributors (spotlightArticlesToPersons) are document-level and shared across versions, so
 		// they are not cloned here.

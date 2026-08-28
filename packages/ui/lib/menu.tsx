@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { Fragment, type ReactNode, use } from "react";
+import { type ComponentProps, Fragment, type ReactNode, type Ref, use } from "react";
 import {
 	Button as AriaButton,
 	type ButtonProps as AriaButtonProps,
@@ -88,7 +88,7 @@ interface MenuContentProps<T> extends AriaMenuProps<T>, Pick<PopoverContentProps
 }
 
 export const menuContentStyles = tv({
-	base: "grid max-block-[inherit] grid-cols-[auto_1fr] overflow-y-auto overflow-x-hidden overscroll-contain p-1 outline-hidden [clip-path:inset(0_0_0_0_round_calc(var(--radius-xl)-(--spacing(1))))] *:[[role='group']+[role=group]]:mbs-1 *:[[role='group']+[role=separator]]:mbs-1",
+	base: "grid grid-cols-[auto_1fr] overflow-x-hidden overflow-y-auto overscroll-contain p-1 outline-hidden [clip-path:inset(0_0_0_0_round_calc(var(--radius-xl)-(--spacing(1))))] max-block-[inherit] *:[[role='group']+[role=group]]:mbs-1 *:[[role='group']+[role=separator]]:mbs-1",
 });
 
 export function MenuContent<T extends object>(props: Readonly<MenuContentProps<T>>): ReactNode {
@@ -117,20 +117,34 @@ export function MenuItem(props: Readonly<MenuItemProps>): ReactNode {
 
 	return (
 		<AriaMenuItem
-			className={composeRenderProps(className, (className, { hasSubmenu, ...renderProps }) =>
-				dropdownItemStyles({
-					...renderProps,
-					intent,
-					className: hasSubmenu
-						? twMerge(
+			className={composeRenderProps(
+				className,
+				(className, { hasSubmenu, selectionMode, ...renderProps }) =>
+					dropdownItemStyles({
+						...renderProps,
+						intent,
+						className: twMerge(
+							// An item whose leading column is already taken by an icon carries its check at the
+							// far end instead, positioned over the item rather than laid out in it — so the menu
+							// would otherwise be exactly as wide as its labels, and the check would land against
+							// the text. Reserved on every item, selected or not, since the widest label is what
+							// the menu sizes to.
+							//
+							// Only where there is an icon: without one the check sits in the leading column,
+							// which is laid out and needs no room made for it.
+							selectionMode !== "none" && "has-data-[slot=icon]:*:[[slot=label]]:pe-6",
+							hasSubmenu && [
+								// The chevron is positioned over the item rather than laid out in it, so the
+								// label has to keep its own room clear of it.
+								"*:[[slot=label]]:pe-6",
 								intent === "danger" && "open:bg-danger-subtle open:text-danger-subtle-fg",
 								intent === "warning" && "open:bg-warning-subtle open:text-warning-subtle-fg",
 								intent === undefined &&
 									"open:bg-accent open:text-accent-fg open:*:data-[slot=icon]:text-accent-fg open:*:[.text-muted-fg]:text-accent-fg",
-								className,
-							)
-						: className,
-				}),
+							],
+							className,
+						),
+					}),
 			)}
 			data-slot="menu-item"
 			render={(domProps, renderProps) => {
@@ -154,8 +168,11 @@ export function MenuItem(props: Readonly<MenuItemProps>): ReactNode {
 					{values.isSelected && (
 						<span
 							className={twJoin(
-								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:inset-e-0",
-								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:inset-e-0",
+								// An item which already has an icon in its leading column moves the check to the
+								// far end, where it is centred on the row rather than left at the static position
+								// its own line would have put it — the same treatment `DropdownItem` gives it.
+								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:inset-e-0 group-has-data-[slot=avatar]:inset-bs-1/2 group-has-data-[slot=avatar]:-translate-y-1/2",
+								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:inset-e-0 group-has-data-[slot=icon]:inset-bs-1/2 group-has-data-[slot=icon]:-translate-y-1/2",
 							)}
 						>
 							{values.selectionMode === "single" && (
@@ -181,7 +198,7 @@ export function MenuItem(props: Readonly<MenuItemProps>): ReactNode {
 	);
 }
 
-export interface MenuHeaderProps extends React.ComponentProps<typeof AriaHeader> {
+export interface MenuHeaderProps extends ComponentProps<typeof AriaHeader> {
 	separator?: boolean;
 }
 
@@ -191,7 +208,7 @@ export function MenuHeader(props: Readonly<MenuHeaderProps>): ReactNode {
 	return (
 		<AriaHeader
 			className={twMerge(
-				"col-span-full px-2.5 py-2 font-medium text-base sm:text-sm",
+				"col-span-full px-2.5 py-2 text-base font-medium sm:text-sm",
 				separator && "-mx-1 mbe-1 border-be sm:px-3 sm:pbe-2.5",
 				className,
 			)}
@@ -203,7 +220,7 @@ export function MenuHeader(props: Readonly<MenuHeaderProps>): ReactNode {
 const { section, header } = dropdownSectionStyles();
 
 export interface MenuSectionProps<T> extends AriaMenuSectionProps<T> {
-	ref?: React.Ref<HTMLDivElement>;
+	ref?: Ref<HTMLDivElement>;
 	label?: string;
 }
 

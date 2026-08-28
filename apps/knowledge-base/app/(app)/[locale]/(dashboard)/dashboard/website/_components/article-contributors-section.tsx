@@ -116,7 +116,7 @@ export function ArticleContributorsSection(
 
 	return (
 		<Fragment>
-			<div className="max-inline-3xl space-y-6">
+			<div className="space-y-6 max-inline-3xl">
 				<div className="space-y-1">
 					<FormSectionTitle title={t("Contributors")} />
 				</div>

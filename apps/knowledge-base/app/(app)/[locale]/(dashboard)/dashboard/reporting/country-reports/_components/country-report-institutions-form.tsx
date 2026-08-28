@@ -19,12 +19,12 @@ interface ListedInstitution {
 	name: string;
 	acronym: string | null;
 	slug: string | null;
-	/** Frozen at capture; null for rows captured before representation type was tracked. */
-	representationType: CountryReportInstitutionRepresentation | null;
+	/** Frozen at capture; empty for rows captured before representation type was tracked. */
+	representationTypes: Array<CountryReportInstitutionRepresentation>;
 	/** Whether the institution is still a current partner of the country for the reporting year. */
 	isCurrent: boolean;
-	/** The institution's current representation, if it is still a partner. */
-	currentRepresentationType: CountryReportInstitutionRepresentation | null;
+	/** The institution's current representations, if it is still a partner. */
+	currentRepresentationTypes: Array<CountryReportInstitutionRepresentation>;
 }
 
 interface MissingInstitution {
@@ -32,11 +32,13 @@ interface MissingInstitution {
 	name: string;
 	acronym: string | null;
 	slug: string;
-	representationType: CountryReportInstitutionRepresentation;
+	representationTypes: Array<CountryReportInstitutionRepresentation>;
 }
 
 interface CountryReportInstitutionsFormProps {
 	countryReportId: string;
+	campaignYear: number;
+	currentPartnerCount: number;
 	institutions: Array<ListedInstitution>;
 	/** Current partner institutions not (yet) in the frozen snapshot. */
 	missing: Array<MissingInstitution>;
@@ -75,10 +77,25 @@ function institutionLabel(name: string, acronym: string | null): string {
 	return acronym == null ? name : `${name} (${acronym})`;
 }
 
+function areRepresentationTypesEqual(
+	left: ReadonlyArray<CountryReportInstitutionRepresentation>,
+	right: ReadonlyArray<CountryReportInstitutionRepresentation>,
+): boolean {
+	return left.length === right.length && left.every((type, index) => type === right[index]);
+}
+
 export function CountryReportInstitutionsForm(
 	props: Readonly<CountryReportInstitutionsFormProps>,
 ): ReactNode {
-	const { countryReportId, institutions, missing, canManageRelations, refreshAction } = props;
+	const {
+		countryReportId,
+		campaignYear,
+		currentPartnerCount,
+		institutions,
+		missing,
+		canManageRelations,
+		refreshAction,
+	} = props;
 
 	const t = useExtracted();
 	const representationLabel = useRepresentationLabel();
@@ -89,21 +106,37 @@ export function CountryReportInstitutionsForm(
 	return (
 		<div className="flex flex-col gap-y-8">
 			<div className="flex flex-col gap-y-2">
-				<h2 className="text-sm font-semibold text-fg">{t("Institutions")}</h2>
-				<p className="max-inline-md text-sm text-muted-fg">
+				<h2 className="text-sm font-semibold text-fg">
+					{t("Partner institutions")} ({currentPartnerCount.toLocaleString()})
+				</h2>
+				<p className="text-sm text-muted-fg max-inline-md">
 					{t(
-						"The partner institutions recorded for this report. Edit the underlying relations on the institution itself, then refresh to update this snapshot.",
+						"The partner institutions connected to this country in the {year} reporting campaign. Edit the underlying relations on the institution itself, then refresh to update this snapshot.",
+						{ year: String(campaignYear) },
 					)}
 				</p>
+				{canManageRelations && (
+					<LocaleLink
+						className="self-start text-sm text-fg underline underline-offset-4"
+						href="/dashboard/administrator/institutions"
+					>
+						{t("Manage institutions")}
+					</LocaleLink>
+				)}
 			</div>
 
 			{institutions.length > 0 && (
 				<ul className="divide-y divide-border rounded-md border">
 					{institutions.map((institution) => {
-						const frozenLabel = representationLabel(institution.representationType);
 						const changed =
 							institution.isCurrent &&
-							institution.currentRepresentationType !== institution.representationType;
+							!areRepresentationTypesEqual(
+								institution.representationTypes,
+								institution.currentRepresentationTypes,
+							);
+						const currentLabels = institution.currentRepresentationTypes
+							.map((type) => representationLabel(type))
+							.filter((label) => label != null);
 
 						return (
 							<li
@@ -115,15 +148,22 @@ export function CountryReportInstitutionsForm(
 										{institutionLabel(institution.name, institution.acronym)}
 									</p>
 									<div className="flex flex-wrap items-center gap-2">
-										{frozenLabel != null && <Badge intent="secondary">{frozenLabel}</Badge>}
+										{institution.representationTypes.map((type) => {
+											const label = representationLabel(type);
+
+											return label == null ? null : (
+												<Badge key={type} intent="secondary">
+													{label}
+												</Badge>
+											);
+										})}
 										{!institution.isCurrent && (
 											<Badge intent="warning">{t("No longer a current partner")}</Badge>
 										)}
 										{changed && (
 											<Badge intent="warning">
 												{t("Representation changed to {role}", {
-													role:
-														representationLabel(institution.currentRepresentationType) ?? t("none"),
+													role: currentLabels.length > 0 ? currentLabels.join(", ") : t("none"),
 												})}
 											</Badge>
 										)}
@@ -146,7 +186,7 @@ export function CountryReportInstitutionsForm(
 			{missing.length > 0 && (
 				<section className="flex flex-col gap-y-3">
 					<h3 className="text-sm font-semibold text-fg">{t("Not yet captured")}</h3>
-					<p className="max-inline-md text-sm text-muted-fg">
+					<p className="text-sm text-muted-fg max-inline-md">
 						{t(
 							"These are current partner institutions of this country that are not in the report snapshot. Refresh to add them.",
 						)}
@@ -162,9 +202,15 @@ export function CountryReportInstitutionsForm(
 										{institutionLabel(institution.name, institution.acronym)}
 									</p>
 									<div className="flex flex-wrap items-center gap-2">
-										<Badge intent="info">
-											{representationLabel(institution.representationType)}
-										</Badge>
+										{institution.representationTypes.map((type) => {
+											const label = representationLabel(type);
+
+											return label == null ? null : (
+												<Badge key={type} intent="info">
+													{label}
+												</Badge>
+											);
+										})}
 									</div>
 								</div>
 								{canManageRelations && (
@@ -181,7 +227,9 @@ export function CountryReportInstitutionsForm(
 				</section>
 			)}
 
-			{!hasContent && <p className="text-sm text-muted-fg">{t("No institutions recorded.")}</p>}
+			{!hasContent && (
+				<p className="text-sm text-muted-fg">{t("No partner institutions recorded.")}</p>
+			)}
 
 			<Form action={action} className="flex flex-col gap-y-3 max-inline-sm" state={state}>
 				<input name="countryReportId" type="hidden" value={countryReportId} />

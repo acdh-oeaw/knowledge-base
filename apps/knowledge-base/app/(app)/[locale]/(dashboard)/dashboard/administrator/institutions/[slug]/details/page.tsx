@@ -9,7 +9,7 @@ import { InstitutionDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/a
 import { publishInstitutionAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_lib/publish-institution.action";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { getEntityContentBlocks } from "@/lib/content-blocks-service";
+import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import { getPersonRelations } from "@/lib/data/person-relations";
@@ -162,9 +162,10 @@ export default async function DashboardAdministratorInstitutionDetailsPage(
 		getUnitProjectPartnerships(documentId, displayLocaleId),
 		db.query.organisationalUnitsToSocialMedia.findMany({
 			where: { organisationalUnitId: institution.id },
+			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
-		getEntityContentBlocks(versionId, "description"),
+		getResolvedEntityContentBlocks(versionId, "description"),
 	]);
 
 	const socialMediaIds = socialMediaRows.map((row) => row.socialMediaId);

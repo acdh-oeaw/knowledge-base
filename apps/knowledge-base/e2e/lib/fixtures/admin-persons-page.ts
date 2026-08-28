@@ -2,6 +2,7 @@ import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/administrator/persons";
@@ -55,9 +56,11 @@ export class AdminPersonsPage {
 	}
 
 	async insertImageInBiography(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Insert image" }).click();
-		await this.page.waitForSelector('[role="dialog"]');
+		/** The insert menu opens the picker directly; the image lands finished. */
+		await this.page.getByRole("button", { name: "Insert", exact: true }).click();
+		await this.page.getByRole("menuitem", { name: "Image", exact: true }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
+		await dialog.waitFor({ state: "visible" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
 		await expect(asset).toHaveCount(1);
 		await asset.click();
@@ -73,7 +76,7 @@ export class AdminPersonsPage {
 	}
 
 	async selectImageFromMediaLibrary(assetLabel: string): Promise<void> {
-		await this.page.getByRole("button", { name: "Select image" }).click();
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
 		await this.page.waitForSelector('[role="dialog"]');
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		const asset = dialog.getByRole("gridcell", { name: assetLabel });
@@ -89,11 +92,71 @@ export class AdminPersonsPage {
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
+	}
+
+	// ---------------------------------------------------------------------------
+	// Slug field
+	// ---------------------------------------------------------------------------
+
+	slugInput(): Locator {
+		return this.page.locator('input[name="slug"]');
+	}
+
+	async fillSlug(slug: string): Promise<void> {
+		await this.slugInput().fill(slug);
+	}
+
+	/**
+	 * Submit a create, returning the slug the server actually stored — read back from the
+	 * `…/<slug>/details` URL it redirects to. That URL is the assertion: it proves the redirect
+	 * follows the stored (possibly deduplicated) slug rather than re-deriving it from the title.
+	 */
+	async submitCreateReturningSlug(): Promise<string> {
+		const detailsPattern = new RegExp(`^${BASE_PATH}/([^/]+)/details$`);
+		await waitForActionRedirect({
+			page: this.page,
+			redirectPathname: detailsPattern,
+			trigger: async () => {
+				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
+			},
+		});
+		const match = new URL(this.page.url()).pathname.match(detailsPattern);
+		if (match?.[1] == null) {
+			throw new Error("Could not read the slug from the person details URL.");
+		}
+		return match[1];
+	}
+
+	/** Click the draft-save button without expecting a redirect — for submits the server rejects. */
+	async clickSaveDraft(): Promise<void> {
+		await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
+	}
+
+	/**
+	 * Forge a slug rename that the UI does not allow: on a published entity the slug field is
+	 * disabled, so append a hidden `slug` input carrying a different value straight into the form,
+	 * then save. Drives the server-side guard through the real POST — the field being disabled is a
+	 * courtesy, not the check.
+	 */
+	async forgeSlugAndSaveDraft(slug: string): Promise<void> {
+		await this.page.evaluate((value) => {
+			const form = document.querySelector("form");
+			if (form == null) {
+				throw new Error("No form on the page to forge a slug into.");
+			}
+			const input = document.createElement("input");
+			input.type = "hidden";
+			input.name = "slug";
+			input.value = value;
+			form.append(input);
+		}, slug);
+		await this.clickSaveDraft();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -151,8 +214,13 @@ export class AdminPersonsPage {
 
 	async selectFirstContributionOrg(): Promise<void> {
 		await this.page.getByRole("button", { name: "Select an organisation" }).click();
-		await this.page.getByRole("option").first().waitFor({ state: "visible" });
-		await this.page.getByRole("option").first().click();
+		await firstSeededOption(this.page).waitFor({ state: "visible" });
+		await firstSeededOption(this.page).click();
+		// Wait for the selection to commit so a later submit isn't blocked by an empty required field
+		// (which would fire no POST and time out `waitForActionSuccess`).
+		await this.page
+			.getByRole("button", { name: "Select an organisation" })
+			.waitFor({ state: "hidden" });
 	}
 
 	async fillContributionDatePicker(
@@ -168,6 +236,10 @@ export class AdminPersonsPage {
 		await this.page.keyboard.type(String(month).padStart(2, "0"));
 		await group.getByRole("spinbutton", { name: /year/i }).click();
 		await this.page.keyboard.type(String(year));
+	}
+
+	async fillContributionDescription(value: string): Promise<void> {
+		await this.page.getByRole("textbox", { name: "Description" }).fill(value);
 	}
 
 	async submitAddContribution(): Promise<void> {
@@ -230,6 +302,11 @@ export class AdminPersonsPage {
 		await this.page.keyboard.type(String(month).padStart(2, "0"));
 		await group.getByRole("spinbutton", { name: /year/i }).click();
 		await this.page.keyboard.type(String(year));
+	}
+
+	async fillEditContributionDescription(value: string): Promise<void> {
+		const dialog = this.page.getByRole("dialog", { name: "Edit contribution" });
+		await dialog.getByRole("textbox", { name: "Description" }).fill(value);
 	}
 
 	async saveEditContribution(): Promise<void> {
@@ -324,7 +401,7 @@ export class AdminPersonsPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

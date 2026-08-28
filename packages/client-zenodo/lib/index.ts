@@ -110,10 +110,19 @@ export interface GetZenodoRecordParams {
 export interface CreateZenodoClientParams {
 	baseUrl: string;
 	communityId?: string;
+	apiKey?: string;
 }
 
 const defaultCommunityId = "dariah";
-const pageSize = 100;
+
+/**
+ * Zenodo caps the page size at 25 for unauthenticated requests and allows up to 100 for
+ * authenticated ones.
+ *
+ * @see {@link https://developers.zenodo.org/#rate-limiting}
+ */
+const anonymousPageSize = 25;
+const authenticatedPageSize = 100;
 
 /**
  * Zenodo records search and community filtering:
@@ -125,6 +134,7 @@ function createListAll<TParams extends object>(
 	getPage: (
 		params: TParams & { page: number; size: number },
 	) => Promise<RequestResult<ZenodoRecordsResponse>>,
+	pageSize: number,
 ): (params: TParams) => Promise<Result<Array<ZenodoRecord>, RequestError>> {
 	return (params) =>
 		Result.gen(async function* () {
@@ -152,7 +162,11 @@ function createListAll<TParams extends object>(
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function createZenodoClient(params: CreateZenodoClientParams) {
-	const { baseUrl, communityId = defaultCommunityId } = params;
+	const { baseUrl, communityId = defaultCommunityId, apiKey } = params;
+
+	const pageSize = apiKey != null ? authenticatedPageSize : anonymousPageSize;
+
+	const headers = apiKey != null ? { authorization: `Bearer ${apiKey}` } : undefined;
 
 	/** @see {@link https://developers.zenodo.org/} */
 	function listRecords(
@@ -169,7 +183,7 @@ export function createZenodoClient(params: CreateZenodoClientParams) {
 					communities: communities ?? communityId,
 				}),
 			}),
-			{ responseType: "json" },
+			{ headers, responseType: "json" },
 		);
 	}
 
@@ -182,7 +196,7 @@ export function createZenodoClient(params: CreateZenodoClientParams) {
 				baseUrl,
 				pathname: `/api/records/${String(id)}`,
 			}),
-			{ responseType: "json" },
+			{ headers, responseType: "json" },
 		);
 	}
 
@@ -199,7 +213,7 @@ export function createZenodoClient(params: CreateZenodoClientParams) {
 			listAll(
 				params: Omit<GetZenodoRecordsParams, "page" | "size"> = {},
 			): Promise<Result<Array<ZenodoRecord>, RequestError>> {
-				return createListAll((pageParams) => listRecords(pageParams))(params);
+				return createListAll((pageParams) => listRecords(pageParams), pageSize)(params);
 			},
 		},
 	};

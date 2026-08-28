@@ -25,5 +25,5 @@ export default async function DashboardReportingWorkingGroupReportsPage(): Promi
 
 	const reports = await getUserAllWorkingGroupReports(user);
 
-	return <WorkingGroupReportsListPage reports={reports} />;
+	return <WorkingGroupReportsListPage isAdmin={user.role === "admin"} reports={reports} />;
 }

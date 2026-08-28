@@ -4,13 +4,22 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateProjectActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/update-project.schema";
-import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";
+import {
+	ensureDraftVersion,
+	getDocumentSlug,
+	publishVersion,
+	touchVersion,
+	updateDraftDocumentSlug,
+} from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
 import { projectsLifecycleAdapter } from "@/lib/data/projects.lifecycle-adapter";
-import { eq, inArray } from "@/lib/db/sql";
+import { syncEntityRelations } from "@/lib/data/relations";
+import { syncProjectSocialMedia } from "@/lib/data/social-media-relations";
+import { eq } from "@/lib/db/sql";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateProjectAction = createMutationAction({
@@ -18,10 +27,17 @@ export const updateProjectAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "projects" },
 	revalidate: "/[locale]/dashboard/administrator/projects",
-	redirect: "/dashboard/administrator/projects",
+	redirect: ({ result }) => `/dashboard/administrator/projects/${getResultSlug(result)}/details`,
 
 	async mutate(tx, input, { formData }) {
 		const draftVersionId = await ensureDraftVersion(tx, input.documentId, projectsLifecycleAdapter);
+
+		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
+		// re-checks that server-side, so a forged submission cannot rename a published page.
+		const requestedSlug = getRequestedSlug(input.slug);
+		if (requestedSlug != null) {
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+		}
 
 		let imageId: string | null = null;
 		if (input.imageKey != null) {
@@ -55,35 +71,14 @@ export const updateProjectAction = createMutationAction({
 			input.descriptionContentBlocks,
 		);
 
-		const existingSocialMedia = await tx.query.projectsToSocialMedia.findMany({
-			where: { projectId: draftVersionId },
-			columns: { id: true, socialMediaId: true },
-		});
+		await syncProjectSocialMedia(tx, draftVersionId, input.socialMediaIds);
 
-		const existingSocialMediaIds = new Set(existingSocialMedia.map((r) => r.socialMediaId));
-		const submittedSocialMediaIds = new Set(input.socialMediaIds);
-
-		const socialMediaToDelete = existingSocialMedia
-			.filter((r) => !submittedSocialMediaIds.has(r.socialMediaId))
-			.map((r) => r.id);
-
-		if (socialMediaToDelete.length > 0) {
-			await tx
-				.delete(schema.projectsToSocialMedia)
-				.where(inArray(schema.projectsToSocialMedia.id, socialMediaToDelete));
-		}
-
-		const socialMediaToInsert = input.socialMediaIds.filter(
-			(smId) => !existingSocialMediaIds.has(smId),
+		await syncEntityRelations(
+			tx,
+			input.documentId,
+			input.relatedEntityIds,
+			input.relatedResourceIds,
 		);
-
-		if (socialMediaToInsert.length > 0) {
-			await tx.insert(schema.projectsToSocialMedia).values(
-				socialMediaToInsert.map((socialMediaId) => {
-					return { projectId: draftVersionId, socialMediaId };
-				}),
-			);
-		}
 
 		await touchVersion(tx, draftVersionId);
 
@@ -93,6 +88,7 @@ export const updateProjectAction = createMutationAction({
 
 		return {
 			subjectId: input.documentId,
+			subjectSlug: await getDocumentSlug(tx, input.documentId),
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

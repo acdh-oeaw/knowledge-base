@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
@@ -83,14 +83,126 @@ export class WebsiteFundingCallsPage {
 		await dialog.getByRole("button", { name: "Remove" }).click();
 	}
 
+	async selectImageFromMediaLibrary(assetLabel: string): Promise<void> {
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
+		const dialog = this.page.getByRole("dialog", { name: "Media library" });
+		await dialog.waitFor({ state: "visible" });
+		const asset = dialog.getByRole("gridcell", { name: assetLabel });
+		await expect(asset).toHaveCount(1);
+		await asset.click();
+		await dialog.getByRole("button", { name: "Select" }).click();
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	async uploadImageFromMediaLibrary(filePath: string, label: string): Promise<void> {
+		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
+		const dialog = this.page.getByRole("dialog", { name: "Media library" });
+		await dialog.waitFor({ state: "visible" });
+		await dialog.getByRole("tab", { name: "Upload" }).click();
+		await dialog.locator('input[type="file"]').setInputFiles(filePath);
+		await dialog.getByLabel("Label").fill(label);
+		await dialog.getByLabel("Alt text").fill(`${label} alt text`);
+		await dialog.getByRole("button", { name: "Upload" }).click();
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	private relatedEntitiesSection(): Locator {
+		return this.page
+			.locator("section")
+			.filter({ has: this.page.getByRole("heading", { name: "Related entities", level: 2 }) });
+	}
+
+	private relatedResourcesSection(): Locator {
+		return this.page
+			.locator("section")
+			.filter({ has: this.page.getByRole("heading", { name: "Related resources", level: 2 }) });
+	}
+
+	private relatedEntitiesDialog(): Locator {
+		return this.page
+			.getByRole("dialog")
+			.filter({ has: this.page.getByRole("listbox", { name: "Related entities" }) });
+	}
+
+	private relatedResourcesDialog(): Locator {
+		return this.page
+			.getByRole("dialog")
+			.filter({ has: this.page.getByRole("listbox", { name: "Related resources" }) });
+	}
+
+	private relatedEntitiesControl(): Locator {
+		return this.relatedEntitiesSection().getByRole("button", { name: "Add related entity" });
+	}
+
+	private relatedResourcesControl(): Locator {
+		return this.relatedResourcesSection().getByRole("button", { name: "Add related resource" });
+	}
+
+	private async closeRelatedEntitiesDialog(dialog: Locator): Promise<void> {
+		await this.page.mouse.click(1, 1);
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	private async closeRelatedResourcesDialog(dialog: Locator): Promise<void> {
+		await this.page.mouse.click(1, 1);
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	async selectRelatedEntity(entityName: string): Promise<void> {
+		const trigger = this.relatedEntitiesControl();
+		const dialog = this.relatedEntitiesDialog();
+
+		await trigger.click();
+		await dialog.waitFor({ state: "visible" });
+
+		const searchbox = dialog.getByRole("searchbox");
+		await searchbox.fill(entityName);
+
+		const option = dialog.getByRole("option", { name: entityName, exact: true });
+		await option.waitFor({ state: "visible" });
+		await option.click();
+		await this.closeRelatedEntitiesDialog(dialog);
+	}
+
+	async selectRelatedResource(resourceName: string): Promise<void> {
+		const trigger = this.relatedResourcesControl();
+		const dialog = this.relatedResourcesDialog();
+
+		await trigger.click();
+		await dialog.waitFor({ state: "visible" });
+
+		const searchbox = dialog.getByRole("searchbox");
+		await searchbox.fill(resourceName);
+
+		const option = dialog.getByRole("option", { name: resourceName, exact: true });
+		await option.waitFor({ state: "visible" });
+		await option.click();
+		await this.closeRelatedResourcesDialog(dialog);
+	}
+
+	async removeRelatedEntity(entityName: string): Promise<void> {
+		const row = this.relatedEntitiesSection().getByRole("row", { name: entityName });
+		await row.waitFor({ state: "visible" });
+		await row.locator('button:not([slot="drag"])').click();
+		await row.waitFor({ state: "hidden" });
+	}
+
+	async removeRelatedResource(resourceName: string): Promise<void> {
+		const row = this.relatedResourcesSection().getByRole("row", { name: resourceName });
+		await row.waitFor({ state: "visible" });
+		await row.locator('button:not([slot="drag"])').click();
+		await row.waitFor({ state: "hidden" });
+	}
+
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,
-			redirectPathname: BASE_PATH,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
 			trigger: async () => {
 				await this.page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
 			},
 		});
+		await this.goto();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -165,6 +277,22 @@ export class WebsiteFundingCallsPage {
 		return this.page.getByText("Published with draft changes");
 	}
 
+	detailsImage(): Locator {
+		return this.page.getByRole("img", { exact: true, name: "E2E Test Asset" });
+	}
+
+	detailsRelatedEntity(name: string): Locator {
+		return this.page.locator('dt:has-text("Related entities") + dd').getByText(name, {
+			exact: true,
+		});
+	}
+
+	detailsRelatedResource(name: string): Locator {
+		return this.page.locator('dt:has-text("Related resources") + dd').getByText(name, {
+			exact: true,
+		});
+	}
+
 	// ---------------------------------------------------------------------------
 	// Details page — lifecycle actions
 	// ---------------------------------------------------------------------------
@@ -197,7 +325,7 @@ export class WebsiteFundingCallsPage {
 	// ---------------------------------------------------------------------------
 
 	versionSelectorDraftLink(): Locator {
-		return this.page.getByRole("link", { name: "Draft" });
+		return this.page.getByRole("link", { name: "Draft", exact: true });
 	}
 
 	versionSelectorPublishedLink(): Locator {

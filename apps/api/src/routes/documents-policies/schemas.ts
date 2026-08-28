@@ -125,6 +125,26 @@ export const GetDocumentOrPolicyById = {
 	ResponseSchema: DocumentOrPolicySchema,
 };
 
+export const GetDocumentOrPolicyDocumentById = {
+	ParamsSchema: v.pipe(
+		v.object({
+			id: v.pipe(v.string(), v.uuid()),
+		}),
+		v.description("Get document or policy file by id params"),
+		v.metadata({ ref: "GetDocumentOrPolicyDocumentByIdParams" }),
+	),
+};
+
+export const GetDocumentOrPolicyDocumentBySlug = {
+	ParamsSchema: v.pipe(
+		v.object({
+			slug: v.string(),
+		}),
+		v.description("Get document or policy file by slug params"),
+		v.metadata({ ref: "GetDocumentOrPolicyDocumentBySlugParams" }),
+	),
+};
+
 export const GetDocumentOrPolicySlugs = {
 	QuerySchema: v.object({ ...PaginationQuerySchema.entries, ...LocaleQuerySchema.entries }),
 	ResponseSchema: v.pipe(

@@ -1,1 +1,1 @@
-# the knowledge base next-lib
+# dariah knowledge base next-lib

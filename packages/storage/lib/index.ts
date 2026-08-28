@@ -4,8 +4,8 @@ import { Result } from "better-result";
 import { Client, type ItemBucketMetadata } from "minio";
 import { v7 as uuidv7 } from "uuid";
 
-import type { AssetPrefix } from "../config/images.config";
 import { StorageDeleteError, StorageDownloadError, StorageUploadError } from "./errors";
+import type { AssetPrefix } from "./images.config";
 
 function generateObjectKey(prefix: AssetPrefix): string {
 	const objectName = `${prefix}/${uuidv7()}`;
@@ -56,6 +56,30 @@ export function createStorageService(params: CreateStorageServiceParams) {
 			return Result.tryPromise({
 				async try() {
 					const key = generateObjectKey(prefix);
+					await client.putObject(bucketName, key, input, size, metadata);
+					return { key };
+				},
+				catch(cause) {
+					return new StorageUploadError({ cause });
+				},
+			});
+		},
+
+		/** Overwrites the object at an existing `key`, unlike `upload` which generates a new key. */
+		// oxlint-disable-next-line typescript/explicit-module-boundary-types
+		replace({
+			input,
+			key,
+			metadata,
+			size,
+		}: {
+			input: Readable | Buffer;
+			key: string;
+			metadata: AssetMetadata;
+			size?: number;
+		}) {
+			return Result.tryPromise({
+				async try() {
 					await client.putObject(bucketName, key, input, size, metadata);
 					return { key };
 				},

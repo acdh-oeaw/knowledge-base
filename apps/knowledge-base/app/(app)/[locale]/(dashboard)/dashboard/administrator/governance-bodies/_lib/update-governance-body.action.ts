@@ -4,14 +4,22 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateGovernanceBodyActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_lib/update-governance-body.schema";
-import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";
+import {
+	ensureDraftVersion,
+	getDocumentSlug,
+	publishVersion,
+	touchVersion,
+	updateDraftDocumentSlug,
+} from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { syncEntityRelations } from "@/lib/data/relations";
-import { eq, inArray } from "@/lib/db/sql";
+import { syncOrganisationalUnitSocialMedia } from "@/lib/data/social-media-relations";
+import { eq } from "@/lib/db/sql";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateGovernanceBodyAction = createMutationAction({
@@ -19,7 +27,8 @@ export const updateGovernanceBodyAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "governance_bodies" },
 	revalidate: "/[locale]/dashboard/administrator/governance-bodies",
-	redirect: "/dashboard/administrator/governance-bodies",
+	redirect: ({ result }) =>
+		`/dashboard/administrator/governance-bodies/${getResultSlug(result)}/details`,
 
 	async mutate(tx, input, { formData }) {
 		const draftVersionId = await ensureDraftVersion(
@@ -27,6 +36,13 @@ export const updateGovernanceBodyAction = createMutationAction({
 			input.documentId,
 			organisationalUnitsLifecycleAdapter,
 		);
+
+		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
+		// re-checks that server-side, so a forged submission cannot rename a published page.
+		const requestedSlug = getRequestedSlug(input.slug);
+		if (requestedSlug != null) {
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+		}
 
 		let imageId: string | null = null;
 		if (input.imageKey != null) {
@@ -50,34 +66,7 @@ export const updateGovernanceBodyAction = createMutationAction({
 			input.descriptionContentBlocks,
 		);
 
-		const existingSocialMedia = await tx.query.organisationalUnitsToSocialMedia.findMany({
-			where: { organisationalUnitId: draftVersionId },
-			columns: { id: true, socialMediaId: true },
-		});
-		const existingSocialMediaIds = new Set(existingSocialMedia.map((row) => row.socialMediaId));
-		const submittedSocialMediaIds = new Set(input.socialMediaIds);
-
-		const socialMediaToDelete = existingSocialMedia
-			.filter((row) => !submittedSocialMediaIds.has(row.socialMediaId))
-			.map((row) => row.id);
-
-		if (socialMediaToDelete.length > 0) {
-			await tx
-				.delete(schema.organisationalUnitsToSocialMedia)
-				.where(inArray(schema.organisationalUnitsToSocialMedia.id, socialMediaToDelete));
-		}
-
-		const socialMediaToInsert = input.socialMediaIds.filter(
-			(socialMediaId) => !existingSocialMediaIds.has(socialMediaId),
-		);
-
-		if (socialMediaToInsert.length > 0) {
-			await tx.insert(schema.organisationalUnitsToSocialMedia).values(
-				socialMediaToInsert.map((socialMediaId) => {
-					return { organisationalUnitId: draftVersionId, socialMediaId };
-				}),
-			);
-		}
+		await syncOrganisationalUnitSocialMedia(tx, draftVersionId, input.socialMediaIds);
 
 		await syncEntityRelations(
 			tx,
@@ -93,6 +82,7 @@ export const updateGovernanceBodyAction = createMutationAction({
 
 		return {
 			subjectId: input.documentId,
+			subjectSlug: await getDocumentSlug(tx, input.documentId),
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

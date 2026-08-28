@@ -41,7 +41,7 @@ export function CountryReportEventsForm(props: Readonly<CountryReportEventsFormP
 
 	return (
 		<FormLayout variant="stacked">
-			<Form action={action} className="flex flex-col gap-y-6" state={state}>
+			<Form action={action} className="flex flex-col gap-y-12" state={state}>
 				<input name="id" type="hidden" value={report.id} />
 
 				<FormSection title={t("Event counts")}>

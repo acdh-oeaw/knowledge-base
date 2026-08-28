@@ -31,6 +31,8 @@ test.describe("projects admin", () => {
 		const call = "E2E project call";
 		const summary = "E2E test project summary";
 		const description = "E2E test project description.";
+		const socialMediaName = `${adminProjectsPage.workerPrefix} Project Social ${randomUUID()}`;
+		const socialMediaUrl = "https://example.com/project-social";
 		await adminProjectsPage.gotoCreate();
 
 		await adminProjectsPage.fillName(projectName);
@@ -46,6 +48,7 @@ test.describe("projects admin", () => {
 		await adminProjectsPage.selectImageFromMediaLibrary("E2E Test Asset");
 
 		await adminProjectsPage.fillDescription(description);
+		await adminProjectsPage.createSocialMediaInForm(socialMediaName, socialMediaUrl);
 
 		await adminProjectsPage.submitForm();
 
@@ -68,6 +71,11 @@ test.describe("projects admin", () => {
 		expect(JSON.stringify(await db.getProjectDescriptionByName(projectName))).toContain(
 			description,
 		);
+		const socialMedia = await db.getSocialMediaByName(socialMediaName);
+		expect(socialMedia).toMatchObject({ name: socialMediaName, url: socialMediaUrl });
+		expect((await db.getProjectRelationsByName(projectName))?.socialMediaIds).toStrictEqual([
+			socialMedia!.id,
+		]);
 	});
 
 	test("should store images inserted in project rich-text descriptions as image content blocks", async ({
@@ -260,9 +268,10 @@ test.describe("projects admin", () => {
 		await page.getByLabel("Funding").clear();
 		await adminProjectsPage.fillTopic("");
 		await adminProjectsPage.fillCall("");
+		await page.getByLabel("Summary").clear();
 		await adminProjectsPage.clearDatePicker("End date");
 		await adminProjectsPage.removeImage();
-		await adminProjectsPage.removeAllTagsInControl("Social media");
+		await adminProjectsPage.removeAllSelectedInControl("Social media");
 		await adminProjectsPage.submitForm();
 
 		const updated = await db.getProjectByName(updatedName);
@@ -271,6 +280,7 @@ test.describe("projects admin", () => {
 			call: null,
 			funding: null,
 			imageId: null,
+			summary: null,
 			topic: null,
 		});
 		expect(updated?.duration?.end).toBeUndefined();
@@ -278,7 +288,74 @@ test.describe("projects admin", () => {
 		expect(relations).toMatchObject({ socialMediaIds: [] });
 	});
 
-	test("should delete a project", async ({ createAdminProjectsPage }) => {
+	test("should remove multiple linked social media without resurrecting removed entries", async ({
+		page,
+		createAdminProjectsPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const adminProjectsPage = createAdminProjectsPage(workerIndex);
+		const projectName = `${adminProjectsPage.workerPrefix} Social Multi Remove ${randomUUID()}`;
+		const socialA = `${adminProjectsPage.workerPrefix} Social A ${randomUUID()}`;
+		const socialB = `${adminProjectsPage.workerPrefix} Social B ${randomUUID()}`;
+		const socialC = `${adminProjectsPage.workerPrefix} Social C ${randomUUID()}`;
+
+		// Create the project first, then link three entries via edit to exercise repeated removals.
+		await adminProjectsPage.gotoCreate();
+		await adminProjectsPage.fillName(projectName);
+		await adminProjectsPage.selectFirstScope();
+		await adminProjectsPage.fillDatePicker("Start date", 2024, 1, 15);
+		await adminProjectsPage.fillSummary("Project for social media multi-removal regression");
+		await adminProjectsPage.selectImageFromMediaLibrary("E2E Test Asset");
+		await adminProjectsPage.submitForm();
+
+		await adminProjectsPage.searchByName(projectName);
+		await adminProjectsPage
+			.projectRowByName(projectName)
+			.getByRole("button", {
+				name: "Open actions menu",
+			})
+			.click();
+		await Promise.all([
+			page.waitForURL("**/edit"),
+			page.getByRole("menuitem", { name: "Edit" }).click(),
+		]);
+
+		await adminProjectsPage.createSocialMediaInForm(socialA, "https://example.com/social-a");
+		await adminProjectsPage.createSocialMediaInForm(socialB, "https://example.com/social-b");
+		await adminProjectsPage.createSocialMediaInForm(socialC, "https://example.com/social-c");
+		await adminProjectsPage.submitForm();
+
+		const created = await db.getProjectRelationsByName(projectName);
+		expect(created?.socialMediaIds).toHaveLength(3);
+		const socialMediaA = await db.getSocialMediaByName(socialA);
+		expect(socialMediaA).not.toBeNull();
+
+		// Re-open the edit form and remove two of the three rows. Regression guard: removing a second
+		// row used to resurrect the first-removed entry because React Aria's GridList served a cached
+		// row whose remove handler had captured a stale selection (see AsyncListSelect's `valueRef`).
+		// Remove C, then B — only A should remain.
+		await adminProjectsPage.searchByName(projectName);
+		await adminProjectsPage
+			.projectRowByName(projectName)
+			.getByRole("button", {
+				name: "Open actions menu",
+			})
+			.click();
+		await Promise.all([
+			page.waitForURL("**/edit"),
+			page.getByRole("menuitem", { name: "Edit" }).click(),
+		]);
+
+		await adminProjectsPage.removeSelectedInControlByName("Social media", socialC);
+		await adminProjectsPage.removeSelectedInControlByName("Social media", socialB);
+		await adminProjectsPage.submitForm();
+
+		const relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.socialMediaIds).toStrictEqual([socialMediaA!.id]);
+	});
+
+	test("should delete a project", async ({ createAdminProjectsPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const adminProjectsPage = createAdminProjectsPage(workerIndex);
 
@@ -293,6 +370,9 @@ test.describe("projects admin", () => {
 		await adminProjectsPage.fillDescription("Description for delete test.");
 		await adminProjectsPage.submitForm();
 
+		const created = await db.getProjectByName(projectName);
+		expect(created).not.toBeNull();
+
 		await adminProjectsPage.searchByName(projectName);
 		await expect(adminProjectsPage.projectRowByName(projectName)).toBeVisible();
 
@@ -301,7 +381,89 @@ test.describe("projects admin", () => {
 		await expect(deleteDialog).toBeVisible();
 		await adminProjectsPage.confirmDelete(deleteDialog);
 
-		// The project row should no longer be visible.
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(adminProjectsPage.projectRowByName(projectName)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getProjectByName(projectName)).toBeNull();
+	});
+
+	test("should persist a reordered social media selection", async ({
+		page,
+		createAdminProjectsPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const adminProjectsPage = createAdminProjectsPage(workerIndex);
+		const projectName = `${adminProjectsPage.workerPrefix} Social Reorder ${randomUUID()}`;
+		const socialA = `${adminProjectsPage.workerPrefix} Social Reorder A ${randomUUID()}`;
+		const socialB = `${adminProjectsPage.workerPrefix} Social Reorder B ${randomUUID()}`;
+		const socialC = `${adminProjectsPage.workerPrefix} Social Reorder C ${randomUUID()}`;
+
+		await adminProjectsPage.gotoCreate();
+		await adminProjectsPage.fillName(projectName);
+		await adminProjectsPage.selectFirstScope();
+		await adminProjectsPage.fillDatePicker("Start date", 2024, 1, 15);
+		await adminProjectsPage.fillSummary("Project for social media reorder");
+		await adminProjectsPage.selectImageFromMediaLibrary("E2E Test Asset");
+		await adminProjectsPage.submitForm();
+
+		// Link the entries via edit so this test exercises reordering an existing selection.
+		await adminProjectsPage.searchByName(projectName);
+		await adminProjectsPage
+			.projectRowByName(projectName)
+			.getByRole("button", { name: "Open actions menu" })
+			.click();
+		await Promise.all([
+			page.waitForURL("**/edit"),
+			page.getByRole("menuitem", { name: "Edit" }).click(),
+		]);
+
+		await adminProjectsPage.createSocialMediaInForm(
+			socialA,
+			"https://example.com/social-reorder-a",
+		);
+		await adminProjectsPage.createSocialMediaInForm(
+			socialB,
+			"https://example.com/social-reorder-b",
+		);
+		await adminProjectsPage.createSocialMediaInForm(
+			socialC,
+			"https://example.com/social-reorder-c",
+		);
+		await adminProjectsPage.submitForm();
+
+		const [mediaA, mediaB, mediaC] = await Promise.all([
+			db.getSocialMediaByName(socialA),
+			db.getSocialMediaByName(socialB),
+			db.getSocialMediaByName(socialC),
+		]);
+
+		// Persisted in creation (selection) order.
+		const created = await db.getProjectRelationsByName(projectName);
+		expect(created?.socialMediaIds).toStrictEqual([mediaA!.id, mediaB!.id, mediaC!.id]);
+
+		// Re-open the edit form and drag the first entry down one: [A, B, C] -> [B, A, C].
+		await adminProjectsPage.searchByName(projectName);
+		await adminProjectsPage
+			.projectRowByName(projectName)
+			.getByRole("button", { name: "Open actions menu" })
+			.click();
+		await Promise.all([
+			page.waitForURL("**/edit"),
+			page.getByRole("menuitem", { name: "Edit" }).click(),
+		]);
+
+		await adminProjectsPage.moveSelectedInControlDown("Social media", socialA);
+		const orderedNames = await adminProjectsPage.getSelectedNamesInControl("Social media");
+		expect(orderedNames[0]).toContain(socialB);
+
+		await adminProjectsPage.submitForm();
+
+		const reordered = await db.getProjectRelationsByName(projectName);
+		expect(reordered?.socialMediaIds).toStrictEqual([mediaB!.id, mediaA!.id, mediaC!.id]);
 	});
 });

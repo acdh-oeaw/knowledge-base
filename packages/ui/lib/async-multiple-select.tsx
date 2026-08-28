@@ -41,6 +41,7 @@ export interface AsyncMultipleSelectProps<T extends AsyncOption> {
 	pageSize?: number;
 	placeholder?: string;
 	renderItem?: (item: T) => ReactNode;
+	renderTag?: (item: T) => ReactNode;
 	selectedItems?: Array<T>;
 	value: Array<string>;
 	cacheKey?: string | number;
@@ -48,13 +49,13 @@ export interface AsyncMultipleSelectProps<T extends AsyncOption> {
 
 function renderDefaultItem(item: AsyncOption): ReactNode {
 	if (item.description == null || item.description === "") {
-		return <ListBoxLabel>{item.name}</ListBoxLabel>;
+		return <ListBoxLabel className="truncate">{item.name}</ListBoxLabel>;
 	}
 
 	return (
 		<Fragment>
-			<ListBoxLabel>{item.name}</ListBoxLabel>
-			<ListBoxDescription>{item.description}</ListBoxDescription>
+			<ListBoxLabel className="truncate">{item.name}</ListBoxLabel>
+			<ListBoxDescription className="truncate">{item.description}</ListBoxDescription>
 		</Fragment>
 	);
 }
@@ -89,6 +90,7 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 		pageSize = defaultPageSize,
 		placeholder,
 		renderItem,
+		renderTag,
 		selectedItems = emptySelectedItems,
 		value,
 	} = props;
@@ -126,7 +128,7 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 	});
 
 	const selectedItemMap = useMemo(() => {
-		const map = new Map<string, AsyncOption>();
+		const map = new Map<string, T>();
 
 		for (const item of selectedItems) {
 			map.set(item.id, item);
@@ -152,7 +154,7 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 	}, [displayedItems, initialItems, localSelectedItems, selectedItems, value]);
 
 	const resolvedSelectedItems = useMemo(
-		() => value.map((id) => selectedItemMap.get(id) ?? { id, name: id }),
+		() => value.map((id) => selectedItemMap.get(id) ?? ({ id, name: id } as T)),
 		[selectedItemMap, value],
 	);
 
@@ -170,7 +172,7 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 				<div
 					ref={triggerRef}
 					className={twMerge(
-						"flex inline-full items-center gap-2 rounded-lg border border-input p-1",
+						"flex items-center gap-2 rounded-lg border border-input p-1 inline-full",
 						"has-[:focus-visible]:border-ring/70 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/20",
 						isOpen ? "border-ring/70 ring-3 ring-ring/20" : undefined,
 						isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
@@ -191,7 +193,7 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 				>
 					<TagGroup
 						aria-label={t("Selected items")}
-						className="min-inline-0 flex-1"
+						className="flex-1 min-inline-0"
 						onRemove={
 							isDisabled
 								? undefined
@@ -201,19 +203,33 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 						}
 					>
 						<TagList
+							// Tags are rebuilt only when the selection changes, because the collection caches a row
+							// against the item it was built from — a caller swapping `renderTag` needs to say so.
+							dependencies={[renderTag]}
 							items={resolvedSelectedItems}
 							renderEmptyState={() => (
-								<i className="ps-2 text-muted-fg text-sm not-italic">
+								<i className="ps-2 text-sm text-muted-fg not-italic">
 									{placeholder ?? t("No selected items")}
 								</i>
 							)}
 						>
-							{(item) => <Tag className="rounded-md">{item.name}</Tag>}
+							{(item) => {
+								const content = renderTag != null ? renderTag(item) : item.name;
+								const text = typeof content === "string" ? content : item.name;
+
+								return (
+									<Tag className="rounded-md max-inline-64" textValue={text}>
+										<span className="truncate min-inline-0" title={text}>
+											{content}
+										</span>
+									</Tag>
+								);
+							}}
 						</TagList>
 					</TagGroup>
 					<AriaButton
 						aria-label={t("Open options")}
-						className="grid block-7 inline-7 shrink-0 cursor-default place-content-center rounded-[calc(var(--radius-lg)-(--spacing(1)))] text-muted-fg hover:bg-muted hover:text-fg"
+						className="grid shrink-0 cursor-default place-content-center rounded-[calc(var(--radius-lg)-(--spacing(1)))] text-muted-fg block-7 inline-7 hover:bg-muted hover:text-fg"
 						isDisabled={isDisabled}
 					>
 						<ChevronUpDownIcon className="block-4 inline-4" data-slot="chevron" />
@@ -222,26 +238,32 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 
 				<AriaPopover
 					className={cx(
-						"group/popover origin-(--trigger-anchor-point) rounded-xl border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden",
+						"group/popover origin-(--trigger-anchor-point) overflow-hidden rounded-xl border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden",
 						"inline-(--trigger-width)",
-						"entering:fade-in entering:animate-in",
-						"exiting:fade-out exiting:animate-out",
+						"entering:animate-in entering:fade-in",
+						"exiting:animate-out exiting:fade-out",
 					)}
 					placement="bottom"
-					style={
-						triggerWidth != null
-							? ({ "--trigger-width": triggerWidth } as React.CSSProperties)
-							: undefined
-					}
+					style={triggerWidth != null ? { "--trigger-width": triggerWidth } : undefined}
 					triggerRef={triggerRef}
 				>
-					<div className="flex flex-col gap-3 p-3">
+					<div
+						className="flex flex-col gap-3 p-3"
+						// Close on Escape. Captured before the search field (clears its value) and the list box
+						// (clears selection) can consume the key, so Escape reliably dismisses the popover.
+						onKeyDownCapture={(event) => {
+							if (event.key === "Escape") {
+								event.stopPropagation();
+								setIsOpen(false);
+							}
+						}}
+					>
 						<SearchField onChange={setSearchText} onSubmit={handleSearch} value={searchText}>
 							<SearchInput autoFocus={true} placeholder={inputPlaceholder ?? t("Search")} />
 						</SearchField>
 
 						{loadError != null ? (
-							<p className="py-3 text-center text-danger-subtle-fg text-sm">{loadErrorMessage}</p>
+							<p className="py-3 text-center text-sm text-danger-subtle-fg">{loadErrorMessage}</p>
 						) : displayedItems.length > 0 ? (
 							<div className="relative">
 								<ListBox
@@ -250,6 +272,9 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 										"max-block-72 [&::-webkit-scrollbar]:block-2! [&::-webkit-scrollbar]:inline-2!",
 										isPending ? "opacity-50" : undefined,
 									)}
+									// Options survive between fetches as the same objects, so a caller that swaps its
+									// `renderItem` would otherwise keep the markup the previous one produced.
+									dependencies={[renderOption]}
 									items={displayedItems}
 									onSelectionChange={(keys) => {
 										if (keys === "all") {
@@ -295,7 +320,7 @@ function AsyncMultipleSelectInner<T extends AsyncOption>(
 								<ProgressCircle aria-label={t("Pending...")} isIndeterminate={true} />
 							</div>
 						) : (
-							<p className="py-3 text-center text-muted-fg text-sm">
+							<p className="py-3 text-center text-sm text-muted-fg">
 								{emptyMessage ?? t("No options found.")}
 							</p>
 						)}

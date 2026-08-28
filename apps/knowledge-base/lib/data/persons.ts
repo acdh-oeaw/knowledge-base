@@ -4,9 +4,8 @@ import type { User } from "@dariah-eric/auth";
 import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
-import { getSocialMediaOptions } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
 
 export type PersonsSort = "name" | "email" | "orcid";
@@ -43,8 +42,7 @@ function assertAdminUser(user: Pick<User, "role">): void {
 export async function getPersons(params: Readonly<GetPersonsParams>): Promise<PersonsResult> {
 	const { limit, offset, q, sort = "name", dir = "asc" } = params;
 	const query = q?.trim();
-	const where =
-		query != null && query !== "" ? unaccentIlike(schema.persons.name, `%${query}%`) : undefined;
+	const where = matchesAllTerms(query, schema.persons.name);
 	const orderBy =
 		sort === "email"
 			? dir === "asc"
@@ -125,12 +123,4 @@ export async function getPersonsForAdmin(
 	assertAdminUser(currentUser);
 
 	return getPersons(params);
-}
-
-export async function getPersonCreateDataForAdmin(currentUser: Pick<User, "role">) {
-	assertAdminUser(currentUser);
-
-	const initialSocialMedia = await getSocialMediaOptions();
-
-	return { initialSocialMedia };
 }

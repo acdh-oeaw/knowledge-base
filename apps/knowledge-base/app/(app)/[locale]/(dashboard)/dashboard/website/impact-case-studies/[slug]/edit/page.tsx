@@ -10,8 +10,12 @@ import { getEntityContentBlocks } from "@/lib/content-blocks-service";
 import { getImpactCaseStudyContributors } from "@/lib/data/article-contributors";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getContributionPersonOptions } from "@/lib/data/contributions";
-import { ensureDraftVersion, getDocumentLifecycleState } from "@/lib/data/entity-lifecycle";
+import {
+	ensureLocalizedDraftVersion,
+	getDocumentLifecycleStateForLocale,
+} from "@/lib/data/entity-lifecycle";
 import { impactCaseStudiesLifecycleAdapter } from "@/lib/data/impact-case-studies.lifecycle-adapter";
+import { getLocales } from "@/lib/data/locales";
 import {
 	getEntityRelationOptions,
 	getEntityRelationOptionsByIds,
@@ -19,8 +23,12 @@ import {
 	getResourceRelationOptions,
 	getResourceRelationOptionsByIds,
 } from "@/lib/data/relations";
+import {
+	selectedImageColumns,
+	selectedImageWith,
+	toSelectedImage,
+} from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
-import { images } from "@/lib/images";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardWebsiteEditImpactCaseStudyPageProps extends PageProps<"/[locale]/dashboard/website/impact-case-studies/[slug]/edit"> {}
@@ -41,7 +49,7 @@ export async function generateMetadata(
 export default async function DashboardWebsiteEditImpactCaseStudyPage(
 	props: Readonly<DashboardWebsiteEditImpactCaseStudyPageProps>,
 ): Promise<ReactNode> {
-	const { params } = props;
+	const { params, searchParams: searchParamsPromise } = props;
 
 	const { slug } = await params;
 
@@ -62,13 +70,29 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 
 	const documentId = anyVersion.entityVersion.entity.id;
 
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
+
 	const { draftVersionId, hasDraftChanges, publishedId } = await db.transaction(async (tx) => {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			documentId,
 			impactCaseStudiesLifecycleAdapter,
+			selectedLocale.id,
 		);
-		const { hasDraftChanges, publishedId } = await getDocumentLifecycleState(tx, documentId);
+		const { hasDraftChanges, publishedId } = await getDocumentLifecycleStateForLocale(
+			tx,
+			documentId,
+			selectedLocale.id,
+		);
 		return { draftVersionId, hasDraftChanges, publishedId };
 	});
 
@@ -84,6 +108,9 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 			where: { id: draftVersionId },
 			columns: {
 				id: true,
+				imageCaption: true,
+				imageCaptionMode: true,
+				publicationDate: true,
 				title: true,
 				summary: true,
 			},
@@ -110,10 +137,8 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-						label: true,
-					},
+					columns: selectedImageColumns,
+					with: selectedImageWith,
 				},
 			},
 		}),
@@ -132,10 +157,7 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 	);
 	const entityVersionSlug = impactCaseStudy.entityVersion.slug;
 
-	const image = images.generateSignedImageUrl({
-		key: impactCaseStudy.image.key,
-		options: imageGridOptions,
-	});
+	const image = toSelectedImage(impactCaseStudy.image, imageGridOptions);
 	const [{ relatedEntityIds, relatedResourceIds }, contributors, contentBlocks] = await Promise.all(
 		[
 			getEntityRelations(documentId),
@@ -158,7 +180,7 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 			impactCaseStudy={{
 				...impactCaseStudy,
 				entityVersion: { ...impactCaseStudy.entityVersion, slug: entityVersionSlug },
-				image: { ...impactCaseStudy.image, url: image.url },
+				image,
 			}}
 			initialAssets={initialAssets}
 			initialPersonItems={initialPersons.items}
@@ -170,6 +192,8 @@ export default async function DashboardWebsiteEditImpactCaseStudyPage(
 			initialRelatedResourceItems={initialRelatedResources.items}
 			initialRelatedResourceTotal={initialRelatedResources.total}
 			isPublished={publishedId != null}
+			locales={locales}
+			selectedLocaleCode={selectedLocale.code}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 		/>

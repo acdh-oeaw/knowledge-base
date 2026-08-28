@@ -3,10 +3,10 @@
 import type * as schema from "@dariah-eric/database/schema";
 import { socialMediaTypesEnum } from "@dariah-eric/database/schema";
 import { type ActionState, createActionStateInitial } from "@dariah-eric/next-lib/actions";
-import { AsyncMultipleSelect } from "@dariah-eric/ui/async-multiple-select";
+import { AsyncListSelect } from "@dariah-eric/ui/async-list-select";
 import { Button } from "@dariah-eric/ui/button";
 import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
-import { Description, FieldError, Label, fieldErrorStyles } from "@dariah-eric/ui/field";
+import { Description, FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { FormStatus } from "@dariah-eric/ui/form-status";
 import { Input } from "@dariah-eric/ui/input";
@@ -31,16 +31,21 @@ import { Fragment, type ReactNode, useActionState, useState, useTransition } fro
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
+import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
+import { EntitySlugField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-slug-field";
 import {
 	FormLayout,
 	FormSection,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
-import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
+import {
+	ImageSelectField,
+	type SelectedImage,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { RichTextContentBlocksField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/rich-text-content-blocks-field";
 import {
 	type CreatedSocialMedia,
 	createSocialMediaAction,
-} from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/create-social-media.action";
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/create-social-media.action";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 async function fetchSocialMediaOptionsPage(
@@ -85,13 +90,23 @@ interface ProjectFormProps {
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
+	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
+	isPublished?: boolean;
 	formAction: ServerAction;
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
 	initialSocialMediaItems: Array<AsyncOption>;
 	initialSocialMediaTotal: number;
 	selectedSocialMediaItems?: Array<AsyncOption>;
 	initialSocialMediaIds?: Array<string>;
+	initialRelatedEntityIds?: Array<string>;
+	initialRelatedEntityItems: Array<AsyncOption>;
+	initialRelatedEntityTotal: number;
+	initialRelatedResourceIds?: Array<string>;
+	initialRelatedResourceItems: Array<AsyncOption>;
+	initialRelatedResourceTotal: number;
+	selectedRelatedEntities?: Array<AsyncOption>;
+	selectedRelatedResources?: Array<AsyncOption>;
 }
 
 export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
@@ -105,16 +120,22 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 		initialSocialMediaTotal,
 		selectedSocialMediaItems,
 		initialSocialMediaIds,
+		initialRelatedEntityIds,
+		initialRelatedEntityItems,
+		initialRelatedEntityTotal,
+		initialRelatedResourceIds,
+		initialRelatedResourceItems,
+		initialRelatedResourceTotal,
+		selectedRelatedEntities,
+		selectedRelatedResources,
+		isPublished,
 	} = props;
 
 	const t = useExtracted();
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
-	const [selectedImage, setSelectedImage] = useState<{ key: string; url: string } | null>(
-		project?.image ?? null,
-	);
-	const [imageKeyError, setImageKeyError] = useState(false);
+	const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(project?.image ?? null);
 
 	const [selectedSocialMediaIds, setSelectedSocialMediaIds] = useState<Array<string>>(
 		initialSocialMediaIds ?? [],
@@ -299,60 +320,26 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 						</div>
 					)}
 
-					<TextField defaultValue={project?.summary} isRequired={true} name="summary">
+					<TextField defaultValue={project?.summary ?? undefined} isRequired={true} name="summary">
 						<Label>{t("Summary")}</Label>
 						<TextArea rows={5} />
 						<FieldError />
 					</TextField>
+
+					<EntitySlugField isPublished={isPublished} slug={project?.entityVersion.slug.value} />
 				</FormSection>
 
 				<Separator className="my-6" />
 
 				<FormSection description={t("Select or upload an image.")} title={t("Image")}>
-					{selectedImage != null && (
-						<img
-							alt={t("Selected image")}
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
-							src={selectedImage.url}
-						/>
-					)}
-					<MediaLibraryDialog
+					<ImageSelectField
+						allowRemove={true}
 						defaultPrefix="logos"
 						initialAssets={initialAssets}
-						onSelect={(key, url) => {
-							setSelectedImage({ key, url });
-							setImageKeyError(false);
-						}}
+						onChange={setSelectedImage}
 						prefixes={["logos"]}
+						selectedImage={selectedImage}
 					/>
-					{selectedImage != null ? (
-						<Button
-							intent="outline"
-							onPress={() => {
-								setSelectedImage(null);
-								setImageKeyError(false);
-							}}
-						>
-							{t("Remove image")}
-						</Button>
-					) : null}
-
-					<input
-						aria-hidden={true}
-						className="sr-only"
-						name="imageKey"
-						onInvalid={(e) => {
-							e.preventDefault();
-							setImageKeyError(true);
-						}}
-						readOnly={true}
-						// required={true}
-						tabIndex={-1}
-						value={selectedImage?.key ?? ""}
-					/>
-					{imageKeyError ? (
-						<div className={fieldErrorStyles()}>{t("Please select an image.")}</div>
-					) : null}
 				</FormSection>
 
 				<Separator className="my-6" />
@@ -376,13 +363,15 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 					description={t("Link social media accounts to this project.")}
 					title={t("Social media")}
 				>
-					<AsyncMultipleSelect
+					<AsyncListSelect
+						addLabel={t("Add social media")}
 						aria-label={t("Social media")}
+						emptySelectionMessage={t("No social media linked")}
 						fetchPage={fetchSocialMediaOptionsPage}
 						initialItems={initialSocialMediaItems}
 						initialTotal={initialSocialMediaTotal}
+						isOrderable={true}
 						onChange={setSelectedSocialMediaIds}
-						placeholder={t("No social media linked")}
 						selectedItems={localSocialMediaItems}
 						value={selectedSocialMediaIds}
 					/>
@@ -400,6 +389,19 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 						<input key={id} name={`socialMediaIds.${String(index)}`} type="hidden" value={id} />
 					))}
 				</FormSection>
+
+				<Separator className="my-6" />
+
+				<EntityRelationsFields
+					initialRelatedEntityIds={initialRelatedEntityIds}
+					initialRelatedEntityItems={initialRelatedEntityItems}
+					initialRelatedEntityTotal={initialRelatedEntityTotal}
+					initialRelatedResourceIds={initialRelatedResourceIds}
+					initialRelatedResourceItems={initialRelatedResourceItems}
+					initialRelatedResourceTotal={initialRelatedResourceTotal}
+					selectedRelatedEntities={selectedRelatedEntities}
+					selectedRelatedResources={selectedRelatedResources}
+				/>
 
 				<ModalContent
 					isOpen={isCreateSocialMediaOpen}

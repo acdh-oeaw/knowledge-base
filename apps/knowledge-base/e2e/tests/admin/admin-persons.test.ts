@@ -251,7 +251,7 @@ test.describe("persons admin", () => {
 		expect(updatedContributions[0]!.duration.end).toBeDefined();
 	});
 
-	test("should delete a person", async ({ createAdminPersonsPage }) => {
+	test("should delete a person", async ({ createAdminPersonsPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const personsPage = createAdminPersonsPage(workerIndex);
 
@@ -263,6 +263,9 @@ test.describe("persons admin", () => {
 		await personsPage.fillBiography("Description for delete test.");
 		await personsPage.submitForm();
 
+		const created = await db.getPersonByName(name);
+		expect(created).not.toBeNull();
+
 		await personsPage.searchByName(name);
 		await expect(personsPage.rowByName(name)).toBeVisible();
 
@@ -270,6 +273,13 @@ test.describe("persons admin", () => {
 		await expect(deleteDialog).toBeVisible();
 		await personsPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(personsPage.rowByName(name)).toBeHidden();
+
+		// Source of truth: the entity document and its subtype rows are really gone.
+		expect(await db.entityDocumentExists(created!.documentId)).toBe(false);
+		expect(await db.getPersonByName(name)).toBeNull();
 	});
 });

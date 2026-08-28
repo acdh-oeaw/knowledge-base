@@ -1,8 +1,8 @@
 /**
  * Builds dashboard detail-page hrefs for related entities shown on detail pages.
  *
- * Returns `null` when the entity type has no dashboard detail page (e.g. external links, or the
- * `regional_hub` organisational-unit subtype), so callers can fall back to plain text.
+ * Returns `null` when the entity type has no dashboard detail page (e.g. the `regional_hub`
+ * organisational-unit subtype), so callers can fall back to plain text.
  */
 
 /** Organisational-unit subtype -> `administrator/<segment>` route segment. */
@@ -30,7 +30,6 @@ const entityDetailRoutes: Record<string, string | undefined> = {
 	opportunities: "website/opportunities",
 	pages: "website/pages",
 	spotlight_articles: "website/spotlight-articles",
-	// `external_links` has no dashboard detail page;
 	// `organisational_units` is resolved via its subtype in `getEntityDetailHref`.
 };
 

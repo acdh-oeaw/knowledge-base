@@ -82,7 +82,7 @@ export function Paginate({
 				)}
 			</PaginationInfo>
 			<PaginationSpacer />
-			<PaginationList className="hidden md:flex">
+			<PaginationList className="hidden lg:flex">
 				<PaginationFirst
 					isDisabled={isPending || page === 1}
 					onPress={() => {
@@ -127,7 +127,7 @@ export function Paginate({
 				/>
 			</PaginationList>
 
-			<PaginationList className="md:hidden">
+			<PaginationList className="lg:hidden">
 				<PaginationFirst
 					isDisabled={isPending || page === 1}
 					onPress={() => {

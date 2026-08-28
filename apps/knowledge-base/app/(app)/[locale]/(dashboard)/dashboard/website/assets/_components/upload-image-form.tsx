@@ -44,7 +44,7 @@ export function UploadImageForm(): ReactNode {
 				/>
 			</label>
 			{fileError != null ? (
-				<p className="text-danger text-sm" role="alert">
+				<p className="text-sm text-danger" role="alert">
 					{fileError}
 				</p>
 			) : null}

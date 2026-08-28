@@ -4,9 +4,7 @@ import type { ReactNode } from "react";
 
 import { PersonCreateForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/person-create-form";
 import { imageGridOptions } from "@/config/assets.config";
-import { assertAuthenticated } from "@/lib/auth/session";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
-import { getPersonCreateDataForAdmin } from "@/lib/data/cached/persons";
 import { getDefaultLocale } from "@/lib/data/locales";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -33,18 +31,7 @@ export default async function DashboardAdministratorCreatePersonPage(
 		prefix: "avatars",
 	});
 
-	const { user } = await assertAuthenticated();
-	const [{ initialSocialMedia }, defaultLocale] = await Promise.all([
-		getPersonCreateDataForAdmin(user),
-		getDefaultLocale(),
-	]);
+	const defaultLocale = await getDefaultLocale();
 
-	return (
-		<PersonCreateForm
-			defaultLocaleName={defaultLocale.name}
-			initialAssets={initialAssets}
-			initialSocialMediaItems={initialSocialMedia.items}
-			initialSocialMediaTotal={initialSocialMedia.total}
-		/>
-	);
+	return <PersonCreateForm defaultLocaleName={defaultLocale.name} initialAssets={initialAssets} />;
 }

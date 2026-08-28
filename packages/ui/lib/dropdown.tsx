@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckIcon } from "@heroicons/react/16/solid";
-import { Fragment, type ReactNode } from "react";
+import { type ComponentProps, Fragment, type ReactNode, type Ref } from "react";
 import {
 	Collection,
 	Header,
@@ -29,7 +29,7 @@ export const dropdownSectionStyles = tv({
 	slots: {
 		section: "col-span-full grid grid-cols-[auto_1fr]",
 		header:
-			"col-span-full px-3.5 py-2 font-medium text-muted-fg text-sm/6 sm:px-2.5 sm:py-1.5 sm:text-xs/3",
+			"col-span-full px-3.5 py-2 text-sm/6 font-medium text-muted-fg sm:px-2.5 sm:py-1.5 sm:text-xs/3",
 	},
 });
 
@@ -54,10 +54,10 @@ export function DropdownSection<T extends object>({
 
 export const dropdownItemStyles = tv({
 	base: [
-		"min-inline-0 [--mr-icon:--spacing(2)] sm:[--mr-icon:--spacing(1.5)]",
+		"[--mr-icon:--spacing(2)] min-inline-0 sm:[--mr-icon:--spacing(1.5)]",
 		"col-span-full grid grid-cols-[auto_1fr_1.5rem_0.5rem_auto] px-3 py-2 sm:px-2.5 sm:py-1.5 supports-[grid-template-columns:subgrid]:grid-cols-subgrid",
 		"not-has-[[slot=description]]:items-center",
-		"group relative cursor-default select-none rounded-[calc(var(--radius-xl)-(--spacing(1)))] text-base/6 text-fg outline-0 sm:text-sm/6",
+		"group relative cursor-default rounded-[calc(var(--radius-xl)-(--spacing(1)))] text-base/6 text-fg outline-0 select-none sm:text-sm/6",
 		// oxlint-disable-next-line better-tailwindcss/enforce-consistent-class-order
 		"**:data-[slot=avatar]:me-(--mr-icon) **:data-[slot=avatar]:[--avatar-size:--spacing(6)] **:data-[slot=avatar]:*:me-(--mr-icon) sm:**:data-[slot=avatar]:[--avatar-size:--spacing(5)] has-data-[slot=description]:**:data-[slot=avatar]:self-start has-data-[slot=description]:**:data-[slot=avatar]:mbs-1.5",
 		// oxlint-disable-next-line better-tailwindcss/enforce-consistent-class-order
@@ -125,11 +125,11 @@ export function DropdownItem({
 					{isSelected && (
 						<CheckIcon
 							className={twJoin(
-								"me-1.5 -ms-0.5 block-4 inline-4 shrink-0",
-								"group-has-[[slot=description]]:self-start group-has-[[slot=description]]:mbs-1",
-								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:inset-bs-1/2 group-has-data-[slot=icon]:inset-e-0.5 group-has-data-[slot=icon]:-translate-y-1/2",
+								"-ms-0.5 me-1.5 shrink-0 block-4 inline-4",
+								"group-has-[[slot=description]]:mbs-1 group-has-[[slot=description]]:self-start",
+								"group-has-data-[slot=icon]:absolute group-has-data-[slot=icon]:inset-e-0.5 group-has-data-[slot=icon]:inset-bs-1/2 group-has-data-[slot=icon]:-translate-y-1/2",
 								"sm:group-has-data-[slot=icon]:group-has-[[slot=description]]:inset-bs-2.5 group-has-data-[slot=icon]:group-has-[[slot=description]]:inset-bs-3 group-has-data-[slot=icon]:group-has-[[slot=description]]:translate-y-0",
-								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:inset-bs-1/2 group-has-data-[slot=avatar]:inset-e-0.5 group-has-data-[slot=avatar]:-translate-y-1/2",
+								"group-has-data-[slot=avatar]:absolute group-has-data-[slot=avatar]:inset-e-0.5 group-has-data-[slot=avatar]:inset-bs-1/2 group-has-data-[slot=avatar]:-translate-y-1/2",
 								"sm:group-has-data-[slot=avatar]:group-has-[[slot=description]]:inset-bs-2.5 group-has-data-[slot=avatar]:group-has-[[slot=description]]:inset-bs-3 group-has-data-[slot=avatar]:group-has-[[slot=description]]:translate-y-0",
 							)}
 							data-slot="check-indicator"
@@ -143,7 +143,7 @@ export function DropdownItem({
 }
 
 export interface DropdownLabelProps extends TextProps {
-	ref?: React.Ref<HTMLDivElement>;
+	ref?: Ref<HTMLDivElement>;
 }
 
 export function DropdownLabel({
@@ -155,7 +155,7 @@ export function DropdownLabel({
 }
 
 export interface DropdownDescriptionProps extends TextProps {
-	ref?: React.Ref<HTMLDivElement>;
+	ref?: Ref<HTMLDivElement>;
 }
 
 export function DropdownDescription({
@@ -166,7 +166,7 @@ export function DropdownDescription({
 	return (
 		<Text
 			ref={ref}
-			className={twMerge("col-start-2 font-normal text-muted-fg text-sm", className)}
+			className={twMerge("col-start-2 text-sm font-normal text-muted-fg", className)}
 			slot="description"
 			{...props}
 		/>
@@ -176,15 +176,15 @@ export function DropdownDescription({
 export function DropdownSeparator({ className, ...props }: Readonly<SeparatorProps>): ReactNode {
 	return (
 		<Separator
-			className={twMerge("col-span-full -mx-1 my-1 block-px bg-fg/10", className)}
+			className={twMerge("col-span-full -mx-1 my-1 bg-fg/10 block-px", className)}
 			orientation="horizontal"
 			{...props}
 		/>
 	);
 }
 
-export type DropdownKeyboardProps = React.ComponentProps<typeof Keyboard> & {
-	keys?: React.ReactNode;
+export type DropdownKeyboardProps = ComponentProps<typeof Keyboard> & {
+	keys?: ReactNode;
 };
 
 export function DropdownKeyboard({

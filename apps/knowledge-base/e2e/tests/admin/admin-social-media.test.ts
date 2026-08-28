@@ -128,7 +128,7 @@ test.describe("social media admin", () => {
 		expect(updated?.duration).toBeNull();
 	});
 
-	test("should delete a social media entry", async ({ createAdminSocialMediaPage }) => {
+	test("should delete a social media entry", async ({ createAdminSocialMediaPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const socialMediaPage = createAdminSocialMediaPage(workerIndex);
 
@@ -143,10 +143,18 @@ test.describe("social media admin", () => {
 		await socialMediaPage.searchByName(name);
 		await expect(socialMediaPage.rowByName(name)).toBeVisible();
 
+		expect(await db.getSocialMediaByName(name)).not.toBeNull();
+
 		const deleteDialog = await socialMediaPage.openDeleteDialog(name);
 		await expect(deleteDialog).toBeVisible();
 		await socialMediaPage.confirmDelete(deleteDialog);
 
+		// The dialog only closes once the server action succeeded; the row alone would also disappear
+		// on the optimistic update, so it is not on its own evidence the delete went through.
+		await expect(deleteDialog).toBeHidden();
 		await expect(socialMediaPage.rowByName(name)).toBeHidden();
+
+		// Source of truth: social media entries are not entity documents, so the row must be gone.
+		expect(await db.getSocialMediaByName(name)).toBeNull();
 	});
 });

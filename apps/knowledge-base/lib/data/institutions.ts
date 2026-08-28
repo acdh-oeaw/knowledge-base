@@ -3,8 +3,8 @@ import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
-import { alias, and, count, desc, eq, inArray, or, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 
 export type InstitutionEricRelationStatus =
 	| "is_cooperating_partner_of"
@@ -29,6 +29,7 @@ export interface InstitutionsResult {
 			"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId"
 		> & {
 			countryName: string | null;
+			documentId: string;
 			ericRelationStatuses: Array<InstitutionEricRelationStatus>;
 			entity: { slug: string };
 			hasDraft: boolean;
@@ -216,6 +217,9 @@ async function getInstitutionRelationData(ids: ReadonlyArray<string>) {
 
 const itemSelect = {
 	acronym: schema.organisationalUnits.acronym,
+	// `id` is the picked *version* id (organisational_units is keyed by entity_versions.id); the
+	// document id is what mutations operate on.
+	documentId: schema.entities.id,
 	id: schema.organisationalUnits.id,
 	name: schema.organisationalUnits.name,
 	ror: schema.organisationalUnits.ror,
@@ -282,6 +286,7 @@ export async function getInstitutions(
 			data: items.map((institution) => {
 				return {
 					countryName: countryNameByInstitutionId.get(institution.id) ?? null,
+					documentId: institution.documentId,
 					entity: { slug: institution.slug },
 					hasDraft: institution.hasDraft,
 					isPublished: institution.isPublished,
@@ -302,6 +307,7 @@ export async function getInstitutions(
 	// oxlint-disable-next-line no-useless-assignment
 	let items: Array<{
 		acronym: string | null;
+		documentId: string;
 		id: string;
 		name: string;
 		ror: string | null;
@@ -356,9 +362,10 @@ export async function getInstitutions(
 				.where(
 					and(
 						eq(schema.organisationalUnitTypes.type, institutionType),
-						or(
-							unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
-							unaccentIlike(schema.organisationalUnits.acronym, `%${query}%`),
+						matchesAllTerms(
+							query,
+							schema.organisationalUnits.name,
+							schema.organisationalUnits.acronym,
 						),
 					),
 				),
@@ -395,7 +402,11 @@ export async function getInstitutions(
 							schema.organisationalUnitTypes.type,
 							"country" as typeof schema.organisationalUnitTypes.$inferSelect.type,
 						),
-						unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
+						matchesAllTerms(
+							query,
+							schema.organisationalUnits.name,
+							schema.organisationalUnits.acronym,
+						),
 						sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
 					),
 				),
@@ -465,6 +476,7 @@ export async function getInstitutions(
 			data: pagedItems.map((institution) => {
 				return {
 					countryName: countryNameByInstitutionId.get(institution.id) ?? null,
+					documentId: institution.documentId,
 					entity: { slug: institution.slug },
 					hasDraft: institution.hasDraft,
 					isPublished: institution.isPublished,
@@ -489,6 +501,7 @@ export async function getInstitutions(
 		.map((institution) => {
 			return {
 				countryName: countryNameByInstitutionId.get(institution.id) ?? null,
+				documentId: institution.documentId,
 				entity: { slug: institution.slug },
 				hasDraft: institution.hasDraft,
 				isPublished: institution.isPublished,

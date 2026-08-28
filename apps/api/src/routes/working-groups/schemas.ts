@@ -7,6 +7,7 @@ import {
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
+	PersonPositionsSchema,
 	RelatedEntitiesSchema,
 	RelatedResourcesSchema,
 } from "@/lib/schemas";
@@ -18,6 +19,8 @@ export const WorkingGroupBaseSchema = v.pipe(
 			"acronym",
 			"name",
 			"summary",
+			"email",
+			"mailingList",
 			"metadata",
 			"sshocMarketplaceActorId",
 		]).entries,
@@ -27,10 +30,12 @@ export const WorkingGroupBaseSchema = v.pipe(
 		socialMedia: v.array(
 			v.object({
 				...v.pick(schema.SocialMediaSelectSchema, ["id", "name", "url"]).entries,
-				duration: v.object({
-					start: v.string(),
-					end: v.nullable(v.string()),
-				}),
+				duration: v.nullable(
+					v.object({
+						start: v.string(),
+						end: v.nullable(v.string()),
+					}),
+				),
 				type: v.picklist(schema.socialMediaTypesEnum),
 			}),
 		),
@@ -56,6 +61,8 @@ export const WorkingGroupSchema = v.pipe(
 			"acronym",
 			"name",
 			"summary",
+			"email",
+			"mailingList",
 			"metadata",
 			"sshocMarketplaceActorId",
 		]).entries,
@@ -65,28 +72,23 @@ export const WorkingGroupSchema = v.pipe(
 		socialMedia: v.array(
 			v.object({
 				...v.pick(schema.SocialMediaSelectSchema, ["id", "name", "url"]).entries,
-				duration: v.object({
-					start: v.string(),
-					end: v.nullable(v.string()),
-				}),
+				duration: v.nullable(
+					v.object({
+						start: v.string(),
+						end: v.nullable(v.string()),
+					}),
+				),
 				type: v.picklist(schema.socialMediaTypesEnum),
 			}),
 		),
 		chairs: v.array(
 			v.object({
 				...v.pick(schema.PersonSelectSchema, ["id", "name"]).entries,
-				position: v.nullable(
-					v.array(
-						v.object({
-							role: v.picklist(schema.personRoleTypesEnum),
-							name: v.string(),
-							type: v.picklist(schema.organisationalUnitTypesEnum),
-						}),
-					),
-				),
+				positions: PersonPositionsSchema,
 				image: v.nullable(ImageSchema),
 				slug: v.string(),
 				role: v.picklist(schema.personRoleTypesEnum),
+				description: v.nullable(v.string()),
 			}),
 		),
 		description: v.optional(v.array(ContentBlockSchema), []),
@@ -126,7 +128,6 @@ export const WorkingGroupQuerySchema = v.object({
 		v.description(
 			"Filter by active (membership duration contains current time) or inactive (membership duration has ended)",
 		),
-		v.metadata({ ref: "WorkingGroupStatusParam" }),
 	),
 });
 

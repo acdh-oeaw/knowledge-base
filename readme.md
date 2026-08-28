@@ -1,4 +1,4 @@
-# the knowledge base
+# dariah knowledge base
 
 ## development
 

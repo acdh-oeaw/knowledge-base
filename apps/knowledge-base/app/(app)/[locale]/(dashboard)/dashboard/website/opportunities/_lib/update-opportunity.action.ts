@@ -1,18 +1,28 @@
 "use server";
 
-import { assert, keyBy } from "@acdh-oeaw/lib";
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateOpportunityActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_lib/update-opportunity.schema";
-import { upsertTypedContentBlock } from "@/lib/content-blocks-service";
-import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";
-import { ensureEntityVersionField } from "@/lib/data/entity-version-fields";
+import {
+	ensureDraftVersion,
+	getDocumentSlug,
+	publishVersion,
+	touchVersion,
+	updateDraftDocumentSlug,
+} from "@/lib/data/entity-lifecycle";
+import {
+	deleteFieldContentBlocks,
+	ensureEntityVersionField,
+	insertContentBlockTree,
+} from "@/lib/data/entity-version-fields";
 import { opportunitiesLifecycleAdapter } from "@/lib/data/opportunities.lifecycle-adapter";
-import { db } from "@/lib/db";
-import { eq, inArray } from "@/lib/db/sql";
+import { syncEntityRelations } from "@/lib/data/relations";
+import { eq } from "@/lib/db/sql";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateOpportunityAction = createMutationAction({
@@ -20,7 +30,7 @@ export const updateOpportunityAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "opportunities" },
 	revalidate: "/[locale]/dashboard/website/opportunities",
-	redirect: "/dashboard/website/opportunities",
+	redirect: ({ result }) => `/dashboard/website/opportunities/${getResultSlug(result)}/details`,
 
 	async mutate(tx, input, { formData }) {
 		const draftVersionId = await ensureDraftVersion(
@@ -28,6 +38,19 @@ export const updateOpportunityAction = createMutationAction({
 			input.documentId,
 			opportunitiesLifecycleAdapter,
 		);
+
+		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
+		// re-checks that server-side, so a forged submission cannot rename a published page.
+		const requestedSlug = getRequestedSlug(input.slug);
+		if (requestedSlug != null) {
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+		}
+
+		const asset = await tx.query.assets.findFirst({
+			where: { key: input.imageKey },
+			columns: { id: true },
+		});
+		assert(asset);
 
 		await tx
 			.update(schema.opportunities)
@@ -37,42 +60,23 @@ export const updateOpportunityAction = createMutationAction({
 				sourceId: input.sourceId,
 				website: input.website,
 				duration: input.duration,
+				imageId: asset.id,
+				imageCaption: input.imageCaption,
+				imageCaptionMode: input.imageCaptionMode,
 			})
 			.where(eq(schema.opportunities.id, draftVersionId));
 
 		const contentField = await ensureEntityVersionField(tx, draftVersionId, "content");
-		const contentBlockTypes = await db.query.contentBlockTypes.findMany();
-		const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
+		await deleteFieldContentBlocks(tx, contentField.id);
 
-		const existingBlocks = await tx.query.contentBlocks.findMany({
-			where: { fieldId: contentField.id },
-			columns: { id: true },
-		});
+		await insertContentBlockTree(tx, contentField.id, input.contentBlocks);
 
-		if (existingBlocks.length > 0) {
-			await tx.delete(schema.contentBlocks).where(
-				inArray(
-					schema.contentBlocks.id,
-					existingBlocks.map((b) => b.id),
-				),
-			);
-		}
-
-		await Promise.all(
-			input.contentBlocks.map(async (contentBlock, index) => {
-				const [added] = await tx
-					.insert(schema.contentBlocks)
-					.values({
-						fieldId: contentField.id,
-						typeId: contentBlockTypesByType[contentBlock.type].id,
-						position: index,
-					})
-					.returning({ id: schema.contentBlocks.id });
-				assert(added);
-				await upsertTypedContentBlock(tx, contentBlock, added.id, true);
-			}),
+		await syncEntityRelations(
+			tx,
+			input.documentId,
+			input.relatedEntityIds,
+			input.relatedResourceIds,
 		);
-
 		await touchVersion(tx, draftVersionId);
 
 		if (shouldSaveAndPublish(formData)) {
@@ -81,6 +85,7 @@ export const updateOpportunityAction = createMutationAction({
 
 		return {
 			subjectId: input.documentId,
+			subjectSlug: await getDocumentSlug(tx, input.documentId),
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

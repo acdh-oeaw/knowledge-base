@@ -77,7 +77,7 @@ export function GovernanceBodiesPage(props: Readonly<GovernanceBodiesPageProps>)
 		<Fragment>
 			<EntityListHeader
 				title={t("Governance bodies")}
-				description={t("Manage all governance bodies in the knowledge base.")}
+				description={t("Manage all governance bodies in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -100,7 +100,7 @@ export function GovernanceBodiesPage(props: Readonly<GovernanceBodiesPageProps>)
 						{t("Acronym")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -108,14 +108,14 @@ export function GovernanceBodiesPage(props: Readonly<GovernanceBodiesPageProps>)
 							href={`/dashboard/administrator/governance-bodies/${item.entity.slug}/details`}
 						>
 							<TableCell>{item.name}</TableCell>
-							<TableCell className="uppercase">{item.acronym}</TableCell>
+							<TableCell>{item.acronym}</TableCell>
 							<TableCell>
 								<EntityLifecycleStatusBadge
 									hasDraft={item.hasDraft}
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/governance-bodies/${item.entity.slug}/details`}

@@ -11,11 +11,19 @@ import { updateServiceAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/
 interface ServiceEditFormProps {
 	service: Pick<
 		schema.Service,
-		"id" | "name" | "statusId" | "comment" | "dariahBranding" | "monitoring" | "privateSupplier"
+		| "id"
+		| "name"
+		| "typeId"
+		| "statusId"
+		| "comment"
+		| "dariahBranding"
+		| "monitoring"
+		| "privateSupplier"
 	> & {
 		ownerUnitDocumentIds: Array<string>;
 		providerUnitDocumentIds: Array<string>;
 	};
+	serviceTypes: Array<Pick<schema.ServiceType, "id" | "type">>;
 	serviceStatuses: Array<Pick<schema.ServiceStatus, "id" | "status">>;
 	initialOrganisationalUnitItems: Array<{ id: string; name: string }>;
 	initialOrganisationalUnitTotal: number;
@@ -25,6 +33,7 @@ interface ServiceEditFormProps {
 export function ServiceEditForm(props: Readonly<ServiceEditFormProps>): ReactNode {
 	const {
 		service,
+		serviceTypes,
 		serviceStatuses,
 		initialOrganisationalUnitItems,
 		initialOrganisationalUnitTotal,
@@ -44,6 +53,7 @@ export function ServiceEditForm(props: Readonly<ServiceEditFormProps>): ReactNod
 				selectedOrganisationalUnits={selectedOrganisationalUnits}
 				service={service}
 				serviceStatuses={serviceStatuses}
+				serviceTypes={serviceTypes}
 			/>
 		</Fragment>
 	);

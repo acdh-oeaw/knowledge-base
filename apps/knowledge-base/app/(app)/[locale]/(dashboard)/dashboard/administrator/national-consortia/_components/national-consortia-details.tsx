@@ -10,6 +10,7 @@ import { Note } from "@dariah-eric/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
+import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-summary";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
@@ -17,6 +18,7 @@ import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
+import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 import type { UnitRelation } from "@/lib/data/unit-relations";
 import { getEntityDetailHref, getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
@@ -36,7 +38,7 @@ interface NationalConsortiumDetailsProps {
 	> & {
 		descriptionContentBlocks: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
-	} & { image: { key: string; label: string; url: string } | null };
+	} & { image: SelectedImage | null };
 	selectedRelatedEntities: Array<{
 		id: string;
 		name: string;
@@ -54,8 +56,11 @@ interface NationalConsortiumDetailsProps {
 		description?: string;
 	}>;
 	relations: Array<UnitRelation>;
-	publishAction: (documentId: string) => Promise<unknown>;
+	publishAction?: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
+	detailHref?: string;
+	editHref?: string | null;
+	enableAdminEntityLinks?: boolean;
 }
 
 export function NationalConsortiumDetails(
@@ -76,6 +81,7 @@ export function NationalConsortiumDetails(
 		selectedRelatedResources,
 		selectedSocialMediaItems,
 		selectedVersion,
+		enableAdminEntityLinks = true,
 	} = props;
 
 	const t = useExtracted();
@@ -131,7 +137,7 @@ export function NationalConsortiumDetails(
 					{nationalConsortium.image != null ? (
 						<img
 							alt=""
-							className="block-24 inline-auto max-inline-full rounded-lg object-contain"
+							className="rounded-lg object-contain block-24 inline-auto max-inline-full"
 							src={nationalConsortium.image.url}
 						/>
 					) : null}
@@ -185,16 +191,21 @@ export function NationalConsortiumDetails(
 						<ul className="flex flex-col gap-1">
 							{selectedRelatedEntities.map((relatedEntity) => (
 								<li key={relatedEntity.id} className="text-sm">
-									<RelationLink
-										className="font-medium"
-										href={getEntityDetailHref({
-											entityType: relatedEntity.entityType,
-											slug: relatedEntity.slug,
-											unitType: relatedEntity.unitType,
-										})}
-									>
-										{relatedEntity.name}
-									</RelationLink>
+									{enableAdminEntityLinks ? (
+										<RelationLink
+											className="font-medium"
+											href={getEntityDetailHref({
+												entityType: relatedEntity.entityType,
+												slug: relatedEntity.slug,
+												unitType: relatedEntity.unitType,
+											})}
+										>
+											{relatedEntity.name}
+										</RelationLink>
+									) : (
+										<span className="font-medium">{relatedEntity.name}</span>
+									)}
+									<RelationTypeSuffix type={relatedEntity.description} />
 								</li>
 							))}
 						</ul>
@@ -208,6 +219,7 @@ export function NationalConsortiumDetails(
 							{selectedRelatedResources.map((relatedResource) => (
 								<li key={relatedResource.id} className="text-sm">
 									<span className="font-medium">{relatedResource.name}</span>
+									<RelationTypeSuffix type={relatedResource.description} />
 								</li>
 							))}
 						</ul>

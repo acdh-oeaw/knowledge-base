@@ -183,7 +183,6 @@ ARG NEXT_PUBLIC_TYPESENSE_PROTOCOL
 ARG NEXT_PUBLIC_TYPESENSE_SEARCH_API_KEY
 COPY --from=app-prune /app/out/full/ .
 RUN --mount=type=secret,id=API_ACCESS_TOKEN,env=API_ACCESS_TOKEN \
-    --mount=type=secret,id=APP_TASKS_SECRET,env=APP_TASKS_SECRET \
     --mount=type=secret,id=AUTH_ENCRYPTION_KEY,env=AUTH_ENCRYPTION_KEY \
     --mount=type=secret,id=AUTH_SIGN_UP,env=AUTH_SIGN_UP \
     --mount=type=secret,id=DATABASE_HOST,env=DATABASE_HOST \

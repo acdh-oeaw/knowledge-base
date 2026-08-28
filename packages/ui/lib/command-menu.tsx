@@ -107,10 +107,10 @@ export function CommandMenu({
 			<ModalContext value={{ isOpen: props.isOpen, onOpenChange }}>
 				<ModalOverlay
 					className={twJoin(
-						"fixed inset-0 z-50 block-(--visual-viewport-height,100vh) inline-screen overflow-hidden bg-black/15",
+						"fixed inset-0 z-50 overflow-hidden bg-black/15 block-(--visual-viewport-height,100vh) inline-screen",
 						"grid grid-rows-[1fr_auto] justify-items-center text-center sm:grid-rows-[1fr_auto_3fr]",
-						"entering:fade-in entering:animate-in entering:duration-300 entering:ease-out",
-						"exiting:fade-out exiting:animate-out exiting:ease-in",
+						"entering:animate-in entering:duration-300 entering:ease-out entering:fade-in",
+						"exiting:animate-out exiting:ease-in exiting:fade-out",
 						isBlurred === true && "backdrop-blur-sm backdrop-filter",
 					)}
 					isDismissable={isDismissable}
@@ -118,18 +118,18 @@ export function CommandMenu({
 				>
 					<Modal
 						className={cx(
-							"row-start-2 bg-overlay text-start text-overlay-fg shadow-lg outline-none ring ring-muted-fg/15 md:row-start-1 dark:ring-border",
-							"max-block-[calc(var(--visual-viewport-height)*0.8)] inline-full sm:fixed sm:inset-bs-[10%] sm:inset-s-1/2 sm:-translate-x-1/2",
+							"row-start-2 bg-overlay text-start text-overlay-fg shadow-lg ring ring-muted-fg/15 outline-none md:row-start-1 dark:ring-border",
+							"inline-full max-block-[calc(var(--visual-viewport-height)*0.8)] sm:fixed sm:inset-s-1/2 sm:inset-bs-[10%] sm:-translate-x-1/2",
 							"rounded-t-2xl md:rounded-xl",
 							sizes[size],
-							"entering:slide-in-from-bottom entering:animate-in entering:duration-300 entering:ease-out sm:entering:zoom-in-95 sm:entering:slide-in-from-bottom-0",
-							"exiting:slide-out-to-bottom exiting:animate-out exiting:ease-in sm:exiting:zoom-out-95 sm:exiting:slide-out-to-bottom-0",
+							"entering:animate-in entering:duration-300 entering:ease-out entering:slide-in-from-bottom sm:entering:slide-in-from-bottom-0 sm:entering:zoom-in-95",
+							"exiting:animate-out exiting:ease-in exiting:slide-out-to-bottom sm:exiting:slide-out-to-bottom-0 sm:exiting:zoom-out-95",
 							className,
 						)}
 					>
 						<Dialog
 							aria-label={props["aria-label"] ?? t("Command menu")}
-							className="flex max-block-[inherit] flex-col overflow-hidden outline-hidden"
+							className="flex flex-col overflow-hidden outline-hidden max-block-[inherit]"
 						>
 							<Autocomplete filter={filter} {...props} />
 						</Dialog>
@@ -158,19 +158,19 @@ export function CommandMenuSearch({
 		<SearchField
 			aria-label={t("Quick search")}
 			autoFocus={true}
-			className={cx("flex inline-full items-center px-2.5 py-1", className)}
+			className={cx("flex items-center px-2.5 py-1 inline-full", className)}
 			{...props}
 		>
 			{isPending === true ? (
 				<Loader className="block-4.5 inline-4.5" variant="spin" />
 			) : (
 				<MagnifyingGlassIcon
-					className="block-5 inline-5 shrink-0 text-muted-fg"
+					className="shrink-0 text-muted-fg block-5 inline-5"
 					data-slot="command-menu-search-icon"
 				/>
 			)}
 			<Input
-				className="inline-full min-inline-0 bg-transparent px-2.5 py-2 text-base text-fg placeholder-muted-fg outline-hidden focus:outline-hidden sm:px-2 sm:py-1.5 sm:text-sm [&::-ms-reveal]:hidden [&::-webkit-search-cancel-button]:hidden"
+				className="bg-transparent px-2.5 py-2 text-base text-fg placeholder-muted-fg outline-hidden inline-full min-inline-0 focus:outline-hidden sm:px-2 sm:py-1.5 sm:text-sm [&::-ms-reveal]:hidden [&::-webkit-search-cancel-button]:hidden"
 				placeholder={placeholder ?? t("Search...")}
 			/>
 			{escapeButton === true && (
@@ -196,7 +196,7 @@ export function CommandMenuList<T extends object>({
 		<CollectionRendererContext value={renderer}>
 			<MenuPrimitive
 				className={cx(
-					"grid max-block-full flex-1 grid-cols-[auto_1fr] content-start overflow-y-auto border-bs p-2 sm:max-block-110 *:[[role=group]]:mbe-6 *:[[role=group]]:last:mbe-0",
+					"grid flex-1 grid-cols-[auto_1fr] content-start overflow-y-auto border-bs p-2 max-block-full sm:max-block-110 *:[[role=group]]:mbe-6 *:[[role=group]]:last:mbe-0",
 					className,
 				)}
 				{...props}
@@ -218,7 +218,7 @@ export function CommandMenuSection<T extends object>({
 			{...props}
 		>
 			{"label" in props && (
-				<Header className="col-span-full mbe-1 block min-inline-(--trigger-width) truncate px-2.5 text-muted-fg text-xs">
+				<Header className="col-span-full mbe-1 block truncate px-2.5 text-xs text-muted-fg min-inline-(--trigger-width)">
 					{props.label}
 				</Header>
 			)}
@@ -258,7 +258,7 @@ const renderer: CollectionRenderer = {
 		const { collection } = props;
 		if (collection.size === 0) {
 			return (
-				<div className="col-span-full p-4 text-center text-muted-fg text-sm">
+				<div className="col-span-full p-4 text-center text-sm text-muted-fg">
 					{"No results found."}
 				</div>
 			);
@@ -282,8 +282,8 @@ export function CommandMenuFooter({
 	return (
 		<div
 			className={twMerge(
-				"col-span-full flex-none border-bs px-2 py-1.5 text-muted-fg text-sm",
-				"*:[kbd]:inset-ring *:[kbd]:inset-ring-fg/10 *:[kbd]:mx-1 *:[kbd]:inline-grid *:[kbd]:block-4 *:[kbd]:min-inline-4 *:[kbd]:place-content-center *:[kbd]:rounded-xs *:[kbd]:bg-secondary",
+				"col-span-full flex-none border-bs px-2 py-1.5 text-sm text-muted-fg",
+				"*:[kbd]:mx-1 *:[kbd]:inline-grid *:[kbd]:place-content-center *:[kbd]:rounded-xs *:[kbd]:bg-secondary *:[kbd]:inset-ring *:[kbd]:inset-ring-fg/10 *:[kbd]:block-4 *:[kbd]:min-inline-4",
 				className,
 			)}
 			{...props}
@@ -299,7 +299,7 @@ export function CommandMenuShortcut({
 	return (
 		<DropdownKeyboard
 			className={twMerge(
-				"gap-0.5 text-[10.5px] uppercase *:inset-ring *:inset-ring-muted-fg/20 *:grid *:block-5.5 *:inline-5.5 *:place-content-center *:rounded-xs *:bg-bg",
+				"gap-0.5 text-[10.5px] uppercase *:grid *:place-content-center *:rounded-xs *:bg-bg *:inset-ring *:inset-ring-muted-fg/20 *:block-5.5 *:inline-5.5",
 				className,
 			)}
 			{...props}

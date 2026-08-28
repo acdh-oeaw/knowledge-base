@@ -28,8 +28,8 @@ export function FormStatus(props: Readonly<FormStatusProps>): ReactNode {
 					}
 
 					return (
-						<span className="flex items-center gap-x-2">
-							<AlertTriangleIcon aria-hidden={true} className="block-5 inline-5" />
+						<span className="flex items-center gap-x-2 text-sm/5">
+							<AlertTriangleIcon aria-hidden={true} className="shrink-0 block-5 inline-5" />
 							{state.message}
 						</span>
 					);
@@ -42,8 +42,8 @@ export function FormStatus(props: Readonly<FormStatusProps>): ReactNode {
 					}
 
 					return (
-						<span className="flex items-center gap-x-2">
-							<CheckCircle2Icon aria-hidden={true} className="block-5 inline-5" />
+						<span className="flex items-center gap-x-2 text-sm/5">
+							<CheckCircle2Icon aria-hidden={true} className="shrink-0 block-5 inline-5" />
 							{state.message}
 						</span>
 					);

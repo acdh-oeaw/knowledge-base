@@ -13,6 +13,14 @@ import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 export async function deleteDocumentPolicyGroupAction(id: string): Promise<void> {
 	const auditSession = await assertAdmin();
 
+	// The subject is a document-policy *group* (not an entity document), so snapshot its label from the
+	// group table before deletion — the generic entity resolver can't recover it afterwards.
+	const group = await db.query.documentPolicyGroups.findFirst({
+		where: { id },
+		columns: { label: true },
+	});
+	const subjectLabel = group?.label ?? null;
+
 	await db.transaction(async (tx) => {
 		await tx
 			.update(schema.documentsPolicies)
@@ -46,6 +54,7 @@ export async function deleteDocumentPolicyGroupAction(id: string): Promise<void>
 		action: "delete",
 		subjectType: "documents_policies",
 		subjectId: id,
+		subjectLabel,
 		summary: {},
 	});
 

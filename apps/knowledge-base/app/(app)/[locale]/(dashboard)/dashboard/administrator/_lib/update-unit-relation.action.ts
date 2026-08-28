@@ -34,7 +34,8 @@ export const updateUnitRelationAction = createServerAction(
 			});
 		}
 
-		const { id, unitDocumentId, statusId, relatedUnitDocumentId, duration } = result.output;
+		const { id, unitDocumentId, statusId, relatedUnitDocumentId, duration, description } =
+			result.output;
 
 		try {
 			await db.transaction(async (tx) => {
@@ -45,6 +46,7 @@ export const updateUnitRelationAction = createServerAction(
 						relatedUnitDocumentId,
 						status: statusId,
 						duration,
+						description,
 					})
 					.where(eq(schema.organisationalUnitsRelations.id, id));
 

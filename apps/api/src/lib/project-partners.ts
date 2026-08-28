@@ -1,7 +1,7 @@
 import * as schema from "@dariah-eric/database/schema";
 
 import type { Database, Transaction } from "@/middlewares/db";
-import { eq, inArray } from "@/services/db/sql";
+import { asc, eq, inArray } from "@/services/db/sql";
 
 export interface ProjectPartner {
 	unit: {
@@ -94,6 +94,11 @@ export async function getPublishedProjectPartnersByDocuments(
 					)
 					.where(
 						inArray(schema.organisationalUnitsToSocialMedia.organisationalUnitId, unitVersionIds),
+					)
+					.orderBy(
+						asc(schema.organisationalUnitsToSocialMedia.organisationalUnitId),
+						asc(schema.organisationalUnitsToSocialMedia.position),
+						asc(schema.organisationalUnitsToSocialMedia.socialMediaId),
 					)
 			: [];
 

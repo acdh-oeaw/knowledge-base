@@ -3,10 +3,10 @@
 import * as schema from "@dariah-eric/database/schema";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
 
-export type OpportunitiesSort = "title" | "source" | "updatedAt";
+export type OpportunitiesSort = "duration" | "source" | "title";
 
 interface GetOpportunitiesParams {
 	/** @default 10 */
@@ -19,12 +19,10 @@ interface GetOpportunitiesParams {
 }
 
 export async function getOpportunities(params: GetOpportunitiesParams) {
-	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
+	const { limit = 10, offset = 0, q, sort = "duration", dir = "desc" } = params;
 	const query = q?.trim();
 	const where =
-		query != null && query !== ""
-			? unaccentIlike(schema.opportunities.title, `%${query}%`)
-			: undefined;
+		query != null && query !== "" ? matchesAllTerms(query, schema.opportunities.title) : undefined;
 	const orderBy =
 		sort === "title"
 			? dir === "asc"
@@ -35,15 +33,15 @@ export async function getOpportunities(params: GetOpportunitiesParams) {
 					? schema.opportunitySources.source
 					: desc(schema.opportunitySources.source)
 				: dir === "asc"
-					? schema.entityVersions.updatedAt
-					: desc(schema.entityVersions.updatedAt);
+					? sql<Date>`lower(${schema.opportunities.duration})`
+					: desc(sql<Date>`lower(${schema.opportunities.duration})`);
 
 	const pickedVersion = sql`COALESCE(${schema.documentLifecycle.draftId}, ${schema.documentLifecycle.publishedId})`;
 
 	const [items, aggregate] = await Promise.all([
 		db
 			.select({
-				documentId: schema.entityVersions.entityId,
+				documentId: schema.entities.id,
 				duration: schema.opportunities.duration,
 				id: schema.opportunities.id,
 				source: schema.opportunitySources.source,
@@ -51,7 +49,6 @@ export async function getOpportunities(params: GetOpportunitiesParams) {
 				slug: schema.slugs.value,
 				summary: schema.opportunities.summary,
 				title: schema.opportunities.title,
-				updatedAt: schema.entityVersions.updatedAt,
 				website: schema.opportunities.website,
 				isPublished: sql<boolean>`${schema.documentLifecycle.publishedId} IS NOT NULL`,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
@@ -59,6 +56,7 @@ export async function getOpportunities(params: GetOpportunitiesParams) {
 			})
 			.from(schema.opportunities)
 			.innerJoin(schema.entityVersions, eq(schema.opportunities.id, schema.entityVersions.id))
+			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(
 				schema.opportunitySources,
 				eq(schema.opportunities.sourceId, schema.opportunitySources.id),
@@ -100,7 +98,6 @@ export async function getOpportunities(params: GetOpportunitiesParams) {
 			hasDraft: item.hasDraft,
 			summary: item.summary,
 			title: item.title,
-			updatedAt: item.updatedAt,
 			isPublished: item.isPublished,
 			website: item.website,
 		};

@@ -3,6 +3,7 @@ import * as v from "valibot";
 export const UpdateServiceActionInputSchema = v.object({
 	id: v.pipe(v.string(), v.uuid()),
 	name: v.pipe(v.string(), v.nonEmpty()),
+	typeId: v.pipe(v.string(), v.uuid()),
 	statusId: v.pipe(v.string(), v.uuid()),
 	comment: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	dariahBranding: v.pipe(

@@ -192,4 +192,45 @@ test.describe("website news admin – related entities", () => {
 		expect(rowAfter).not.toBeNull();
 		expect(rowAfter!.createdAt).toStrictEqual(rowBefore!.createdAt);
 	});
+
+	test("should persist a reordered related-entity selection", async ({
+		createWebsiteNewsPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const newsPage = createWebsiteNewsPage(workerIndex);
+		const testEntities = await db.getTestEntities(2);
+		const firstEntity = testEntities[0]!;
+		const secondEntity = testEntities[1]!;
+
+		const title = `${newsPage.workerPrefix} Relations Reorder ${randomUUID()}`;
+
+		await newsPage.gotoCreate();
+		await newsPage.fillTitle(title);
+		await newsPage.fillSummary("E2E test — reorder related entities");
+		await newsPage.selectImageFromMediaLibrary("E2E Test Asset");
+		await newsPage.selectRelatedEntity(firstEntity.name);
+		await newsPage.selectRelatedEntity(secondEntity.name);
+		await newsPage.submitForm();
+
+		const newsItem = await db.getNewsItemByTitle(title);
+		expect(newsItem).not.toBeNull();
+
+		// The relations are persisted in selection order.
+		const relationsBefore = await db.getEntityRelations(newsItem!.id);
+		expect(relationsBefore.relatedEntityIds).toStrictEqual([firstEntity.id, secondEntity.id]);
+
+		await newsPage.searchByTitle(title);
+		await newsPage.gotoEditFromList(title);
+
+		// Drag the first related entity below the second: [first, second] -> [second, first].
+		await newsPage.moveRelatedEntityDown(firstEntity.name);
+		const orderedNames = await newsPage.getRelatedEntityNames();
+		expect(orderedNames[0]).toContain(secondEntity.name);
+
+		await newsPage.submitForm();
+
+		const relationsAfter = await db.getEntityRelations(newsItem!.id);
+		expect(relationsAfter.relatedEntityIds).toStrictEqual([secondEntity.id, firstEntity.id]);
+	});
 });

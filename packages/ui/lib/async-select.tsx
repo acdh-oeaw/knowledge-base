@@ -47,13 +47,13 @@ export interface AsyncSelectProps<T extends AsyncOption> {
 
 function renderDefaultItem(item: AsyncOption): ReactNode {
 	if (item.description == null || item.description === "") {
-		return <ListBoxLabel>{item.name}</ListBoxLabel>;
+		return <ListBoxLabel className="truncate">{item.name}</ListBoxLabel>;
 	}
 
 	return (
 		<Fragment>
-			<ListBoxLabel>{item.name}</ListBoxLabel>
-			<ListBoxDescription>{item.description}</ListBoxDescription>
+			<ListBoxLabel className="truncate">{item.name}</ListBoxLabel>
+			<ListBoxDescription className="truncate">{item.description}</ListBoxDescription>
 		</Fragment>
 	);
 }
@@ -152,7 +152,7 @@ function AsyncSelectInner<T extends AsyncOption>(
 					ref={triggerRef}
 					aria-required={isRequired || undefined}
 					className={cx(
-						"group/select-trigger flex inline-full min-inline-0 cursor-default items-center gap-x-2 rounded-lg border border-input px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-start text-fg outline-hidden transition duration-200 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6",
+						"group/select-trigger flex cursor-default items-center gap-x-2 rounded-lg border border-input px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] text-start text-fg outline-hidden transition duration-200 inline-full min-inline-0 sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6",
 						"hover:border-muted-fg/30",
 						"focus:border-ring/70 focus:bg-primary-subtle/5 focus:ring-3 focus:ring-ring/20",
 						isOpen ? "border-ring/70 bg-primary-subtle/5 ring-3 ring-ring/20" : undefined,
@@ -169,24 +169,20 @@ function AsyncSelectInner<T extends AsyncOption>(
 						{selectedItem?.name ?? placeholder}
 					</span>
 					<ChevronUpDownIcon
-						className="block-5 inline-5 shrink-0 text-muted-fg sm:block-4 sm:inline-4"
+						className="shrink-0 text-muted-fg block-5 inline-5 sm:block-4 sm:inline-4"
 						data-slot="chevron"
 					/>
 				</AriaButton>
 
 				<AriaPopover
 					className={cx(
-						"group/popover origin-(--trigger-anchor-point) rounded-xl border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden",
+						"group/popover origin-(--trigger-anchor-point) overflow-hidden rounded-xl border border-fg/10 bg-overlay text-overlay-fg shadow-xs outline-hidden",
 						"inline-(--trigger-width)",
-						"entering:fade-in entering:animate-in",
-						"exiting:fade-out exiting:animate-out",
+						"entering:animate-in entering:fade-in",
+						"exiting:animate-out exiting:fade-out",
 					)}
 					placement="bottom"
-					style={
-						triggerWidth != null
-							? ({ "--trigger-width": triggerWidth } as React.CSSProperties)
-							: undefined
-					}
+					style={triggerWidth != null ? { "--trigger-width": triggerWidth } : undefined}
 				>
 					<div className="flex flex-col gap-3 p-3">
 						<SearchField onChange={setSearchText} onSubmit={handleSearch} value={searchText}>
@@ -194,7 +190,7 @@ function AsyncSelectInner<T extends AsyncOption>(
 						</SearchField>
 
 						{loadError != null ? (
-							<p className="py-3 text-center text-danger-subtle-fg text-sm">{loadErrorMessage}</p>
+							<p className="py-3 text-center text-sm text-danger-subtle-fg">{loadErrorMessage}</p>
 						) : displayedItems.length > 0 ? (
 							<div className="relative">
 								<ListBox
@@ -203,6 +199,9 @@ function AsyncSelectInner<T extends AsyncOption>(
 										"max-block-72 [&::-webkit-scrollbar]:block-2! [&::-webkit-scrollbar]:inline-2!",
 										isPending ? "opacity-50" : undefined,
 									)}
+									// Options survive between fetches as the same objects, so a caller that swaps its
+									// `renderItem` would otherwise keep the markup the previous one produced.
+									dependencies={[renderOption]}
 									items={displayedItems}
 									onSelectionChange={(keys) => {
 										if (keys === "all") {
@@ -245,7 +244,7 @@ function AsyncSelectInner<T extends AsyncOption>(
 								<ProgressCircle aria-label={t("Pending...")} isIndeterminate={true} />
 							</div>
 						) : (
-							<p className="py-3 text-center text-muted-fg text-sm">
+							<p className="py-3 text-center text-sm text-muted-fg">
 								{emptyMessage ?? t("No options found.")}
 							</p>
 						)}

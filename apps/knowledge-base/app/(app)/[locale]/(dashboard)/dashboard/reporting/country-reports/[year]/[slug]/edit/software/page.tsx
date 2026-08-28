@@ -16,7 +16,7 @@ export async function generateMetadata(
 	const t = await getExtracted();
 
 	return createMetadata(resolvingMetadata, {
-		title: t("Dashboard - Country report software"),
+		title: t("Dashboard - Country report SSHOC resources"),
 	});
 }
 

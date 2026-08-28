@@ -39,13 +39,13 @@ export function ToastRegion(): ReactNode {
 
 	return (
 		<AriaToastRegion
-			className="ui:fixed ui:inset-be-4 ui:inset-e-4 ui:flex ui:flex-col-reverse ui:gap-2 ui:rounded-lg ui:outline-none ui:focus-visible:outline-solid ui:focus-visible:outline-2 ui:focus-visible:outline-blue-600 ui:focus-visible:outline-offset-2"
+			className="ui:fixed ui:inset-e-4 ui:inset-be-4 ui:flex ui:flex-col-reverse ui:gap-2 ui:rounded-lg ui:outline-none ui:focus-visible:outline-2 ui:focus-visible:outline-offset-2 ui:focus-visible:outline-blue-600 ui:focus-visible:outline-solid"
 			queue={queue}
 		>
 			{({ toast }) => (
 				<Toast toast={toast}>
-					<AriaToastContent className="ui:flex ui:flex-col ui:flex-1 ui:min-inline-0">
-						<AriaText className="ui:font-semibold ui:text-white ui:text-sm" slot="title">
+					<AriaToastContent className="ui:flex ui:flex-1 ui:flex-col ui:min-inline-0">
+						<AriaText className="ui:text-sm ui:font-semibold ui:text-white" slot="title">
 							{toast.content.title}
 						</AriaText>
 						{toast.content.description != null ? (
@@ -56,7 +56,7 @@ export function ToastRegion(): ReactNode {
 					</AriaToastContent>
 					<AriaButton
 						aria-label={t("Close")}
-						className="ui:flex ui:flex-none ui:appearance-none ui:block-8 ui:inline-8 ui:rounded-sm ui:bg-transparent ui:border-none ui:text-white ui:p-0 ui:outline-none ui:items-center ui:justify-center ui:hover:bg-white/10 ui:pressed:bg-white/15 ui:focus-visible:outline-solid ui:focus-visible:outline-2 ui:focus-visible:outline-white ui:focus-visible:outline-offset-2"
+						className="ui:flex ui:flex-none ui:appearance-none ui:items-center ui:justify-center ui:rounded-sm ui:border-none ui:bg-transparent ui:p-0 ui:text-white ui:outline-none ui:block-8 ui:inline-8 ui:hover:bg-white/10 ui:focus-visible:outline-2 ui:focus-visible:outline-offset-2 ui:focus-visible:outline-white ui:focus-visible:outline-solid ui:pressed:bg-white/15"
 						slot="close"
 					>
 						<XIcon className="block-4 inline-4" />
@@ -78,7 +78,7 @@ export function Toast(props: Readonly<ToastProps>): ReactNode {
 			className={composeRenderProps(className, (className) =>
 				cn(
 					className,
-					"ui:flex ui:items-center ui:gap-4 ui:bg-blue-600 ui:px-4 ui:py-3 ui:rounded-lg ui:outline-none ui:[view-transition-class:toast] ui:inline-57.5 ui:forced-colors:outline ui:focus-visible:outline-solid ui:focus-visible:outline-2 ui:focus-visible:outline-blue-600 ui:focus-visible:outline-offset-2",
+					"ui:flex ui:items-center ui:gap-4 ui:rounded-lg ui:bg-blue-600 ui:px-4 ui:py-3 ui:outline-none ui:[view-transition-class:toast] ui:inline-57.5 ui:focus-visible:outline-2 ui:focus-visible:outline-offset-2 ui:focus-visible:outline-blue-600 ui:focus-visible:outline-solid ui:forced-colors:outline",
 				),
 			)}
 			style={{ viewTransitionName: toast.key }}

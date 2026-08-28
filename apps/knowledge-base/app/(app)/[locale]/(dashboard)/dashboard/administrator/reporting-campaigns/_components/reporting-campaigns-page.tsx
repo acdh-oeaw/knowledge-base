@@ -68,7 +68,7 @@ export function ReportingCampaignsPage(props: Readonly<ReportingCampaignsPagePro
 		<Fragment>
 			<EntityListHeader
 				title={t("Reporting campaigns")}
-				description={t("Manage all reporting campaigns in the knowledge base.")}
+				description={t("Manage all reporting campaigns in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -90,7 +90,7 @@ export function ReportingCampaignsPage(props: Readonly<ReportingCampaignsPagePro
 					<TableColumn>{t("Status")}</TableColumn>
 					<TableColumn>{t("Country reports")}</TableColumn>
 					<TableColumn>{t("Working group reports")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -99,7 +99,7 @@ export function ReportingCampaignsPage(props: Readonly<ReportingCampaignsPagePro
 							<TableCell>{item.status}</TableCell>
 							<TableCell>{item.countryReportCount}</TableCell>
 							<TableCell>{item.workingGroupReportCount}</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/reporting-campaigns/${item.id}/edit`}

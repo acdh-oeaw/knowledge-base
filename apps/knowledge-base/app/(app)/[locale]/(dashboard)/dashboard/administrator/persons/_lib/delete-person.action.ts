@@ -3,7 +3,12 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
-import { deleteDocumentRelations, getDocumentVersions } from "@/lib/data/entity-lifecycle";
+import { resolveEntityDocumentLabel } from "@/lib/data/audit-log";
+import {
+	assertDocumentNotLinkedToUser,
+	deleteDocumentRelations,
+	getDocumentVersions,
+} from "@/lib/data/entity-lifecycle";
 import { personsLifecycleAdapter } from "@/lib/data/persons.lifecycle-adapter";
 import { eq, inArray, or } from "@/lib/db/sql";
 import {
@@ -24,6 +29,11 @@ export const deletePersonAction = createCommandAction({
 			columns: { id: true },
 		});
 		assert(entity, "Document not found.");
+
+		await assertDocumentNotLinkedToUser(tx, documentId);
+
+		// Snapshot the label before deletion so the audit log doesn't fall back to the uuid.
+		const subjectLabel = await resolveEntityDocumentLabel(tx, documentId);
 
 		const descriptor = await getWebsiteDocumentDescriptorByEntityId(documentId);
 
@@ -74,6 +84,7 @@ export const deletePersonAction = createCommandAction({
 
 		return {
 			subjectId: documentId,
+			subjectLabel,
 			descriptor,
 		};
 	},

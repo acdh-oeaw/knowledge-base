@@ -3,7 +3,7 @@
 import * as schema from "@dariah-eric/database/schema";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, sql } from "@/lib/db/sql";
 
 export type DocumentationPagesSort = "title" | "updatedAt";
@@ -19,10 +19,7 @@ interface GetDocumentationPagesParams {
 export async function getDocumentationPages(params: GetDocumentationPagesParams) {
 	const { limit = 10, offset = 0, q, sort = "updatedAt", dir = "desc" } = params;
 	const query = q?.trim();
-	const searchWhere =
-		query != null && query !== ""
-			? unaccentIlike(schema.documentationPages.title, `%${query}%`)
-			: undefined;
+	const searchWhere = matchesAllTerms(query, schema.documentationPages.title);
 	const orderBy =
 		sort === "title"
 			? dir === "asc"
@@ -37,6 +34,9 @@ export async function getDocumentationPages(params: GetDocumentationPagesParams)
 	const [items, aggregate] = await Promise.all([
 		db
 			.select({
+				// `id` is the picked *version* id (documentation_pages is keyed by entity_versions.id);
+				// the document id is what mutations operate on.
+				documentId: schema.entities.id,
 				id: schema.documentationPages.id,
 				slug: schema.slugs.value,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,
@@ -69,6 +69,7 @@ export async function getDocumentationPages(params: GetDocumentationPagesParams)
 	return {
 		data: items.map((item) => {
 			return {
+				documentId: item.documentId,
 				id: item.id,
 				entity: { slug: item.slug },
 				hasDraft: item.hasDraft,

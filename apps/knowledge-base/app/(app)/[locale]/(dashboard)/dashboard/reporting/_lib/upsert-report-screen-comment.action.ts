@@ -8,6 +8,7 @@ import * as v from "valibot";
 import { isEmptyRichTextDocument } from "@/app/(app)/[locale]/(dashboard)/dashboard/reporting/_lib/report-screen-comments";
 import { assertCan } from "@/lib/auth/permissions";
 import { and, eq } from "@/lib/db/sql";
+import { sendReportCommentNotification } from "@/lib/email/send-report-comment-notification";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
 
 const UpsertReportScreenCommentActionInputSchema = v.object({
@@ -44,6 +45,24 @@ export const upsertReportScreenCommentAction = createMutationAction({
 			id: input.reportId,
 		});
 		return undefined;
+	},
+
+	// Deferred, best-effort notification. Only fires when the comment was set/updated to a non-empty
+	// value, never when it was cleared.
+	postCommit({ input, ctx }) {
+		const comment = input.comment;
+		if (comment == null || isEmptyRichTextDocument(comment)) {
+			return;
+		}
+
+		return sendReportCommentNotification({
+			reportType: input.reportType,
+			reportId: input.reportId,
+			screenKey: input.screenKey,
+			comment,
+			locale: ctx.locale,
+			editedBy: { name: ctx.user.name, email: ctx.user.email },
+		});
 	},
 
 	async mutate(tx, input) {

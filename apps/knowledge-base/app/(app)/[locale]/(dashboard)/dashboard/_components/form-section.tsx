@@ -1,12 +1,12 @@
 import { Description } from "@dariah-eric/ui/field";
-import { Fragment, type ReactNode, createContext, use } from "react";
+import { type ComponentProps, Fragment, type ReactNode, createContext, use } from "react";
 import { twMerge } from "tailwind-merge";
 
 type FormLayoutVariant = "two-column" | "stacked";
 
 const FormLayoutContext = createContext<FormLayoutVariant>("two-column");
 
-interface FormLayoutProps extends React.ComponentProps<"div"> {
+interface FormLayoutProps extends ComponentProps<"div"> {
 	variant?: FormLayoutVariant;
 }
 
@@ -25,7 +25,7 @@ export function FormLayout({
 	);
 }
 
-interface FormSectionProps extends React.ComponentProps<"section"> {
+interface FormSectionProps extends ComponentProps<"section"> {
 	title?: string;
 	description?: string;
 	variant?: FormLayoutVariant;
@@ -79,7 +79,7 @@ export function FormSection({
 }
 
 interface FormSectionTitleProps
-	extends Pick<FormSectionProps, "isRequired" | "title">, React.ComponentProps<"h2"> {}
+	extends Pick<FormSectionProps, "isRequired" | "title">, ComponentProps<"h2"> {}
 
 export function FormSectionTitle({
 	title,
@@ -89,7 +89,7 @@ export function FormSectionTitle({
 	...props
 }: Readonly<FormSectionTitleProps>): ReactNode {
 	return (
-		<h2 className={twMerge("font-semibold text-base/7 text-fg sm:text-sm/6", className)} {...props}>
+		<h2 className={twMerge("text-base/7 font-semibold text-fg sm:text-sm/6", className)} {...props}>
 			{title ?? children}
 			{isRequired === true ? (
 				<span aria-hidden={true} className="ms-0.5 text-danger">
@@ -101,7 +101,7 @@ export function FormSectionTitle({
 }
 
 interface FormSectionDescription
-	extends Pick<FormSectionProps, "description">, React.ComponentProps<typeof Description> {}
+	extends Pick<FormSectionProps, "description">, ComponentProps<typeof Description> {}
 
 export function FormSectionDescription({
 	description,
@@ -111,7 +111,7 @@ export function FormSectionDescription({
 	return <Description {...props}>{description ?? children}</Description>;
 }
 
-interface FormActionsProps extends React.ComponentProps<"div"> {}
+interface FormActionsProps extends ComponentProps<"div"> {}
 
 export function FormActions({
 	children,
@@ -121,7 +121,7 @@ export function FormActions({
 	return (
 		<div
 			className={twMerge(
-				"flex inline-full max-inline-3xl items-center justify-end gap-x-4",
+				"flex items-center justify-end gap-x-4 inline-full max-inline-3xl",
 				className,
 			)}
 			{...props}

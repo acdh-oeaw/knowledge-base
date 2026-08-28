@@ -8,6 +8,7 @@ import { assertAuthenticated } from "@/lib/auth/session";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
 import { getProjectCreateDataForAdmin } from "@/lib/data/cached/projects";
 import { getDefaultLocale } from "@/lib/data/locales";
+import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
 import { createMetadata } from "@/lib/server/create-metadata";
 
 interface DashboardAdministratorCreateProjectPageProps extends PageProps<"/[locale]/dashboard/administrator/projects/create"> {}
@@ -34,15 +35,26 @@ export default async function DashboardAdministratorCreateProjectPage(
 	});
 
 	const { user } = await assertAuthenticated();
-	const [{ initialSocialMedia, scopes }, defaultLocale] = await Promise.all([
+	const [
+		{ initialSocialMedia, scopes },
+		defaultLocale,
+		initialRelatedEntities,
+		initialRelatedResources,
+	] = await Promise.all([
 		getProjectCreateDataForAdmin(user),
 		getDefaultLocale(),
+		getEntityRelationOptions(),
+		getResourceRelationOptions(),
 	]);
 
 	return (
 		<ProjectCreateForm
 			defaultLocaleName={defaultLocale.name}
 			initialAssets={initialAssets}
+			initialRelatedEntityItems={initialRelatedEntities.items}
+			initialRelatedEntityTotal={initialRelatedEntities.total}
+			initialRelatedResourceItems={initialRelatedResources.items}
+			initialRelatedResourceTotal={initialRelatedResources.total}
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}
 			scopes={scopes}

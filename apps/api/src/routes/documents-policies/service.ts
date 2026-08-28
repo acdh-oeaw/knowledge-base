@@ -140,7 +140,7 @@ export async function getDocumentsPolicies(
 			publishedAt: item.updatedAt.toISOString(),
 			group:
 				item.groupId != null
-					? { id: item.groupId, label: item.groupLabel, position: item.groupPosition }
+					? { id: item.groupId, label: item.groupLabel!, position: item.groupPosition! }
 					: null,
 		};
 	});
@@ -198,7 +198,6 @@ export async function getDocumentsPoliciesTree(
 
 	const groups = new Map<string, { id: string; label: string; position: number }>();
 	const groupedItems = new Map<string, typeof items>();
-	const ungroupedItems: typeof items = [];
 
 	for (const item of items) {
 		if (item.groupId != null) {
@@ -210,8 +209,6 @@ export async function getDocumentsPoliciesTree(
 			const list = groupedItems.get(item.groupId) ?? [];
 			list.push(item);
 			groupedItems.set(item.groupId, list);
-		} else {
-			ungroupedItems.push(item);
 		}
 	}
 
@@ -233,11 +230,25 @@ export async function getDocumentsPoliciesTree(
 				id: group.id,
 				label: group.label,
 				type: "group" as const,
-				items: (groupedItems.get(group.id) ?? []).toSorted(comparePosition).map(toResponseItem),
+				items: (groupedItems.get(group.id) ?? []).toSorted(comparePosition),
 			};
 		}),
-		...ungroupedItems.toSorted(comparePosition).map(toResponseItem),
-	];
+		...items
+			.filter((item) => item.groupId == null)
+			.toSorted(comparePosition)
+			.map((item) => {
+				return { ...item, type: "item" as const };
+			}),
+	].map((node) => {
+		if (node.type === "item") {
+			return toResponseItem(node);
+		}
+
+		return {
+			...node,
+			items: node.items.map(toResponseItem),
+		};
+	});
 
 	return { data };
 }
@@ -389,6 +400,47 @@ export async function getDocumentOrPolicyDocument(
 			entityVersion: {
 				status: {
 					type: "published",
+				},
+			},
+		},
+		columns: {
+			id: true,
+		},
+		with: {
+			document: {
+				columns: {
+					filename: true,
+					key: true,
+					label: true,
+					mimeType: true,
+				},
+			},
+		},
+	});
+
+	return item ?? null;
+}
+
+//
+
+interface GetDocumentOrPolicyDocumentBySlugParams {
+	slug: schema.Slug["value"];
+}
+
+export async function getDocumentOrPolicyDocumentBySlug(
+	db: Database | Transaction,
+	params: GetDocumentOrPolicyDocumentBySlugParams,
+) {
+	const { slug } = params;
+
+	const item = await db.query.documentsPolicies.findFirst({
+		where: {
+			entityVersion: {
+				status: {
+					type: "published",
+				},
+				slug: {
+					value: slug,
 				},
 			},
 		},

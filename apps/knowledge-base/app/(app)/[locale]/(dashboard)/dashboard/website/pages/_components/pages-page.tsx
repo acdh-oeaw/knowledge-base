@@ -20,6 +20,7 @@ import {
 	EntityListHeader,
 	EntityListPagination,
 	EntityListSearchField,
+	EntityListTitle,
 	NewLink,
 	RowActionsMenu,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-list";
@@ -33,7 +34,7 @@ interface PagesPageProps {
 	page: number;
 	pages: {
 		data: Array<
-			Pick<schema.Page, "id" | "title" | "summary"> & {
+			Pick<schema.Page, "id" | "publicationDate" | "title" | "summary"> & {
 				documentId: string;
 				entity: { slug: string };
 				hasDraft: boolean;
@@ -44,7 +45,7 @@ interface PagesPageProps {
 		total: number;
 	};
 	q: string;
-	sort: "title" | "updatedAt";
+	sort: "publicationDate" | "title";
 }
 
 const pageSize = dashboardPageSize;
@@ -72,7 +73,7 @@ export function PagesPage(props: Readonly<PagesPageProps>): ReactNode {
 		<Fragment>
 			<EntityListHeader
 				title={t("Pages")}
-				description={t("Manage all pages in the knowledge base.")}
+				description={t("Manage all pages in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -91,30 +92,28 @@ export function PagesPage(props: Readonly<PagesPageProps>): ReactNode {
 					<TableColumn allowsSorting={true} id="title" isRowHeader={true}>
 						{t("Title")}
 					</TableColumn>
-					<TableColumn>{t("Summary")}</TableColumn>
-					<TableColumn allowsSorting={true} id="updatedAt">
-						{t("Updated")}
+					<TableColumn allowsSorting={true} id="publllowsSortin">
+						{t("Publication date")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
 						<TableRow href={`/dashboard/website/pages/${item.entity.slug}/details`}>
 							<TableCell>
-								<div className="max-inline-96 truncate">{item.title}</div>
+								<EntityListTitle title={item.title} />
 							</TableCell>
 							<TableCell>
-								<div className="max-inline-xs truncate">{item.summary}</div>
+								{format.dateTime(item.publicationDate, { dateStyle: "short", timeZone: "UTC" })}
 							</TableCell>
-							<TableCell>{format.dateTime(item.updatedAt, { dateStyle: "short" })}</TableCell>
 							<TableCell>
 								<EntityLifecycleStatusBadge
 									hasDraft={item.hasDraft}
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/website/pages/${item.entity.slug}/details`}

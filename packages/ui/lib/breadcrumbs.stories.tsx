@@ -25,3 +25,23 @@ export const Default: Story = {
 		);
 	},
 };
+
+export const Truncated: Story = {
+	args: {},
+	render(props) {
+		return (
+			<div className="border border-dashed border-muted-fg p-2 inline-100">
+				<Breadcrumbs {...props}>
+					<BreadcrumbsItem href="#">{"Overview"}</BreadcrumbsItem>
+					<BreadcrumbsItem href="#">{"Impact Case Studies"}</BreadcrumbsItem>
+					<BreadcrumbsItem isTruncated={true}>
+						{
+							"A DARIAH impact case study: UDIGISH digital practices for the study of urban heritage is cooperating with artists and NGOs"
+						}
+					</BreadcrumbsItem>
+					<BreadcrumbsItem>{"Details"}</BreadcrumbsItem>
+				</Breadcrumbs>
+			</div>
+		);
+	},
+};

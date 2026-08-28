@@ -1,0 +1,9 @@
+{
+	"$schema": "https://www.schemastore.org/tsconfig",
+	"extends": "@dariah-eric/configs/typescript/lib",
+	"compilerOptions": {
+		"erasableSyntaxOnly": false
+	},
+	"include": ["./**/*.js", "./**/*.ts"],
+	"exclude": ["dist", "node_modules"]
+}

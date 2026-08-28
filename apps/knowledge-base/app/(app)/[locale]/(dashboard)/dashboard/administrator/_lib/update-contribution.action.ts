@@ -1,6 +1,6 @@
 "use server";
 
-import { getFormDataValues } from "@acdh-oeaw/lib";
+import { assert, getFormDataValues } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import { createActionStateError, createActionStateSuccess } from "@dariah-eric/next-lib/actions";
 import { getExtracted, getLocale } from "next-intl/server";
@@ -9,14 +9,16 @@ import * as v from "valibot";
 
 import { UpdateContributionActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/_lib/update-contribution.schema";
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
+import { assertCan } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { isExclusionViolation } from "@/lib/db/errors";
 import { and, eq, sql } from "@/lib/db/sql";
 import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateContributionAction = createServerAction(
-	{ requireAdmin: true },
+	{ requireAuth: true },
 	async function updateContributionAction(state, formData, { user }) {
 		const locale = await getLocale();
 		const t = await getExtracted();
@@ -34,8 +36,33 @@ export const updateContributionAction = createServerAction(
 			});
 		}
 
-		const { id, personDocumentId, roleTypeId, organisationalUnitDocumentId, duration } =
-			result.output;
+		const {
+			id,
+			personDocumentId,
+			roleTypeId,
+			organisationalUnitDocumentId,
+			duration,
+			description,
+		} = result.output;
+
+		// Admins always pass; delegated callers may edit a relation only when they are scoped to edit both
+		// its current owner and the submitted target, so they can neither touch a relation outside their
+		// scope nor move one into it.
+		assert(user != null);
+		const existing = await db.query.personsToOrganisationalUnits.findFirst({
+			where: { id },
+			columns: { organisationalUnitDocumentId: true },
+		});
+		if (existing != null) {
+			await assertCan(user, "update", {
+				type: "organisational_unit",
+				id: existing.organisationalUnitDocumentId,
+			});
+		}
+		await assertCan(user, "update", {
+			type: "organisational_unit",
+			id: organisationalUnitDocumentId,
+		});
 
 		try {
 			const returned = await db.transaction(async (tx) => {
@@ -81,6 +108,7 @@ export const updateContributionAction = createServerAction(
 						organisationalUnitDocumentId,
 						roleTypeId,
 						duration,
+						description,
 					})
 					.where(eq(schema.personsToOrganisationalUnits.id, id));
 
@@ -102,6 +130,7 @@ export const updateContributionAction = createServerAction(
 			}
 
 			revalidatePath("/[locale]/dashboard/administrator", "layout");
+			await dispatchWebhook({ type: "persons" });
 			return createActionStateSuccess({});
 		} catch (error) {
 			// A person may hold the same role at the same org over several non-overlapping periods; the

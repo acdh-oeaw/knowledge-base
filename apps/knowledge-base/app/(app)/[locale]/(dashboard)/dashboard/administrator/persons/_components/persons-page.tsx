@@ -70,7 +70,7 @@ export function PersonsPage(props: Readonly<PersonsPageProps>): ReactNode {
 		<Fragment>
 			<EntityListHeader
 				title={t("Persons")}
-				description={t("Manage all persons in the knowledge base.")}
+				description={t("Manage all persons in the DARIAH knowledge base.")}
 				action={
 					<>
 						<EntityListSearchField search={search} />
@@ -96,7 +96,7 @@ export function PersonsPage(props: Readonly<PersonsPageProps>): ReactNode {
 						{t("ORCID")}
 					</TableColumn>
 					<TableColumn>{t("Status")}</TableColumn>
-					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end" />
+					<TableColumn className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end" />
 				</TableHeader>
 				<TableBody items={items}>
 					{(item) => (
@@ -110,7 +110,7 @@ export function PersonsPage(props: Readonly<PersonsPageProps>): ReactNode {
 									isPublished={item.isPublished}
 								/>
 							</TableCell>
-							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-60% from-bg text-end">
+							<TableCell className="sticky inset-e-0 z-10 bg-linear-to-l from-bg from-60% text-end">
 								<RowActionsMenu>
 									<RowActionsMenu.Link
 										href={`/dashboard/administrator/persons/${item.entity.slug}/details`}

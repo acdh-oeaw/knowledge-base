@@ -45,7 +45,7 @@ export async function CountryReportConfirmScreen(
 		<div className="flex flex-col gap-y-10">
 			<CountryReportSummary data={report.summary} />
 
-			<div className="border-bs pbs-6 flex flex-col gap-y-4">
+			<div className="flex flex-col gap-y-4 border-bs pbs-6">
 				<div className="space-y-1">
 					<p className="text-sm font-medium text-fg">{t("Status")}</p>
 					<p className="text-sm text-muted-fg">{formatStatus(report.status)}</p>

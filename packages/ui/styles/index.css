@@ -136,6 +136,7 @@
 		color: var(--color-text-strong);
 		font-family: var(--font-body);
 		overflow-wrap: break-word;
+		scrollbar-gutter: stable;
 		font-synthesis: none;
 		text-rendering: optimizelegibility;
 		-moz-osx-font-smoothing: grayscale;
@@ -459,6 +460,12 @@
 	font-size: 1rem;
 	line-height: 1.75;
 
+	/**
+	 * The one gap lists are spaced by — see the list rules below. Each size variant restates it,
+	 * the way they restate `font-size`.
+	 */
+	--richtext-list-gap: 0.5em;
+
 	:not(:where([class~="not-richtext"], [class~="not-richtext"] *)) {
 		&:where(p) {
 			margin-top: 1.25em;
@@ -492,6 +499,11 @@
 
 		&:where(a strong) {
 			color: inherit;
+		}
+
+		/** Links carry their own weight, which would otherwise un-bold them inside bold text. */
+		&:where(strong a, thead th a) {
+			font-weight: inherit;
 		}
 
 		&:where(blockquote strong) {
@@ -574,6 +586,22 @@
 			border-top-width: 1px;
 		}
 
+		/**
+		 * A divider holds no text, so selecting the node is the only way to act on one — and
+		 * ProseMirror marks that selection with this class and nothing else. Without a visible state,
+		 * clicking a divider in the editor looks like nothing happened, and the delete key that follows
+		 * looks like it hit the block above. Read views never carry the class, so this is editor-only
+		 * without having to be scoped to one.
+		 *
+		 * Matched as an attribute rather than as a class: the name is ProseMirror's, and it is not in
+		 * the case this project's own class names are linted for.
+		 */
+		&:where(hr[class~="ProseMirror-selectednode"]) {
+			border-color: var(--primary);
+			outline: 2px solid color-mix(in oklab, var(--primary) 30%, transparent);
+			outline-offset: 4px;
+		}
+
 		&:where(blockquote) {
 			margin-top: 1.6em;
 			margin-bottom: 1.6em;
@@ -583,15 +611,6 @@
 			color: var(--richtext-quotes);
 			font-weight: 500;
 			font-style: italic;
-			quotes: "\201C" "\201D" "\2018" "\2019";
-		}
-
-		&:where(blockquote p:first-of-type)::before {
-			content: open-quote;
-		}
-
-		&:where(blockquote p:last-of-type)::after {
-			content: close-quote;
 		}
 
 		&:where(h1) {
@@ -758,6 +777,21 @@
 			text-align: left;
 		}
 
+		/**
+		 * A table's caption is its label, in the same voice a figure's caption speaks in — and in the
+		 * same place, under what it describes.
+		 *
+		 * Only the box moves. The element stays the table's first child, which is what HTML asks for and
+		 * what makes it the table's accessible name; `caption-side` is what a reader sees.
+		 */
+		&:where(caption) {
+			margin-top: 0.8571429em;
+			caption-side: bottom;
+			color: var(--richtext-captions);
+			line-height: 1.4285714;
+			text-align: start;
+		}
+
 		&:where(thead) {
 			border-bottom-width: 1px;
 			border-bottom-color: var(--richtext-th-borders);
@@ -825,8 +859,8 @@
 		}
 
 		&:where(li) {
-			margin-top: 0.5em;
-			margin-bottom: 0.5em;
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(ol > li) {
@@ -837,30 +871,31 @@
 			padding-left: 0.375em;
 		}
 
-		&:where(.richtext > ul > li p) {
-			margin-top: 0.75em;
-			margin-bottom: 0.75em;
+		/*
+		 * Lists get one rendering, so a single gap has to serve both a list of one-line items and one
+		 * whose items hold several blocks. Upstream spaces those two cases differently, keyed off
+		 * whether a list item wraps its content in a paragraph — markdown's loose/tight distinction.
+		 * Our content model has no such distinction to key off: Tiptap's `listItem` is
+		 * `paragraph block*`, so the paragraph is always there and every list came out loose.
+		 *
+		 * So: zero the paragraph margins at an item's edges, and space everything — items, and blocks
+		 * stacked within one item — by `--richtext-list-gap`. An item's internal breaks then never
+		 * open wider than the gaps between the items themselves, which would otherwise read as if the
+		 * paragraphs were items in their own right. What keeps a multi-paragraph item legible as one
+		 * item is its indent past the marker, not extra space around it.
+		 */
+		&:where(li > p) {
+			margin-top: 0;
+			margin-bottom: 0;
 		}
 
-		&:where(.richtext > ul > li > *:first-child) {
-			margin-top: 1.25em;
-		}
-
-		&:where(.richtext > ul > li > *:last-child) {
-			margin-bottom: 1.25em;
-		}
-
-		&:where(.richtext > ol > li > *:first-child) {
-			margin-top: 1.25em;
-		}
-
-		&:where(.richtext > ol > li > *:last-child) {
-			margin-bottom: 1.25em;
+		&:where(li > * + *) {
+			margin-top: var(--richtext-list-gap);
 		}
 
 		&:where(ul ul, ul ol, ol ul, ol ol) {
-			margin-top: 0.75em;
-			margin-bottom: 0.75em;
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(dl) {
@@ -924,9 +959,41 @@
 	}
 }
 
+/**
+ * Numbers footnote markers from their position in the text.
+ *
+ * A footnote stores only its note, never its number: the number is whatever the marker's place in
+ * the document makes it, so inserting, moving or deleting one renumbers the rest with no stored
+ * state to keep in step. Put this on whatever element spans one article — the editor's content
+ * element, or the container the rendered content blocks share — since that is what the count runs
+ * across. Nesting it resets the count, which is what a self-contained excerpt wants.
+ */
+@utility footnotes {
+	counter-reset: footnote;
+
+	/*
+	 * Only for markers with no number of their own. The editor's are empty — nothing there knows a
+	 * marker's position, so the counter supplies it and an insertion renumbers the rest for free.
+	 * Read paths number the markers themselves (`numberFootnotes`), because a counter can show a
+	 * number but cannot put one in an `id`, and render it as text; those must not be counted twice.
+	 */
+	:where([data-footnote]:empty)::before {
+		counter-increment: footnote;
+		content: counter(footnote);
+	}
+
+	/** Rendered markers. The editor's marker is a button, styled by its node view instead. */
+	:where(sup[data-footnote]) {
+		color: var(--primary);
+		font-weight: 500;
+	}
+}
+
 @utility richtext-sm {
 	font-size: 0.875rem;
 	line-height: 1.7142857;
+
+	--richtext-list-gap: 0.5em;
 
 	:not(:where([class~="not-richtext"], [class~="not-richtext"] *)) {
 		&:where(p) {
@@ -1038,8 +1105,8 @@
 		}
 
 		&:where(li) {
-			margin-top: 0.2857143em;
-			margin-bottom: 0.2857143em;
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(ol > li) {
@@ -1050,30 +1117,19 @@
 			padding-inline-start: 0.4285714em;
 		}
 
-		&:where(.richtext-sm > ul > li p) {
-			margin-top: 0.5714286em;
-			margin-bottom: 0.5714286em;
+		/** One gap for lists — see the `richtext` utility. */
+		&:where(li > p) {
+			margin-top: 0;
+			margin-bottom: 0;
 		}
 
-		&:where(.richtext-sm > ul > li > p:first-child) {
-			margin-top: 1.1428571em;
-		}
-
-		&:where(.richtext-sm > ul > li > p:last-child) {
-			margin-bottom: 1.1428571em;
-		}
-
-		&:where(.richtext-sm > ol > li > p:first-child) {
-			margin-top: 1.1428571em;
-		}
-
-		&:where(.richtext-sm > ol > li > p:last-child) {
-			margin-bottom: 1.1428571em;
+		&:where(li > * + *) {
+			margin-top: var(--richtext-list-gap);
 		}
 
 		&:where(ul ul, ul ol, ol ul, ol ol) {
-			margin-top: 0.5714286em;
-			margin-bottom: 0.5714286em;
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(dl) {
@@ -1172,6 +1228,8 @@
 @utility richtext-base {
 	font-size: 1rem;
 	line-height: 1.75;
+
+	--richtext-list-gap: 0.5em;
 
 	:not(:where([class~="not-richtext"], [class~="not-richtext"] *)) {
 		&:where(p) {
@@ -1283,8 +1341,8 @@
 		}
 
 		&:where(li) {
-			margin-top: 0.5em;
-			margin-bottom: 0.5em;
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(ol > li) {
@@ -1295,45 +1353,19 @@
 			padding-inline-start: 0.375em;
 		}
 
-		.richtext-base :where(.richtext-base > ul > li p) {
-			margin-top: 0.75em;
-			margin-bottom: 0.75em;
+		/** One gap for lists — see the `richtext` utility. */
+		&:where(li > p) {
+			margin-top: 0;
+			margin-bottom: 0;
 		}
 
-		.richtext-base
-			:where(.richtext-base > ul > li > p:first-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-top: 1.25em;
+		&:where(li > * + *) {
+			margin-top: var(--richtext-list-gap);
 		}
 
-		.richtext-base
-			:where(.richtext-base > ul > li > p:last-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-bottom: 1.25em;
-		}
-
-		.richtext-base
-			:where(.richtext-base > ol > li > p:first-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-top: 1.25em;
-		}
-
-		.richtext-base
-			:where(.richtext-base > ol > li > p:last-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-bottom: 1.25em;
-		}
-
-		.richtext-base
-			:where(ul ul, ul ol, ol ul, ol ol):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-top: 0.75em;
-			margin-bottom: 0.75em;
+		&:where(ul ul, ul ol, ol ul, ol ol) {
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(dl):not(:where([class~="not-richtext"], [class~="not-richtext"] *)) {
@@ -1448,6 +1480,8 @@
 	font-size: 1.125rem;
 	line-height: 1.7777778;
 
+	--richtext-list-gap: 0.5em;
+
 	:not(:where([class~="not-richtext"], [class~="not-richtext"] *)) {
 		&:where(p) {
 			margin-top: 1.3333333em;
@@ -1558,8 +1592,8 @@
 		}
 
 		&:where(li) {
-			margin-top: 0.6666667em;
-			margin-bottom: 0.6666667em;
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(ol > li) {
@@ -1570,42 +1604,19 @@
 			padding-inline-start: 0.4444444em;
 		}
 
-		.richtext-lg :where(.richtext-lg > ul > li p) {
-			margin-top: 0.8888889em;
-			margin-bottom: 0.8888889em;
+		/** One gap for lists — see the `richtext` utility. */
+		&:where(li > p) {
+			margin-top: 0;
+			margin-bottom: 0;
 		}
 
-		.richtext-lg
-			:where(.richtext-lg > ul > li > p:first-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-top: 1.3333333em;
+		&:where(li > * + *) {
+			margin-top: var(--richtext-list-gap);
 		}
 
-		.richtext-lg
-			:where(.richtext-lg > ul > li > p:last-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-bottom: 1.3333333em;
-		}
-
-		.richtext-lg
-			:where(.richtext-lg > ol > li > p:first-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-top: 1.3333333em;
-		}
-
-		.richtext-lg
-			:where(.richtext-lg > ol > li > p:last-child):not(
-				:where([class~="not-richtext"], [class~="not-richtext"] *)
-			) {
-			margin-bottom: 1.3333333em;
-		}
-
-		.richtext-lg :where(ul ul, ul ol, ol ul, ol ol) {
-			margin-top: 0.8888889em;
-			margin-bottom: 0.8888889em;
+		&:where(ul ul, ul ol, ol ul, ol ol) {
+			margin-top: var(--richtext-list-gap);
+			margin-bottom: var(--richtext-list-gap);
 		}
 
 		&:where(dl) {
@@ -1804,11 +1815,46 @@
 		--sidebar-border: oklch(90.2% 0.01 258.338deg);
 		--sidebar-ring: oklch(58.8% 0.158 241.966deg);
 
-		--chart-1: oklch(58.8% 0.158 241.966deg);
-		--chart-2: oklch(68.5% 0.169 237.323deg);
-		--chart-3: oklch(74.6% 0.16 232.661deg);
-		--chart-4: oklch(82.8% 0.111 230.318deg);
-		--chart-5: oklch(90.1% 0.058 230.902deg);
+		/**
+		 * Data-visualisation palette. Two distinct jobs, never interchangeable:
+		 *
+		 * `--chart-series-*` encodes *identity* (which series). Eight fixed hues assigned in this
+		 * order and never cycled — the order is what keeps neighbouring series apart under
+		 * colour-vision deficiency, so it is not cosmetic. A ninth series is not a new hue: fold the
+		 * tail into "Other" or facet into small multiples.
+		 *
+		 * `--chart-ordinal-*` encodes *position in a sequence* (draft → submitted → accepted, size
+		 * tiers, funnel stages). One hue, monotone lightness, so the reader sees the order in the
+		 * colour. Never use it for nominal categories — that spends the identity channel
+		 * re-encoding what bar length already shows.
+		 *
+		 * Both sets are measured, not eyeballed, against this theme's own `--bg` (#ffffff light,
+		 * #090f1c dark): lightness band, chroma floor, protanopia/deuteranopia separation, and
+		 * contrast. Series slots 3, 4, and 5 sit below 3:1 on the light surface, which is legal only
+		 * because every chart in this codebase ships beside its table — keep that pairing. Re-run the
+		 * validator before changing any value here; do not hand-pick a step.
+		 *
+		 * These are deliberately *not* re-exported as Tailwind `--color-*` aliases. The chart
+		 * components pick a slot at runtime, so the variable name never appears literally in the
+		 * source, and Tailwind only emits an alias it can see used — the alias would be dropped and
+		 * the marks would paint with nothing. Referenced as raw `var(--chart-…)` instead.
+		 */
+		--chart-series-1: oklch(57.5% 0.163 255.532deg);
+		--chart-series-2: oklch(67.1% 0.175 40.642deg);
+		--chart-series-3: oklch(66.9% 0.141 162.111deg);
+		--chart-series-4: oklch(76.4% 0.161 75.116deg);
+		--chart-series-5: oklch(71.6% 0.141 357.389deg);
+		--chart-series-6: oklch(52.9% 0.18 142.495deg);
+		--chart-series-7: oklch(43.3% 0.167 283.624deg);
+		--chart-series-8: oklch(62.3% 0.191 24.912deg);
+
+		--chart-ordinal-1: oklch(72% 0.115 241.748deg);
+		--chart-ordinal-2: oklch(59.3% 0.151 245.368deg);
+		--chart-ordinal-3: oklch(43.1% 0.12 249.315deg);
+
+		/* Chrome: recessive by design — the data is the only thing allowed to be loud. */
+		--chart-grid: var(--border);
+		--chart-axis: var(--muted-fg);
 
 		--radius-lg: 0.5rem;
 		--radius-xs: calc(var(--radius-lg) * 0.25);
@@ -1904,11 +1950,29 @@
 		--sidebar-border: oklch(27.8% 0.033 256.848deg);
 		--sidebar-ring: oklch(58.8% 0.158 241.966deg);
 
-		--chart-1: oklch(50% 0.134 242.749deg);
-		--chart-2: oklch(68.5% 0.169 237.323deg);
-		--chart-3: oklch(74.6% 0.16 232.661deg);
-		--chart-4: oklch(82.8% 0.111 230.318deg);
-		--chart-5: oklch(90.1% 0.058 230.902deg);
+		/**
+		 * The same eight hues and the same ordinal ramp, re-stepped for the dark surface — a
+		 * selected dark palette, not an automatic inversion of the light one. Every step was
+		 * re-validated against the dark `--bg`; all eight series slots clear 3:1 there.
+		 *
+		 * The ordinal ramp reverses direction on purpose: the *last* step stays the most prominent
+		 * one in both modes, so "accepted" reads as the strongest segment whichever theme is active.
+		 */
+		--chart-series-1: oklch(62.2% 0.161 255.053deg);
+		--chart-series-2: oklch(62.2% 0.173 40.112deg);
+		--chart-series-3: oklch(62.1% 0.128 163.115deg);
+		--chart-series-4: oklch(67% 0.143 73.227deg);
+		--chart-series-5: oklch(62.2% 0.171 0.838deg);
+		--chart-series-6: oklch(52.9% 0.18 142.495deg);
+		--chart-series-7: oklch(67% 0.145 286.827deg);
+		--chart-series-8: oklch(66.9% 0.159 22.307deg);
+
+		--chart-ordinal-1: oklch(44.8% 0.123 248.917deg);
+		--chart-ordinal-2: oklch(60.5% 0.151 244.705deg);
+		--chart-ordinal-3: oklch(75.9% 0.125 241.788deg);
+
+		--chart-grid: var(--border);
+		--chart-axis: var(--muted-fg);
 	}
 }
 
@@ -1999,12 +2063,6 @@
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
 
-	--color-chart-1: var(--chart-1);
-	--color-chart-2: var(--chart-2);
-	--color-chart-3: var(--chart-3);
-	--color-chart-4: var(--chart-4);
-	--color-chart-5: var(--chart-5);
-
 	--radius-xs: var(--radius-xs);
 	--radius-sm: var(--radius-sm);
 	--radius-md: var(--radius-md);
@@ -2085,5 +2143,16 @@
 	body {
 		background-color: var(--color-bg);
 		color: var(--color-fg);
+	}
+
+	/* The richtext styles only draw row separators. While editing, the column boundaries need to
+	   be visible too, so the editor adds vertical rules between cells. The outer edges stay open
+	   so table content keeps aligning with the surrounding paragraphs. */
+	.tiptap :where(th, td) {
+		border-inline-end: 1px solid var(--richtext-td-borders);
+	}
+
+	.tiptap :where(tr > *:last-child) {
+		border-inline-end: 0;
 	}
 }

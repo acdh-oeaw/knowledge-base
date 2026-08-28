@@ -6,7 +6,12 @@ import * as schema from "@dariah-eric/database/schema";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -130,6 +135,8 @@ export async function getEvents(db: Database | Transaction, params: GetEventsPar
 					key: schema.assets.key,
 					alt: schema.assets.alt,
 					caption: schema.assets.caption,
+					width: schema.assets.width,
+					height: schema.assets.height,
 					licenseName: schema.licenses.name,
 					licenseUrl: schema.licenses.url,
 				},
@@ -309,6 +316,8 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
 				title: true,
 				summary: true,
@@ -326,21 +335,7 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 			},
 		}),
 		getContentBlocks(db, id),
@@ -350,7 +345,7 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 		return null;
 	}
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 	const duration = serializeDateRange(item.duration);
 
 	const [links, relatedEntities, relatedResources] = await Promise.all([
@@ -460,6 +455,8 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			title: true,
 			summary: true,
@@ -477,21 +474,7 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 		},
 	});
 
@@ -499,7 +482,7 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 		return null;
 	}
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 	const duration = serializeDateRange(item.duration);
 
 	const [fields, links, relatedEntities, relatedResources] = await Promise.all([

@@ -11,9 +11,19 @@ import { expect, test } from "@/e2e/lib/test";
 test.describe("non-admin admin access", () => {
 	const adminRoutes = [
 		"/en/dashboard/administrator",
+		"/en/dashboard/administrator/tasks",
 		"/en/dashboard/administrator/persons",
 		"/en/dashboard/administrator/persons/create",
 		"/en/dashboard/administrator/users",
+		"/en/dashboard/administrator/country-reports",
+		"/en/dashboard/administrator/working-group-reports",
+		// Destructive maintenance tooling (merge, duplicate, slug edits, cleanup deletes).
+		"/en/dashboard/administrator/maintenance",
+		// Lists unpublished content.
+		"/en/dashboard/administrator/drafts",
+		// Write relations across several entities in one submit.
+		"/en/dashboard/administrator/guided-forms",
+		"/en/dashboard/administrator/guided-forms/partner-institution",
 	];
 
 	for (const route of adminRoutes) {

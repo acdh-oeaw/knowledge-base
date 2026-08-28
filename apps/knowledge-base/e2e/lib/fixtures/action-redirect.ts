@@ -2,8 +2,16 @@ import type { Page } from "@playwright/test";
 
 interface WaitForActionRedirectOptions {
 	page: Page;
-	redirectPathname: string;
+	redirectPathname: string | RegExp;
 	trigger: () => Promise<unknown>;
+}
+
+function matchesPathname(pathname: string, expected: string | RegExp): boolean {
+	return typeof expected === "string" ? pathname === expected : expected.test(pathname);
+}
+
+function isSuccessfulRedirectResponse(status: number): boolean {
+	return status >= 200 && status < 400;
 }
 
 export async function waitForActionRedirect(
@@ -26,15 +34,15 @@ export async function waitForActionRedirect(
 			return (
 				response.request().method() === "POST" &&
 				url.pathname === currentPathname &&
-				response.status() === 303 &&
-				redirectUrl.pathname === redirectPathname
+				isSuccessfulRedirectResponse(response.status()) &&
+				matchesPathname(redirectUrl.pathname, redirectPathname)
 			);
 		}),
 		trigger(),
 	]);
 
 	await page
-		.waitForURL((url) => url.pathname === redirectPathname, { timeout: 10_000 })
+		.waitForURL((url) => matchesPathname(url.pathname, redirectPathname), { timeout: 10_000 })
 		.catch(async () => {
 			const redirectTarget = response.headers()["x-action-redirect"]?.split(";")[0];
 
@@ -43,6 +51,6 @@ export async function waitForActionRedirect(
 			}
 
 			await page.goto(redirectTarget);
-			await page.waitForURL((url) => url.pathname === redirectPathname);
+			await page.waitForURL((url) => matchesPathname(url.pathname, redirectPathname));
 		});
 }

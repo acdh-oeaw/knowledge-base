@@ -7,8 +7,8 @@ async function main() {
 			format: "po",
 			locales: "infer",
 			path: "./messages",
+			sourceLocale: "en",
 		},
-		sourceLocale: "en",
 		// Include the published ui bundle so app-owned extraction stays in sync with shared components.
 		srcPath: ["./app", "./components", "./lib", "../../packages/ui/lib"],
 	});

@@ -3,7 +3,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { unaccentIlike } from "@/lib/db/search";
+import { matchesAllTerms } from "@/lib/db/search";
 import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 
 export type NationalConsortiaSort = "name" | "country";
@@ -20,6 +20,7 @@ export interface NationalConsortiaResult {
 	data: Array<
 		Pick<schema.OrganisationalUnit, "id" | "name" | "sshocMarketplaceActorId"> & {
 			countryName: string | null;
+			documentId: string;
 			entity: { slug: string };
 			hasDraft: boolean;
 			isPublished: boolean;
@@ -135,6 +136,9 @@ const pickedVersion = sql`COALESCE(${schema.documentLifecycle.draftId}, ${schema
 const versionPick = sql`${schema.entityVersions.id} = ${pickedVersion}`;
 
 const itemSelect = {
+	// `id` is the picked *version* id (organisational_units is keyed by entity_versions.id); the
+	// document id is what mutations operate on.
+	documentId: schema.entities.id,
 	id: schema.organisationalUnits.id,
 	name: schema.organisationalUnits.name,
 	sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,
@@ -198,6 +202,7 @@ export async function getNationalConsortia(
 				data: items.map((item) => {
 					return {
 						countryName: countryNames.get(item.id) ?? null,
+						documentId: item.documentId,
 						entity: { slug: item.slug },
 						hasDraft: item.hasDraft,
 						isPublished: item.isPublished,
@@ -217,6 +222,7 @@ export async function getNationalConsortia(
 			.map((item) => {
 				return {
 					countryName: countryNames.get(item.id) ?? null,
+					documentId: item.documentId,
 					entity: { slug: item.slug },
 					hasDraft: item.hasDraft,
 					isPublished: item.isPublished,
@@ -255,7 +261,11 @@ export async function getNationalConsortia(
 			.where(
 				and(
 					eq(schema.organisationalUnitTypes.type, consortiumType),
-					unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
+					matchesAllTerms(
+						query,
+						schema.organisationalUnits.name,
+						schema.organisationalUnits.acronym,
+					),
 				),
 			),
 		db
@@ -291,7 +301,11 @@ export async function getNationalConsortia(
 						schema.organisationalUnitTypes.type,
 						"country" as typeof schema.organisationalUnitTypes.$inferSelect.type,
 					),
-					unaccentIlike(schema.organisationalUnits.name, `%${query}%`),
+					matchesAllTerms(
+						query,
+						schema.organisationalUnits.name,
+						schema.organisationalUnits.acronym,
+					),
 				),
 			),
 	]);
@@ -334,6 +348,7 @@ export async function getNationalConsortia(
 			data: pagedItems.map((item) => {
 				return {
 					countryName: countryNames.get(item.id) ?? null,
+					documentId: item.documentId,
 					entity: { slug: item.slug },
 					hasDraft: item.hasDraft,
 					isPublished: item.isPublished,
@@ -353,6 +368,7 @@ export async function getNationalConsortia(
 		.map((item) => {
 			return {
 				countryName: countryNames.get(item.id) ?? null,
+				documentId: item.documentId,
 				entity: { slug: item.slug },
 				hasDraft: item.hasDraft,
 				isPublished: item.isPublished,

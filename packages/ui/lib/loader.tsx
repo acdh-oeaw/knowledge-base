@@ -1,7 +1,7 @@
 "use client";
 
 import { useExtracted } from "next-intl";
-import type { ComponentProps, ReactNode, SVGProps } from "react";
+import type { ComponentProps, ReactNode, RefObject, SVGProps } from "react";
 import { ProgressBar } from "react-aria-components";
 import { twMerge } from "tailwind-merge";
 
@@ -79,7 +79,7 @@ export interface LoaderProps extends Omit<ComponentProps<"svg">, "display" | "op
 	percentage?: number;
 	isIndeterminate?: boolean;
 	formatOptions?: Intl.NumberFormatOptions;
-	ref?: React.RefObject<SVGSVGElement>;
+	ref?: RefObject<SVGSVGElement>;
 }
 
 export function Loader(props: Readonly<LoaderProps>): ReactNode {

@@ -7,8 +7,9 @@
 	"exports": {
 		".": "./dist/index.mjs",
 		"./admin": "./dist/admin.mjs",
+		"./download": "./dist/download.mjs",
 		"./errors": "./dist/errors.mjs",
-		"./config": "./config/images.config.ts",
+		"./config": "./dist/images.config.mjs",
 		"./lib": "./lib/utils/index.ts"
 	},
 	"scripts": {
@@ -20,11 +21,13 @@
 		"lint:fix": "oxlint --fix --report-unused-disable-directives --type-aware --type-check",
 		"storage:buckets:create": "tsx ./scripts/create-buckets.ts",
 		"storage:buckets:reset": "tsx ./scripts/reset-buckets.ts",
+		"test": "vitest run",
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@acdh-oeaw/lib": "catalog:",
 		"@dariah-eric/env": "workspace:^",
+		"@sindresorhus/slugify": "catalog:",
 		"better-result": "catalog:",
 		"minio": "catalog:",
 		"uuid": "catalog:",
@@ -37,7 +40,8 @@
 		"sharp": "catalog:",
 		"tsdown": "catalog:",
 		"tsx": "catalog:",
-		"typescript": "catalog:"
+		"typescript": "catalog:",
+		"vitest": "catalog:"
 	},
 	"engines": {
 		"node": "24.x"

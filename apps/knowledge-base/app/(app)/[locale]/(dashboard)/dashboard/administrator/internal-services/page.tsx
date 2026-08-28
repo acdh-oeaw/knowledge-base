@@ -54,7 +54,7 @@ export async function generateMetadata(
 	const t = await getExtracted();
 
 	const metadata: Metadata = await createMetadata(resolvingMetadata, {
-		title: t("Administrator dashboard - Internal Services"),
+		title: t("Administrator dashboard - Internal services"),
 	});
 
 	return metadata;

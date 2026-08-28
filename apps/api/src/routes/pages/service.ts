@@ -5,7 +5,12 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { flattenEntityVersion } from "@/lib/entity-version";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -61,11 +66,15 @@ export async function getPages(db: Database | Transaction, params: GetPagesParam
 				id: schema.pages.id,
 				title: schema.pages.title,
 				summary: schema.pages.summary,
-				updatedAt: schema.entityVersions.updatedAt,
+				publicationDate: schema.pages.publicationDate,
 				slug: schema.slugs.value,
 				imageKey: schema.assets.key,
 				imageAlt: schema.assets.alt,
-				imageCaption: schema.assets.caption,
+				imageWidth: schema.assets.width,
+				imageHeight: schema.assets.height,
+				assetCaption: schema.assets.caption,
+				imageCaption: schema.pages.imageCaption,
+				imageCaptionMode: schema.pages.imageCaptionMode,
 				licenseName: schema.licenses.name,
 				licenseUrl: schema.licenses.url,
 			})
@@ -95,7 +104,7 @@ export async function getPages(db: Database | Transaction, params: GetPagesParam
 			.leftJoin(schema.assets, eq(schema.pages.imageId, schema.assets.id))
 			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 			.where(eq(schema.entities.typeId, typeId))
-			.orderBy(desc(schema.entityVersions.updatedAt))
+			.orderBy(desc(schema.pages.publicationDate), desc(schema.entityVersions.updatedAt))
 			.limit(limit)
 			.offset(offset),
 		db
@@ -112,13 +121,18 @@ export async function getPages(db: Database | Transaction, params: GetPagesParam
 
 	const data = items.map((item) => {
 		const image = generateImageUrl(
-			toImageAsset({
-				key: item.imageKey,
-				alt: item.imageAlt,
-				caption: item.imageCaption,
-				licenseName: item.licenseName,
-				licenseUrl: item.licenseUrl,
-			}),
+			withResolvedCaption(
+				toImageAsset({
+					key: item.imageKey,
+					alt: item.imageAlt,
+					caption: item.assetCaption,
+					width: item.imageWidth,
+					height: item.imageHeight,
+					licenseName: item.licenseName,
+					licenseUrl: item.licenseUrl,
+				}),
+				{ imageCaption: item.imageCaption, imageCaptionMode: item.imageCaptionMode },
+			),
 			imageWidth.preview,
 		);
 
@@ -127,7 +141,7 @@ export async function getPages(db: Database | Transaction, params: GetPagesParam
 			title: item.title,
 			summary: item.summary,
 			entity: { slug: item.slug },
-			publishedAt: item.updatedAt.toISOString(),
+			publishedAt: item.publicationDate.toISOString(),
 			image,
 		};
 	});
@@ -155,7 +169,10 @@ export async function getPageById(db: Database | Transaction, params: GetPageByI
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
+				publicationDate: true,
 				title: true,
 				summary: true,
 			},
@@ -168,21 +185,7 @@ export async function getPageById(db: Database | Transaction, params: GetPageByI
 						},
 					},
 				},
-				image: {
-					columns: {
-						key: true,
-						alt: true,
-						caption: true,
-					},
-					with: {
-						license: {
-							columns: {
-								name: true,
-								url: true,
-							},
-						},
-					},
-				},
+				image: imageAssetColumns,
 			},
 		}),
 		getContentBlocks(db, id),
@@ -197,11 +200,13 @@ export async function getPageById(db: Database | Transaction, params: GetPageByI
 		getRelatedResources(db, id),
 	]);
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
+	const { publicationDate, ...data } = flattenEntityVersion(item);
 
 	return {
-		...flattenEntityVersion(item),
+		...data,
 		image,
+		publishedAt: publicationDate.toISOString(),
 		...fields,
 		relatedEntities,
 		relatedResources,
@@ -253,7 +258,7 @@ export async function getPageSlugs(db: Database | Transaction, params: GetPageSl
 			.innerJoin(schema.pages, eq(schema.pages.id, schema.entityVersions.id))
 			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.where(eq(schema.entities.typeId, typeId))
-			.orderBy(desc(schema.entityVersions.updatedAt))
+			.orderBy(desc(schema.pages.publicationDate), desc(schema.entityVersions.updatedAt))
 			.limit(limit)
 			.offset(offset),
 		db
@@ -298,7 +303,10 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
+			publicationDate: true,
 			title: true,
 			summary: true,
 		},
@@ -311,21 +319,7 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 					},
 				},
 			},
-			image: {
-				columns: {
-					key: true,
-					alt: true,
-					caption: true,
-				},
-				with: {
-					license: {
-						columns: {
-							name: true,
-							url: true,
-						},
-					},
-				},
-			},
+			image: imageAssetColumns,
 		},
 	});
 
@@ -333,7 +327,7 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 		return null;
 	}
 
-	const image = generateImageUrl(item.image, imageWidth.featured);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
 	const [fields, relatedEntities, relatedResources] = await Promise.all([
 		getContentBlocks(db, item.id),
@@ -341,9 +335,12 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 		getRelatedResources(db, item.id),
 	]);
 
+	const { publicationDate, ...data } = flattenEntityVersion(item);
+
 	return {
-		...flattenEntityVersion(item),
+		...data,
 		image,
+		publishedAt: publicationDate.toISOString(),
 		...fields,
 		relatedEntities,
 		relatedResources,

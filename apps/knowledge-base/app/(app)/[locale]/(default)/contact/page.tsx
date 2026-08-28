@@ -27,11 +27,11 @@ export default function ContactPage(_props: Readonly<ContactPageProps>): ReactNo
 
 	return (
 		<Main className="container flex-1 px-8 py-12 xs:px-16">
-			<section className="flex max-inline-(--breakpoint-md) flex-col gap-y-8">
+			<section className="flex flex-col gap-y-8 max-inline-(--breakpoint-md)">
 				<h1 className="text-5xl font-extrabold tracking-tight text-text-strong">{t("Contact")}</h1>
 			</section>
 
-			<section className="max-inline-(--breakpoint-md) py-6">
+			<section className="py-6 max-inline-(--breakpoint-md)">
 				<ContactForm />
 			</section>
 		</Main>

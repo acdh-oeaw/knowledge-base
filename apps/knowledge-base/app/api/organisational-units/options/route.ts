@@ -6,6 +6,7 @@ import {
 	type OrganisationalUnitType,
 	getOrganisationalUnitOptions,
 } from "@/lib/data/organisational-units";
+import { getUserOrganisationalUnitScopes } from "@/lib/data/user-organisational-units";
 import { enforceApiGetRateLimit } from "@/lib/server/api-rate-limit";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -14,9 +15,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		return rateLimitResponse;
 	}
 
-	const { session } = await getCurrentSession();
+	const { session, user } = await getCurrentSession();
 
-	if (session == null) {
+	if (session == null || user == null) {
 		return new NextResponse(null, { status: 401 });
 	}
 
@@ -32,12 +33,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		: undefined;
 	const locatedInCountryDocumentId = searchParams.get("locatedInCountryDocumentId") ?? undefined;
 
+	// Draft units are only offered to users who manage organisational units (admins, working-group
+	// chairs, national coordinators), so a coordinator can relate one they just created.
+	let includeDrafts = false;
+	if (searchParams.get("includeDrafts") === "true") {
+		if (user.role === "admin") {
+			includeDrafts = true;
+		} else {
+			const scopes = await getUserOrganisationalUnitScopes(user);
+			includeDrafts = scopes.countries.length > 0 || scopes.workingGroups.length > 0;
+		}
+	}
+
 	const result = await getOrganisationalUnitOptions({
 		limit,
 		offset,
 		q,
 		unitType,
 		locatedInCountryDocumentId,
+		includeDrafts,
 	});
 
 	return NextResponse.json(result);

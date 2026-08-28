@@ -20,7 +20,7 @@ export default async function DashboardReportingEditCountryReportPage(
 	const locale = await getLocale();
 
 	redirect({
-		href: `/dashboard/reporting/country-reports/${routeYear}/${slug}/edit/institutions`,
+		href: `/dashboard/reporting/country-reports/${routeYear}/${slug}/edit/summary`,
 		locale,
 	});
 }

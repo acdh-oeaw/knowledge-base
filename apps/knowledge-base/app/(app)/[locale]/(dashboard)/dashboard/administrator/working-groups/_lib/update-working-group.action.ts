@@ -4,14 +4,23 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateWorkingGroupActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_lib/update-working-group.schema";
-import { ensureDraftVersion, publishVersion, touchVersion } from "@/lib/data/entity-lifecycle";
+import {
+	ensureDraftVersion,
+	getDocumentSlug,
+	publishVersion,
+	touchVersion,
+	updateDraftDocumentSlug,
+} from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { syncEntityRelations } from "@/lib/data/relations";
-import { eq, inArray } from "@/lib/db/sql";
+import { syncOrganisationalUnitSocialMedia } from "@/lib/data/social-media-relations";
+import { checkSshocMarketplaceActorIdAvailable } from "@/lib/data/sshoc-marketplace-actor-id";
+import { eq } from "@/lib/db/sql";
+import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
-import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateWorkingGroupAction = createMutationAction({
@@ -19,7 +28,15 @@ export const updateWorkingGroupAction = createMutationAction({
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "working_groups" },
 	revalidate: "/[locale]/dashboard/administrator/working-groups",
-	redirect: "/dashboard/administrator/working-groups",
+	redirect: ({ result }) =>
+		`/dashboard/administrator/working-groups/${getResultSlug(result)}/details`,
+
+	async preCheck({ input }) {
+		return checkSshocMarketplaceActorIdAvailable({
+			sshocMarketplaceActorId: input.sshocMarketplaceActorId,
+			excludeDocumentId: input.documentId,
+		});
+	},
 
 	async mutate(tx, input, { formData }) {
 		const draftVersionId = await ensureDraftVersion(
@@ -27,6 +44,13 @@ export const updateWorkingGroupAction = createMutationAction({
 			input.documentId,
 			organisationalUnitsLifecycleAdapter,
 		);
+
+		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
+		// re-checks that server-side, so a forged submission cannot rename a published page.
+		const requestedSlug = getRequestedSlug(input.slug);
+		if (requestedSlug != null) {
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+		}
 
 		let imageId: string | null = null;
 		if (input.imageKey != null) {
@@ -42,7 +66,9 @@ export const updateWorkingGroupAction = createMutationAction({
 			.update(schema.organisationalUnits)
 			.set({
 				acronym: input.acronym,
+				email: input.email,
 				imageId,
+				mailingList: input.mailingList,
 				name: input.name,
 				sshocMarketplaceActorId: input.sshocMarketplaceActorId,
 				summary: input.summary,
@@ -56,34 +82,7 @@ export const updateWorkingGroupAction = createMutationAction({
 			input.descriptionContentBlocks,
 		);
 
-		const existingSocialMedia = await tx.query.organisationalUnitsToSocialMedia.findMany({
-			where: { organisationalUnitId: draftVersionId },
-			columns: { id: true, socialMediaId: true },
-		});
-		const existingSocialMediaIds = new Set(existingSocialMedia.map((row) => row.socialMediaId));
-		const submittedSocialMediaIds = new Set(input.socialMediaIds);
-
-		const socialMediaToDelete = existingSocialMedia
-			.filter((row) => !submittedSocialMediaIds.has(row.socialMediaId))
-			.map((row) => row.id);
-
-		if (socialMediaToDelete.length > 0) {
-			await tx
-				.delete(schema.organisationalUnitsToSocialMedia)
-				.where(inArray(schema.organisationalUnitsToSocialMedia.id, socialMediaToDelete));
-		}
-
-		const socialMediaToInsert = input.socialMediaIds.filter(
-			(socialMediaId) => !existingSocialMediaIds.has(socialMediaId),
-		);
-
-		if (socialMediaToInsert.length > 0) {
-			await tx.insert(schema.organisationalUnitsToSocialMedia).values(
-				socialMediaToInsert.map((socialMediaId) => {
-					return { organisationalUnitId: draftVersionId, socialMediaId };
-				}),
-			);
-		}
+		await syncOrganisationalUnitSocialMedia(tx, draftVersionId, input.socialMediaIds);
 
 		await syncEntityRelations(
 			tx,
@@ -99,6 +98,7 @@ export const updateWorkingGroupAction = createMutationAction({
 
 		return {
 			subjectId: input.documentId,
+			subjectSlug: await getDocumentSlug(tx, input.documentId),
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

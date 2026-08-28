@@ -3,7 +3,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { faker as f } from "@faker-js/faker";
 import slugify from "@sindresorhus/slugify";
 import { v7 as uuidv7 } from "uuid";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Database } from "@/middlewares/db";
 import type { MemberOrPartner, MemberOrPartnerBase } from "@/routes/members-partners/schemas";
@@ -11,6 +11,43 @@ import { eq, inArray } from "@/services/db/sql";
 import { createTestClient } from "~/test/lib/create-test-client";
 import { seedContentBlock } from "~/test/lib/seed-content-block";
 import { withTransaction } from "~/test/lib/with-transaction";
+
+vi.mock("@/services/search", () => {
+	return {
+		search: {
+			collections: {
+				resources: {
+					search: async ({ filterBy }: { filterBy?: string }) => {
+						const ids = filterBy?.match(/id:\[([^\]]+)\]/)?.[1]?.split(",") ?? [];
+
+						return {
+							isErr: () => false,
+							value: {
+								items: ids.map((id) => {
+									return {
+										document: {
+											id,
+											label: `Resource ${id}`,
+											type: "service",
+											links: [`https://example.org/resources/${id}`],
+										},
+									};
+								}),
+								pagination: {
+									page: 1,
+									perPage: ids.length,
+									total: ids.length,
+									totalPages: ids.length > 0 ? 1 : 0,
+								},
+								facets: {},
+							},
+						};
+					},
+				},
+			},
+		},
+	};
+});
 
 const dariahEuSlug = "dariah-eu";
 
@@ -71,6 +108,24 @@ function createRichTextContent(text: string) {
 				content: [{ type: "text", text }],
 			},
 		],
+	};
+}
+
+function createRelatedPage() {
+	const versionId = uuidv7();
+	const entityId = uuidv7();
+	const title = f.lorem.sentence();
+	const slug = slugify(title);
+
+	return {
+		entity: { id: entityId, slug },
+		version: { id: versionId, entityId },
+		page: {
+			id: versionId,
+			title,
+			summary: f.lorem.paragraph(),
+			publicationDate: f.date.past(),
+		},
 	};
 }
 
@@ -286,6 +341,7 @@ async function seedContributor(
 	db: Database,
 	countryId: string,
 	items: ReturnType<typeof createPersonItems>,
+	role: (typeof schema.personRoleTypesEnum)[number] = "national_coordinator",
 ) {
 	const [
 		status,
@@ -307,7 +363,7 @@ async function seedContributor(
 		}),
 		db.query.personRoleTypes.findFirst({
 			columns: { id: true },
-			where: { type: "national_coordinator" },
+			where: { type: role },
 		}),
 		db.query.personRoleTypes.findFirst({
 			columns: { id: true },
@@ -475,6 +531,80 @@ async function seedNationalConsortium(
 	});
 
 	return consortium;
+}
+
+async function seedRelatedPage(db: Database, page: ReturnType<typeof createRelatedPage>) {
+	const [status, pageType, asset, defaultLocale] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "pages" } }),
+		db.query.assets.findFirst({ columns: { id: true } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
+
+	assert(status, "No entity status in database.");
+	assert(pageType, "No page entity type in database.");
+	assert(asset, "No assets in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
+
+	await db.insert(schema.entities).values({
+		id: page.entity.id,
+		typeId: pageType.id,
+	});
+	await db.insert(schema.entityVersions).values({
+		...page.version,
+		statusId: status.id,
+		localeId,
+	});
+	await db.insert(schema.slugs).values({
+		entityVersionId: page.version.id,
+		entityId: page.entity.id,
+		typeId: pageType.id,
+		localeId,
+		isPublished: true,
+		value: page.entity.slug,
+	});
+	await db.insert(schema.pages).values({
+		...page.page,
+		imageId: asset.id,
+	});
+}
+
+async function seedSocialMedia(
+	db: Database,
+	organisationalUnitId: string,
+	typeName: (typeof schema.socialMediaTypesEnum)[number],
+	url: string,
+) {
+	const type = await db.query.socialMediaTypes.findFirst({
+		columns: { id: true },
+		where: { type: typeName },
+	});
+
+	assert(type, `No ${typeName} social media type in database.`);
+
+	const [socialMedia] = await db
+		.insert(schema.socialMedia)
+		.values({
+			name: f.internet.displayName(),
+			url,
+			duration: { start: f.date.past() },
+			typeId: type.id,
+		})
+		.returning({
+			id: schema.socialMedia.id,
+			name: schema.socialMedia.name,
+			url: schema.socialMedia.url,
+		});
+
+	assert(socialMedia);
+
+	await db.insert(schema.organisationalUnitsToSocialMedia).values({
+		organisationalUnitId,
+		socialMediaId: socialMedia.id,
+	});
+
+	return { ...socialMedia, type: typeName };
 }
 
 async function seed(
@@ -699,6 +829,34 @@ describe("members-partners", () => {
 				expect(data.offset).toBe(offset);
 			});
 		});
+
+		it("should order members and partners by organisation name", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+				const items = createItems(4);
+				const expectedNames = [
+					"Alphabetical organisation",
+					"Middle organisation",
+					"Zulu organisation",
+				];
+
+				items[1]!.organisationalUnit.name = expectedNames[2]!;
+				items[2]!.organisationalUnit.name = expectedNames[0]!;
+				items[3]!.organisationalUnit.name = expectedNames[1]!;
+				await seed(db, items);
+
+				const response = await client["members-partners"].$get({
+					query: { limit: "100" },
+				});
+
+				expect(response.status).toBe(200);
+				const data = await response.json();
+				const seededIds = new Set(items.slice(1).map((item) => item.version.id));
+				const names = data.data.filter((item) => seededIds.has(item.id)).map((item) => item.name);
+
+				expect(names).toEqual(expectedNames);
+			});
+		});
 	});
 
 	describe("GET /api/members-partners/:id", () => {
@@ -742,6 +900,13 @@ describe("members-partners", () => {
 				const representativeInstitution = representativeInstitutionItems[0]!;
 				const contributorItems = createPersonItems(1);
 				const contributor = await seedContributor(db, countryId, contributorItems);
+				const contactContributorItems = createPersonItems(1);
+				const contactContributor = await seedContributor(
+					db,
+					countryId,
+					contactContributorItems,
+					"is_contact_for",
+				);
 				const nationalConsortiumItems = createItems(1);
 				const nationalConsortium = await seedNationalConsortium(
 					db,
@@ -780,23 +945,51 @@ describe("members-partners", () => {
 					name: representativeInstitution.organisationalUnit.name,
 					slug: representativeInstitution.entity.slug,
 				});
-				expect(data.contributors).toHaveLength(1);
-				expect(data.contributors[0]).toMatchObject({
-					id: contributor.person.id,
-					name: contributor.person.name,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					position: expect.arrayContaining([
+				expect(data.contributors).toHaveLength(2);
+				expect(data.contributors).toEqual(
+					expect.arrayContaining([
 						expect.objectContaining({
-							role: "is_affiliated_with",
-							name: contributor.affiliation.organisationalUnit.name,
+							id: contributor.person.id,
+							name: contributor.person.name,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+							positions: expect.arrayContaining([
+								expect.objectContaining({
+									role: "is_affiliated_with",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({
+										label: contributor.affiliation.organisationalUnit.name,
+									}),
+								}),
+								expect.objectContaining({
+									role: "national_coordinator",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({ label: item.organisationalUnit.name }),
+								}),
+							]),
+							role: "national_coordinator",
 						}),
 						expect.objectContaining({
-							role: "national_coordinator",
-							name: item.organisationalUnit.name,
+							id: contactContributor.person.id,
+							name: contactContributor.person.name,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+							positions: expect.arrayContaining([
+								expect.objectContaining({
+									role: "is_affiliated_with",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({
+										label: contactContributor.affiliation.organisationalUnit.name,
+									}),
+								}),
+								expect.objectContaining({
+									role: "is_contact_for",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({ label: item.organisationalUnit.name }),
+								}),
+							]),
+							role: "is_contact_for",
 						}),
 					]),
-					role: "national_coordinator",
-				});
+				);
 				expect(data.nationalConsortium).toMatchObject({
 					name: nationalConsortium.organisationalUnit.name,
 				});
@@ -958,6 +1151,179 @@ describe("members-partners", () => {
 				const data = (await response.json()) as MemberOrPartner;
 
 				expect(data.description).toEqual([{ type: "rich_text", content: countryDescription }]);
+			});
+		});
+
+		it("should prefer national consortium related fields and social media for member countries", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const items = createItems(2);
+				const item = items.at(1)!;
+				await seed(db, items);
+
+				const nationalConsortium = await seedNationalConsortium(
+					db,
+					item.organisationalUnit.id,
+					createItems(1),
+				);
+
+				const countrySocialMedia = await seedSocialMedia(
+					db,
+					item.organisationalUnit.id,
+					"mastodon",
+					"https://social.example/country",
+				);
+				const consortiumSocialMedia = await seedSocialMedia(
+					db,
+					nationalConsortium.organisationalUnit.id,
+					"mastodon",
+					"https://social.example/consortium",
+				);
+
+				const countryRelatedPage = createRelatedPage();
+				const consortiumRelatedPage = createRelatedPage();
+				await seedRelatedPage(db, countryRelatedPage);
+				await seedRelatedPage(db, consortiumRelatedPage);
+
+				await db.insert(schema.entitiesToEntities).values([
+					{ entityId: item.entity.id, relatedEntityId: countryRelatedPage.entity.id },
+					{
+						entityId: nationalConsortium.entity.id,
+						relatedEntityId: consortiumRelatedPage.entity.id,
+					},
+				]);
+				await db.insert(schema.entitiesToResources).values([
+					{ entityId: item.entity.id, resourceId: "country-resource" },
+					{ entityId: nationalConsortium.entity.id, resourceId: "consortium-resource" },
+				]);
+
+				const detailResponse = await client["members-partners"][":id"].$get({
+					param: { id: item.version.id },
+				});
+				const slugResponse = await client["members-partners"].slugs[":slug"].$get({
+					param: { slug: item.entity.slug },
+					query: {},
+				});
+				const listResponse = await client["members-partners"].$get({
+					query: { limit: "10", offset: "0" },
+				});
+
+				expect(detailResponse.status).toBe(200);
+				expect(slugResponse.status).toBe(200);
+				expect(listResponse.status).toBe(200);
+
+				const detailData = (await detailResponse.json()) as MemberOrPartner;
+				const slugData = (await slugResponse.json()) as MemberOrPartner;
+				const listData = (await listResponse.json()) as { data: Array<MemberOrPartnerBase> };
+				const listItem = listData.data.find((entry) => entry.id === item.version.id);
+				assert(listItem);
+
+				for (const data of [detailData, slugData]) {
+					expect(data.socialMedia).toEqual([
+						expect.objectContaining({
+							id: consortiumSocialMedia.id,
+							url: consortiumSocialMedia.url,
+							type: consortiumSocialMedia.type,
+						}),
+					]);
+					expect(data.socialMedia).not.toEqual([
+						expect.objectContaining({ id: countrySocialMedia.id }),
+					]);
+					expect(data.relatedEntities).toEqual([
+						expect.objectContaining({
+							slug: consortiumRelatedPage.entity.slug,
+							type: "pages",
+							label: consortiumRelatedPage.page.title,
+						}),
+					]);
+					expect(data.relatedResources).toEqual([
+						expect.objectContaining({
+							id: "consortium-resource",
+							label: "Resource consortium-resource",
+						}),
+					]);
+				}
+
+				expect(listItem.socialMedia).toEqual([
+					expect.objectContaining({
+						id: consortiumSocialMedia.id,
+						url: consortiumSocialMedia.url,
+					}),
+				]);
+			});
+		});
+
+		it("should fall back to country related fields and social media when national consortium fields are empty", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const items = createItems(2);
+				const item = items.at(1)!;
+				await seed(db, items);
+
+				await seedNationalConsortium(db, item.organisationalUnit.id, createItems(1));
+
+				const countrySocialMedia = await seedSocialMedia(
+					db,
+					item.organisationalUnit.id,
+					"mastodon",
+					"https://social.example/country-fallback",
+				);
+
+				const countryRelatedPage = createRelatedPage();
+				await seedRelatedPage(db, countryRelatedPage);
+
+				await db.insert(schema.entitiesToEntities).values({
+					entityId: item.entity.id,
+					relatedEntityId: countryRelatedPage.entity.id,
+				});
+				await db.insert(schema.entitiesToResources).values({
+					entityId: item.entity.id,
+					resourceId: "country-fallback-resource",
+				});
+
+				const detailResponse = await client["members-partners"][":id"].$get({
+					param: { id: item.version.id },
+				});
+				const listResponse = await client["members-partners"].$get({
+					query: { limit: "10", offset: "0" },
+				});
+
+				expect(detailResponse.status).toBe(200);
+				expect(listResponse.status).toBe(200);
+
+				const detailData = (await detailResponse.json()) as MemberOrPartner;
+				const listData = (await listResponse.json()) as { data: Array<MemberOrPartnerBase> };
+				const listItem = listData.data.find((entry) => entry.id === item.version.id);
+				assert(listItem);
+
+				expect(detailData.socialMedia).toEqual([
+					expect.objectContaining({
+						id: countrySocialMedia.id,
+						url: countrySocialMedia.url,
+						type: countrySocialMedia.type,
+					}),
+				]);
+				expect(detailData.relatedEntities).toEqual([
+					expect.objectContaining({
+						slug: countryRelatedPage.entity.slug,
+						type: "pages",
+						label: countryRelatedPage.page.title,
+					}),
+				]);
+				expect(detailData.relatedResources).toEqual([
+					expect.objectContaining({
+						id: "country-fallback-resource",
+						label: "Resource country-fallback-resource",
+					}),
+				]);
+				expect(listItem.socialMedia).toEqual([
+					expect.objectContaining({
+						id: countrySocialMedia.id,
+						url: countrySocialMedia.url,
+					}),
+				]);
 			});
 		});
 
@@ -1138,6 +1504,20 @@ describe("members-partners", () => {
 				const partnerInstitution = partnerInstitutionItems[0]!;
 				const contributorItems = createPersonItems(1);
 				const contributor = await seedContributor(db, countryId, contributorItems);
+				const contactContributorItems = createPersonItems(1);
+				const contactContributor = await seedContributor(
+					db,
+					countryId,
+					contactContributorItems,
+					"is_contact_for",
+				);
+				const staffContributorItems = createPersonItems(1);
+				const staffContributor = await seedContributor(
+					db,
+					countryId,
+					staffContributorItems,
+					"national_coordination_staff",
+				);
 				const nationalConsortiumItems = createItems(1);
 				const nationalConsortium = await seedNationalConsortium(
 					db,
@@ -1166,23 +1546,71 @@ describe("members-partners", () => {
 					slug: partnerInstitution.entity.slug,
 					website: null,
 				});
-				expect(data.contributors).toHaveLength(1);
-				expect(data.contributors[0]).toMatchObject({
-					id: contributor.person.id,
-					name: contributor.person.name,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					position: expect.arrayContaining([
+				expect(data.contributors).toHaveLength(3);
+				expect(data.contributors).toEqual(
+					expect.arrayContaining([
 						expect.objectContaining({
-							role: "is_affiliated_with",
-							name: contributor.affiliation.organisationalUnit.name,
+							id: contributor.person.id,
+							name: contributor.person.name,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+							positions: expect.arrayContaining([
+								expect.objectContaining({
+									role: "is_affiliated_with",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({
+										label: contributor.affiliation.organisationalUnit.name,
+									}),
+								}),
+								expect.objectContaining({
+									role: "national_coordinator",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({ label: item.organisationalUnit.name }),
+								}),
+							]),
+							role: "national_coordinator",
 						}),
 						expect.objectContaining({
-							role: "national_coordinator",
-							name: item.organisationalUnit.name,
+							id: contactContributor.person.id,
+							name: contactContributor.person.name,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+							positions: expect.arrayContaining([
+								expect.objectContaining({
+									role: "is_affiliated_with",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({
+										label: contactContributor.affiliation.organisationalUnit.name,
+									}),
+								}),
+								expect.objectContaining({
+									role: "is_contact_for",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({ label: item.organisationalUnit.name }),
+								}),
+							]),
+							role: "is_contact_for",
+						}),
+						expect.objectContaining({
+							id: staffContributor.person.id,
+							name: staffContributor.person.name,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+							positions: expect.arrayContaining([
+								expect.objectContaining({
+									role: "is_affiliated_with",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({
+										label: staffContributor.affiliation.organisationalUnit.name,
+									}),
+								}),
+								expect.objectContaining({
+									role: "national_coordination_staff",
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+									entity: expect.objectContaining({ label: item.organisationalUnit.name }),
+								}),
+							]),
+							role: "national_coordination_staff",
 						}),
 					]),
-					role: "national_coordinator",
-				});
+				);
 				expect(data.nationalConsortium).toMatchObject({
 					name: nationalConsortium.organisationalUnit.name,
 				});

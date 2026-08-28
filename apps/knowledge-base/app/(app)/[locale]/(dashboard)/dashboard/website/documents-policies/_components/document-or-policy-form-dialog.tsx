@@ -20,8 +20,13 @@ import { type ReactNode, useActionState, useState } from "react";
 
 import { DraftFormSubmitButtons } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/draft-form-submit-buttons";
 import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
+import {
+	type SelectedImage,
+	SelectedImageCard,
+} from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/selected-image-card";
 import { createDocumentOrPolicyFromDialogAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/create-document-or-policy-from-dialog.action";
 import { updateDocumentOrPolicyDetailsAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/update-document-or-policy-details.action";
+import { documentMimeTypes } from "@/config/assets.config";
 
 export interface DocumentOrPolicyDialogItem {
 	id: string;
@@ -29,7 +34,7 @@ export interface DocumentOrPolicyDialogItem {
 	summary: string | null;
 	url: string | null;
 	groupId: string | null;
-	document: { key: string; label: string };
+	document: SelectedImage;
 }
 
 interface DocumentOrPolicyFormProps {
@@ -62,7 +67,7 @@ function DocumentOrPolicyForm(props: Readonly<DocumentOrPolicyFormProps>): React
 		createActionStateInitial(),
 	);
 
-	const [selectedDocument, setSelectedDocument] = useState<{ key: string; label: string } | null>(
+	const [selectedDocument, setSelectedDocument] = useState<SelectedImage | null>(
 		item?.document ?? null,
 	);
 
@@ -71,6 +76,20 @@ function DocumentOrPolicyForm(props: Readonly<DocumentOrPolicyFormProps>): React
 	);
 
 	const [documentKeyError, setDocumentKeyError] = useState(false);
+
+	const picker = (
+		<MediaLibraryDialog
+			acceptedFileTypes={documentMimeTypes}
+			defaultPrefix="documents"
+			initialAssets={initialAssets}
+			onSelect={(key, url, asset) => {
+				setSelectedDocument({ ...asset, key, url });
+				setDocumentKeyError(false);
+			}}
+			prefixes={["documents"]}
+			triggerLabel={selectedDocument != null ? t("Change document") : t("Select document")}
+		/>
+	);
 
 	const title = isEditMode ? t("Edit document or policy") : t("New document or policy");
 
@@ -123,18 +142,13 @@ function DocumentOrPolicyForm(props: Readonly<DocumentOrPolicyFormProps>): React
 
 				<div>
 					<Label className="mbe-1.5 block text-sm font-medium">{t("Document")}</Label>
-					{selectedDocument != null && (
-						<p className="mbe-2 text-sm text-muted-fg">{selectedDocument.label}</p>
+					{selectedDocument != null ? (
+						<SelectedImageCard image={selectedDocument} onMetadataChange={setSelectedDocument}>
+							{picker}
+						</SelectedImageCard>
+					) : (
+						picker
 					)}
-					<MediaLibraryDialog
-						defaultPrefix="documents"
-						initialAssets={initialAssets}
-						onSelect={(key) => {
-							const asset = initialAssets.find((a) => a.key === key);
-							setSelectedDocument({ key, label: asset?.label ?? key });
-						}}
-						prefixes={["documents"]}
-					/>
 					<input
 						aria-hidden={true}
 						className="sr-only"

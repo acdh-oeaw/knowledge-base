@@ -6,11 +6,18 @@ import * as schema from "@dariah-eric/database/schema";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
+import {
+	generateImageUrl,
+	imageAssetColumns,
+	toImageAsset,
+	withResolvedCaption,
+} from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getRelatedEntities, getRelatedResources } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { FundingCallStatus } from "@/routes/funding-calls/schemas";
 import { type SQL, type SQLWrapper, alias, and, count, desc, eq, or, sql } from "@/services/db/sql";
+import { imageWidth } from "~/config/api.config";
 
 function buildStatusFilter(duration: SQLWrapper, statuses: Array<FundingCallStatus>): SQL {
 	const lower = sql`LOWER(${duration})`;
@@ -92,6 +99,17 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 				duration: schema.fundingCalls.duration,
 				updatedAt: schema.entityVersions.updatedAt,
 				slug: schema.slugs.value,
+				imageCaption: schema.fundingCalls.imageCaption,
+				imageCaptionMode: schema.fundingCalls.imageCaptionMode,
+				image: {
+					key: schema.assets.key,
+					alt: schema.assets.alt,
+					caption: schema.assets.caption,
+					width: schema.assets.width,
+					height: schema.assets.height,
+					licenseName: schema.licenses.name,
+					licenseUrl: schema.licenses.url,
+				},
 			})
 			.from(schema.entities)
 			.leftJoin(
@@ -116,6 +134,8 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 			)
 			.innerJoin(schema.fundingCalls, eq(schema.fundingCalls.id, schema.entityVersions.id))
 			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+			.leftJoin(schema.assets, eq(schema.assets.id, schema.fundingCalls.imageId))
+			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 			.where(and(eq(schema.entities.typeId, typeId), statusFilter))
 			.orderBy(desc(sql`LOWER(${schema.fundingCalls.duration})`), desc(schema.fundingCalls.id))
 			.limit(limit)
@@ -136,6 +156,11 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 	const data = items.map((item) => {
 		const duration = serializeDateRange(item.duration);
 
+		const image = generateImageUrl(
+			withResolvedCaption(toImageAsset(item.image), item),
+			imageWidth.preview,
+		);
+
 		return {
 			id: item.id,
 			title: item.title,
@@ -143,6 +168,7 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 			duration,
 			entity: { slug: item.slug },
 			publishedAt: item.updatedAt.toISOString(),
+			image,
 		};
 	});
 
@@ -172,6 +198,8 @@ export async function getFundingCallById(
 				},
 			},
 			columns: {
+				imageCaption: true,
+				imageCaptionMode: true,
 				id: true,
 				title: true,
 				summary: true,
@@ -186,6 +214,7 @@ export async function getFundingCallById(
 						},
 					},
 				},
+				image: imageAssetColumns,
 			},
 		}),
 		getContentBlocks(db, id),
@@ -201,10 +230,12 @@ export async function getFundingCallById(
 	]);
 
 	const duration = serializeDateRange(item.duration);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
 	return {
 		...flattenEntityVersion(item),
 		duration,
+		image,
 		...fields,
 		relatedEntities,
 		relatedResources,
@@ -307,6 +338,8 @@ export async function getFundingCallBySlug(
 			},
 		},
 		columns: {
+			imageCaption: true,
+			imageCaptionMode: true,
 			id: true,
 			title: true,
 			summary: true,
@@ -321,6 +354,7 @@ export async function getFundingCallBySlug(
 					},
 				},
 			},
+			image: imageAssetColumns,
 		},
 	});
 
@@ -335,10 +369,12 @@ export async function getFundingCallBySlug(
 	]);
 
 	const duration = serializeDateRange(item.duration);
+	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
 	return {
 		...flattenEntityVersion(item),
 		duration,
+		image,
 		...fields,
 		relatedEntities,
 		relatedResources,

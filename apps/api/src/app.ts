@@ -5,6 +5,8 @@ import { createApp, createRouter } from "@/lib/factory";
 import { createOpenApi } from "@/lib/openapi/index";
 import { database } from "@/middlewares/db";
 import { storage as storageMiddleware } from "@/middlewares/storage";
+import { router as announcements } from "@/routes/announcements";
+import { router as assets } from "@/routes/assets";
 import { router as dariahProjects } from "@/routes/dariah-projects";
 import { router as documentsPolicies } from "@/routes/documents-policies";
 import { router as events } from "@/routes/events";
@@ -22,6 +24,7 @@ import { router as pages } from "@/routes/pages";
 import { router as persons } from "@/routes/persons";
 import { router as projects } from "@/routes/projects";
 import { router as siteMetadata } from "@/routes/site-metadata";
+import { router as sitemap } from "@/routes/sitemap";
 import { router as socialMedia } from "@/routes/social-media";
 import { router as spotlightArticles } from "@/routes/spotlight-articles";
 import { router as statistics } from "@/routes/statistics";
@@ -32,6 +35,8 @@ const app = createApp();
 const openapi = createOpenApi(app);
 
 const api = createRouter()
+	.route("/announcements", announcements)
+	.route("/assets", assets)
 	.route("/dariah-projects", dariahProjects)
 	.route("/documents-policies", documentsPolicies)
 	.route("/navigation", navigation)
@@ -49,6 +54,7 @@ const api = createRouter()
 	.route("/persons", persons)
 	.route("/projects", projects)
 	.route("/site-metadata", siteMetadata)
+	.route("/sitemap", sitemap)
 	.route("/social-media", socialMedia)
 	.route("/spotlight-articles", spotlightArticles)
 	.route("/statistics", statistics)
