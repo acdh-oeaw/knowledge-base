@@ -559,3 +559,26 @@ CREATE TRIGGER events_sync_shared_fields
 BEFORE INSERT OR UPDATE OF duration, location, is_full_day ON events
 FOR EACH ROW
 EXECUTE FUNCTION sync_event_shared_fields();
+--> statement-breakpoint
+
+-- Same (person, org, role) / (unit, related unit, status) combination may recur over non-overlapping
+-- periods, so uniqueness is enforced on the duration overlap rather than a plain unique constraint.
+-- Drizzle has no builder for GiST exclusion constraints, so these are hand-written (requires
+-- btree_gist, created above, for the `=` operator class on uuid).
+ALTER TABLE "persons_to_organisational_units"
+	ADD CONSTRAINT "persons_to_organisational_units_person_org_role_no_overlap"
+	EXCLUDE USING gist (
+		"person_document_id" WITH =,
+		"organisational_unit_document_id" WITH =,
+		"role_type_id" WITH =,
+		"duration" WITH &&
+	);
+--> statement-breakpoint
+ALTER TABLE "organisational_units_to_units"
+	ADD CONSTRAINT "organisational_units_to_units_unit_related_status_no_overlap"
+	EXCLUDE USING gist (
+		"unit_document_id" WITH =,
+		"related_unit_document_id" WITH =,
+		"status" WITH =,
+		"duration" WITH &&
+	);
