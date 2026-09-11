@@ -29,7 +29,11 @@ export function PersonCreateForm(props: Readonly<PersonCreateFormProps>): ReactN
 				)}
 			</Note>
 
-			<PersonForm formAction={createPersonAction} initialAssets={initialAssets} />
+			<PersonForm
+				formAction={createPersonAction}
+				initialAssets={initialAssets}
+				isDefaultLocale={true}
+			/>
 		</Fragment>
 	);
 }

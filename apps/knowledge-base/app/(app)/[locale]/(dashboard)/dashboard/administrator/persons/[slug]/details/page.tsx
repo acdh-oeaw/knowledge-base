@@ -49,7 +49,7 @@ export default async function DashboardAdministratorPersonDetailsPage(
 	const t = await getExtracted();
 	await assertAuthenticated();
 
-	const anyVersion = await db.query.organisationalUnits.findFirst({
+	const anyVersion = await db.query.persons.findFirst({
 		where: { entityVersion: { slug: { value: slug } } },
 		columns: {},
 		with: {

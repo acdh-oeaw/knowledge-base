@@ -77,7 +77,7 @@ export async function getEntityRelationOptions(
 	);
 	const searchWhere =
 		query != null && query !== "" ? or(allTermsMatchSlugOrLabel, matchesType) : undefined;
-	const where = and(publishedEntityVersionWhere(), searchWhere);
+	const where = and(publishedEntityVersionWhere(), defaultLocaleEntityVersionWhere(), searchWhere);
 
 	const [rows, aggregate] = await Promise.all([
 		executor

@@ -36,7 +36,7 @@ export async function getDocumentationPages(params: GetDocumentationPagesParams)
 			.select({
 				// `id` is the picked *version* id (documentation_pages is keyed by entity_versions.id);
 				// the document id is what mutations operate on.
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				id: schema.documentationPages.id,
 				slug: schema.slugs.value,
 				hasDraft: schema.documentLifecycle.hasDraftChanges,

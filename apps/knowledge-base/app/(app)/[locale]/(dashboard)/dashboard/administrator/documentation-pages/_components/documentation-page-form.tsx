@@ -25,7 +25,7 @@ import type { ServerAction } from "@/lib/server/create-server-action";
 interface DocumentationPageFormProps {
 	contentBlocks?: Array<ContentBlock>;
 	documentationPage?: Pick<schema.DocumentationPage, "id" | "title"> & {
-		entityVersion: { slug: Pick<schema.Slug, "value"> };
+		entityVersion: { entity: Pick<schema.Entity, "id">; slug: Pick<schema.Slug, "value"> };
 	};
 	/**
 	 * Whether the edited documentation page is published, which freezes its slug. Unused when
@@ -69,7 +69,7 @@ export function DocumentationPageForm(props: Readonly<DocumentationPageFormProps
 						<input
 							name="documentId"
 							type="hidden"
-							value={documentationPage.entityVersion.slug.value}
+							value={documentationPage.entityVersion.entity.id}
 						/>
 					</Fragment>
 				) : null}

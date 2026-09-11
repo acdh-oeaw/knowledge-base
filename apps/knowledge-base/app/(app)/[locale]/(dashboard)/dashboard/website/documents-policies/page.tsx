@@ -82,7 +82,7 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 				isPublished: sql<boolean>`EXISTS (
 					SELECT 1 FROM "entity_versions" AS "published_versions"
 					INNER JOIN "entity_status" AS "published_status" ON "published_versions"."status_id" = "published_status"."id"
-					WHERE "published_versions"."entity_id" = ${schema.entities.id}
+					WHERE "published_versions"."entity_id" = ${schema.entityVersions.entityId}
 					AND "published_status"."type" = 'published'
 				)`,
 				document: {

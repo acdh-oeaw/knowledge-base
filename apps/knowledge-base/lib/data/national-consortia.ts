@@ -138,7 +138,7 @@ const versionPick = sql`${schema.entityVersions.id} = ${pickedVersion}`;
 const itemSelect = {
 	// `id` is the picked *version* id (organisational_units is keyed by entity_versions.id); the
 	// document id is what mutations operate on.
-	documentId: schema.entities.id,
+	documentId: schema.entityVersions.entityId,
 	id: schema.organisationalUnits.id,
 	name: schema.organisationalUnits.name,
 	sshocMarketplaceActorId: schema.organisationalUnits.sshocMarketplaceActorId,

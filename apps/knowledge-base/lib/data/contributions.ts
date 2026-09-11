@@ -4,6 +4,7 @@ import { forbidden } from "next/navigation";
 
 import { contributionOptionsPageSize } from "@/lib/constants/contributions";
 import {
+	defaultLocaleEntityVersionWhere,
 	latestEditableEntityVersionWhere,
 	localeMatch,
 	publishedEntityVersionWhere,
@@ -399,7 +400,7 @@ export async function getContributionPersonOptions(
 	const lifecycleWhere = includeDrafts
 		? latestEditableEntityVersionWhere()
 		: publishedEntityVersionWhere();
-	const where = and(lifecycleWhere, searchWhere);
+	const where = and(lifecycleWhere, defaultLocaleEntityVersionWhere(), searchWhere);
 
 	const [items, aggregate] = await Promise.all([
 		db
@@ -447,6 +448,7 @@ export async function getContributionOrganisationalUnitOptions(
 	const query = q?.trim();
 	const where = and(
 		publishedEntityVersionWhere(),
+		defaultLocaleEntityVersionWhere(),
 		eq(schema.personRoleTypesToOrganisationalUnitTypesAllowedRelations.roleTypeId, roleTypeId),
 		matchesAllTerms(query, schema.organisationalUnits.name, schema.organisationalUnits.acronym),
 	);
@@ -526,7 +528,11 @@ export async function getContributionOptions() {
 		.innerJoin(schema.entityVersions, eq(schema.organisationalUnits.id, schema.entityVersions.id))
 		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
 		.where(
-			and(publishedEntityVersionWhere(), inArray(schema.organisationalUnits.typeId, unitTypeIds)),
+			and(
+				publishedEntityVersionWhere(),
+				defaultLocaleEntityVersionWhere(),
+				inArray(schema.organisationalUnits.typeId, unitTypeIds),
+			),
 		);
 
 	const byRole = new Map<
@@ -574,6 +580,7 @@ export async function getCountryOptions(params: GetContributionOptionsParams = {
 
 	const where = and(
 		publishedEntityVersionWhere(),
+		defaultLocaleEntityVersionWhere(),
 		eq(schema.organisationalUnitTypes.type, "country"),
 		matchesAllTerms(query, schema.organisationalUnits.name, schema.organisationalUnits.acronym),
 	);

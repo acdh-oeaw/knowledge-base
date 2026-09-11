@@ -72,7 +72,7 @@ export async function getGovernanceBodies(
 		db
 			.select({
 				acronym: schema.organisationalUnits.acronym,
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				id: schema.organisationalUnits.id,
 				name: schema.organisationalUnits.name,
 				slug: schema.slugs.value,

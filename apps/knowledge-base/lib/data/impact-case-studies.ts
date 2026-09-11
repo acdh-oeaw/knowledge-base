@@ -42,7 +42,7 @@ export async function getImpactCaseStudies(params: GetImpactCaseStudiesParams) {
 		db
 			.select({
 				id: schema.impactCaseStudies.id,
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.entityId,
 				slug: schema.slugs.value,
 				summary: schema.impactCaseStudies.summary,
 				title: schema.impactCaseStudies.title,
