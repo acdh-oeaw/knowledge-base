@@ -154,7 +154,7 @@ jobs:
     name: End-to-end tests / Admin
     runs-on: ubuntu-24.04
     container:
-      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      image: mcr.microsoft.com/playwright:v1.62.0-noble
       options: --user 1001 --ipc=host
     timeout-minutes: 60
 
@@ -291,7 +291,7 @@ jobs:
     name: End-to-end tests / Browsers
     runs-on: ubuntu-24.04
     container:
-      image: mcr.microsoft.com/playwright:v1.60.0-noble
+      image: mcr.microsoft.com/playwright:v1.62.0-noble
       options: --user 1001 --ipc=host
     timeout-minutes: 60
 
