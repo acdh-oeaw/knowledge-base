@@ -105,8 +105,8 @@ const governanceBodies = [
 	{ slug: "general-assembly", name: "General assembly", acronym: "ga" },
 	{ slug: "joint-research-committee", name: "Joint research committee", acronym: "jrc" },
 	{
-		slug: "national-coordinators-committee",
-		name: "National coordinators committee",
+		slug: "national-coordinator-committee",
+		name: "National coordinator committee",
 		acronym: "ncc",
 	},
 	{ slug: "scientific-advisory-board", name: "Scientific advisory board", acronym: "sab" },
