@@ -1297,7 +1297,7 @@ export class DatabaseService {
 	} | null> {
 		const [row] = await this.db
 			.select({
-				documentId: schema.entities.id,
+				documentId: schema.entityVersions.id,
 				id: schema.internalPages.id,
 				slug: schema.slugs.value,
 				title: schema.internalPages.title,
