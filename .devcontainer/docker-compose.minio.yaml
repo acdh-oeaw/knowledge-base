@@ -1,6 +1,6 @@
 services:
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: the-knowledge-base-minio
     restart: unless-stopped
     environment:
