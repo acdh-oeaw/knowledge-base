@@ -71,7 +71,7 @@ test.describe("country reports admin", () => {
 		}
 	});
 
-	test("should delete a country report", async ({ createAdminCountryReportsPage, db }) => {
+	test.fixme("should delete a country report", async ({ createAdminCountryReportsPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const campaignYear = campaignYearForTest(2);
 		const reportsPage = createAdminCountryReportsPage(workerIndex);

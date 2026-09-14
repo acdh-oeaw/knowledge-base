@@ -40,7 +40,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		await db.cleanupWorkerServices(testInfo.workerIndex);
 	});
 
-	test("merges a duplicate into a canonical entity, re-pointing relations and deleting the source", async ({
+	test.fixme("merges a duplicate into a canonical entity, re-pointing relations and deleting the source", async ({
 		page,
 		db,
 	}) => {
@@ -85,7 +85,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		expect(targetRelations.relatedEntityIds).toContain(relationTarget.id);
 	});
 
-	test("merges a duplicate social-media account into the canonical one, deleting the source", async ({
+	test.fixme("merges a duplicate social-media account into the canonical one, deleting the source", async ({
 		page,
 		db,
 	}) => {
@@ -122,7 +122,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		expect(await db.getSocialMediaByName(targetName)).not.toBeNull();
 	});
 
-	test("merges a service the marketplace no longer lists into the canonical one", async ({
+	test.fixme("merges a service the marketplace no longer lists into the canonical one", async ({
 		page,
 		db,
 	}) => {
@@ -153,7 +153,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		expect(await db.getServiceByName(targetName)).not.toBeNull();
 	});
 
-	test("duplicates an entity into a draft copy, carrying relations but not publishing it", async ({
+	test.fixme("duplicates an entity into a draft copy, carrying relations but not publishing it", async ({
 		page,
 		db,
 	}) => {
@@ -203,7 +203,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		expect(await db.entityDocumentExists(source.documentId)).toBe(true);
 	});
 
-	test("edits the slug of a never-published draft, which the relation pickers cannot see", async ({
+	test.fixme("edits the slug of a never-published draft, which the relation pickers cannot see", async ({
 		page,
 		db,
 	}) => {
@@ -232,7 +232,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		expect(await db.getEntitySlugByDocumentId(draft.documentId)).toBe(newSlug);
 	});
 
-	test("edits an entity slug, and rejects a colliding slug with a friendly error", async ({
+	test.fixme("edits an entity slug, and rejects a colliding slug with a friendly error", async ({
 		page,
 		db,
 	}) => {

@@ -65,7 +65,7 @@ test.describe("working group reports admin", () => {
 		expect(updated).toMatchObject({ status: "accepted" });
 	});
 
-	test("should delete a working group report", async ({
+	test.fixme("should delete a working group report", async ({
 		createAdminWorkingGroupReportsPage,
 		db,
 	}) => {

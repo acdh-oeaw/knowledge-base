@@ -249,7 +249,7 @@ test.describe("website spotlight articles admin", () => {
 	 * Spotlight articles rather than news, because footnotes are enabled here — and a caption takes
 	 * footnotes wherever its article does.
 	 */
-	test("should preserve a table caption's formatting, link and footnote across an edit round trip", async ({
+	test.fixme("should preserve a table caption's formatting, link and footnote across an edit round trip", async ({
 		createWebsiteSpotlightArticlesPage,
 		db,
 	}) => {

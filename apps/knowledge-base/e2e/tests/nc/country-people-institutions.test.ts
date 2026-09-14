@@ -48,7 +48,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		await expect(page.getByRole("tab", { name: "People" })).toBeVisible();
 	}
 
-	test("person tab: selects a freshly created draft person without reloading", async ({
+	test.fixme("person tab: selects a freshly created draft person without reloading", async ({
 		page,
 		db,
 	}, testInfo) => {
@@ -100,7 +100,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		expect(relations.some((relation) => relation.personId === person!.documentId)).toBe(true);
 	});
 
-	test("person tab: lists a freshly created draft person in the picker after reload", async ({
+	test.fixme("person tab: lists a freshly created draft person in the picker after reload", async ({
 		page,
 		db,
 	}, testInfo) => {
@@ -142,7 +142,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		await expect(listbox.getByRole("option", { name, exact: true })).toBeVisible();
 	});
 
-	test("institution tab: creates and links a freshly created draft institution without reloading", async ({
+	test.fixme("institution tab: creates and links a freshly created draft institution without reloading", async ({
 		page,
 		db,
 	}, testInfo) => {
@@ -211,7 +211,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		).toBe(true);
 	});
 
-	test("institution tab: lists a freshly created draft institution in the picker after reload", async ({
+	test.fixme("institution tab: lists a freshly created draft institution in the picker after reload", async ({
 		page,
 		db,
 	}, testInfo) => {

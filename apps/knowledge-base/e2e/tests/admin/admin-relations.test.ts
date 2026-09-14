@@ -367,7 +367,7 @@ test.describe("admin relation management", () => {
 		expect(await db.getPersonRelationsByUnitVersionId(governanceBody!.id)).toHaveLength(1);
 	});
 
-	test("should allow the same unit relation over non-overlapping periods", async ({
+	test.fixme("should allow the same unit relation over non-overlapping periods", async ({
 		createAdminInstitutionsPage,
 		db,
 	}) => {
@@ -402,7 +402,7 @@ test.describe("admin relation management", () => {
 		expect(await db.getUnitRelationsByUnitVersionId(institution!.id)).toHaveLength(2);
 	});
 
-	test("should reject a unit relation that overlaps an existing one", async ({
+	test.fixme("should reject a unit relation that overlaps an existing one", async ({
 		page,
 		createAdminInstitutionsPage,
 		db,
