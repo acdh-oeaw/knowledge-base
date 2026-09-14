@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
+import { waitForModalAnimation } from "@/e2e/lib/fixtures/modal";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const ASSETS_PATH = "/en/dashboard/website/assets";
@@ -40,6 +41,7 @@ export class AssetsPage {
 		await this.page.getByRole("button", { name: "Upload asset" }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Upload asset" });
 		await dialog.waitFor({ state: "visible" });
+		await waitForModalAnimation(this.page);
 		return dialog;
 	}
 
@@ -57,6 +59,7 @@ export class AssetsPage {
 		await this.page.getByRole("button", { name: /^(Select|Change) image$/ }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		await dialog.waitFor({ state: "visible" });
+		await waitForModalAnimation(this.page);
 		return dialog;
 	}
 
@@ -99,6 +102,7 @@ export class AssetsPage {
 		const dialog = this.page.getByRole("dialog", { name: "Edit asset metadata" });
 		await dialog.waitFor({ state: "visible" });
 		await dialog.getByRole("progressbar", { name: "Loading..." }).waitFor({ state: "detached" });
+		await waitForModalAnimation(this.page);
 
 		return dialog;
 	}
