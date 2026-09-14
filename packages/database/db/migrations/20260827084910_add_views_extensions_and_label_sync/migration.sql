@@ -8,8 +8,6 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 --> statement-breakpoint
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 --> statement-breakpoint
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
---> statement-breakpoint
 
 -- Per-document lifecycle snapshot, scoped to the default locale (a document's identity for
 -- draft/published purposes is its default-locale version).
