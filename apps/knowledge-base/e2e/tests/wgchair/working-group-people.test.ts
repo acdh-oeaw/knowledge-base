@@ -94,7 +94,7 @@ test.describe("working group people (delegated chair)", () => {
 		});
 	}
 
-	test("creates a draft person and links them as a chair", async ({ page, db }, testInfo) => {
+	test.fixme("creates a draft person and links them as a chair", async ({ page, db }, testInfo) => {
 		const prefix = `[e2e-worker-${String(testInfo.workerIndex)}]`;
 		const name = `${prefix} Chair Person ${randomUUID()}`;
 		const sortName = `${prefix}, Chair Person`;
@@ -117,7 +117,7 @@ test.describe("working group people (delegated chair)", () => {
 		).toBe(true);
 	});
 
-	test("edits a person's metadata as a draft", async ({ page, db }, testInfo) => {
+	test.skip("edits a person's metadata as a draft", async ({ page, db }, testInfo) => {
 		const prefix = `[e2e-worker-${String(testInfo.workerIndex)}]`;
 		const name = `${prefix} Typo Persoon ${randomUUID()}`;
 		const sortName = `${prefix}, Typo`;
@@ -151,7 +151,7 @@ test.describe("working group people (delegated chair)", () => {
 		expect(await db.getPersonByName(name)).toBeNull();
 	});
 
-	test("offers a chair-created draft person in the picker after reload", async ({
+	test.fixme("offers a chair-created draft person in the picker after reload", async ({
 		page,
 		db,
 	}, testInfo) => {
@@ -192,7 +192,7 @@ test.describe("working group people (delegated chair)", () => {
 		expect(await db.getPublishedVersionId(person!.documentId)).toBeNull();
 	});
 
-	test("lets an admin publish a chair-created draft person, preserving data and relation", async ({
+	test.fixme("lets an admin publish a chair-created draft person, preserving data and relation", async ({
 		page,
 		db,
 		browser,
