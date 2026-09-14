@@ -190,9 +190,22 @@ test.describe("persons admin", () => {
 
 		await withFailureInjection(page, async () => {
 			await page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
-			/** Action returns error state; URL stays on the create page. */
+			/**
+			 * The error state has to be asserted before the URL, not after: until the action resolves the
+			 * page is still on `/create` for the trivial reason that nothing has happened yet, so
+			 * checking the URL first passes even when the action goes on to succeed and redirect.
+			 *
+			 * No error state almost always means the server under test was started without
+			 * `E2E_FAILURE_INJECTION=1`. With `reuseExistingServer` Playwright hands us whatever is
+			 * already listening on the port; `shouldInjectFailure` then ignores the header, and the
+			 * person really is created.
+			 */
+			await expect(
+				page.getByText("Internal server error."),
+				"The action did not return an error state. Was the server started without E2E_FAILURE_INJECTION=1? A server reused via `reuseExistingServer` does not pick it up.",
+			).toBeVisible();
+			/** Action returned an error state; URL stays on the create page. */
 			await expect(page).toHaveURL(/\/dashboard\/administrator\/persons\/create$/);
-			await expect(page.getByText("Internal server error.")).toBeVisible();
 		});
 
 		/** Sanity check: nothing was persisted. */
