@@ -122,7 +122,10 @@ for (const config of SECTION_CONFIGS) {
 			);
 		});
 
-		test.fixme("should persist a reordered selection", async ({ createAdminFeaturedItemsPage, db }) => {
+		test.fixme("should persist a reordered selection", async ({
+			createAdminFeaturedItemsPage,
+			db,
+		}) => {
 			const [first, second, third] = items;
 			await config.reset(db, [first!.id, second!.id, third!.id]);
 
