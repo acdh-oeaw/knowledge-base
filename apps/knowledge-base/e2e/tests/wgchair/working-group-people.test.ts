@@ -117,7 +117,7 @@ test.describe("working group people (delegated chair)", () => {
 		).toBe(true);
 	});
 
-	test.skip("edits a person's metadata as a draft", async ({ page, db }, testInfo) => {
+	test.fixme("edits a person's metadata as a draft", async ({ page, db }, testInfo) => {
 		const prefix = `[e2e-worker-${String(testInfo.workerIndex)}]`;
 		const name = `${prefix} Typo Persoon ${randomUUID()}`;
 		const sortName = `${prefix}, Typo`;
