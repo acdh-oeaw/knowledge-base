@@ -6,8 +6,8 @@ import { EntitySlugInputSchema } from "@/lib/entity-slug-input";
 
 export const CreateProjectActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
-	...v.pick(ProjectInsertSchema, ["acronym", "call", "name", "scopeId", "summary", "topic"])
-		.entries,
+	...v.pick(ProjectInsertSchema, ["acronym", "name", "scopeId", "summary", "topic"]).entries,
+	callId: v.nullish(v.pipe(v.string(), v.uuid()), null),
 	funding: v.optional(v.pipe(v.string(), v.toNumber(), v.minValue(0))),
 	duration: v.object({
 		start: v.pipe(v.string(), v.isoDate(), v.toDate()),

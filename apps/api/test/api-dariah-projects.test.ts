@@ -39,7 +39,6 @@ function createProjectData() {
 		name,
 		acronym: f.string.alpha({ length: { min: 3, max: 8 }, casing: "upper" }),
 		summary: f.lorem.paragraph(),
-		call: f.lorem.word(),
 		topic: f.lorem.word(),
 		duration: {
 			start: f.date.past({ years: 5 }),
@@ -57,11 +56,12 @@ interface SeedResult {
 }
 
 async function seed(db: Database, count: number): Promise<SeedResult> {
-	const [status, entityType, scope, unitEntityType, otherType, projectRole, defaultLocale] =
+	const [status, entityType, scope, call, unitEntityType, otherType, projectRole, defaultLocale] =
 		await Promise.all([
 			db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 			db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 			db.query.projectScopes.findFirst({ columns: { id: true } }),
+			db.query.projectCalls.findFirst({ columns: { id: true } }),
 			db.query.entityTypes.findFirst({
 				columns: { id: true },
 				where: { type: "organisational_units" },
@@ -77,6 +77,7 @@ async function seed(db: Database, count: number): Promise<SeedResult> {
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
+	assert(call, "No project call in database.");
 	assert(unitEntityType, "No organisational unit entity type in database.");
 	assert(otherType, "No consortium type in database.");
 	assert(projectRole, "No project role in database.");
@@ -115,7 +116,7 @@ async function seed(db: Database, count: number): Promise<SeedResult> {
 
 	await db.insert(schema.projects).values(
 		allItems.map((item) => {
-			return { ...item.project, scopeId: scope.id };
+			return { ...item.project, scopeId: scope.id, callId: call.id };
 		}),
 	);
 
@@ -181,10 +182,11 @@ async function seedWithMixedStatuses(db: Database): Promise<{
 	activeItem: ReturnType<typeof createProjectData>;
 	inactiveItem: ReturnType<typeof createProjectData>;
 }> {
-	const [status, entityType, scope, projectRole, defaultLocale] = await Promise.all([
+	const [status, entityType, scope, call, projectRole, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 		db.query.projectScopes.findFirst({ columns: { id: true } }),
+		db.query.projectCalls.findFirst({ columns: { id: true } }),
 		db.query.projectRoles.findFirst({ where: { role: "participant" }, columns: { id: true } }),
 		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
@@ -192,6 +194,7 @@ async function seedWithMixedStatuses(db: Database): Promise<{
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
+	assert(call, "No project call in database.");
 	assert(projectRole, "No project role in database.");
 	assert(defaultLocale, "No default locale in database.");
 	const localeId = defaultLocale.id;
@@ -213,7 +216,6 @@ async function seedWithMixedStatuses(db: Database): Promise<{
 				name,
 				acronym: f.string.alpha({ length: { min: 3, max: 8 }, casing: "upper" }),
 				summary: f.lorem.paragraph(),
-				call: f.lorem.word(),
 				topic: f.lorem.word(),
 				duration: { start, end },
 			},
@@ -249,7 +251,7 @@ async function seedWithMixedStatuses(db: Database): Promise<{
 
 	await db.insert(schema.projects).values(
 		allItems.map((item) => {
-			return { ...item.project, scopeId: scope.id };
+			return { ...item.project, scopeId: scope.id, callId: call.id };
 		}),
 	);
 

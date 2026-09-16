@@ -108,7 +108,6 @@ export default async function DashboardAdministratorProjectDetailsPage(
 		where: { id: versionId },
 		columns: {
 			acronym: true,
-			call: true,
 			duration: true,
 			funding: true,
 			id: true,
@@ -148,6 +147,12 @@ export default async function DashboardAdministratorProjectDetailsPage(
 				columns: {
 					id: true,
 					scope: true,
+				},
+			},
+			call: {
+				columns: {
+					id: true,
+					call: true,
 				},
 			},
 		},

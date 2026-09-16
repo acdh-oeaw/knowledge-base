@@ -361,6 +361,15 @@ async function seedCms(tx: Transaction) {
 		.onConflictDoNothing();
 
 	await tx
+		.insert(schema.projectCalls)
+		.values(
+			schema.projectCallsEnum.map((call) => {
+				return { call };
+			}),
+		)
+		.onConflictDoNothing();
+
+	await tx
 		.insert(schema.serviceStatuses)
 		.values(
 			schema.serviceStatusesEnum.map((status) => {

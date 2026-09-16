@@ -13,6 +13,7 @@ test.describe("projects admin", () => {
 		/** Verify that global prerequisites exist. */
 		await db.getTestAsset();
 		await db.getProjectScope();
+		await db.getProjectCall();
 	});
 
 	test.afterAll(async ({ db }, testInfo) => {
@@ -28,7 +29,8 @@ test.describe("projects admin", () => {
 		const acronym = "E2EP";
 		const funding = 12345;
 		const topic = "E2E project topic";
-		const call = "E2E project call";
+		const call = "clariah_at_project_funding";
+		const callLabel = "CLARIAH-AT Project Funding";
 		const summary = "E2E test project summary";
 		const description = "E2E test project description.";
 		const socialMediaName = `${adminProjectsPage.workerPrefix} Project Social ${randomUUID()}`;
@@ -39,7 +41,7 @@ test.describe("projects admin", () => {
 		await adminProjectsPage.fillAcronym(acronym);
 		await adminProjectsPage.fillFunding(funding);
 		await adminProjectsPage.fillTopic(topic);
-		await adminProjectsPage.fillCall(call);
+		await adminProjectsPage.selectCall(callLabel);
 		await adminProjectsPage.selectFirstScope();
 		await adminProjectsPage.fillDatePicker("Start date", 2024, 1, 15);
 		await adminProjectsPage.fillDatePicker("End date", 2024, 12, 31);
@@ -57,9 +59,10 @@ test.describe("projects admin", () => {
 
 		const created = await db.getProjectByName(projectName);
 		expect(created).not.toBeNull();
+		const projectCall = await db.getProjectCallByValue(call);
 		expect(created).toMatchObject({
 			acronym,
-			call,
+			callId: projectCall?.id,
 			funding,
 			name: projectName,
 			summary,
@@ -119,7 +122,7 @@ test.describe("projects admin", () => {
 		await adminProjectsPage.fillAcronym("E2EOLD");
 		await adminProjectsPage.fillFunding(1000);
 		await adminProjectsPage.fillTopic("Old E2E project topic");
-		await adminProjectsPage.fillCall("Old E2E project call");
+		await adminProjectsPage.selectCall("Go!Digital 1.0");
 		await adminProjectsPage.selectFirstScope();
 		await adminProjectsPage.fillDatePicker("Start date", 2024, 1, 15);
 		await adminProjectsPage.fillDatePicker("End date", 2024, 12, 31);
@@ -145,14 +148,15 @@ test.describe("projects admin", () => {
 		const updatedAcronym = "E2ENEW";
 		const updatedFunding = 67890;
 		const updatedTopic = "Updated E2E project topic";
-		const updatedCall = "Updated E2E project call";
+		const updatedCall = "go_digital_2_0";
+		const updatedCallLabel = "Go!Digital 2.0";
 		const updatedSummary = "Updated E2E test project summary";
 		const updatedDescription = "Updated E2E test project description.";
 		await page.getByRole("main").getByLabel("Name").fill(updatedName);
 		await adminProjectsPage.fillAcronym(updatedAcronym);
 		await adminProjectsPage.fillFunding(updatedFunding);
 		await adminProjectsPage.fillTopic(updatedTopic);
-		await adminProjectsPage.fillCall(updatedCall);
+		await adminProjectsPage.selectCall(updatedCallLabel);
 		await adminProjectsPage.selectFirstScope();
 		await adminProjectsPage.fillDatePicker("Start date", 2025, 2, 16);
 		await adminProjectsPage.fillDatePicker("End date", 2025, 11, 30);
@@ -173,9 +177,10 @@ test.describe("projects admin", () => {
 
 		const updated = await db.getProjectByName(updatedName);
 		expect(updated).not.toBeNull();
+		const updatedProjectCall = await db.getProjectCallByValue(updatedCall);
 		expect(updated).toMatchObject({
 			acronym: updatedAcronym,
-			call: updatedCall,
+			callId: updatedProjectCall?.id,
 			funding: updatedFunding,
 			name: updatedName,
 			summary: updatedSummary,
@@ -240,7 +245,7 @@ test.describe("projects admin", () => {
 		await adminProjectsPage.fillAcronym("OPT");
 		await adminProjectsPage.fillFunding(100);
 		await adminProjectsPage.fillTopic("Optional topic");
-		await adminProjectsPage.fillCall("Optional call");
+		await adminProjectsPage.selectCall("Go!Digital 3.0");
 		await adminProjectsPage.selectFirstScope();
 		await adminProjectsPage.fillDatePicker("Start date", 2024, 1, 15);
 		await adminProjectsPage.fillDatePicker("End date", 2024, 12, 31);
@@ -267,7 +272,7 @@ test.describe("projects admin", () => {
 		await adminProjectsPage.fillFunding(0);
 		await page.getByLabel("Funding").clear();
 		await adminProjectsPage.fillTopic("");
-		await adminProjectsPage.fillCall("");
+		await adminProjectsPage.clearCall();
 		await page.getByLabel("Summary").clear();
 		await adminProjectsPage.clearDatePicker("End date");
 		await adminProjectsPage.removeImage();
@@ -277,7 +282,7 @@ test.describe("projects admin", () => {
 		const updated = await db.getProjectByName(updatedName);
 		expect(updated).toMatchObject({
 			acronym: null,
-			call: null,
+			callId: null,
 			funding: null,
 			imageId: null,
 			summary: null,

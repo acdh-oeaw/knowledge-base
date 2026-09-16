@@ -345,6 +345,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.dariahProjects.id,
 				to: r.projectsToOrganisationalUnits.projectDocumentId,
 			}),
+			call: r.one.projectCalls({
+				from: r.dariahProjects.callId,
+				to: r.projectCalls.id,
+			}),
 			scope: r.one.projectScopes({
 				from: r.dariahProjects.scopeId,
 				to: r.projectScopes.id,
@@ -465,6 +469,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.projects.id,
 				to: r.entityVersions.id,
 				optional: false,
+			}),
+			call: r.one.projectCalls({
+				from: r.projects.callId,
+				to: r.projectCalls.id,
 			}),
 			image: r.one.assets({
 				from: r.projects.imageId,

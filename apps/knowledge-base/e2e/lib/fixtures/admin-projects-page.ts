@@ -63,8 +63,28 @@ export class AdminProjectsPage {
 		await this.page.locator('input[name="topic"]').fill(topic);
 	}
 
-	async fillCall(call: string): Promise<void> {
-		await this.page.locator('input[name="call"]').fill(call);
+	get callControl(): Locator {
+		return this.page
+			.locator('[data-slot="control"]')
+			.filter({ has: this.page.getByText("Call", { exact: true }) });
+	}
+
+	/** Picks the option whose label matches one of the fixed call values, e.g. "Go!Digital 1.0". */
+	async selectCall(label: string): Promise<void> {
+		await this.callControl.locator("button").click();
+		await this.page.getByRole("option", { name: label, exact: true }).click();
+	}
+
+	/** Picks the first real call option (skipping "None") — for tests that don't care which one. */
+	async selectFirstCall(): Promise<void> {
+		await this.callControl.locator("button").click();
+		await this.page.getByRole("option").nth(1).click();
+	}
+
+	/** Clears the call back to unset via the "None" option. */
+	async clearCall(): Promise<void> {
+		await this.callControl.locator("button").click();
+		await this.page.getByRole("option", { name: "None", exact: true }).click();
 	}
 
 	async fillSummary(text: string): Promise<void> {

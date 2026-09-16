@@ -36,7 +36,7 @@ export default async function DashboardAdministratorCreateProjectPage(
 
 	const { user } = await assertAuthenticated();
 	const [
-		{ initialSocialMedia, scopes },
+		{ initialSocialMedia, scopes, calls },
 		defaultLocale,
 		initialRelatedEntities,
 		initialRelatedResources,
@@ -58,6 +58,7 @@ export default async function DashboardAdministratorCreateProjectPage(
 			initialSocialMediaItems={initialSocialMedia.items}
 			initialSocialMediaTotal={initialSocialMedia.total}
 			scopes={scopes}
+			calls={calls}
 		/>
 	);
 }

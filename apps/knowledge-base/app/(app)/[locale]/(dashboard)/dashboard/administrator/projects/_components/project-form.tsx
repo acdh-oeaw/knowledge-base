@@ -46,6 +46,7 @@ import {
 	type CreatedSocialMedia,
 	createSocialMediaAction,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/create-social-media.action";
+import { useProjectCallLabel } from "@/lib/format-project-call";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 async function fetchSocialMediaOptionsPage(
@@ -79,9 +80,10 @@ interface ProjectFormProps {
 	 * to `true` (the create form has no locale concept, and always starts in the default locale).
 	 */
 	isDefaultLocale?: boolean;
+	selectedLocaleCode?: string;
 	project?: Pick<
 		schema.Project,
-		"acronym" | "call" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
+		"acronym" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: {
@@ -90,11 +92,13 @@ interface ProjectFormProps {
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
+		call: Pick<schema.ProjectCall, "id" | "call"> | null;
 	} & { image: SelectedImage | null };
 	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
 	isPublished?: boolean;
 	formAction: ServerAction;
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
+	calls: Array<Pick<schema.ProjectCall, "id" | "call">>;
 	initialSocialMediaItems: Array<AsyncOption>;
 	initialSocialMediaTotal: number;
 	selectedSocialMediaItems?: Array<AsyncOption>;
@@ -114,8 +118,10 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 		initialAssets,
 		formAction,
 		isDefaultLocale = true,
+		selectedLocaleCode,
 		project,
 		scopes,
+		calls,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
 		selectedSocialMediaItems,
@@ -132,10 +138,13 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 	} = props;
 
 	const t = useExtracted();
+	const getProjectCallLabel = useProjectCallLabel(selectedLocaleCode);
 
 	const [state, action, isPending] = useActionState(formAction, createActionStateInitial());
 
 	const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(project?.image ?? null);
+
+	const [selectedCallId, setSelectedCallId] = useState<string | null>(project?.call?.id ?? null);
 
 	const [selectedSocialMediaIds, setSelectedSocialMediaIds] = useState<Array<string>>(
 		initialSocialMediaIds ?? [],
@@ -219,11 +228,41 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 						<FieldError />
 					</TextField>
 
-					<TextField defaultValue={project?.call ?? undefined} name="call">
-						<Label>{t("Call")}</Label>
-						<Input />
-						<FieldError />
-					</TextField>
+					{isDefaultLocale ? (
+						<Fragment>
+							<Select
+								onChange={(key) => {
+									setSelectedCallId(key === "none" ? null : String(key));
+								}}
+								value={selectedCallId ?? "none"}
+							>
+								<Label>{t("Call")}</Label>
+								<SelectTrigger />
+								<SelectContent>
+									<SelectItem id="none">{t("None")}</SelectItem>
+									{calls.map((item) => (
+										<SelectItem key={item.id} id={item.id}>
+											{getProjectCallLabel(item.call)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{selectedCallId != null ? (
+								<input name="callId" type="hidden" value={selectedCallId} />
+							) : null}
+						</Fragment>
+					) : (
+						<div className="flex flex-col gap-y-1">
+							<Label>{t("Call")}</Label>
+							<p className="text-sm">
+								{project?.call != null ? getProjectCallLabel(project.call.call) : t("Not set")}
+							</p>
+							<Description>{t("Editable only in the default locale.")}</Description>
+							{project?.call != null ? (
+								<input name="callId" type="hidden" value={project.call.id} />
+							) : null}
+						</div>
+					)}
 
 					{isDefaultLocale ? (
 						<Fragment>

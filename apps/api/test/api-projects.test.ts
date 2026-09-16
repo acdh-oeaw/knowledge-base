@@ -40,16 +40,18 @@ function createItems(count: number) {
 }
 
 async function seed(db: Database, items: ReturnType<typeof createItems>) {
-	const [status, entityType, scope, defaultLocale] = await Promise.all([
+	const [status, entityType, scope, call, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 		db.query.projectScopes.findFirst({ columns: { id: true } }),
+		db.query.projectCalls.findFirst({ columns: { id: true } }),
 		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
+	assert(call, "No project call in database.");
 	assert(defaultLocale, "No default locale in database.");
 	const localeId = defaultLocale.id;
 
@@ -80,7 +82,7 @@ async function seed(db: Database, items: ReturnType<typeof createItems>) {
 
 	await db.insert(schema.projects).values(
 		items.map((item) => {
-			return { ...item.project, scopeId: scope.id };
+			return { ...item.project, scopeId: scope.id, callId: call.id };
 		}),
 	);
 
@@ -90,16 +92,18 @@ async function seed(db: Database, items: ReturnType<typeof createItems>) {
 }
 
 async function seedWithMixedStatuses(db: Database) {
-	const [status, entityType, scope, defaultLocale] = await Promise.all([
+	const [status, entityType, scope, call, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
 		db.query.projectScopes.findFirst({ columns: { id: true } }),
+		db.query.projectCalls.findFirst({ columns: { id: true } }),
 		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
 	]);
 
 	assert(status, "No entity status in database.");
 	assert(entityType, "No entity type in database.");
 	assert(scope, "No project scope in database.");
+	assert(call, "No project call in database.");
 	assert(defaultLocale, "No default locale in database.");
 	const localeId = defaultLocale.id;
 
@@ -155,7 +159,7 @@ async function seedWithMixedStatuses(db: Database) {
 
 	await db.insert(schema.projects).values(
 		allItems.map((item) => {
-			return { ...item.project, scopeId: scope.id };
+			return { ...item.project, scopeId: scope.id, callId: call.id };
 		}),
 	);
 

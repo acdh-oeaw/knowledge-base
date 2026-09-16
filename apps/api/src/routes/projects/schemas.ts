@@ -36,15 +36,8 @@ export const ProjectSocialMediaSchema = v.pipe(
 
 export const ProjectBaseSchema = v.pipe(
 	v.object({
-		...v.pick(schema.ProjectSelectSchema, [
-			"id",
-			"name",
-			"acronym",
-			"summary",
-			"call",
-			"topic",
-			"funding",
-		]).entries,
+		...v.pick(schema.ProjectSelectSchema, ["id", "name", "acronym", "summary", "topic", "funding"])
+			.entries,
 		image: v.nullable(ImageSchema),
 		duration: v.object({
 			start: v.pipe(v.string(), v.isoTimestamp()),
@@ -52,6 +45,7 @@ export const ProjectBaseSchema = v.pipe(
 		}),
 		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
+		call: v.nullable(v.object({ call: v.picklist(schema.projectCallsEnum) })),
 		socialMedia: v.array(ProjectSocialMediaSchema),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
@@ -71,15 +65,8 @@ export type ProjectList = v.InferOutput<typeof ProjectListSchema>;
 
 export const ProjectSchema = v.pipe(
 	v.object({
-		...v.pick(schema.ProjectSelectSchema, [
-			"id",
-			"name",
-			"acronym",
-			"summary",
-			"call",
-			"topic",
-			"funding",
-		]).entries,
+		...v.pick(schema.ProjectSelectSchema, ["id", "name", "acronym", "summary", "topic", "funding"])
+			.entries,
 		image: v.nullable(ImageSchema),
 		duration: v.object({
 			start: v.pipe(v.string(), v.isoTimestamp()),
@@ -87,6 +74,7 @@ export const ProjectSchema = v.pipe(
 		}),
 		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
+		call: v.nullable(v.object({ call: v.picklist(schema.projectCallsEnum) })),
 		socialMedia: v.array(ProjectSocialMediaSchema),
 		funders: v.array(ProjectOrganisationalUnitSchema),
 		partners: v.array(ProjectOrganisationalUnitSchema),

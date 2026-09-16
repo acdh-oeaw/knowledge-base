@@ -35,6 +35,7 @@ interface Refs {
 	assetId: string;
 	organisationalUnitTypeId: string;
 	projectScopeId: string;
+	projectCallId: string;
 	opportunitySourceId: string;
 	documentPolicyGroupId: string;
 	personSocialMediaTypeId: string;
@@ -55,6 +56,12 @@ async function resolveRefs(tx: Transaction): Promise<Refs> {
 		.from(schema.projectScopes)
 		.limit(1);
 	assert(projectScope, "No project scope found — seed lookup data first.");
+
+	const [projectCall] = await tx
+		.select({ id: schema.projectCalls.id })
+		.from(schema.projectCalls)
+		.limit(1);
+	assert(projectCall, "No project call found — seed lookup data first.");
 
 	const [opportunitySource] = await tx
 		.select({ id: schema.opportunitySources.id })
@@ -78,6 +85,7 @@ async function resolveRefs(tx: Transaction): Promise<Refs> {
 		assetId: asset.id,
 		organisationalUnitTypeId: organisationalUnitType.id,
 		projectScopeId: projectScope.id,
+		projectCallId: projectCall.id,
 		opportunitySourceId: opportunitySource.id,
 		documentPolicyGroupId: documentPolicyGroup.id,
 		personSocialMediaTypeId: personSocialMediaType.id,
@@ -465,7 +473,7 @@ const cases: Array<RoundtripCase> = [
 				duration,
 				funding: 123456.78,
 				summary: f.lorem.paragraph(),
-				call: f.lorem.words(2),
+				callId: refs.projectCallId,
 				topic: f.lorem.words(2),
 				imageId: refs.assetId,
 				scopeId: refs.projectScopeId,

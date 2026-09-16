@@ -53,7 +53,7 @@ export const updateProjectAction = createMutationAction({
 			.update(schema.projects)
 			.set({
 				acronym: input.acronym,
-				call: input.call,
+				callId: input.callId,
 				duration: input.duration,
 				funding: input.funding,
 				imageId,

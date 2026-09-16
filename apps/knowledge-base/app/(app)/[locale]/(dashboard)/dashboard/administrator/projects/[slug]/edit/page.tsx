@@ -106,7 +106,6 @@ export default async function DashboardAdministratorEditProjectPage(
 			where: { id: draftVersionId },
 			columns: {
 				acronym: true,
-				call: true,
 				duration: true,
 				funding: true,
 				id: true,
@@ -146,6 +145,12 @@ export default async function DashboardAdministratorEditProjectPage(
 						scope: true,
 					},
 				},
+				call: {
+					columns: {
+						id: true,
+						call: true,
+					},
+				},
 			},
 		}),
 	]);
@@ -163,6 +168,7 @@ export default async function DashboardAdministratorEditProjectPage(
 	const [
 		descriptionContentBlocks,
 		scopes,
+		calls,
 		roles,
 		initialSocialMedia,
 		existingPartners,
@@ -175,6 +181,10 @@ export default async function DashboardAdministratorEditProjectPage(
 		db.query.projectScopes.findMany({
 			orderBy: { scope: "asc" },
 			columns: { id: true, scope: true },
+		}),
+		db.query.projectCalls.findMany({
+			orderBy: { call: "asc" },
+			columns: { id: true, call: true },
 		}),
 		db.query.projectRoles.findMany({
 			orderBy: { role: "asc" },
@@ -267,6 +277,7 @@ export default async function DashboardAdministratorEditProjectPage(
 			isPublished={publishedId != null}
 			roles={roles}
 			scopes={scopes}
+			calls={calls}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 			selectedSocialMediaItems={selectedSocialMediaItems}

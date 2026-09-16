@@ -47,7 +47,7 @@ export const createProjectAction = createMutationAction({
 		await tx.insert(schema.projects).values({
 			id: versionId,
 			acronym: input.acronym,
-			call: input.call,
+			callId: input.callId,
 			duration: input.duration,
 			funding: input.funding,
 			imageId,
