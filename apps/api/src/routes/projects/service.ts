@@ -418,7 +418,6 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 			acronym: true,
 			summary: true,
 			duration: true,
-			call: true,
 			topic: true,
 			funding: true,
 		},
