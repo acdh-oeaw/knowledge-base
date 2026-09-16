@@ -13,6 +13,7 @@ interface ProjectCreateFormProps {
 	defaultLocaleName: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
+	calls: Array<Pick<schema.ProjectCall, "id" | "call">>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -26,6 +27,7 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 		defaultLocaleName,
 		initialAssets,
 		scopes,
+		calls,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
 		initialRelatedEntityItems,
@@ -56,6 +58,7 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 				initialSocialMediaItems={initialSocialMediaItems}
 				initialSocialMediaTotal={initialSocialMediaTotal}
 				scopes={scopes}
+				calls={calls}
 			/>
 		</Fragment>
 	);

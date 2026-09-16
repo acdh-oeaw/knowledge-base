@@ -114,7 +114,7 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 				acronym: schema.projects.acronym,
 				summary: schema.projects.summary,
 				duration: schema.projects.duration,
-				call: schema.projects.call,
+				call: schema.projectCalls.call,
 				topic: schema.projects.topic,
 				funding: schema.projects.funding,
 				updatedAt: schema.entityVersions.updatedAt,
@@ -152,6 +152,7 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 			.innerJoin(schema.projects, eq(schema.projects.id, schema.entityVersions.id))
 			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(schema.projectScopes, eq(schema.projectScopes.id, schema.projects.scopeId))
+			.leftJoin(schema.projectCalls, eq(schema.projectCalls.id, schema.projects.callId))
 			.leftJoin(schema.assets, eq(schema.projects.imageId, schema.assets.id))
 			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 			.where(and(eq(schema.entities.typeId, typeId), statusFilter))
@@ -197,7 +198,7 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 			name: item.name,
 			acronym: item.acronym,
 			summary: item.summary,
-			call: item.call,
+			call: item.call != null ? { call: item.call } : null,
 			topic: item.topic,
 			funding: item.funding,
 			duration,
@@ -237,7 +238,6 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 				acronym: true,
 				summary: true,
 				duration: true,
-				call: true,
 				topic: true,
 				funding: true,
 			},
@@ -257,6 +257,11 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 				scope: {
 					columns: {
 						scope: true,
+					},
+				},
+				call: {
+					columns: {
+						call: true,
 					},
 				},
 				socialMedia: {
@@ -413,7 +418,6 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 			acronym: true,
 			summary: true,
 			duration: true,
-			call: true,
 			topic: true,
 			funding: true,
 		},
@@ -433,6 +437,11 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 			scope: {
 				columns: {
 					scope: true,
+				},
+			},
+			call: {
+				columns: {
+					call: true,
 				},
 			},
 			socialMedia: {

@@ -30,7 +30,7 @@ interface ProjectEditFormProps {
 	selectedLocaleCode: string;
 	project: Pick<
 		schema.Project,
-		"acronym" | "call" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
+		"acronym" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
 	> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: {
@@ -39,8 +39,10 @@ interface ProjectEditFormProps {
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
+		call: Pick<schema.ProjectCall, "id" | "call"> | null;
 	} & { image: SelectedImage | null };
 	scopes: Array<Pick<schema.ProjectScope, "id" | "scope">>;
+	calls: Array<Pick<schema.ProjectCall, "id" | "call">>;
 	roles: Array<Pick<schema.ProjectRole, "id" | "role">>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
@@ -76,6 +78,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		selectedLocaleCode,
 		project,
 		scopes,
+		calls,
 		initialSocialMediaIds,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
@@ -123,6 +126,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 					<ProjectForm
 						key={project.id}
 						isDefaultLocale={isDefaultLocale}
+						selectedLocaleCode={selectedLocaleCode}
 						isPublished={isPublished}
 						formAction={updateProjectAction}
 						initialAssets={initialAssets}
@@ -137,6 +141,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 						initialSocialMediaTotal={initialSocialMediaTotal}
 						project={project}
 						scopes={scopes}
+						calls={calls}
 						selectedRelatedEntities={selectedRelatedEntities}
 						selectedRelatedResources={selectedRelatedResources}
 						selectedSocialMediaItems={selectedSocialMediaItems}

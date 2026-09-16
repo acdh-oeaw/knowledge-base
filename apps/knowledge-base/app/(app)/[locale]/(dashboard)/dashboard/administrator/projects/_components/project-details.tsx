@@ -19,6 +19,7 @@ import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_c
 import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 import { getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
+import { useProjectCallLabel } from "@/lib/format-project-call";
 import { formatRoleType } from "@/lib/format-role-type";
 
 interface ProjectDetailsProps {
@@ -31,7 +32,7 @@ interface ProjectDetailsProps {
 	selectedVersion: "draft" | "published";
 	project: Pick<
 		schema.Project,
-		"acronym" | "call" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
+		"acronym" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
 	> & {
 		descriptionContentBlocks: Array<ContentBlock>;
 		entityVersion: {
@@ -40,6 +41,7 @@ interface ProjectDetailsProps {
 			status: Pick<schema.EntityStatus, "id" | "type">;
 		};
 		scope: Pick<schema.ProjectScope, "id" | "scope">;
+		call: Pick<schema.ProjectCall, "id" | "call"> | null;
 		partners: Array<{
 			id: string;
 			unitName: string;
@@ -79,6 +81,7 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 	} = props;
 
 	const t = useExtracted();
+	const getProjectCallLabel = useProjectCallLabel(selectedLocaleCode);
 	const format = useFormatter();
 
 	return (
@@ -138,7 +141,9 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Call")}</DescriptionTerm>
-				<DescriptionDetails>{project.call}</DescriptionDetails>
+				<DescriptionDetails>
+					{project.call != null ? getProjectCallLabel(project.call.call) : null}
+				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Topic")}</DescriptionTerm>
 				<DescriptionDetails>{project.topic}</DescriptionDetails>

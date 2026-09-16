@@ -9,7 +9,7 @@ export const UpdateProjectActionInputSchema = v.object({
 	documentId: v.pipe(v.string(), v.uuid()),
 	...v.pick(ProjectUpdateSchema, ["name", "scopeId"]).entries,
 	acronym: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
-	call: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
+	callId: v.nullish(v.pipe(v.string(), v.uuid()), null),
 	summary: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	duration: v.object({
 		start: v.pipe(v.string(), v.isoDate(), v.toDate()),

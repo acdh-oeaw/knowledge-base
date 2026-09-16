@@ -5409,6 +5409,13 @@ msgid "jFTGcF"
 msgstr "Enter the funding amount in euros."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/user-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_components/document-or-policy-form-dialog.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_components/document-or-policy-form.tsx
+msgid "450Fty"
+msgstr "None"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 msgid "85T2Oj"
 msgstr "Add a short description."
 
@@ -6173,12 +6180,6 @@ msgstr "Actor link"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/user-form.tsx
 msgid "Talyd0"
 msgstr "Link to"
-
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/user-form.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_components/document-or-policy-form-dialog.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_components/document-or-policy-form.tsx
-msgid "450Fty"
-msgstr "None"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/user-form.tsx
 msgid "7Wjp1U"
@@ -8044,6 +8045,26 @@ msgstr "You need to sign in to access this page. If you already have an account,
 #: lib/data/sshoc-marketplace-actor-id.ts
 msgid "yJqGgj"
 msgstr "This SSHOC marketplace actor id is already assigned to another organisational unit."
+
+#: lib/format-project-call.ts
+msgid "6sf2lD"
+msgstr "CLARIAH-AT Project Funding"
+
+#: lib/format-project-call.ts
+msgid "_ErBVb"
+msgstr "Go!Digital 1.0"
+
+#: lib/format-project-call.ts
+msgid "NdYKJi"
+msgstr "Go!Digital 2.0"
+
+#: lib/format-project-call.ts
+msgid "vx7WLn"
+msgstr "Go!Digital 3.0"
+
+#: lib/format-project-call.ts
+msgid "dcnmOj"
+msgstr "Go!Digital Next Generation"
 
 #: lib/server/create-command-action.ts
 #: lib/server/create-server-action.ts

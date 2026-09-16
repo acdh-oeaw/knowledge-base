@@ -2155,7 +2155,22 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "call": {
             "anyOf": [
               {
-                "type": "string",
+                "properties": {
+                  "call": {
+                    "enum": [
+                      "clariah_at_project_funding",
+                      "go_digital_1_0",
+                      "go_digital_2_0",
+                      "go_digital_3_0",
+                      "go_digital_next_generation",
+                    ],
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "call",
+                ],
+                "type": "object",
               },
               {
                 "type": "null",
@@ -3670,13 +3685,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "name",
           "acronym",
           "summary",
-          "call",
           "topic",
           "funding",
           "image",
           "duration",
           "entity",
           "scope",
+          "call",
           "socialMedia",
           "participants",
           "coordinators",
@@ -3700,7 +3715,22 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "call": {
             "anyOf": [
               {
-                "type": "string",
+                "properties": {
+                  "call": {
+                    "enum": [
+                      "clariah_at_project_funding",
+                      "go_digital_1_0",
+                      "go_digital_2_0",
+                      "go_digital_3_0",
+                      "go_digital_next_generation",
+                    ],
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "call",
+                ],
+                "type": "object",
               },
               {
                 "type": "null",
@@ -3912,13 +3942,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "name",
           "acronym",
           "summary",
-          "call",
           "topic",
           "funding",
           "duration",
           "image",
           "entity",
           "scope",
+          "call",
           "socialMedia",
           "role",
           "publishedAt",
@@ -24242,7 +24272,22 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "call": {
             "anyOf": [
               {
-                "type": "string",
+                "properties": {
+                  "call": {
+                    "enum": [
+                      "clariah_at_project_funding",
+                      "go_digital_1_0",
+                      "go_digital_2_0",
+                      "go_digital_3_0",
+                      "go_digital_next_generation",
+                    ],
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "call",
+                ],
+                "type": "object",
               },
               {
                 "type": "null",
@@ -25702,13 +25747,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "name",
           "acronym",
           "summary",
-          "call",
           "topic",
           "funding",
           "image",
           "duration",
           "entity",
           "scope",
+          "call",
           "socialMedia",
           "funders",
           "partners",
@@ -25732,7 +25777,22 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "call": {
             "anyOf": [
               {
-                "type": "string",
+                "properties": {
+                  "call": {
+                    "enum": [
+                      "clariah_at_project_funding",
+                      "go_digital_1_0",
+                      "go_digital_2_0",
+                      "go_digital_3_0",
+                      "go_digital_next_generation",
+                    ],
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "call",
+                ],
+                "type": "object",
               },
               {
                 "type": "null",
@@ -25928,13 +25988,13 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "name",
           "acronym",
           "summary",
-          "call",
           "topic",
           "funding",
           "image",
           "duration",
           "entity",
           "scope",
+          "call",
           "socialMedia",
           "publishedAt",
         ],

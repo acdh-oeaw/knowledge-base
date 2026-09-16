@@ -43,6 +43,27 @@ export const projectRoles = p.snakeCase.table(
 export type ProjectRole = typeof projectRoles.$inferSelect;
 export type ProjectRoleInput = typeof projectRoles.$inferInsert;
 
+export const projectCallsEnum = [
+	"clariah_at_project_funding",
+	"go_digital_1_0",
+	"go_digital_2_0",
+	"go_digital_3_0",
+	"go_digital_next_generation",
+] as const;
+
+export const projectCalls = p.snakeCase.table(
+	"project_calls",
+	{
+		id: p.uuid("id").primaryKey().default(uuidv7()),
+		call: p.text("call", { enum: projectCallsEnum }).notNull().unique(),
+		...f.timestamps(),
+	},
+	(t) => [p.check("project_calls_call_enum_check", inArray(t.call, projectCallsEnum))],
+);
+
+export type ProjectCall = typeof projectCalls.$inferSelect;
+export type ProjectCallInput = typeof projectCalls.$inferInsert;
+
 export const projects = p.snakeCase.table("projects", {
 	id: p
 		.uuid("id")
@@ -54,13 +75,13 @@ export const projects = p.snakeCase.table("projects", {
 	duration: f.timestampRange("duration").notNull(),
 	funding: p.numeric("funding", { mode: "number", precision: 12, scale: 2 }),
 	summary: p.text("summary"),
-	call: p.text("call"),
 	topic: p.text("topic"),
 	imageId: p.uuid("image_id").references(() => assets.id),
 	scopeId: p
 		.uuid("scope_id")
 		.notNull()
 		.references(() => projectScopes.id),
+	callId: p.uuid("call_id").references(() => projectCalls.id),
 	...f.timestamps(),
 });
 
@@ -160,7 +181,7 @@ export const dariahProjects = p.snakeCase
 		summary: p.text("summary"),
 		updatedAt: f.timestamp("updated_at").notNull(),
 		duration: f.timestampRange("duration").notNull(),
-		call: p.text("call").notNull(),
+		callId: p.uuid("call_id"),
 		topic: p.text("topic").notNull(),
 		funding: p.numeric("funding", { mode: "number", precision: 12, scale: 2 }),
 		imageId: p.uuid("image_id"),

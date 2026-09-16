@@ -153,7 +153,7 @@ export async function getDariahProjects(
 				acronym: schema.dariahProjects.acronym,
 				summary: schema.dariahProjects.summary,
 				duration: schema.dariahProjects.duration,
-				call: schema.dariahProjects.call,
+				call: schema.projectCalls.call,
 				topic: schema.dariahProjects.topic,
 				funding: schema.dariahProjects.funding,
 				updatedAt: schema.entityVersions.updatedAt,
@@ -191,6 +191,7 @@ export async function getDariahProjects(
 			.innerJoin(schema.dariahProjects, eq(schema.dariahProjects.id, schema.entityVersions.id))
 			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 			.innerJoin(schema.projectScopes, eq(schema.projectScopes.id, schema.dariahProjects.scopeId))
+			.leftJoin(schema.projectCalls, eq(schema.projectCalls.id, schema.dariahProjects.callId))
 			.leftJoin(schema.assets, eq(schema.dariahProjects.imageId, schema.assets.id))
 			.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
 			.where(and(eq(schema.entities.typeId, typeId), statusFilter))
@@ -251,7 +252,7 @@ export async function getDariahProjects(
 			name: item.name,
 			acronym: item.acronym,
 			summary: item.summary,
-			call: item.call,
+			call: item.call != null ? { call: item.call } : null,
 			topic: item.topic,
 			funding: item.funding,
 			duration,
@@ -295,7 +296,6 @@ export async function getDariahProjectById(
 				acronym: true,
 				summary: true,
 				duration: true,
-				call: true,
 				topic: true,
 				funding: true,
 			},
@@ -315,6 +315,11 @@ export async function getDariahProjectById(
 				scope: {
 					columns: {
 						scope: true,
+					},
+				},
+				call: {
+					columns: {
+						call: true,
 					},
 				},
 				socialMedia: {
@@ -466,7 +471,6 @@ export async function getDariahProjectBySlug(
 			acronym: true,
 			summary: true,
 			duration: true,
-			call: true,
 			topic: true,
 			funding: true,
 		},
@@ -486,6 +490,11 @@ export async function getDariahProjectBySlug(
 			scope: {
 				columns: {
 					scope: true,
+				},
+			},
+			call: {
+				columns: {
+					call: true,
 				},
 			},
 			socialMedia: {

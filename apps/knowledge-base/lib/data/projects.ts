@@ -144,7 +144,7 @@ export async function getProjectsForAdmin(
 export async function getProjectCreateDataForAdmin(currentUser: Pick<User, "role">) {
 	assertAdminUser(currentUser);
 
-	const [scopes, roles, initialSocialMedia] = await Promise.all([
+	const [scopes, calls, roles, initialSocialMedia] = await Promise.all([
 		db.query.projectScopes.findMany({
 			orderBy: {
 				scope: "asc",
@@ -154,6 +154,10 @@ export async function getProjectCreateDataForAdmin(currentUser: Pick<User, "role
 				scope: true,
 			},
 		}),
+		db.query.projectCalls.findMany({
+			orderBy: { call: "asc" },
+			columns: { id: true, call: true },
+		}),
 		db.query.projectRoles.findMany({
 			orderBy: { role: "asc" },
 			columns: { id: true, role: true },
@@ -161,7 +165,7 @@ export async function getProjectCreateDataForAdmin(currentUser: Pick<User, "role
 		getSocialMediaOptions(),
 	]);
 
-	return { initialSocialMedia, roles, scopes };
+	return { calls, initialSocialMedia, roles, scopes };
 }
 
 export async function getProjectBySlugForAdmin(currentUser: Pick<User, "role">, slug: string) {
@@ -319,6 +323,7 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 	const [
 		descriptionRows,
 		scopes,
+		calls,
 		roles,
 		initialSocialMedia,
 		existingPartners,
@@ -343,6 +348,10 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		db.query.projectScopes.findMany({
 			orderBy: { scope: "asc" },
 			columns: { id: true, scope: true },
+		}),
+		db.query.projectCalls.findMany({
+			orderBy: { call: "asc" },
+			columns: { id: true, call: true },
 		}),
 		db.query.projectRoles.findMany({
 			orderBy: { role: "asc" },
@@ -376,6 +385,7 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
 
 	return {
+		calls,
 		description: descriptionRows.at(0)?.content,
 		initialPartners,
 		initialSocialMedia,

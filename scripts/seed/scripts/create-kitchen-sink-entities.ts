@@ -308,6 +308,7 @@ async function main() {
 				personRoleRows,
 				projectRoleRows,
 				projectScopeRows,
+				projectCallRows,
 				opportunitySourceRows,
 				socialMediaTypeRows,
 				serviceTypeRows,
@@ -326,6 +327,7 @@ async function main() {
 				tx.select().from(schema.personRoleTypes),
 				tx.select().from(schema.projectRoles),
 				tx.select().from(schema.projectScopes),
+				tx.select().from(schema.projectCalls),
 				tx.select().from(schema.opportunitySources),
 				tx.select().from(schema.socialMediaTypes),
 				tx.select().from(schema.serviceTypes),
@@ -356,6 +358,7 @@ async function main() {
 			const personRoleIds = new Map(personRoleRows.map((row) => [row.type, row.id]));
 			const projectRoleIds = new Map(projectRoleRows.map((row) => [row.role, row.id]));
 			const projectScopeIds = new Map(projectScopeRows.map((row) => [row.scope, row.id]));
+			const projectCallIds = new Map(projectCallRows.map((row) => [row.call, row.id]));
 			const opportunitySourceIds = new Map(
 				opportunitySourceRows.map((row) => [row.source, row.id]),
 			);
@@ -1132,7 +1135,10 @@ async function main() {
 				funding: 1_234_567.89,
 				summary:
 					"A project that also qualifies as a DARIAH project and exercises all API relations.",
-				call: "HORIZON-INFRA-2025",
+				callId: assertLookupId(
+					projectCallIds.get("go_digital_3_0"),
+					'Missing project call "go_digital_3_0".',
+				),
 				topic: "Interoperability and integration testing",
 				imageId: createId("asset:image"),
 				scopeId: assertLookupId(projectScopeIds.get("eu"), 'Missing project scope "eu".'),

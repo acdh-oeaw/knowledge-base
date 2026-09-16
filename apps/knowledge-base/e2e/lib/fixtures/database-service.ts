@@ -1466,7 +1466,7 @@ export class DatabaseService {
 
 	async getProjectByName(name: string): Promise<{
 		acronym: string | null;
-		call: string | null;
+		callId: string | null;
 		documentId: string;
 		duration: { start: Date; end?: Date } | null;
 		funding: number | null;
@@ -1480,7 +1480,7 @@ export class DatabaseService {
 		const [row] = await this.db
 			.select({
 				acronym: schema.projects.acronym,
-				call: schema.projects.call,
+				callId: schema.projects.callId,
 				documentId: schema.entityVersions.entityId,
 				duration: schema.projects.duration,
 				funding: schema.projects.funding,
@@ -2874,6 +2874,31 @@ export class DatabaseService {
 		}
 
 		return scope;
+	}
+
+	async getProjectCall(): Promise<{ id: string; call: string }> {
+		const [call] = await this.db
+			.select({ id: schema.projectCalls.id, call: schema.projectCalls.call })
+			.from(schema.projectCalls)
+			.limit(1);
+
+		if (call == null) {
+			throw new Error("No project calls found in the database.");
+		}
+
+		return call;
+	}
+
+	async getProjectCallByValue(
+		call: schema.ProjectCall["call"],
+	): Promise<{ id: string; call: string } | null> {
+		const [row] = await this.db
+			.select({ id: schema.projectCalls.id, call: schema.projectCalls.call })
+			.from(schema.projectCalls)
+			.where(eq(schema.projectCalls.call, call))
+			.limit(1);
+
+		return row ?? null;
 	}
 
 	private async deleteDocumentVersionTail(
