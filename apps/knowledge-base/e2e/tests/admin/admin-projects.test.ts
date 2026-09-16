@@ -270,7 +270,7 @@ test.describe("projects admin", () => {
 		await page.getByRole("main").getByLabel("Name").fill(updatedName);
 		await adminProjectsPage.fillAcronym("");
 		await adminProjectsPage.fillFunding(0);
-		await page.getByLabel("Funding").clear();
+		await page.getByRole("textbox", { name: "Funding", exact: true }).clear();
 		await adminProjectsPage.fillTopic("");
 		await adminProjectsPage.clearCall();
 		await page.getByLabel("Summary").clear();

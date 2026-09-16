@@ -56,7 +56,11 @@ export class AdminProjectsPage {
 	}
 
 	async fillFunding(funding: number): Promise<void> {
-		await this.page.getByLabel("Funding").fill(String(funding));
+		// Not `getByLabel`, which does substring matching by default: the Call select's hidden native
+		// <select> has no explicit label, so its accessible name falls back to its concatenated option
+		// texts — one of which, "CLARIAH-AT Project Funding", contains "Funding" as a substring and
+		// would also match, tripping Playwright's strict mode.
+		await this.page.getByRole("textbox", { name: "Funding", exact: true }).fill(String(funding));
 	}
 
 	async fillTopic(topic: string): Promise<void> {
