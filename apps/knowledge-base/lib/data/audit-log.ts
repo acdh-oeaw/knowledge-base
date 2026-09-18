@@ -488,6 +488,40 @@ async function resolveProjectPartnerLabel(
 	return `${project} — ${unit}`;
 }
 
+/** Resolves a `projects_to_persons.id` to "<project> — <person>". */
+async function resolveProjectPersonLabel(
+	client: AuditLogClient,
+	id: string,
+): Promise<string | null> {
+	const projectLifecycle = alias(schema.documentLifecycle, "project_person_project_lifecycle");
+	const personLifecycle = alias(schema.documentLifecycle, "project_person_person_lifecycle");
+	const projectVersionId = sql`COALESCE(${projectLifecycle.draftId}, ${projectLifecycle.publishedId})`;
+	const personVersionId = sql`COALESCE(${personLifecycle.draftId}, ${personLifecycle.publishedId})`;
+
+	const [row] = await client
+		.select({ projectName: schema.projects.name, personName: schema.persons.name })
+		.from(schema.projectsToPersons)
+		.leftJoin(
+			projectLifecycle,
+			eq(projectLifecycle.documentId, schema.projectsToPersons.projectDocumentId),
+		)
+		.leftJoin(schema.projects, eq(schema.projects.id, projectVersionId))
+		.leftJoin(
+			personLifecycle,
+			eq(personLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+		)
+		.leftJoin(schema.persons, eq(schema.persons.id, personVersionId))
+		.where(eq(schema.projectsToPersons.id, id))
+		.limit(1);
+
+	if (row == null) {
+		return null;
+	}
+	const project = row.projectName ?? "Unknown project";
+	const person = row.personName ?? "unknown person";
+	return `${project} — ${person}`;
+}
+
 /**
  * Subject types whose id is an `entities.id` document id (resolved via the current version).
  * Includes the organisational-unit subtypes (`countries`, `institutions`, ...) — they all resolve
@@ -568,6 +602,9 @@ export async function resolveAuditSubjectLabel(
 		}
 		case "project_partners": {
 			return resolveProjectPartnerLabel(client, subjectId);
+		}
+		case "project_persons": {
+			return resolveProjectPersonLabel(client, subjectId);
 		}
 		case "social_media": {
 			return resolveNamedRecordLabel(client, schema.socialMedia, subjectId);

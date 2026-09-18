@@ -379,6 +379,98 @@ export class AdminProjectsPage {
 		await this.page.keyboard.type(String(year));
 	}
 
+	async goToAffiliatedPeopleTab(): Promise<void> {
+		await this.page.getByRole("tab", { name: "Affiliated people" }).click();
+	}
+
+	affiliatedPeopleTable(): Locator {
+		return this.page.getByRole("grid", { name: "affiliated people" });
+	}
+
+	async addProjectAffiliation(personName: string): Promise<void> {
+		await this.page.getByRole("button", { name: "Add affiliation" }).click();
+		const dialog = this.page.getByRole("dialog", { name: "Add affiliation" });
+		const personControl = dialog
+			.locator('[data-slot="control"]')
+			.filter({ has: this.page.locator('[data-slot="label"]', { hasText: "Person" }) });
+		await personControl.locator("button[aria-expanded]:not([slot])").click();
+		await this.page.getByRole("searchbox").fill(personName);
+		await this.page.keyboard.press("Enter");
+		const option = this.page.getByRole("option", { name: personName, exact: true });
+		await expect(option).toBeVisible();
+		await option.click();
+		await expect(this.page.getByRole("option", { name: personName, exact: true })).toBeHidden();
+		await this.fillProjectAffiliationDate("Start date", 2024, 3, 1);
+		await this.fillProjectAffiliationDate("End date", 2024, 9, 30);
+		await waitForActionSuccess({
+			page: this.page,
+			trigger: async () => {
+				await dialog.getByRole("button", { name: "Save" }).click();
+			},
+		});
+		await dialog.waitFor({ state: "hidden" });
+		await expect(this.page.getByText(personName, { exact: true })).toBeVisible();
+	}
+
+	async clickEditProjectAffiliation(): Promise<void> {
+		await this.affiliatedPeopleTable()
+			.getByRole("button", { name: "Open actions menu" })
+			.first()
+			.click();
+		await this.page.getByRole("menuitem", { name: "Edit affiliation" }).click();
+	}
+
+	async fillProjectAffiliationEditDate(
+		label: string,
+		year: number,
+		month: number,
+		day: number,
+	): Promise<void> {
+		const dialog = this.page.getByRole("dialog", { name: "Edit affiliation" });
+		await this.fillProjectAffiliationDate(label, year, month, day, dialog);
+	}
+
+	async saveProjectAffiliationEdit(): Promise<void> {
+		const dialog = this.page.getByRole("dialog", { name: "Edit affiliation" });
+		await waitForActionSuccess({
+			page: this.page,
+			trigger: async () => {
+				await dialog.getByRole("button", { name: "Save" }).click();
+			},
+		});
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	async clickDeleteProjectAffiliation(): Promise<void> {
+		await this.affiliatedPeopleTable()
+			.getByRole("button", { name: "Open actions menu" })
+			.first()
+			.click();
+		await this.page.getByRole("menuitem", { name: "Delete affiliation" }).click();
+	}
+
+	async confirmDeleteProjectAffiliation(): Promise<void> {
+		const dialog = this.page.getByRole("alertdialog", { name: "Delete affiliation" });
+		await dialog.getByRole("button", { name: "Delete" }).click();
+		await dialog.waitFor({ state: "hidden" });
+	}
+
+	private async fillProjectAffiliationDate(
+		label: string,
+		year: number,
+		month: number,
+		day: number,
+		scope: Locator = this.page.getByRole("dialog", { name: "Add affiliation" }),
+	): Promise<void> {
+		const group = scope.getByRole("group", { name: label });
+		await group.getByRole("spinbutton", { name: /day/i }).click();
+		await this.page.keyboard.type(String(day).padStart(2, "0"));
+		await group.getByRole("spinbutton", { name: /month/i }).click();
+		await this.page.keyboard.type(String(month).padStart(2, "0"));
+		await group.getByRole("spinbutton", { name: /year/i }).click();
+		await this.page.keyboard.type(String(year));
+	}
+
 	async submitForm(): Promise<void> {
 		await waitForActionRedirect({
 			page: this.page,

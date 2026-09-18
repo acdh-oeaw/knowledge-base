@@ -172,6 +172,7 @@ export default async function DashboardAdministratorEditProjectPage(
 		roles,
 		initialSocialMedia,
 		existingPartners,
+		existingAffiliations,
 		existingSocialMedia,
 		initialRelatedEntities,
 		initialRelatedResources,
@@ -217,6 +218,23 @@ export default async function DashboardAdministratorEditProjectPage(
 				)
 				.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, documentId));
 		})(),
+		(() => {
+			const personDocumentLifecycle = alias(schema.documentLifecycle, "person_document_lifecycle");
+			return db
+				.select({
+					id: schema.projectsToPersons.id,
+					personDocumentId: schema.projectsToPersons.personDocumentId,
+					personName: schema.persons.name,
+					duration: schema.projectsToPersons.duration,
+				})
+				.from(schema.projectsToPersons)
+				.innerJoin(
+					personDocumentLifecycle,
+					eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+				)
+				.innerJoin(schema.persons, eq(schema.persons.id, personDocumentLifecycle.publishedId))
+				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
+		})(),
 		db.query.projectsToSocialMedia.findMany({
 			where: { projectId: project.id },
 			orderBy: { position: "asc" },
@@ -244,6 +262,16 @@ export default async function DashboardAdministratorEditProjectPage(
 		};
 	});
 
+	const initialAffiliations = existingAffiliations.map((affiliation) => {
+		return {
+			id: affiliation.id,
+			personDocumentId: affiliation.personDocumentId,
+			personName: affiliation.personName,
+			durationStart: affiliation.duration?.start ?? null,
+			durationEnd: affiliation.duration?.end ?? null,
+		};
+	});
+
 	const initialSocialMediaIds = existingSocialMedia.map((row) => row.socialMediaId);
 
 	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
@@ -256,6 +284,7 @@ export default async function DashboardAdministratorEditProjectPage(
 			hasDraftChanges={hasDraftChanges}
 			initialAssets={initialAssets}
 			initialPartners={initialPartners}
+			initialAffiliations={initialAffiliations}
 			isDefaultLocale={selectedLocale.isDefault}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}

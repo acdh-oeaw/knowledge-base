@@ -544,6 +544,62 @@ test.describe("admin relation management", () => {
 		expect(relations?.partners).toHaveLength(0);
 	});
 
+	test("should manage affiliated people from the project tab", async ({
+		page,
+		createAdminProjectsPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const projectsPage = createAdminProjectsPage(workerIndex);
+		const projectName = `${projectsPage.workerPrefix} Affiliation List ${randomUUID()}`;
+		const [affiliatedPerson] = await db.getPersonDocumentOptions(1);
+		expect(affiliatedPerson).toBeDefined();
+
+		await projectsPage.gotoCreate();
+		await projectsPage.fillName(projectName);
+		await projectsPage.selectFirstScope();
+		await projectsPage.fillDatePicker("Start date", 2024, 1, 15);
+		await projectsPage.fillSummary("Project affiliation relation test.");
+		await projectsPage.submitForm();
+
+		await projectsPage.searchByName(projectName);
+		const projectRow = projectsPage.projectRowByName(projectName);
+		await expect(projectRow).toBeVisible();
+		await projectsPage.gotoEditFromList(projectName);
+
+		await projectsPage.goToAffiliatedPeopleTab();
+		await projectsPage.addProjectAffiliation(affiliatedPerson!.name);
+
+		let relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.affiliations).toHaveLength(1);
+		expect(relations?.affiliations[0]).toStrictEqual(
+			expect.objectContaining({
+				duration: {
+					start: new Date("2024-03-01T00:00:00.000Z"),
+					end: new Date("2024-09-30T00:00:00.000Z"),
+				},
+				personDocumentId: affiliatedPerson!.documentId,
+			}),
+		);
+
+		await projectsPage.clickEditProjectAffiliation();
+		await projectsPage.fillProjectAffiliationEditDate("End date", 2025, 5, 31);
+		await projectsPage.saveProjectAffiliationEdit();
+
+		relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.affiliations[0]!.duration?.end).toStrictEqual(
+			new Date("2025-05-31T00:00:00.000Z"),
+		);
+
+		await projectsPage.clickDeleteProjectAffiliation();
+		await projectsPage.confirmDeleteProjectAffiliation();
+		await expect(projectsPage.affiliatedPeopleTable()).toBeHidden();
+		await expect(page.getByText("No affiliated people.")).toBeVisible();
+
+		relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.affiliations).toHaveLength(0);
+	});
+
 	test("should edit and delete a unit relation from the relation tab", async ({
 		createAdminGovernanceBodiesPage,
 		db,

@@ -122,7 +122,7 @@ if (config.webServer != null) {
 export default defineConfig({
 	testDir: "../e2e",
 	snapshotDir: "../e2e/snapshots",
-	timeout: 90_000,
+	timeout: 60_000,
 	fullyParallel: true,
 	forbidOnly: isCI,
 	retries: isCI ? 1 : 0,
@@ -133,7 +133,7 @@ export default defineConfig({
 	globalTeardown: "./lib/global-teardown.ts",
 	use: {
 		baseURL: config.baseUrl,
-		navigationTimeout: isCI ? 60_000 : 30_000,
+		navigationTimeout: isCI ? 60_000 : 60_000,
 		screenshot: "on-first-failure",
 		trace: "on-first-retry",
 	},

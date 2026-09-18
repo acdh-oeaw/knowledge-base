@@ -14,6 +14,7 @@ import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_co
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
 import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
+import { ProjectAffiliationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section";
 import { ProjectForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form";
 import { ProjectPartnersSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section";
 import { discardProjectDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/discard-project-draft.action";
@@ -64,6 +65,13 @@ interface ProjectEditFormProps {
 		durationStart: Date | null;
 		durationEnd: Date | null;
 	}>;
+	initialAffiliations: Array<{
+		id: string;
+		personDocumentId: string;
+		personName: string;
+		durationStart: Date | null;
+		durationEnd: Date | null;
+	}>;
 	initialSocialMediaIds: Array<string>;
 }
 
@@ -93,6 +101,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		selectedRelatedResources,
 		roles,
 		initialPartners,
+		initialAffiliations,
 	} = props;
 
 	const t = useExtracted();
@@ -105,6 +114,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 				<TabList aria-label={t("Edit project")}>
 					<EntityEditTab id="details">{t("Details")}</EntityEditTab>
 					<EntityEditTab id="project-partners">{t("Project partners")}</EntityEditTab>
+					<EntityEditTab id="affiliated-people">{t("Affiliated people")}</EntityEditTab>
 				</TabList>
 
 				<TabPanel
@@ -153,6 +163,12 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 						partners={initialPartners}
 						projectDocumentId={documentId}
 						roles={roles}
+					/>
+				</TabPanel>
+				<TabPanel id="affiliated-people" shouldPreserveState={true}>
+					<ProjectAffiliationsSection
+						affiliations={initialAffiliations}
+						projectDocumentId={documentId}
 					/>
 				</TabPanel>
 			</EntityEditTabs>

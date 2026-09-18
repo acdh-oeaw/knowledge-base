@@ -603,6 +603,7 @@ msgstr "Too many requests."
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_lib/create-social-media.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_lib/upsert-project-partner.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/create-social-media.action.ts
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/upsert-project-affiliation.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/countries/[code]/edit/_lib/create-delegated-institution.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/countries/[code]/edit/_lib/create-delegated-unit-relation.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/countries/[code]/edit/_lib/update-delegated-institution.action.ts
@@ -980,6 +981,7 @@ msgstr "Verify the code from the app"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_components/service-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/person-social-media-fields.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/reporting-campaigns/_components/campaign-contribution-amounts-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/reporting-campaigns/_components/campaign-country-thresholds-form.tsx
@@ -1225,6 +1227,7 @@ msgstr "Are you sure you want to remove this content block? This action cannot b
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/unused-social-media-cleanup.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/person-social-media-fields.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
@@ -1480,6 +1483,7 @@ msgstr "Organisation"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/guided-forms/_components/partner-institution-wizard.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institution-relations/_components/institution-relations-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-groups-page.tsx
 msgid "dM-p3_"
@@ -1496,6 +1500,7 @@ msgstr "From"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/guided-forms/_components/partner-institution-wizard.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institution-relations/_components/institution-relations-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-groups-page.tsx
 msgid "yPg8s6"
@@ -1512,6 +1517,7 @@ msgstr "Until"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/guided-forms/_components/wizard-review.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institution-relations/_components/institution-relations-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-groups-page.tsx
 msgid "0JY2XP"
@@ -1568,6 +1574,7 @@ msgstr "Select a role first"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/contributions/_components/contributions-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institution-relations/_components/institution-relations-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/social-media/_components/social-media-form.tsx
@@ -1587,6 +1594,7 @@ msgstr "Start date"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/guided-forms/_components/retire-unit-wizard.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institution-relations/_components/institution-relations-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/social-media/_components/social-media-form.tsx
@@ -1637,6 +1645,7 @@ msgstr "Description"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institution-relations/_components/institution-relations-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_components/service-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/reporting-campaigns/_components/campaign-contribution-amounts-form.tsx
@@ -1705,6 +1714,7 @@ msgstr "This will permanently delete this contribution."
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortia-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/persons-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_components/project-partners-page.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/projects-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/reporting-campaigns/_components/reporting-campaigns-page.tsx
@@ -2400,6 +2410,7 @@ msgstr "People"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/inactive-unit-relations-check.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/paired-relations-check.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/person-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/user-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-claimed-contributors-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/website/_components/article-contributors-section.tsx
@@ -2433,6 +2444,7 @@ msgstr "Add person"
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/person-relations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/contributions/_components/contributions-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/guided-forms/_components/country-role-wizard.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/user-form.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/website/_components/article-contributors-section.tsx
 msgid "B_rk6i"
@@ -2441,6 +2453,7 @@ msgstr "No persons found."
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/person-relations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/contributions/_components/contributions-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/guided-forms/_components/country-role-wizard.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/website/_components/article-contributors-section.tsx
 msgid "0ZCbih"
 msgstr "No person selected"
@@ -2701,6 +2714,7 @@ msgid "fFvLv3"
 msgstr "No project selected"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/unit-projects-section.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 msgid "JDJoIZ"
 msgstr "This action cannot be undone."
@@ -4332,6 +4346,7 @@ msgstr "Could not delete service. Please try again."
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_lib/create-service.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_lib/update-service.action.ts
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/project-partners/_lib/upsert-project-partner.action.ts
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/upsert-project-affiliation.action.ts
 msgid "hxHUHk"
 msgstr "Relations can only target published entities."
 
@@ -5352,6 +5367,36 @@ msgstr "This partner already exists."
 msgid "x3S7HZ"
 msgstr "Administrator dashboard - Project partners"
 
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-edit-form.tsx
+msgid "54USwy"
+msgstr "Affiliated people"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+msgid "IUORNJ"
+msgstr "Edit affiliation"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+msgid "3zMCsH"
+msgstr "Delete affiliation"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+msgid "35Y0d4"
+msgstr "No affiliated people."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+msgid "lsrg97"
+msgstr "Affiliate a person with this project."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+msgid "bWDmaM"
+msgstr "Add affiliation"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-affiliations-section.tsx
+msgid "ag74hl"
+msgstr "Select the person and optional duration."
+
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-create-form.tsx
 msgid "lJMkin"
 msgstr "New project"
@@ -5399,6 +5444,10 @@ msgstr "Topic"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
 msgid "Uu3DS2"
 msgstr "Partners"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
+msgid "-rrxg1"
+msgstr "affiliated"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 msgid "RonZTI"
@@ -5454,6 +5503,10 @@ msgstr "project"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/projects-page.tsx
 msgid "peNQYs"
 msgstr "Could not delete project. Please try again."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/upsert-project-affiliation.action.ts
+msgid "4GoCBX"
+msgstr "This person is already affiliated."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/[slug]/details/page.tsx
 msgid "BKqkq3"

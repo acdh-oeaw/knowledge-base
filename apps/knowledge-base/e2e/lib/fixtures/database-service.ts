@@ -65,29 +65,11 @@ export class DatabaseService {
 	}
 
 	/**
-	 * Returns the first entity from the database, formatted as it appears in the "Related entities"
-	 * MultipleSelect. Used as a test relation target.
+	 * Entities from the database, formatted as they appear in the "Related entities" MultipleSelect,
+	 * deduped by id (a single entity can have several locale slugs) and by resolved display name
+	 * (distinct entities occasionally share a title, e.g. "Board of directors").
 	 */
-	async getTestEntity(): Promise<{ id: string; name: string }> {
-		const [row] = await this.db
-			.select({ id: schema.entities.id, slug: schema.slugs.value, label: schema.entities.label })
-			.from(schema.entities)
-			.innerJoin(
-				schema.slugs,
-				and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
-			)
-			.orderBy(schema.slugs.value)
-			.limit(1);
-
-		if (row == null) {
-			throw new Error("No entities found in database — required for relation tests.");
-		}
-
-		// The picker displays the denormalized label (published title), falling back to the slug.
-		return { id: row.id, name: row.label ?? row.slug };
-	}
-
-	async getTestEntities(count: number): Promise<Array<{ id: string; name: string }>> {
+	private async getOrderedTestEntities(): Promise<Array<{ id: string; name: string }>> {
 		const rows = await this.db
 			.select({ id: schema.entities.id, slug: schema.slugs.value, label: schema.entities.label })
 			.from(schema.entities)
@@ -95,16 +77,61 @@ export class DatabaseService {
 				schema.slugs,
 				and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
 			)
-			.orderBy(schema.slugs.value)
-			.limit(count);
+			.orderBy(schema.slugs.value);
 
-		if (rows.length < count) {
+		const seenIds = new Set<string>();
+		const seenNames = new Set<string>();
+		const entities: Array<{ id: string; name: string }> = [];
+
+		for (const row of rows) {
+			if (seenIds.has(row.id)) {
+				continue;
+			}
+			const name = row.label ?? row.slug;
+			if (seenNames.has(name)) {
+				continue;
+			}
+			seenIds.add(row.id);
+			seenNames.add(name);
+			entities.push({ id: row.id, name });
+		}
+
+		return entities;
+	}
+
+	/**
+	 * Returns an entity to use as a test relation target, formatted as it appears in the "Related
+	 * entities" MultipleSelect. `workerIndex` (pass `test.info().workerIndex`) offsets which entity
+	 * is picked, with wraparound — tests in different workers run concurrently against the same
+	 * shared database, and always handing out the same "first" entity caused cross-worker lock
+	 * contention (and occasional deadlocks) when several workers wrote relations onto it at once.
+	 */
+	async getTestEntity(workerIndex = 0): Promise<{ id: string; name: string }> {
+		const entities = await this.getOrderedTestEntities();
+
+		if (entities.length === 0) {
+			throw new Error("No entities found in database — required for relation tests.");
+		}
+
+		return entities[workerIndex % entities.length]!;
+	}
+
+	async getTestEntities(
+		count: number,
+		workerIndex = 0,
+	): Promise<Array<{ id: string; name: string }>> {
+		const entities = await this.getOrderedTestEntities();
+
+		if (entities.length < count) {
 			throw new Error(`Expected at least ${String(count)} entities for relation tests.`);
 		}
 
-		return rows.map((row) => {
-			return { id: row.id, name: row.label ?? row.slug };
-		});
+		const offset = workerIndex % entities.length;
+
+		return Array.from(
+			{ length: count },
+			(_, index) => entities[(offset + index) % entities.length]!,
+		);
 	}
 
 	async getTestResources(count: number): Promise<Array<{ id: string; name: string }>> {
@@ -1297,7 +1324,7 @@ export class DatabaseService {
 	} | null> {
 		const [row] = await this.db
 			.select({
-				documentId: schema.entityVersions.id,
+				documentId: schema.entityVersions.entityId,
 				id: schema.internalPages.id,
 				slug: schema.slugs.value,
 				title: schema.internalPages.title,
@@ -1519,6 +1546,11 @@ export class DatabaseService {
 			roleId: string;
 			unitDocumentId: string;
 		}>;
+		affiliations: Array<{
+			duration: { start?: Date; end?: Date } | null;
+			roleId: string;
+			personDocumentId: string;
+		}>;
 		socialMediaIds: Array<string>;
 	} | null> {
 		const project = await this.getProjectByName(name);
@@ -1538,6 +1570,17 @@ export class DatabaseService {
 				sql`${schema.projectsToOrganisationalUnits.projectDocumentId} = (SELECT ${schema.entityVersions.entityId} FROM ${schema.entityVersions} WHERE ${schema.entityVersions.id} = ${project.id})`,
 			);
 
+		const affiliations = await this.db
+			.select({
+				duration: schema.projectsToPersons.duration,
+				roleId: schema.projectsToPersons.roleId,
+				personDocumentId: schema.projectsToPersons.personDocumentId,
+			})
+			.from(schema.projectsToPersons)
+			.where(
+				sql`${schema.projectsToPersons.projectDocumentId} = (SELECT ${schema.entityVersions.entityId} FROM ${schema.entityVersions} WHERE ${schema.entityVersions.id} = ${project.id})`,
+			);
+
 		const socialMedia = await this.db
 			.select({ socialMediaId: schema.projectsToSocialMedia.socialMediaId })
 			.from(schema.projectsToSocialMedia)
@@ -1546,6 +1589,7 @@ export class DatabaseService {
 
 		return {
 			partners,
+			affiliations,
 			socialMediaIds: socialMedia.map((item) => item.socialMediaId),
 		};
 	}
@@ -1707,6 +1751,30 @@ export class DatabaseService {
 				),
 			)
 			.orderBy(schema.organisationalUnits.name)
+			.limit(limit);
+	}
+
+	/**
+	 * Published person documents. `documentId` (not the version id `getPersonOption` returns) is what
+	 * document-level relations like `projects_to_persons` key on. See
+	 * {@link getOrganisationalUnitOptions} on the exclusion.
+	 */
+	async getPersonDocumentOptions(limit = 4): Promise<Array<{ documentId: string; name: string }>> {
+		return this.db
+			.select({
+				documentId: schema.entityVersions.entityId,
+				name: schema.persons.name,
+			})
+			.from(schema.persons)
+			.innerJoin(schema.entityVersions, eq(schema.persons.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(
+				and(
+					eq(schema.entityStatus.type, "published"),
+					sql`${schema.persons.name} NOT LIKE ${WORKER_FIXTURE_NAME_PATTERN}`,
+				),
+			)
+			.orderBy(schema.persons.name)
 			.limit(limit);
 	}
 
@@ -2942,6 +3010,11 @@ export class DatabaseService {
 			.delete(schema.servicesToOrganisationalUnits)
 			.where(eq(schema.servicesToOrganisationalUnits.organisationalUnitDocumentId, documentId));
 
+		// Country-report institution snapshots reference this document with no ON DELETE CASCADE.
+		await tx
+			.delete(schema.countryReportInstitutions)
+			.where(eq(schema.countryReportInstitutions.organisationalUnitDocumentId, documentId));
+
 		await tx
 			.delete(schema.entitiesToResources)
 			.where(eq(schema.entitiesToResources.entityId, documentId));
@@ -3017,6 +3090,10 @@ export class DatabaseService {
 			await tx
 				.delete(schema.projectsToOrganisationalUnits)
 				.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, documentId));
+
+			await tx
+				.delete(schema.projectsToPersons)
+				.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
 
 			await tx
 				.delete(schema.projectsToSocialMedia)
@@ -3289,6 +3366,11 @@ export class DatabaseService {
 				.delete(schema.impactCaseStudiesToPersons)
 				.where(eq(schema.impactCaseStudiesToPersons.personDocumentId, documentId));
 
+			// Project affiliations likewise point at the person document.
+			await tx
+				.delete(schema.projectsToPersons)
+				.where(eq(schema.projectsToPersons.personDocumentId, documentId));
+
 			// Version-scoped and subtype-owned, so it has to go before the persons row it references.
 			await tx
 				.delete(schema.personSocialMedia)
@@ -3345,6 +3427,9 @@ export class DatabaseService {
 				await tx
 					.delete(schema.personsToOrganisationalUnits)
 					.where(eq(schema.personsToOrganisationalUnits.personDocumentId, documentId));
+				await tx
+					.delete(schema.projectsToPersons)
+					.where(eq(schema.projectsToPersons.personDocumentId, documentId));
 				await tx
 					.delete(schema.personSocialMedia)
 					.where(eq(schema.personSocialMedia.personId, version.id));
@@ -4134,6 +4219,9 @@ export class DatabaseService {
 					.delete(schema.projectsToOrganisationalUnits)
 					.where(eq(schema.projectsToOrganisationalUnits.projectDocumentId, documentId));
 				await tx
+					.delete(schema.projectsToPersons)
+					.where(eq(schema.projectsToPersons.projectDocumentId, documentId));
+				await tx
 					.delete(schema.projectsToSocialMedia)
 					.where(eq(schema.projectsToSocialMedia.projectId, version.id));
 				await tx.delete(schema.projects).where(eq(schema.projects.id, version.id));
@@ -4805,5 +4893,12 @@ export class DatabaseService {
 	async close(): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		await (this.db as any).$client?.end?.();
+		// `createDatabaseService` caches the pool on `globalThis.__db`. Playwright reuses the same OS
+		// process for a worker across projects (this config has 9, each with different `use` options),
+		// tearing down and recreating worker-scoped fixtures like `db` at that boundary — but the process,
+		// and therefore this cache, persists across the recreation. Without clearing it here, the next
+		// `new DatabaseService()` in this same process would get handed back this now-ended pool and fail
+		// with "Cannot use a pool after calling end on the pool".
+		globalThis.__db = undefined;
 	}
 }

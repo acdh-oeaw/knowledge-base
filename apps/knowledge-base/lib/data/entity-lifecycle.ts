@@ -1102,6 +1102,16 @@ export async function deleteDocumentRelations(tx: Transaction, documentId: strin
 			),
 		);
 
+	// Project↔person affiliations reference this document on either endpoint.
+	await tx
+		.delete(schema.projectsToPersons)
+		.where(
+			or(
+				eq(schema.projectsToPersons.projectDocumentId, documentId),
+				eq(schema.projectsToPersons.personDocumentId, documentId),
+			),
+		);
+
 	// Unit↔unit relations reference this document on either endpoint.
 	await tx
 		.delete(schema.organisationalUnitsRelations)

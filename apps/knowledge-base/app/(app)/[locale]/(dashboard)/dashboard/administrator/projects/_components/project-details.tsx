@@ -18,7 +18,7 @@ import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_comp
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
 import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
-import { getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
+import { getEntityDetailHref, getOrganisationalUnitDetailHref } from "@/lib/entity-detail-href";
 import { useProjectCallLabel } from "@/lib/format-project-call";
 import { formatRoleType } from "@/lib/format-role-type";
 
@@ -50,6 +50,13 @@ interface ProjectDetailsProps {
 			roleName: string;
 			duration: { start: Date; end?: Date | null | undefined } | null;
 			unitIsLocaleFallback: boolean;
+		}>;
+		affiliatedPersons: Array<{
+			id: string;
+			personName: string;
+			personSlug: string;
+			duration: { start: Date; end?: Date | null | undefined } | null;
+			personIsLocaleFallback: boolean;
 		}>;
 		socialMedia: Array<{
 			id: string;
@@ -210,6 +217,33 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 									}
 									targetHref={getOrganisationalUnitDetailHref(partner.unitType, partner.unitSlug)}
 									targetType={formatRoleType(partner.unitType)}
+								/>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Affiliated people")}</DescriptionTerm>
+				<DescriptionDetails>
+					{project.affiliatedPersons.length > 0 ? (
+						<ul className="flex flex-col gap-1">
+							{project.affiliatedPersons.map((person) => (
+								<RelationStatement
+									key={person.id}
+									duration={person.duration ?? undefined}
+									relation={t("affiliated")}
+									showSource={false}
+									source={project.name}
+									target={
+										<Fragment>
+											{person.personName}
+											{person.personIsLocaleFallback ? <LocaleFallbackMark /> : null}
+										</Fragment>
+									}
+									targetHref={getEntityDetailHref({
+										entityType: "persons",
+										slug: person.personSlug,
+									})}
 								/>
 							))}
 						</ul>
