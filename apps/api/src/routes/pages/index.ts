@@ -18,7 +18,7 @@ export const router = createRouter()
 			summary: "Get pages",
 			description: "Retrieve a paginated list of pages",
 			operationId: "getPages",
-			"x-cache-tags": ["pages"],
+			"x-cache-tags": ["assets", "pages"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -56,7 +56,7 @@ export const router = createRouter()
 			summary: "Get page slugs",
 			description: "Retrieve a paginated list of page slugs",
 			operationId: "getPageSlugs",
-			"x-cache-tags": ["pages"],
+			"x-cache-tags": ["assets", "pages"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -94,7 +94,7 @@ export const router = createRouter()
 			summary: "Get page by id",
 			description: "Retrieve an page by id",
 			operationId: "getPageById",
-			"x-cache-tags": ["pages"],
+			"x-cache-tags": ["assets", "pages"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -135,7 +135,7 @@ export const router = createRouter()
 			summary: "Get page by slug",
 			description: "Retrieve an page by slug",
 			operationId: "getPageBySlug",
-			"x-cache-tags": ["pages"],
+			"x-cache-tags": ["assets", "pages"],
 			responses: {
 				200: {
 					description: "Success response",

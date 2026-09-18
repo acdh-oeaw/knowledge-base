@@ -7,6 +7,7 @@ import { getExtracted } from "next-intl/server";
 import { CreateImpactCaseStudyContributorActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_lib/create-impact-case-study-contributor.schema";
 import { db } from "@/lib/db";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const createImpactCaseStudyContributorAction = createMutationAction({
 	schema: CreateImpactCaseStudyContributorActionInputSchema,
@@ -39,5 +40,9 @@ export const createImpactCaseStudyContributorAction = createMutationAction({
 		});
 
 		return { subjectId: input.articleId };
+	},
+
+	async postCommit() {
+		await dispatchWebhook({ tags: ["impact-case-studies"] });
 	},
 });

@@ -26,7 +26,7 @@ export const router = createRouter()
 			summary: "Get governance bodies",
 			description: "Retrieve a paginated list of governance bodies",
 			operationId: "getGovernanceBodies",
-			"x-cache-tags": ["governance-bodies", "persons"],
+			"x-cache-tags": ["assets", "governance-bodies", "persons", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -60,7 +60,7 @@ export const router = createRouter()
 			summary: "Get governance body slugs",
 			description: "Retrieve a paginated list of governance body slugs",
 			operationId: "getGovernanceBodySlugs",
-			"x-cache-tags": ["governance-bodies", "persons"],
+			"x-cache-tags": ["assets", "governance-bodies", "persons", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -94,7 +94,7 @@ export const router = createRouter()
 			summary: "Get governance body by id",
 			description: "Retrieve a governance body by id",
 			operationId: "getGovernanceBodyById",
-			"x-cache-tags": ["governance-bodies", "persons"],
+			"x-cache-tags": ["assets", "governance-bodies", "persons", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -133,7 +133,7 @@ export const router = createRouter()
 			summary: "Get governance body by slug",
 			description: "Retrieve a governance body by slug",
 			operationId: "getGovernanceBodyBySlug",
-			"x-cache-tags": ["governance-bodies", "persons"],
+			"x-cache-tags": ["assets", "governance-bodies", "persons", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",

@@ -19,7 +19,7 @@ export const router = createRouter()
 			description:
 				"Retrieve site metadata, localized into the requested locale (falling back to the default locale when no translation exists)",
 			operationId: "getSiteMetadata",
-			"x-cache-tags": ["members-partners", "site-metadata"],
+			"x-cache-tags": ["assets", "members-partners", "site-metadata", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",

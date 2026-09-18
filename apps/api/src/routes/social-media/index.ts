@@ -17,7 +17,7 @@ export const router = createRouter()
 			summary: "Get social media",
 			description: "Retrieve a paginated list of social media",
 			operationId: "getSocialMediaList",
-			"x-cache-tags": ["governance-bodies", "members-partners", "working-groups"],
+			"x-cache-tags": ["governance-bodies", "members-partners", "social-media", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -53,7 +53,7 @@ export const router = createRouter()
 			summary: "Get social media by id",
 			description: "Retrieve a social media entry by id",
 			operationId: "getSocialMediaById",
-			"x-cache-tags": ["governance-bodies", "members-partners", "working-groups"],
+			"x-cache-tags": ["governance-bodies", "members-partners", "social-media", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",

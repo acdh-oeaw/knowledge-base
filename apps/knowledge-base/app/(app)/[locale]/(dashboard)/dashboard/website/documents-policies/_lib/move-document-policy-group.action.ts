@@ -7,6 +7,7 @@ import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { eq, sql } from "@/lib/db/sql";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function moveDocumentPolicyGroupAction(
 	id: string,
@@ -61,4 +62,5 @@ export async function moveDocumentPolicyGroupAction(
 	});
 
 	revalidatePath("/[locale]/dashboard/website/documents-policies", "layout");
+	await dispatchWebhook({ tags: ["documents-policies"] });
 }

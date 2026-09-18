@@ -2,6 +2,7 @@
 
 import { mergeSocialMedia } from "@/lib/data/social-media-merge";
 import { createCommandAction } from "@/lib/server/create-command-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 interface MergeSocialMediaActionResult {
 	subjectId: string;
@@ -26,5 +27,10 @@ export const mergeSocialMediaAction = createCommandAction({
 				source: { type: result.source.type, name: result.source.name, url: result.source.url },
 			},
 		};
+	},
+
+	async postCommit() {
+		// Units and projects that linked the source now link the target.
+		await dispatchWebhook({ tags: ["social-media"] });
 	},
 });

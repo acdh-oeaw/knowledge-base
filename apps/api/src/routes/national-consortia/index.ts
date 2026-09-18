@@ -28,7 +28,7 @@ export const router = createRouter()
 			summary: "Get national consortia",
 			description: "Retrieve a paginated list of national consortia",
 			operationId: "getNationalConsortia",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get national consortium slugs",
 			description: "Retrieve a paginated list of national consortium slugs",
 			operationId: "getNationalConsortiumSlugs",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -104,7 +104,7 @@ export const router = createRouter()
 			summary: "Get national consortium by id",
 			description: "Retrieve a national consortium by id",
 			operationId: "getNationalConsortiumById",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -145,7 +145,7 @@ export const router = createRouter()
 			summary: "Get national consortium by slug",
 			description: "Retrieve a national consortium by slug",
 			operationId: "getNationalConsortiumBySlug",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",

@@ -10,7 +10,7 @@ export type DescribeCachedRouteOptions = DescribeRouteOptions & {
 	 * The `@dariah-eric/cache-tags` slices this operation's response is computed from. When the
 	 * knowledge-base dispatches a revalidation webhook for any of them, this operation's cached
 	 * responses are stale. Declare `[]` for operations whose data is not managed by the dashboard
-	 * (e.g. proxied assets, newsletters), so that "nothing to invalidate" is stated, not forgotten.
+	 * (e.g. newsletters), so that "nothing to invalidate" is stated, not forgotten.
 	 */
 	[cacheTagsExtension]: ReadonlyArray<CacheTag>;
 };

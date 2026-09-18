@@ -28,7 +28,7 @@ export const router = createRouter()
 			summary: "Get impact case studies",
 			description: "Retrieve a paginated list of impact case studies",
 			operationId: "getImpactCaseStudies",
-			"x-cache-tags": ["impact-case-studies", "persons"],
+			"x-cache-tags": ["assets", "impact-case-studies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get impact case study slugs",
 			description: "Retrieve a paginated list of impact case study slugs",
 			operationId: "getImpactCaseStudySlugs",
-			"x-cache-tags": ["impact-case-studies", "persons"],
+			"x-cache-tags": ["assets", "impact-case-studies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -104,7 +104,7 @@ export const router = createRouter()
 			summary: "Get impact case study by id",
 			description: "Retrieve an impact case study by id",
 			operationId: "getImpactCaseStudyById",
-			"x-cache-tags": ["impact-case-studies", "persons"],
+			"x-cache-tags": ["assets", "impact-case-studies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -145,7 +145,7 @@ export const router = createRouter()
 			summary: "Get impact case study by slug",
 			description: "Retrieve an impact case study by slug",
 			operationId: "getImpactCaseStudyBySlug",
-			"x-cache-tags": ["impact-case-studies", "persons"],
+			"x-cache-tags": ["assets", "impact-case-studies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",

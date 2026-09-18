@@ -18,7 +18,7 @@ export const router = createRouter()
 			description:
 				"Retrieve a paginated, reverse-chronological list of news, opportunities and funding calls. Each item is tagged with its `type`; fetch the full record from the endpoint for that type. Featured items are not ranked first; get them from `/featured-entities`.",
 			operationId: "getAnnouncements",
-			"x-cache-tags": ["funding-calls", "news", "opportunities", "site-metadata"],
+			"x-cache-tags": ["assets", "funding-calls", "news", "opportunities", "site-metadata"],
 			responses: {
 				200: {
 					description: "Success response",

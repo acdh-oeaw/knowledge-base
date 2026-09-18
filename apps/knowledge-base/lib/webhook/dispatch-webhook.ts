@@ -130,3 +130,18 @@ export async function dispatchWebhookForEntityType(
 
 	await dispatchWebhook({ tags });
 }
+
+/**
+ * Dispatch for every content type at once, for maintenance operations that rewrite content blocks
+ * by id without reporting which documents they belonged to.
+ */
+export async function dispatchWebhookForAllContent(): Promise<void> {
+	const tags = new Set<CacheTag>();
+	for (const entityTags of Object.values(cacheTagsByEntityType)) {
+		for (const tag of entityTags) {
+			tags.add(tag);
+		}
+	}
+
+	await dispatchWebhook({ tags: [...tags] });
+}

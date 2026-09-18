@@ -5,6 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { UpdateDocumentPolicyGroupActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/update-document-policy-group.schema";
 import { eq } from "@/lib/db/sql";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateDocumentPolicyGroupAction = createMutationAction({
 	schema: UpdateDocumentPolicyGroupActionInputSchema,
@@ -19,5 +20,9 @@ export const updateDocumentPolicyGroupAction = createMutationAction({
 			.where(eq(schema.documentPolicyGroups.id, input.id));
 
 		return { subjectId: input.id };
+	},
+
+	async postCommit() {
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	},
 });

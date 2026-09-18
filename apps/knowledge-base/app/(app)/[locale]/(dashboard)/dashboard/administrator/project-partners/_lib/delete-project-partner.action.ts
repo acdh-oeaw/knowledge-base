@@ -8,6 +8,7 @@ import { assertAdmin } from "@/lib/auth/session";
 import { resolveAuditSubjectLabel } from "@/lib/data/audit-log";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function deleteProjectPartnerAction(id: string): Promise<void> {
 	const auditSession = await assertAdmin();
@@ -29,4 +30,5 @@ export async function deleteProjectPartnerAction(id: string): Promise<void> {
 	});
 
 	revalidatePath("/[locale]/dashboard/administrator", "layout");
+	await dispatchWebhook({ tags: ["projects"] });
 }

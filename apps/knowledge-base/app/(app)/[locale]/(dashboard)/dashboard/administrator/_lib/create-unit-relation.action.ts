@@ -14,6 +14,7 @@ import { isExclusionViolation } from "@/lib/db/errors";
 import { eq, sql } from "@/lib/db/sql";
 import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 /** Uses createServerAction because the success response carries typed data. */
 export const createUnitRelationAction = createServerAction(
@@ -89,6 +90,7 @@ export const createUnitRelationAction = createServerAction(
 			});
 
 			revalidatePath("/[locale]/dashboard/administrator", "layout");
+			await dispatchWebhook({ tags: ["members-partners", "working-groups"] });
 
 			return createActionStateSuccess({
 				data: {

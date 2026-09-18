@@ -74,7 +74,7 @@ export const router = createRouter()
 			description:
 				"Sign an imgproxy rendition of an image asset and redirect to it, by storage key. Widths and aspect ratios are restricted to the supported sets. Omitting the width serves the source as stored, which is the only rendition a vector image has.",
 			operationId: "getAssetImage",
-			"x-cache-tags": [],
+			"x-cache-tags": ["assets"],
 			responses: {
 				302: {
 					description: "Redirect to the signed imgproxy url for the requested rendition",
@@ -115,7 +115,7 @@ export const router = createRouter()
 			summary: "Download asset file",
 			description: "Stream the S3-stored file for an asset, by storage key",
 			operationId: "getAssetDownload",
-			"x-cache-tags": [],
+			"x-cache-tags": ["assets"],
 			responses: {
 				200: {
 					description: "Binary file stream",

@@ -12,6 +12,7 @@
  */
 
 export const cacheTags = [
+	"assets",
 	"documents-policies",
 	"events",
 	"featured-entities",
@@ -26,6 +27,7 @@ export const cacheTags = [
 	"persons",
 	"projects",
 	"site-metadata",
+	"social-media",
 	"spotlight-articles",
 	"working-groups",
 ] as const;

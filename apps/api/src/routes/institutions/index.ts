@@ -29,7 +29,7 @@ export const router = createRouter()
 			description:
 				"Retrieve a paginated list of institutions that are partner institutions or cooperating partners of the DARIAH-EU ERIC, optionally filtered by relation status",
 			operationId: "getInstitutions",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -67,7 +67,7 @@ export const router = createRouter()
 			summary: "Get institution slugs",
 			description: "Retrieve a paginated list of institution slugs",
 			operationId: "getInstitutionSlugs",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -105,7 +105,7 @@ export const router = createRouter()
 			summary: "Get institution by id",
 			description: "Retrieve an institution by id",
 			operationId: "getInstitutionById",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -146,7 +146,7 @@ export const router = createRouter()
 			summary: "Get institution by slug",
 			description: "Retrieve an institution by slug",
 			operationId: "getInstitutionBySlug",
-			"x-cache-tags": ["members-partners"],
+			"x-cache-tags": ["assets", "members-partners"],
 			responses: {
 				200: {
 					description: "Success response",

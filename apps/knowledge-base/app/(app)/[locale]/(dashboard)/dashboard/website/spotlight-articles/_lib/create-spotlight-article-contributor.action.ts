@@ -7,6 +7,7 @@ import { getExtracted } from "next-intl/server";
 import { CreateSpotlightArticleContributorActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_lib/create-spotlight-article-contributor.schema";
 import { db } from "@/lib/db";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const createSpotlightArticleContributorAction = createMutationAction({
 	schema: CreateSpotlightArticleContributorActionInputSchema,
@@ -39,5 +40,9 @@ export const createSpotlightArticleContributorAction = createMutationAction({
 		});
 
 		return { subjectId: input.articleId };
+	},
+
+	async postCommit() {
+		await dispatchWebhook({ tags: ["spotlight-articles"] });
 	},
 });

@@ -14,6 +14,7 @@ import { isExclusionViolation } from "@/lib/db/errors";
 import { eq } from "@/lib/db/sql";
 import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateUnitRelationAction = createServerAction(
 	{ requireAdmin: true },
@@ -60,6 +61,7 @@ export const updateUnitRelationAction = createServerAction(
 			});
 
 			revalidatePath("/[locale]/dashboard/administrator", "layout");
+			await dispatchWebhook({ tags: ["members-partners", "working-groups"] });
 			return createActionStateSuccess({});
 		} catch (error) {
 			// A unit may hold the same relation to the same counterpart over several non-overlapping

@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { and, eq, ne } from "@/lib/db/sql";
 import { getIntlLanguage } from "@/lib/i18n/locales";
 import { createServerAction } from "@/lib/server/create-server-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const upsertProjectPartnerAction = createServerAction(
 	{ requireAdmin: true },
@@ -99,6 +100,7 @@ export const upsertProjectPartnerAction = createServerAction(
 		});
 
 		revalidatePath("/[locale]/dashboard/administrator", "layout");
+		await dispatchWebhook({ tags: ["projects"] });
 		return createActionStateSuccess({ data: { id: partnerId } });
 	},
 );

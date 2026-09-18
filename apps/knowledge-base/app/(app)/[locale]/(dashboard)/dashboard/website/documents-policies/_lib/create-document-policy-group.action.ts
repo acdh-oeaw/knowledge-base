@@ -6,6 +6,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { CreateDocumentPolicyGroupActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/create-document-policy-group.schema";
 import { eq, sql } from "@/lib/db/sql";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const createDocumentPolicyGroupAction = createMutationAction({
 	schema: CreateDocumentPolicyGroupActionInputSchema,
@@ -45,5 +46,9 @@ export const createDocumentPolicyGroupAction = createMutationAction({
 		assert(created);
 
 		return { subjectId: created.id };
+	},
+
+	async postCommit() {
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	},
 });
