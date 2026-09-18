@@ -26,7 +26,6 @@ function createItems(count: number) {
 				name,
 				acronym: f.string.alpha({ length: { min: 3, max: 8 }, casing: "upper" }),
 				summary: f.lorem.paragraph(),
-				call: f.lorem.word(),
 				topic: f.lorem.word(),
 				duration: { start: f.date.past({ years: 5 }) },
 			};
@@ -123,7 +122,6 @@ async function seedWithMixedStatuses(db: Database) {
 				name,
 				acronym: f.string.alpha({ length: { min: 3, max: 8 }, casing: "upper" }),
 				summary: f.lorem.paragraph(),
-				call: f.lorem.word(),
 				topic: f.lorem.word(),
 				duration: { start, end },
 			},
@@ -270,6 +268,75 @@ async function seedOrganisationalUnit(
 	return organisationalUnit;
 }
 
+async function seedAffiliatedPerson(db: Database, projectDocumentId: string) {
+	const [status, personEntityType, affiliatedRole, defaultLocale] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.entityTypes.findFirst({
+			columns: { id: true },
+			where: { type: "persons" },
+		}),
+		db.query.projectRoles.findFirst({
+			columns: { id: true },
+			where: { role: "affiliated" },
+		}),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
+
+	assert(status, "No entity status in database.");
+	assert(personEntityType, "No person entity type in database.");
+	assert(affiliatedRole, "No affiliated project role in database.");
+	assert(defaultLocale, "No default locale in database.");
+	const localeId = defaultLocale.id;
+
+	const personVersionId = uuidv7();
+	const personEntityId = uuidv7();
+	const name = f.person.fullName();
+	const personSlug = slugify(`${name}-${personVersionId}`);
+
+	await db.insert(schema.entities).values({
+		id: personEntityId,
+		typeId: personEntityType.id,
+	});
+
+	await db.insert(schema.entityVersions).values({
+		id: personVersionId,
+		entityId: personEntityId,
+		statusId: status.id,
+		localeId,
+	});
+
+	await db.insert(schema.slugs).values({
+		entityVersionId: personVersionId,
+		entityId: personEntityId,
+		typeId: personEntityType.id,
+		localeId,
+		isPublished: true,
+		value: personSlug,
+	});
+
+	const [person] = await db
+		.insert(schema.persons)
+		.values({
+			id: personVersionId,
+			name,
+			sortName: f.person.lastName(),
+		})
+		.returning({
+			id: schema.persons.id,
+			name: schema.persons.name,
+		});
+
+	assert(person);
+
+	await db.insert(schema.projectsToPersons).values({
+		projectDocumentId,
+		personDocumentId: personEntityId,
+		roleId: affiliatedRole.id,
+	});
+
+	return person;
+}
+
 describe("projects", () => {
 	describe("GET /api/projects", () => {
 		it("should return paginated list of projects", async () => {
@@ -398,6 +465,7 @@ describe("projects", () => {
 				await seedOrganisationalUnit(db, item.entity.id, "coordinator");
 				await seedOrganisationalUnit(db, item.entity.id, "participant");
 				await seedOrganisationalUnit(db, item.entity.id, "funder");
+				const affiliatedPerson = await seedAffiliatedPerson(db, item.entity.id);
 
 				const response = await client.projects[":id"].$get({
 					param: { id },
@@ -411,6 +479,11 @@ describe("projects", () => {
 				expect(data).toMatchObject({ acronym, name });
 				expect(data.partners).toHaveLength(2);
 				expect(data.funders).toHaveLength(1);
+				expect(data.affiliatedPersons).toHaveLength(1);
+				expect(data.affiliatedPersons[0]).toMatchObject({
+					name: affiliatedPerson.name,
+					role: "affiliated",
+				});
 				expect(data.description).toHaveLength(1);
 				expect(data.description[0]).toMatchObject({ type: "rich_text" });
 			});

@@ -7,6 +7,7 @@ import {
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
+	PersonPositionsSchema,
 } from "@/lib/schemas";
 
 export const ProjectOrganisationalUnitSchema = v.pipe(
@@ -23,6 +24,18 @@ export const ProjectOrganisationalUnitSchema = v.pipe(
 	}),
 	v.description("Project institution"),
 	v.metadata({ ref: "ProjectInstitution" }),
+);
+
+export const ProjectPersonSchema = v.pipe(
+	v.object({
+		...v.pick(schema.PersonSelectSchema, ["id", "name"]).entries,
+		image: v.nullable(ImageSchema),
+		slug: v.string(),
+		positions: PersonPositionsSchema,
+		role: v.picklist(schema.projectRolesEnum),
+	}),
+	v.description("Project affiliated person"),
+	v.metadata({ ref: "ProjectPerson" }),
 );
 
 export const ProjectSocialMediaSchema = v.pipe(
@@ -78,6 +91,7 @@ export const ProjectSchema = v.pipe(
 		socialMedia: v.array(ProjectSocialMediaSchema),
 		funders: v.array(ProjectOrganisationalUnitSchema),
 		partners: v.array(ProjectOrganisationalUnitSchema),
+		affiliatedPersons: v.array(ProjectPersonSchema),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		description: v.optional(v.array(ContentBlockSchema), []),
 	}),

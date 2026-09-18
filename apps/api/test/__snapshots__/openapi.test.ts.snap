@@ -24269,6 +24269,12 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "affiliatedPersons": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectPerson",
+            },
+            "type": "array",
+          },
           "call": {
             "anyOf": [
               {
@@ -25757,6 +25763,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "socialMedia",
           "funders",
           "partners",
+          "affiliatedPersons",
           "publishedAt",
         ],
         "type": "object",
@@ -26089,6 +26096,198 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "$ref": "#/components/schemas/ProjectBase",
         },
         "type": "array",
+      },
+      "ProjectPerson": {
+        "description": "Project affiliated person",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "image": {
+            "anyOf": [
+              {
+                "properties": {
+                  "alt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "caption": {
+                    "anyOf": [
+                      {},
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "height": {
+                    "anyOf": [
+                      {
+                        "description": "Source height in pixels; null for vectors",
+                        "type": "number",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "license": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                          },
+                          "url": {
+                            "type": "string",
+                          },
+                        },
+                        "required": [
+                          "name",
+                          "url",
+                        ],
+                        "type": "object",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "srcUrl": {
+                    "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` to request a rendition",
+                    "type": "string",
+                  },
+                  "url": {
+                    "description": "Default rendition, sized for this placement",
+                    "type": "string",
+                  },
+                  "width": {
+                    "anyOf": [
+                      {
+                        "description": "Source width in pixels; null for vectors",
+                        "type": "number",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                },
+                "required": [
+                  "url",
+                  "srcUrl",
+                  "width",
+                  "height",
+                  "alt",
+                  "caption",
+                  "license",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "name": {
+            "type": "string",
+          },
+          "positions": {
+            "anyOf": [
+              {
+                "items": {
+                  "properties": {
+                    "description": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "duration": {
+                      "properties": {
+                        "end": {
+                          "description": "Absent for an open-ended position",
+                          "format": "date-time",
+                          "type": "string",
+                        },
+                        "start": {
+                          "description": "Calendar date (day granularity); the time-of-day component carries no meaning. Do not convert to local time, or the day may shift.",
+                          "format": "date-time",
+                          "type": "string",
+                        },
+                      },
+                      "required": [
+                        "start",
+                      ],
+                      "type": "object",
+                    },
+                    "entity": {
+                      "$ref": "#/components/schemas/EntityRef",
+                    },
+                    "role": {
+                      "enum": [
+                        "is_affiliated_with",
+                        "is_chair_of",
+                        "is_vice_chair_of",
+                        "is_member_of",
+                        "is_contact_for",
+                        "is_content_manager_for",
+                        "national_coordinator",
+                        "national_coordinator_deputy",
+                        "national_coordination_staff",
+                        "national_representative",
+                        "national_representative_deputy",
+                      ],
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "role",
+                    "description",
+                    "entity",
+                    "duration",
+                  ],
+                  "type": "object",
+                },
+                "type": "array",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "role": {
+            "enum": [
+              "coordinator",
+              "funder",
+              "participant",
+              "affiliated",
+            ],
+            "type": "string",
+          },
+          "slug": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "name",
+          "image",
+          "slug",
+          "positions",
+          "role",
+        ],
+        "type": "object",
       },
       "ProjectSlug": {
         "description": "Project slug",

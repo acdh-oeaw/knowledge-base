@@ -9,6 +9,7 @@ import { flattenEntityVersion } from "@/lib/entity-version";
 import { generateImageUrl, imageAssetColumns, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPublishedProjectPartners } from "@/lib/project-partners";
+import { getPublishedProjectAffiliatedPersons } from "@/lib/project-persons";
 import { socialMediaByPosition } from "@/lib/social-media";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, and, count, desc, eq, inArray, not, sql } from "@/services/db/sql";
@@ -298,7 +299,10 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 		};
 	});
 
-	const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
+	const [projectPartners, affiliatedPersons] = await Promise.all([
+		getPublishedProjectPartners(db, item.entityVersion.entity.id),
+		getPublishedProjectAffiliatedPersons(db, item.entityVersion.entity.id),
+	]);
 	const rest = flattenEntityVersion(item);
 
 	const funders = projectPartners
@@ -319,6 +323,7 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 		socialMedia,
 		funders,
 		partners,
+		affiliatedPersons,
 		...fields,
 	};
 }
@@ -478,7 +483,10 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 
 	const fields = await getContentBlocks(db, item.id);
 
-	const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
+	const [projectPartners, affiliatedPersons] = await Promise.all([
+		getPublishedProjectPartners(db, item.entityVersion.entity.id),
+		getPublishedProjectAffiliatedPersons(db, item.entityVersion.entity.id),
+	]);
 	const rest = flattenEntityVersion(item);
 
 	const funders = projectPartners
@@ -499,6 +507,7 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 		socialMedia,
 		funders,
 		partners,
+		affiliatedPersons,
 		...fields,
 	};
 }
