@@ -55,6 +55,6 @@ export const deleteImpactCaseStudyAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "impact-case-studies" });
+		await dispatchWebhook({ tags: ["impact-case-studies"] });
 	},
 });

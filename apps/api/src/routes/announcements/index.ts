@@ -1,7 +1,7 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -18,6 +18,7 @@ export const router = createRouter()
 			description:
 				"Retrieve a paginated, reverse-chronological list of news, opportunities and funding calls. Each item is tagged with its `type`; fetch the full record from the endpoint for that type. Featured items are not ranked first; get them from `/featured-entities`.",
 			operationId: "getAnnouncements",
+			"x-cache-tags": ["funding-calls", "news", "opportunities", "site-metadata"],
 			responses: {
 				200: {
 					description: "Success response",

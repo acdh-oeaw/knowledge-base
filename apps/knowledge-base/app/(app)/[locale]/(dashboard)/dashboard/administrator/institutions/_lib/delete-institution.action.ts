@@ -55,6 +55,6 @@ export const deleteInstitutionAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "members-partners" });
+		await dispatchWebhook({ tags: ["members-partners"] });
 	},
 });

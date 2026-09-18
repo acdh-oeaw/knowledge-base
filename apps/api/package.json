@@ -20,6 +20,7 @@
 	},
 	"dependencies": {
 		"@acdh-oeaw/lib": "catalog:",
+		"@dariah-eric/cache-tags": "workspace:^",
 		"@dariah-eric/database": "workspace:^",
 		"@dariah-eric/env": "workspace:^",
 		"@dariah-eric/images": "workspace:^",

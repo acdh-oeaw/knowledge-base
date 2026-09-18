@@ -46,6 +46,6 @@ export const deleteNewsItemAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "news" });
+		await dispatchWebhook({ tags: ["news"] });
 	},
 });

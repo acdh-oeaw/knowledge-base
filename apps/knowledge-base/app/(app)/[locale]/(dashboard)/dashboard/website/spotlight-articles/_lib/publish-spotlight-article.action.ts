@@ -19,6 +19,6 @@ export const publishSpotlightArticleAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "spotlight-articles" });
+		await dispatchWebhook({ tags: ["spotlight-articles"] });
 	},
 });

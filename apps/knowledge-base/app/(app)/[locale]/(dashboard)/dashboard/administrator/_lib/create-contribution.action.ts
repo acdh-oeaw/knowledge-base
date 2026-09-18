@@ -147,7 +147,7 @@ export const createContributionAction = createServerAction(
 			}
 
 			revalidatePath("/[locale]/dashboard/administrator", "layout");
-			await dispatchWebhook({ type: "persons" });
+			await dispatchWebhook({ tags: ["persons"] });
 
 			return createActionStateSuccess({
 				data: {

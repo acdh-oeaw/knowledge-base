@@ -1,7 +1,7 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -17,6 +17,7 @@ export const router = createRouter()
 			summary: "Get social media",
 			description: "Retrieve a paginated list of social media",
 			operationId: "getSocialMediaList",
+			"x-cache-tags": ["governance-bodies", "members-partners", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -52,6 +53,7 @@ export const router = createRouter()
 			summary: "Get social media by id",
 			description: "Retrieve a social media entry by id",
 			operationId: "getSocialMediaById",
+			"x-cache-tags": ["governance-bodies", "members-partners", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",

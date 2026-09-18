@@ -19,6 +19,6 @@ export const publishPageItemAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "pages" });
+		await dispatchWebhook({ tags: ["pages"] });
 	},
 });

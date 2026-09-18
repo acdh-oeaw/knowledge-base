@@ -19,6 +19,6 @@ export const publishProjectAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "dariah-projects" });
+		await dispatchWebhook({ tags: ["projects"] });
 	},
 });

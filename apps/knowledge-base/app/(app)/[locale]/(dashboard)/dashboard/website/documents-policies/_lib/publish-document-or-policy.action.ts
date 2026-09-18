@@ -25,7 +25,7 @@ export async function publishDocumentOrPolicyAction(
 
 	after(async () => {
 		await syncWebsiteDocumentForEntity(documentId);
-		await dispatchWebhook({ type: "documents-policies" });
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	});
 
 	await recordAuditEvent(db, {

@@ -19,6 +19,6 @@ export const publishWorkingGroupAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "working-groups" });
+		await dispatchWebhook({ tags: ["working-groups"] });
 	},
 });

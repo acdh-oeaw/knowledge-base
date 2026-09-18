@@ -1,8 +1,8 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
 import { resolveLocaleId } from "@/lib/locales";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -18,6 +18,7 @@ export const router = createRouter()
 			summary: "Get pages",
 			description: "Retrieve a paginated list of pages",
 			operationId: "getPages",
+			"x-cache-tags": ["pages"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -55,6 +56,7 @@ export const router = createRouter()
 			summary: "Get page slugs",
 			description: "Retrieve a paginated list of page slugs",
 			operationId: "getPageSlugs",
+			"x-cache-tags": ["pages"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -92,6 +94,7 @@ export const router = createRouter()
 			summary: "Get page by id",
 			description: "Retrieve an page by id",
 			operationId: "getPageById",
+			"x-cache-tags": ["pages"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -132,6 +135,7 @@ export const router = createRouter()
 			summary: "Get page by slug",
 			description: "Retrieve an page by slug",
 			operationId: "getPageBySlug",
+			"x-cache-tags": ["pages"],
 			responses: {
 				200: {
 					description: "Success response",

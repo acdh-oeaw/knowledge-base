@@ -1,7 +1,7 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST } from "@/lib/openapi/responses";
 import { validate } from "@/lib/openapi/validator";
@@ -17,6 +17,7 @@ export const router = createRouter()
 			summary: "Get statistics",
 			description: "Retrieve statistics",
 			operationId: "getStatistics",
+			"x-cache-tags": ["members-partners", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",

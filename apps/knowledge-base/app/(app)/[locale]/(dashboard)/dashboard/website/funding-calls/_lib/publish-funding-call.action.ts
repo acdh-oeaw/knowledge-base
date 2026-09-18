@@ -19,6 +19,6 @@ export const publishFundingCallAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "funding-calls" });
+		await dispatchWebhook({ tags: ["funding-calls"] });
 	},
 });

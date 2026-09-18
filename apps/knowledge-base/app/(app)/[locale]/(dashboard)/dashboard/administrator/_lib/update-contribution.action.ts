@@ -130,7 +130,7 @@ export const updateContributionAction = createServerAction(
 			}
 
 			revalidatePath("/[locale]/dashboard/administrator", "layout");
-			await dispatchWebhook({ type: "persons" });
+			await dispatchWebhook({ tags: ["persons"] });
 			return createActionStateSuccess({});
 		} catch (error) {
 			// A person may hold the same role at the same org over several non-overlapping periods; the

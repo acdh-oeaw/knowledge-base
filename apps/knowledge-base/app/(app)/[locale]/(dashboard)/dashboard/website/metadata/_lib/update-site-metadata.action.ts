@@ -62,6 +62,6 @@ export const updateSiteMetadataAction = createMutationAction({
 	},
 
 	async postCommit() {
-		await dispatchWebhook({ type: "site-metadata" });
+		await dispatchWebhook({ tags: ["site-metadata"] });
 	},
 });

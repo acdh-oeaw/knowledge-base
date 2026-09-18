@@ -28,6 +28,6 @@ export const updateNavigationItemAction = createMutationAction({
 	},
 
 	async postCommit() {
-		await dispatchWebhook({ type: "navigation" });
+		await dispatchWebhook({ tags: ["navigation"] });
 	},
 });

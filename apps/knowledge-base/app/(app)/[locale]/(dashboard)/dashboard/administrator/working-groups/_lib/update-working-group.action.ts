@@ -121,6 +121,6 @@ export const updateWorkingGroupAction = createMutationAction<
 			return;
 		}
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "working-groups" });
+		await dispatchWebhook({ tags: ["working-groups"] });
 	},
 });

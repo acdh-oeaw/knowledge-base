@@ -113,6 +113,6 @@ export const updateProjectAction = createMutationAction<
 			return;
 		}
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "dariah-projects" });
+		await dispatchWebhook({ tags: ["projects"] });
 	},
 });

@@ -34,6 +34,7 @@
 		"@acdh-oeaw/lib": "catalog:",
 		"@acdh-oeaw/style-variants": "catalog:",
 		"@dariah-eric/auth": "workspace:^",
+		"@dariah-eric/cache-tags": "workspace:^",
 		"@dariah-eric/client-campus": "workspace:^",
 		"@dariah-eric/client-episciences": "workspace:^",
 		"@dariah-eric/client-sshoc": "workspace:^",

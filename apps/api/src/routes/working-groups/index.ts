@@ -1,8 +1,8 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
 import { resolveLocaleId } from "@/lib/locales";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -28,6 +28,7 @@ export const router = createRouter()
 			summary: "Get working groups",
 			description: "Retrieve a paginated list of working groups",
 			operationId: "getWorkingGroups",
+			"x-cache-tags": ["persons", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -65,6 +66,7 @@ export const router = createRouter()
 			summary: "Get working group slugs",
 			description: "Retrieve a paginated list of working group slugs",
 			operationId: "getWorkingGroupSlugs",
+			"x-cache-tags": ["persons", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -102,6 +104,7 @@ export const router = createRouter()
 			summary: "Get working group by id",
 			description: "Retrieve a working group by id",
 			operationId: "getWorkingGroupById",
+			"x-cache-tags": ["persons", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -142,6 +145,7 @@ export const router = createRouter()
 			summary: "Get working group by slug",
 			description: "Retrieve a working group by slug",
 			operationId: "getWorkingGroupBySlug",
+			"x-cache-tags": ["persons", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",

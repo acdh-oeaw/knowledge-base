@@ -53,5 +53,5 @@ export async function deleteContributionAction(id: string): Promise<void> {
 
 	revalidatePath("/[locale]/dashboard/administrator/contributions", "layout");
 	revalidatePath("/[locale]/dashboard/administrator/person-relations", "layout");
-	await dispatchWebhook({ type: "persons" });
+	await dispatchWebhook({ tags: ["persons"] });
 }

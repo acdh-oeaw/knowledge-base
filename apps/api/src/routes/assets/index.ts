@@ -2,11 +2,11 @@ import { Readable } from "node:stream";
 
 import { assert } from "@acdh-oeaw/lib";
 import type { ImageUrlOptions } from "@dariah-eric/images";
-import { describeRoute } from "hono-openapi";
 import { rateLimiter } from "hono-rate-limiter";
 
 import { getContentDispositionHeader } from "@/lib/asset-download";
 import { createRouter } from "@/lib/factory";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validator } from "@/lib/openapi/validator";
 import { GetAssetDownload, GetAssetImage } from "@/routes/assets/schemas";
@@ -74,6 +74,7 @@ export const router = createRouter()
 			description:
 				"Sign an imgproxy rendition of an image asset and redirect to it, by storage key. Widths and aspect ratios are restricted to the supported sets. Omitting the width serves the source as stored, which is the only rendition a vector image has.",
 			operationId: "getAssetImage",
+			"x-cache-tags": [],
 			responses: {
 				302: {
 					description: "Redirect to the signed imgproxy url for the requested rendition",
@@ -114,6 +115,7 @@ export const router = createRouter()
 			summary: "Download asset file",
 			description: "Stream the S3-stored file for an asset, by storage key",
 			operationId: "getAssetDownload",
+			"x-cache-tags": [],
 			responses: {
 				200: {
 					description: "Binary file stream",

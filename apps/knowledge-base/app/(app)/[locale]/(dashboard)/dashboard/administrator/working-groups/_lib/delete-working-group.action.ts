@@ -55,6 +55,6 @@ export const deleteWorkingGroupAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "working-groups" });
+		await dispatchWebhook({ tags: ["working-groups"] });
 	},
 });

@@ -2,10 +2,10 @@ import { Readable } from "node:stream";
 
 import { assert } from "@acdh-oeaw/lib";
 import { getContentDispositionHeader } from "@dariah-eric/storage/download";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
 import { resolveLocaleId } from "@/lib/locales";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -42,6 +42,7 @@ export const router = createRouter()
 			summary: "Get documents and policies",
 			description: "Retrieve a paginated list of documents and policies",
 			operationId: "getDocumentsPolicies",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -86,6 +87,7 @@ export const router = createRouter()
 			summary: "Get ordered documents and policies tree",
 			description: "Retrieve documents and policies grouped and ordered for display",
 			operationId: "getDocumentsPoliciesTree",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -136,6 +138,7 @@ export const router = createRouter()
 			summary: "Get document and policy slugs",
 			description: "Retrieve a paginated list of document and policy slugs",
 			operationId: "getDocumentOrPolicySlugs",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -173,6 +176,7 @@ export const router = createRouter()
 			summary: "Get document or policy by id",
 			description: "Retrieve a document or policy by id",
 			operationId: "getDocumentOrPolicyById",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -215,6 +219,7 @@ export const router = createRouter()
 			summary: "Download document or policy file",
 			description: "Stream the S3-stored file for a document or policy by id",
 			operationId: "getDocumentOrPolicyFileById",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Binary file stream",
@@ -263,6 +268,7 @@ export const router = createRouter()
 			summary: "Download document or policy file by slug",
 			description: "Stream the S3-stored file for a document or policy by slug",
 			operationId: "getDocumentOrPolicyFileBySlug",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Binary file stream",
@@ -310,6 +316,7 @@ export const router = createRouter()
 			summary: "Get document or policy by slug",
 			description: "Retrieve a document or policy by slug",
 			operationId: "getDocumentOrPolicyBySlug",
+			"x-cache-tags": ["documents-policies"],
 			responses: {
 				200: {
 					description: "Success response",

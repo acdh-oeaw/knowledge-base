@@ -60,7 +60,7 @@ export async function moveDocumentOrPolicyAction(
 	});
 
 	after(async () => {
-		await dispatchWebhook({ type: "documents-policies" });
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	});
 
 	await recordAuditEvent(db, {

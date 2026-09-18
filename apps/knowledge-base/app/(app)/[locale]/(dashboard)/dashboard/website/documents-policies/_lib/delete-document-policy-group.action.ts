@@ -46,7 +46,7 @@ export async function deleteDocumentPolicyGroupAction(id: string): Promise<void>
 	});
 
 	after(async () => {
-		await dispatchWebhook({ type: "documents-policies" });
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	});
 
 	await recordAuditEvent(db, {

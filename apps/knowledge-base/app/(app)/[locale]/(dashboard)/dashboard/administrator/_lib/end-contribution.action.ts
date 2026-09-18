@@ -47,5 +47,5 @@ export async function endContributionAction(id: string, end: Date): Promise<void
 	});
 
 	revalidatePath("/[locale]/dashboard/administrator", "layout");
-	await dispatchWebhook({ type: "persons" });
+	await dispatchWebhook({ tags: ["persons"] });
 }

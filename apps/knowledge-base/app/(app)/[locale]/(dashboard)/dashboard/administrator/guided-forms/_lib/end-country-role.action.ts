@@ -120,6 +120,6 @@ export const endCountryRoleAction = createMutationAction({
 	},
 
 	async postCommit() {
-		await dispatchWebhook({ type: "persons" });
+		await dispatchWebhook({ tags: ["persons"] });
 	},
 });

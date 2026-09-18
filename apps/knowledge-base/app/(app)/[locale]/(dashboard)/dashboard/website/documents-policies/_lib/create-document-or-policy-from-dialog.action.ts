@@ -78,6 +78,6 @@ export const createDocumentOrPolicyFromDialogAction = createMutationAction<
 		}
 
 		await syncWebsiteDocumentForEntity(result.successData.documentId);
-		await dispatchWebhook({ type: "documents-policies" });
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	},
 });

@@ -1,8 +1,8 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
 import { resolveLocaleId } from "@/lib/locales";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -28,6 +28,7 @@ export const router = createRouter()
 			summary: "Get spotlight articles",
 			description: "Retrieve a paginated list of spotlight articles",
 			operationId: "getSpotlightArticles",
+			"x-cache-tags": ["persons", "spotlight-articles"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -65,6 +66,7 @@ export const router = createRouter()
 			summary: "Get spotlight article slugs",
 			description: "Retrieve a paginated list of spotlight article slugs",
 			operationId: "getSpotlightArticleSlugs",
+			"x-cache-tags": ["persons", "spotlight-articles"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -102,6 +104,7 @@ export const router = createRouter()
 			summary: "Get spotlight article by id",
 			description: "Retrieve an spotlight article by id",
 			operationId: "getSpotlightArticleById",
+			"x-cache-tags": ["persons", "spotlight-articles"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -142,6 +145,7 @@ export const router = createRouter()
 			summary: "Get spotlight article by slug",
 			description: "Retrieve an spotlight article by slug",
 			operationId: "getSpotlightArticleBySlug",
+			"x-cache-tags": ["persons", "spotlight-articles"],
 			responses: {
 				200: {
 					description: "Success response",

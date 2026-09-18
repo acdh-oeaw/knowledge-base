@@ -80,6 +80,6 @@ export const createPersonAction = createMutationAction({
 			return;
 		}
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "persons" });
+		await dispatchWebhook({ tags: ["persons"] });
 	},
 });

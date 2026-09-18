@@ -1,8 +1,8 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
 import { resolveLocaleId } from "@/lib/locales";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -19,6 +19,7 @@ export const router = createRouter()
 			description:
 				"Retrieve site metadata, localized into the requested locale (falling back to the default locale when no translation exists)",
 			operationId: "getSiteMetadata",
+			"x-cache-tags": ["members-partners", "site-metadata"],
 			responses: {
 				200: {
 					description: "Success response",

@@ -107,6 +107,6 @@ export const createGovernanceBodyAction = createMutationAction({
 			return;
 		}
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "governance-bodies" });
+		await dispatchWebhook({ tags: ["governance-bodies"] });
 	},
 });

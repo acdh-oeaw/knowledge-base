@@ -55,6 +55,6 @@ export const deleteProjectAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "dariah-projects" });
+		await dispatchWebhook({ tags: ["projects"] });
 	},
 });

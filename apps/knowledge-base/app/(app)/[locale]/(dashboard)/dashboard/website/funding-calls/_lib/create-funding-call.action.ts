@@ -101,6 +101,6 @@ export const createFundingCallAction = createMutationAction({
 			return;
 		}
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "funding-calls" });
+		await dispatchWebhook({ tags: ["funding-calls"] });
 	},
 });

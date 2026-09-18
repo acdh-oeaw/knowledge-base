@@ -19,6 +19,6 @@ export const publishGovernanceBodyAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "governance-bodies" });
+		await dispatchWebhook({ tags: ["governance-bodies"] });
 	},
 });

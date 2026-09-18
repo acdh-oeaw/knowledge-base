@@ -207,6 +207,6 @@ export const createPartnerInstitutionAction = createMutationAction({
 		}
 
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "members-partners" });
+		await dispatchWebhook({ tags: ["members-partners"] });
 	},
 });

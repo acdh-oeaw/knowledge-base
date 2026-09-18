@@ -1,8 +1,8 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
 import { resolveLocaleId } from "@/lib/locales";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -29,6 +29,7 @@ export const router = createRouter()
 			description:
 				"Retrieve a paginated list of institutions that are partner institutions or cooperating partners of the DARIAH-EU ERIC, optionally filtered by relation status",
 			operationId: "getInstitutions",
+			"x-cache-tags": ["members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -66,6 +67,7 @@ export const router = createRouter()
 			summary: "Get institution slugs",
 			description: "Retrieve a paginated list of institution slugs",
 			operationId: "getInstitutionSlugs",
+			"x-cache-tags": ["members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -103,6 +105,7 @@ export const router = createRouter()
 			summary: "Get institution by id",
 			description: "Retrieve an institution by id",
 			operationId: "getInstitutionById",
+			"x-cache-tags": ["members-partners"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -143,6 +146,7 @@ export const router = createRouter()
 			summary: "Get institution by slug",
 			description: "Retrieve an institution by slug",
 			operationId: "getInstitutionBySlug",
+			"x-cache-tags": ["members-partners"],
 			responses: {
 				200: {
 					description: "Success response",

@@ -24,6 +24,6 @@ export const createNavigationMenuAction = createMutationAction({
 	},
 
 	async postCommit() {
-		await dispatchWebhook({ type: "navigation" });
+		await dispatchWebhook({ tags: ["navigation"] });
 	},
 });

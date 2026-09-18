@@ -27,7 +27,7 @@ export async function deleteSpotlightArticleContributorAction(
 		);
 
 	after(async () => {
-		await dispatchWebhook({ type: "spotlight-articles" });
+		await dispatchWebhook({ tags: ["spotlight-articles"] });
 	});
 
 	await recordAuditEvent(db, {

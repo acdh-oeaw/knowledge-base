@@ -46,6 +46,6 @@ export const deleteEventAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "events" });
+		await dispatchWebhook({ tags: ["events"] });
 	},
 });

@@ -55,6 +55,6 @@ export const deletePersonAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "persons" });
+		await dispatchWebhook({ tags: ["persons"] });
 	},
 });

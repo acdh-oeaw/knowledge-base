@@ -139,7 +139,7 @@ describe("news action notifications", () => {
 			expect(mockSyncWebsiteDocumentForEntity).toHaveBeenCalledOnce();
 			expect(mockSyncWebsiteDocumentForEntity).toHaveBeenCalledWith(documentId);
 			expect(mockDispatchWebhook).toHaveBeenCalledOnce();
-			expect(mockDispatchWebhook).toHaveBeenCalledWith({ type: "news" });
+			expect(mockDispatchWebhook).toHaveBeenCalledWith({ tags: ["news"] });
 		} finally {
 			await cleanupNewsDocument(documentId);
 		}

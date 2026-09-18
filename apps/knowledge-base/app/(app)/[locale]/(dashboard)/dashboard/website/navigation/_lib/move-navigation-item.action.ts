@@ -67,7 +67,7 @@ export async function moveNavigationItemAction(
 	});
 
 	after(async () => {
-		await dispatchWebhook({ type: "navigation" });
+		await dispatchWebhook({ tags: ["navigation"] });
 	});
 
 	await recordAuditEvent(db, {

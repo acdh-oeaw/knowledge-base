@@ -106,6 +106,6 @@ export const createCountryAction = createMutationAction({
 			return;
 		}
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "members-partners" });
+		await dispatchWebhook({ tags: ["members-partners"] });
 	},
 });

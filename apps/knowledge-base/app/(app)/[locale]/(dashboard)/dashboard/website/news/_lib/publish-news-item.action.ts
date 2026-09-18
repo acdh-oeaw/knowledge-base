@@ -19,6 +19,6 @@ export const publishNewsItemAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "news" });
+		await dispatchWebhook({ tags: ["news"] });
 	},
 });

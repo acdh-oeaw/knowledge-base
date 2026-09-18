@@ -55,6 +55,6 @@ export const deleteGovernanceBodyAction = createCommandAction({
 		if (result.descriptor != null) {
 			await deleteWebsiteDocument(result.descriptor);
 		}
-		await dispatchWebhook({ type: "governance-bodies" });
+		await dispatchWebhook({ tags: ["governance-bodies"] });
 	},
 });

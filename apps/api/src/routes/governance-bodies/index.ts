@@ -1,7 +1,7 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validate, validator } from "@/lib/openapi/validator";
@@ -26,6 +26,7 @@ export const router = createRouter()
 			summary: "Get governance bodies",
 			description: "Retrieve a paginated list of governance bodies",
 			operationId: "getGovernanceBodies",
+			"x-cache-tags": ["governance-bodies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -59,6 +60,7 @@ export const router = createRouter()
 			summary: "Get governance body slugs",
 			description: "Retrieve a paginated list of governance body slugs",
 			operationId: "getGovernanceBodySlugs",
+			"x-cache-tags": ["governance-bodies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -92,6 +94,7 @@ export const router = createRouter()
 			summary: "Get governance body by id",
 			description: "Retrieve a governance body by id",
 			operationId: "getGovernanceBodyById",
+			"x-cache-tags": ["governance-bodies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -130,6 +133,7 @@ export const router = createRouter()
 			summary: "Get governance body by slug",
 			description: "Retrieve a governance body by slug",
 			operationId: "getGovernanceBodyBySlug",
+			"x-cache-tags": ["governance-bodies", "persons"],
 			responses: {
 				200: {
 					description: "Success response",

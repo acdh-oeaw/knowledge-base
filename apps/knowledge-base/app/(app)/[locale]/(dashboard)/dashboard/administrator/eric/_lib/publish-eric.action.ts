@@ -19,6 +19,6 @@ export const publishEricAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "members-partners" });
+		await dispatchWebhook({ tags: ["members-partners"] });
 	},
 });

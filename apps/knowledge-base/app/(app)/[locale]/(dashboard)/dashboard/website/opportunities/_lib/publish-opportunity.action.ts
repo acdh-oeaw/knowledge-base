@@ -19,6 +19,6 @@ export const publishOpportunityAction = createCommandAction({
 
 	async postCommit({ result }) {
 		await syncWebsiteDocumentForEntity(result.subjectId);
-		await dispatchWebhook({ type: "opportunities" });
+		await dispatchWebhook({ tags: ["opportunities"] });
 	},
 });

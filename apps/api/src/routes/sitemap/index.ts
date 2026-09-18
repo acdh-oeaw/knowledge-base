@@ -1,7 +1,7 @@
 import { assert } from "@acdh-oeaw/lib";
-import { describeRoute } from "hono-openapi";
 
 import { createRouter } from "@/lib/factory";
+import { describeRoute } from "@/lib/openapi/describe-route";
 import { resolver } from "@/lib/openapi/resolver";
 import { BAD_REQUEST } from "@/lib/openapi/responses";
 import { validate } from "@/lib/openapi/validator";
@@ -18,6 +18,21 @@ export const router = createRouter()
 			description:
 				"Retrieve every website url derived from published content, with the timestamp of its most recent publish. One entry per url, so urls shared by several documents appear once. Listing pages which are not backed by content are not included; consumers add their own static routes.",
 			operationId: "getSitemap",
+			// The sitemap lists every routable document, so it reads every routable content slice.
+			"x-cache-tags": [
+				"documents-policies",
+				"events",
+				"funding-calls",
+				"impact-case-studies",
+				"members-partners",
+				"news",
+				"opportunities",
+				"pages",
+				"persons",
+				"projects",
+				"spotlight-articles",
+				"working-groups",
+			],
 			responses: {
 				200: {
 					description: "Success response",

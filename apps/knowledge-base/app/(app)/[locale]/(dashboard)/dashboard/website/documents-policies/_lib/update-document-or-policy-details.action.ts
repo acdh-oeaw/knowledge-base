@@ -76,6 +76,6 @@ export const updateDocumentOrPolicyDetailsAction = createMutationAction<
 		}
 
 		await syncWebsiteDocumentForEntity(result.successData.entityDocumentId);
-		await dispatchWebhook({ type: "documents-policies" });
+		await dispatchWebhook({ tags: ["documents-policies"] });
 	},
 });
