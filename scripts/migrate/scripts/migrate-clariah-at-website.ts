@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { assert, keyBy, log } from "@acdh-oeaw/lib";
-import { and, createDatabaseService, eq, schema } from "@dariah-eric/database";
+import { type Transaction, and, createDatabaseService, eq, schema } from "@dariah-eric/database";
 import { createStorageService } from "@dariah-eric/storage";
 import { buffer } from "@dariah-eric/storage/lib";
 import slugify from "@sindresorhus/slugify";
@@ -135,26 +135,57 @@ const storage = createStorageService({
 	},
 });
 
-async function main() {
-	const organisationalUnitTypes = await db.query.organisationalUnitTypes.findMany();
+const dryRun = process.argv.includes("--dry-run");
+
+class DryRunRollback extends Error {}
+
+async function createAssetOrDryRunPlaceholder(
+	tx: Transaction,
+	assetPrefix: string,
+	imagePath: string,
+	assetName: string,
+): Promise<string | undefined> {
+	if (!dryRun) {
+		return createAsset(db, storage, assetPrefix, imagePath, assetName);
+	}
+
+	/*log.info(
+		`[dry run] would upload asset "${imagePath}" (${assetName}) to prefix "${assetPrefix}".`,
+	);*/
+
+	const [asset] = await tx
+		.insert(schema.assets)
+		.values({
+			key: `dry-run/${assetPrefix}/${assetName}`,
+			label: assetName,
+			mimeType: "application/octet-stream",
+			alt: "",
+		})
+		.returning({ id: schema.assets.id });
+
+	return asset?.id;
+}
+
+async function main(tx: Transaction) {
+	const organisationalUnitTypes = await tx.query.organisationalUnitTypes.findMany();
 	const organisationalUnitTypesByType = keyBy(organisationalUnitTypes, (item) => item.type);
 
-	const organisationalUnitStatus = await db.query.organisationalUnitStatus.findMany();
+	const organisationalUnitStatus = await tx.query.organisationalUnitStatus.findMany();
 	const organisationalUnitStatusByType = keyBy(organisationalUnitStatus, (item) => item.status);
 
-	const personRoleTypes = await db.query.personRoleTypes.findMany();
+	const personRoleTypes = await tx.query.personRoleTypes.findMany();
 	const personRoleTypesByType = keyBy(personRoleTypes, (item) => item.type);
 
-	const projectRoles = await db.query.projectRoles.findMany();
+	const projectRoles = await tx.query.projectRoles.findMany();
 	const projectRolesByRole = keyBy(projectRoles, (item) => item.role);
 
-	const projectScopes = await db.query.projectScopes.findMany();
+	const projectScopes = await tx.query.projectScopes.findMany();
 	const projectScopesByScope = keyBy(projectScopes, (item) => item.scope);
 
-	const socialMediaTypes = await db.query.socialMediaTypes.findMany();
+	const socialMediaTypes = await tx.query.socialMediaTypes.findMany();
 	const socialMediaTypesByType = keyBy(socialMediaTypes, (item) => item.type);
 
-	const personSocialMediaTypes = await db.query.personSocialMediaTypes.findMany();
+	const personSocialMediaTypes = await tx.query.personSocialMediaTypes.findMany();
 	const personSocialMediaTypesByType = keyBy(personSocialMediaTypes, (item) => item.type);
 
 	const personSlugDocumentIds = new Map<string, string>();
@@ -162,21 +193,16 @@ async function main() {
 	const organisationalUnitsSlugDocumentIds = new Map<string, string>();
 	const organisationalUnitsLocaleSlugDocumentIds = new Map<string, string>();
 
-	const contentBlockTypes = await db.query.contentBlockTypes.findMany();
+	const contentBlockTypes = await tx.query.contentBlockTypes.findMany();
 	const contentBlockTypesByType = keyBy(contentBlockTypes, (item) => item.type);
 
 	const personSlugVersionedLocaleIds = new Map<string, Set<string>>();
 	const organisationalUnitsSlugVersionedLocaleIds = new Map<string, Set<string>>();
 
-	const placeholderInput = await buffer.fromFilePath(
-		path.join(process.cwd(), "scripts", "logo-clariah-at.svg"),
-	);
-	const placeholderMetadata = await buffer.getMetadata(placeholderInput);
-
-	const entityTypes = await db.query.entityTypes.findMany();
+	const entityTypes = await tx.query.entityTypes.findMany();
 	const entityTypesByType = keyBy(entityTypes, (item) => item.type);
 
-	const locales = await db.query.locales.findMany({
+	const locales = await tx.query.locales.findMany({
 		orderBy: (t, { desc }) => [desc(t.isDefault)],
 	});
 	const localesByLanguageCode = keyBy(locales, (item) => item.languageCode);
@@ -192,28 +218,52 @@ async function main() {
 	const defaultLocaleId = defaultLocale.id;
 	const localeDEId = localeDE.id;
 
-	const { key: placeholderImage } = (
-		await storage.upload({
-			input: placeholderInput,
-			prefix: "images",
-			metadata: placeholderMetadata,
-		})
-	).unwrap();
+	// A dry run must never touch storage — skip the file read and upload, and insert a placeholder
+	// row directly (still inside `tx`, rolled back at the end) so every `imageId` fallback below
+	// keeps resolving.
+	async function resolvePlaceholderAssetValues(): Promise<typeof schema.assets.$inferInsert> {
+		if (dryRun) {
+			log.info(
+				'[dry run] would upload placeholder asset "logo-clariah-at.svg" to prefix "images".',
+			);
 
-	const [placeholderAsset] = await db
-		.insert(schema.assets)
-		.values({
+			return {
+				key: "dry-run/images/placeholder",
+				label: "placeholder",
+				mimeType: "image/svg+xml",
+			};
+		}
+
+		const placeholderInput = await buffer.fromFilePath(
+			path.join(process.cwd(), "scripts", "logo-clariah-at.svg"),
+		);
+		const placeholderMetadata = await buffer.getMetadata(placeholderInput);
+
+		const { key: placeholderImage } = (
+			await storage.upload({
+				input: placeholderInput,
+				prefix: "images",
+				metadata: placeholderMetadata,
+			})
+		).unwrap();
+
+		return {
 			key: placeholderImage,
 			label: "placeholder",
 			mimeType: placeholderMetadata["content-type"],
-		})
+		};
+	}
+
+	const [placeholderAsset] = await tx
+		.insert(schema.assets)
+		.values(await resolvePlaceholderAssetValues())
 		.returning({ id: schema.assets.id });
 
 	assert(placeholderAsset);
 
 	const orgUnitTypeId = entityTypesByType.organisational_units.id;
 
-	const [dariahEuDoc] = await db
+	const [dariahEuDoc] = await tx
 		.select({ id: schema.slugs.entityId })
 		.from(schema.slugs)
 		.where(
@@ -226,7 +276,7 @@ async function main() {
 
 	assert(dariahEuDoc);
 
-	const [dariahEuDocDE] = await db
+	const [dariahEuDocDE] = await tx
 		.select({ id: schema.slugs.entityId })
 		.from(schema.slugs)
 		.where(
@@ -250,7 +300,7 @@ async function main() {
 	// consortium endpoint returns array of institutions
 	const institutions = (await response.json()) as Array<Institution>;
 
-	const orgUnitType = await db.query.organisationalUnitTypes.findFirst({
+	const orgUnitType = await tx.query.organisationalUnitTypes.findFirst({
 		where: { type: "institution" },
 		columns: { id: true },
 	});
@@ -264,7 +314,7 @@ async function main() {
 
 	/** Create country Austria * */
 
-	await db.transaction(async (tx) => {
+	await tx.transaction(async (tx) => {
 		({ documentId: countryDocumentId, versionId: countryVersionId } = await createPublishedDocument(
 			tx,
 			entityTypesByType.organisational_units.id,
@@ -411,7 +461,7 @@ async function main() {
 			assert(institutionName);
 			const slug = slugify(institutionName);
 
-			await db.transaction(async (tx) => {
+			await tx.transaction(async (tx) => {
 				if (locale.isDefault) {
 					const { documentId, versionId } = await createPublishedDocument(
 						tx,
@@ -458,7 +508,12 @@ async function main() {
 				}
 				const assetId =
 					institutionData.logo != null
-						? await createAsset(db, storage, "logos", institutionData.logo, institutionName)
+						? await createAssetOrDryRunPlaceholder(
+								tx,
+								"logos",
+								institutionData.logo,
+								institutionName,
+							)
 						: undefined;
 
 				const [orgUnit] = await tx
@@ -497,7 +552,7 @@ async function main() {
 				const slug = slugify(subInstitution.name);
 				let subInstitutionVersionId: string;
 
-				await db.transaction(async (tx) => {
+				await tx.transaction(async (tx) => {
 					let subInstitutionDocumentId: string;
 
 					if (locale.isDefault) {
@@ -563,7 +618,12 @@ async function main() {
 					}
 
 					const assetId = subInstitution.logo
-						? await createAsset(db, storage, "logos", subInstitution.logo, subInstitution.name)
+						? await createAssetOrDryRunPlaceholder(
+								tx,
+								"logos",
+								subInstitution.logo,
+								subInstitution.name,
+							)
 						: undefined;
 
 					const [orgUnit] = await tx
@@ -593,7 +653,7 @@ async function main() {
 				const slug = slugify(person.name);
 				let personVersionId: string;
 
-				await db.transaction(async (tx) => {
+				await tx.transaction(async (tx) => {
 					let personDocumentId: string;
 
 					if (locale.isDefault) {
@@ -633,7 +693,7 @@ async function main() {
 					}
 
 					const assetId = person.image
-						? await createAsset(db, storage, "avatars", person.image, person.name)
+						? await createAssetOrDryRunPlaceholder(tx, "avatars", person.image, person.name)
 						: undefined;
 
 					const [kbPerson] = await tx
@@ -725,7 +785,7 @@ async function main() {
 			assert(eventTitle);
 			const slug = slugify(eventTitle);
 			let eventVersionId: string;
-			await db.transaction(async (tx) => {
+			await tx.transaction(async (tx) => {
 				if (locale.isDefault) {
 					const { documentId, versionId } = await createPublishedDocument(
 						tx,
@@ -747,7 +807,7 @@ async function main() {
 				}
 				const assetId =
 					eventData.image != null
-						? await createAsset(db, storage, "images", eventData.image, eventTitle)
+						? await createAssetOrDryRunPlaceholder(tx, "images", eventData.image, eventTitle)
 						: undefined;
 
 				let eventDuration = {
@@ -798,7 +858,7 @@ async function main() {
 			assert(newsItemTitle);
 			const slug = slugify(newsItemTitle);
 			let newsItemVersionId: string;
-			await db.transaction(async (tx) => {
+			await tx.transaction(async (tx) => {
 				if (locale.isDefault) {
 					const { documentId, versionId } = await createPublishedDocument(
 						tx,
@@ -820,7 +880,7 @@ async function main() {
 				}
 				const assetId =
 					newsItemData.image != null
-						? await createAsset(db, storage, "images", newsItemData.image, newsItemTitle)
+						? await createAssetOrDryRunPlaceholder(tx, "images", newsItemData.image, newsItemTitle)
 						: undefined;
 
 				await tx.insert(schema.news).values({
@@ -929,7 +989,7 @@ async function main() {
 			assert(projectTitle);
 			const slug = slugify(projectTitle);
 			let projectVersionId: string;
-			await db.transaction(async (tx) => {
+			await tx.transaction(async (tx) => {
 				if (locale.isDefault) {
 					const { documentId, versionId } = await createPublishedDocument(
 						tx,
@@ -951,7 +1011,7 @@ async function main() {
 				}
 				const assetId =
 					projectData.image != null
-						? await createAsset(db, storage, "images", projectData.image, projectTitle)
+						? await createAssetOrDryRunPlaceholder(tx, "images", projectData.image, projectTitle)
 						: undefined;
 
 				const projectStartDate =
@@ -1005,7 +1065,7 @@ async function main() {
 					contentBlockTypesByType.rich_text,
 				);
 
-				/*for (const [index, person] of projectData.responsiblePersons.entries()) {
+				for (const [index, person] of projectData.responsiblePersons.entries()) {
 					// FIX: if we already resolved this position on an earlier locale
 					// pass for this project, reuse that id — don't re-derive from name.
 					const previouslyResolvedPersonDocumentId = responsiblePersonDocumentIds[index];
@@ -1084,7 +1144,7 @@ async function main() {
 							roleId: projectRolesByRole.affiliated.id,
 						})
 						.onConflictDoNothing();
-				}*/
+				}
 
 				for (const [index, institution] of projectData.hostingOrganizations.entries()) {
 					// FIX: same pattern — reuse the id resolved on an earlier locale
@@ -1194,7 +1254,7 @@ async function main() {
 			assert(pageTitle);
 			const slug = slugify(pageTitle);
 			let pageVersionId: string;
-			await db.transaction(async (tx) => {
+			await tx.transaction(async (tx) => {
 				if (locale.isDefault) {
 					const { documentId, versionId } = await createPublishedDocument(
 						tx,
@@ -1216,7 +1276,7 @@ async function main() {
 				}
 				const assetId =
 					pageData.image != null
-						? await createAsset(db, storage, "images", pageData.image, pageTitle)
+						? await createAssetOrDryRunPlaceholder(tx, "images", pageData.image, pageTitle)
 						: undefined;
 
 				await tx.insert(schema.pages).values({
@@ -1240,7 +1300,34 @@ async function main() {
 	}
 }
 
-main()
+async function run(): Promise<void> {
+	if (dryRun) {
+		log.info("Running in dry-run mode — no changes will be written to the database or storage.");
+	}
+
+	try {
+		await db.transaction(async (tx: Transaction) => {
+			await main(tx);
+
+			// Every step above has already run for real (inserts, selects, and their returned ids all
+			// happen against this transaction) and logged what it did — throwing here is only to make
+			// `db.transaction` roll all of it back instead of committing.
+			if (dryRun) {
+				throw new DryRunRollback();
+			}
+		});
+	} catch (error) {
+		if (!(error instanceof DryRunRollback)) {
+			throw error;
+		}
+	}
+
+	if (dryRun) {
+		log.info("[dry run] Migration completed — nothing was written.");
+	}
+}
+
+run()
 	.catch((error: unknown) => {
 		log.error("Failed to complete data migration.", error);
 		process.exitCode = 1;
