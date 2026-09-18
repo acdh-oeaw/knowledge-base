@@ -367,7 +367,7 @@ test.describe("admin relation management", () => {
 		expect(await db.getPersonRelationsByUnitVersionId(governanceBody!.id)).toHaveLength(1);
 	});
 
-	test.fixme("should allow the same unit relation over non-overlapping periods", async ({
+	test("should allow the same unit relation over non-overlapping periods", async ({
 		createAdminInstitutionsPage,
 		db,
 	}) => {
@@ -402,7 +402,7 @@ test.describe("admin relation management", () => {
 		expect(await db.getUnitRelationsByUnitVersionId(institution!.id)).toHaveLength(2);
 	});
 
-	test.fixme("should reject a unit relation that overlaps an existing one", async ({
+	test("should reject a unit relation that overlaps an existing one", async ({
 		page,
 		createAdminInstitutionsPage,
 		db,
@@ -544,7 +544,7 @@ test.describe("admin relation management", () => {
 		expect(relations?.partners).toHaveLength(0);
 	});
 
-	test("should manage affiliated people from the project tab", async ({
+	test("should manage affiliated people from the project tab and standalone list", async ({
 		page,
 		createAdminProjectsPage,
 		db,
@@ -591,10 +591,54 @@ test.describe("admin relation management", () => {
 			new Date("2025-05-31T00:00:00.000Z"),
 		);
 
+		const listPath = "/en/dashboard/administrator/project-affiliations";
+		await page.goto(listPath);
+		await fillSearchAndWaitForUrl(page, listPath, projectName);
+		await expect(rowByText(page, projectName)).toBeVisible();
+
+		await openRowAction(page, projectName, "Edit affiliation");
+		const editDialog = page.getByRole("dialog", { name: "Edit affiliation" });
+		await fillDatePicker(page, editDialog, "End date", 2025, 6, 30);
+		await waitForActionSuccess({
+			page,
+			trigger: async () => {
+				await editDialog.getByRole("button", { name: "Save" }).click();
+			},
+		});
+		await editDialog.waitFor({ state: "hidden" });
+
+		// Gate the DB read on the refreshed list reflecting the new end date, so we only query once the
+		// action has actually committed (and not on a dialog that closed for any other reason).
+		await expect(rowByText(page, projectName)).toContainText("30/06/2025");
+
+		relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.affiliations[0]!.duration?.end).toStrictEqual(
+			new Date("2025-06-30T00:00:00.000Z"),
+		);
+
+		await Promise.all([
+			page.waitForURL("**/edit"),
+			openRowAction(page, projectName, "Edit project"),
+		]);
+		await projectsPage.goToAffiliatedPeopleTab();
 		await projectsPage.clickDeleteProjectAffiliation();
 		await projectsPage.confirmDeleteProjectAffiliation();
 		await expect(projectsPage.affiliatedPeopleTable()).toBeHidden();
 		await expect(page.getByText("No affiliated people.")).toBeVisible();
+
+		relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.affiliations).toHaveLength(0);
+
+		await projectsPage.addProjectAffiliation(affiliatedPerson!.name);
+		relations = await db.getProjectRelationsByName(projectName);
+		expect(relations?.affiliations).toHaveLength(1);
+
+		await page.goto(listPath);
+		await fillSearchAndWaitForUrl(page, listPath, projectName);
+		await expect(rowByText(page, projectName)).toBeVisible();
+		await openRowAction(page, projectName, "Delete");
+		await confirmDeleteDialog(page, /Delete project affiliation/i);
+		await expect(rowByText(page, projectName)).toBeHidden();
 
 		relations = await db.getProjectRelationsByName(projectName);
 		expect(relations?.affiliations).toHaveLength(0);

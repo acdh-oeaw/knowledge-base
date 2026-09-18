@@ -14,6 +14,7 @@ import { getResolvedEntityContentBlocks } from "@/lib/content-blocks-service";
 import { resolveLocalizedDetailVersion } from "@/lib/data/entity-detail-view";
 import { getLocales } from "@/lib/data/locales";
 import { getProjectPartnerUnits } from "@/lib/data/project-partners";
+import { getProjectAffiliatedPersons } from "@/lib/data/project-persons";
 import {
 	getEntityRelationOptionsByIds,
 	getEntityRelations,
@@ -168,21 +169,23 @@ export default async function DashboardAdministratorProjectDetailsPage(
 	);
 	const entityVersionSlug = project.entityVersion.slug;
 
-	const [descriptionContentBlocks, partners, socialMediaLinks] = await Promise.all([
-		getResolvedEntityContentBlocks(versionId, "description"),
-		getProjectPartnerUnits(documentId, displayLocaleId),
-		db.query.projectsToSocialMedia.findMany({
-			where: { projectId: project.id },
-			orderBy: { position: "asc" },
-			columns: {},
-			with: {
-				socialMedia: {
-					columns: { id: true, name: true, url: true },
-					with: { type: { columns: { type: true } } },
+	const [descriptionContentBlocks, partners, affiliatedPersons, socialMediaLinks] =
+		await Promise.all([
+			getResolvedEntityContentBlocks(versionId, "description"),
+			getProjectPartnerUnits(documentId, displayLocaleId),
+			getProjectAffiliatedPersons(documentId, displayLocaleId),
+			db.query.projectsToSocialMedia.findMany({
+				where: { projectId: project.id },
+				orderBy: { position: "asc" },
+				columns: {},
+				with: {
+					socialMedia: {
+						columns: { id: true, name: true, url: true },
+						with: { type: { columns: { type: true } } },
+					},
 				},
-			},
-		}),
-	]);
+			}),
+		]);
 
 	const { relatedEntityIds, relatedResourceIds } = await getEntityRelations(documentId);
 
@@ -225,6 +228,15 @@ export default async function DashboardAdministratorProjectDetailsPage(
 						roleName: partner.roleName,
 						duration: partner.duration ?? null,
 						unitIsLocaleFallback: partner.unitIsLocaleFallback,
+					};
+				}),
+				affiliatedPersons: affiliatedPersons.map((person) => {
+					return {
+						id: person.id,
+						personName: person.personName,
+						personSlug: person.personSlug,
+						duration: person.duration ?? null,
+						personIsLocaleFallback: person.personIsLocaleFallback,
 					};
 				}),
 				socialMedia: socialMediaLinks.map((link) => link.socialMedia),

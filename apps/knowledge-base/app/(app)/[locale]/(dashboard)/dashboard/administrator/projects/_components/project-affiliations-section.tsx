@@ -37,8 +37,8 @@ import {
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/form-section";
 import { Paginate } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/paginate";
 import { useClientTable } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/use-client-table";
-import { deleteProjectAffiliationAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/delete-project-affiliation.action";
-import { upsertProjectAffiliationAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/upsert-project-affiliation.action";
+import { deleteProjectAffiliationAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/project-affiliations/_lib/delete-project-affiliation.action";
+import { upsertProjectAffiliationAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/project-affiliations/_lib/upsert-project-affiliation.action";
 import type { ContributionPersonOption } from "@/lib/data/contributions";
 import { dateToCalendarDate } from "@/lib/date";
 

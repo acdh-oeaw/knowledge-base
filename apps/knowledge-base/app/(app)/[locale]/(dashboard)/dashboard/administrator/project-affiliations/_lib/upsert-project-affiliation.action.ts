@@ -7,7 +7,7 @@ import { getExtracted, getLocale } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import * as v from "valibot";
 
-import { UpsertProjectAffiliationActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/upsert-project-affiliation.schema";
+import { UpsertProjectAffiliationActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/project-affiliations/_lib/upsert-project-affiliation.schema";
 import { getAuditSummaryFromFormData, recordAuditEvent } from "@/lib/audit/audit-log";
 import { arePublishedEntityDocuments } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";

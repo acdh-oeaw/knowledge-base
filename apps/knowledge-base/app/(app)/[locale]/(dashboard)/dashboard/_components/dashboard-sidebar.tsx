@@ -159,6 +159,12 @@ export function useSidebarMenu(
 				icon: <ListBulletIcon />,
 			},
 			{
+				href: "/dashboard/administrator/project-affiliations",
+				tooltip: t("Project affiliations"),
+				label: t("Project affiliations"),
+				icon: <ListBulletIcon />,
+			},
+			{
 				href: "/dashboard/administrator/internal-services",
 				tooltip: t("Internal services"),
 				label: t("Internal services"),

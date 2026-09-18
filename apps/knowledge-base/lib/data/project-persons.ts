@@ -1,8 +1,11 @@
+import type { User } from "@dariah-eric/auth";
 import * as schema from "@dariah-eric/database/schema";
+import { forbidden } from "next/navigation";
 
 import { localeMatch, statusMatch } from "@/lib/data/current-entity-version";
 import { db } from "@/lib/db";
-import { alias, and, eq, sql } from "@/lib/db/sql";
+import { matchesAllTerms } from "@/lib/db/search";
+import { alias, and, count, desc, eq, sql } from "@/lib/db/sql";
 
 export interface ProjectAffiliatedPerson {
 	id: string;
@@ -102,4 +105,167 @@ export async function getProjectAffiliatedPersons(
 			personIsLocaleFallback: row.personIsLocaleFallback,
 		};
 	});
+}
+
+export type ProjectAffiliationsSort =
+	| "projectName"
+	| "personName"
+	| "durationStart"
+	| "durationEnd";
+
+interface GetProjectAffiliationsParams {
+	limit: number;
+	offset: number;
+	q?: string;
+	sort?: ProjectAffiliationsSort;
+	dir?: "asc" | "desc";
+}
+
+export interface ProjectAffiliationsResult {
+	data: Array<{
+		id: string;
+		projectId: string;
+		projectAcronym: string | null;
+		projectName: string;
+		projectSlug: string;
+		personDocumentId: string;
+		personName: string;
+		durationStart: Date | undefined;
+		durationEnd: Date | undefined;
+	}>;
+	limit: number;
+	offset: number;
+	total: number;
+}
+
+function assertAdminUser(user: Pick<User, "role">): void {
+	if (user.role !== "admin") {
+		forbidden();
+	}
+}
+
+/**
+ * Admin-facing, cross-project list of `projects_to_persons` affiliations — mirrors
+ * `getProjectPartners` for `projects_to_organisational_units`. Each side resolves to its latest
+ * editable version (draft-or-published), so an admin can manage a relation before either side is
+ * published.
+ */
+export async function getProjectAffiliations(
+	params: Readonly<GetProjectAffiliationsParams>,
+): Promise<ProjectAffiliationsResult> {
+	const { limit, offset, q, sort = "projectName", dir = "asc" } = params;
+	const projectEntities = alias(schema.entities, "affiliation_project_entities");
+	const projectDocumentLifecycle = alias(
+		schema.documentLifecycle,
+		"affiliation_project_document_lifecycle",
+	);
+	const personDocumentLifecycle = alias(
+		schema.documentLifecycle,
+		"affiliation_person_document_lifecycle",
+	);
+	const projectPickedVersion = sql`COALESCE(${projectDocumentLifecycle.draftId}, ${projectDocumentLifecycle.publishedId})`;
+	const personPickedVersion = sql`COALESCE(${personDocumentLifecycle.draftId}, ${personDocumentLifecycle.publishedId})`;
+	const query = q?.trim();
+	const where = matchesAllTerms(
+		query,
+		schema.projects.name,
+		schema.projects.acronym,
+		schema.persons.name,
+	);
+	const orderBy =
+		sort === "personName"
+			? dir === "asc"
+				? schema.persons.name
+				: desc(schema.persons.name)
+			: sort === "durationStart"
+				? dir === "asc"
+					? sql`LOWER(${schema.projectsToPersons.duration}) ASC NULLS LAST`
+					: sql`LOWER(${schema.projectsToPersons.duration}) DESC NULLS LAST`
+				: sort === "durationEnd"
+					? dir === "asc"
+						? sql`UPPER(${schema.projectsToPersons.duration}) ASC NULLS LAST`
+						: sql`UPPER(${schema.projectsToPersons.duration}) DESC NULLS LAST`
+					: dir === "asc"
+						? schema.projects.name
+						: desc(schema.projects.name);
+
+	const [rows, aggregate] = await Promise.all([
+		db
+			.select({
+				id: schema.projectsToPersons.id,
+				projectId: schema.projectsToPersons.projectDocumentId,
+				projectAcronym: schema.projects.acronym,
+				projectName: schema.projects.name,
+				projectSlug: schema.slugs.value,
+				personDocumentId: schema.projectsToPersons.personDocumentId,
+				personName: schema.persons.name,
+				duration: schema.projectsToPersons.duration,
+			})
+			.from(schema.projectsToPersons)
+			.innerJoin(
+				projectEntities,
+				eq(projectEntities.id, schema.projectsToPersons.projectDocumentId),
+			)
+			.innerJoin(
+				projectDocumentLifecycle,
+				eq(projectDocumentLifecycle.documentId, projectEntities.id),
+			)
+			.innerJoin(schema.projects, sql`${schema.projects.id} = ${projectPickedVersion}`)
+			.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.projects.id))
+			.innerJoin(
+				personDocumentLifecycle,
+				eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+			)
+			.innerJoin(schema.persons, sql`${schema.persons.id} = ${personPickedVersion}`)
+			.where(where)
+			.orderBy(orderBy)
+			.limit(limit)
+			.offset(offset),
+		db
+			.select({ total: count() })
+			.from(schema.projectsToPersons)
+			.innerJoin(
+				projectEntities,
+				eq(projectEntities.id, schema.projectsToPersons.projectDocumentId),
+			)
+			.innerJoin(
+				projectDocumentLifecycle,
+				eq(projectDocumentLifecycle.documentId, projectEntities.id),
+			)
+			.innerJoin(schema.projects, sql`${schema.projects.id} = ${projectPickedVersion}`)
+			.innerJoin(
+				personDocumentLifecycle,
+				eq(personDocumentLifecycle.documentId, schema.projectsToPersons.personDocumentId),
+			)
+			.innerJoin(schema.persons, sql`${schema.persons.id} = ${personPickedVersion}`)
+			.where(where),
+	]);
+
+	return {
+		data: rows.map((row) => {
+			return {
+				id: row.id,
+				projectId: row.projectId,
+				projectAcronym: row.projectAcronym,
+				projectName: row.projectName,
+				projectSlug: row.projectSlug,
+				personDocumentId: row.personDocumentId,
+				personName: row.personName,
+				durationStart: row.duration?.start,
+				durationEnd: row.duration?.end,
+			};
+		}),
+		limit,
+		offset,
+		total: aggregate.at(0)?.total ?? 0,
+	};
+}
+
+export async function getProjectAffiliationsForAdmin(
+	currentUser: Pick<User, "role">,
+	params: Readonly<GetProjectAffiliationsParams>,
+): Promise<ProjectAffiliationsResult> {
+	assertAdminUser(currentUser);
+
+	return getProjectAffiliations(params);
 }
