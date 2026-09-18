@@ -1,5 +1,5 @@
 {
-  "id": "0db9aac0-5c82-49a4-a5af-ccdf428c378d",
+  "id": "09d07630-808f-4280-af94-07477470341d",
   "prevIds": [
     "11d424ac-680a-4b9f-9f20-2789f55d6625"
   ],
@@ -333,6 +333,12 @@
     {
       "isRlsEnabled": false,
       "name": "project_scopes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "project_calls",
       "entityType": "tables",
       "schema": "public"
     },
@@ -5116,6 +5122,58 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
+      "default": "UUIDV7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "project_calls"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "call",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "project_calls"
+    },
+    {
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "project_calls"
+    },
+    {
+      "type": "timestamp(3) with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "project_calls"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
@@ -5203,14 +5261,14 @@
       "table": "projects"
     },
     {
-      "type": "text",
+      "type": "uuid",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "call",
+      "name": "call_id",
       "entityType": "columns",
       "schema": "public",
       "table": "projects"
@@ -10427,6 +10485,23 @@
     {
       "nameExplicit": false,
       "columns": [
+        "call_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "project_calls",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "projects_call_id_project_calls_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "projects"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
         "project_document_id"
       ],
       "schemaTo": "public",
@@ -12177,6 +12252,16 @@
         "id"
       ],
       "nameExplicit": false,
+      "name": "project_calls_pkey",
+      "schema": "public",
+      "table": "project_calls",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
       "name": "projects_pkey",
       "schema": "public",
       "table": "projects",
@@ -13140,6 +13225,17 @@
     {
       "nameExplicit": false,
       "columns": [
+        "call"
+      ],
+      "nullsNotDistinct": false,
+      "name": "project_calls_call_key",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "project_calls"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
         "year"
       ],
       "nullsNotDistinct": false,
@@ -13405,6 +13501,13 @@
       "entityType": "checks",
       "schema": "public",
       "table": "project_scopes"
+    },
+    {
+      "value": "\"call\" in ('clariah_at_project_funding', 'go_digital_1_0', 'go_digital_2_0', 'go_digital_3_0', 'go_digital_next_generation')",
+      "name": "project_calls_call_enum_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "project_calls"
     },
     {
       "value": "\"contribution_role\" in ('national_coordinator', 'national_coordinator_deputy', 'is_chair_of_jrc', 'is_chair_of_ncc', 'is_chair_of_wg', 'is_member_of_jrc')",
