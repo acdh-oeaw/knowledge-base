@@ -1169,7 +1169,7 @@ async function main() {
 								start: projectStartDate,
 								end: projectEndDate,
 							},
-							roleId: projectRolesByRole.affiliated.id,
+							roleId: projectRolesByRole.participant.id,
 						})
 						.onConflictDoNothing();
 				}
