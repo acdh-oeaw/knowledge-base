@@ -6,6 +6,7 @@ const CHECK_VIOLATION = "23514";
 const UNIQUE_VIOLATION = "23505";
 
 export type UserFacingDatabaseError =
+	| "entity-linked-from-navigation"
 	| "entity-slug-conflict"
 	| "invalid-data"
 	| "missing-data"
@@ -72,6 +73,13 @@ export function getUserFacingDatabaseError(error: unknown): UserFacingDatabaseEr
 			current.constraint === "slugs_published_type_locale_value_unique"
 		) {
 			return "entity-slug-conflict";
+		}
+
+		if (
+			current.code === FOREIGN_KEY_VIOLATION &&
+			current.constraint === "navigation_items_entity_id_entities_id_fk"
+		) {
+			return "entity-linked-from-navigation";
 		}
 
 		switch (current.code) {

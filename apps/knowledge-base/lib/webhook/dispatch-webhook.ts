@@ -117,18 +117,20 @@ export async function dispatchWebhook(payload: { tags: Array<CacheTag> }): Promi
 /**
  * Dispatch the revalidation webhook for a raw entity-type token. A single entity type can surface
  * in the api under several tags (e.g. an organisational unit is both members-partners and
- * working-groups), so this maps to each of them.
+ * working-groups), so this maps to each of them. Callers can include tags for derived api data
+ * whose dependency is narrower than every change to the entity type.
  */
 export async function dispatchWebhookForEntityType(
 	entityType: (typeof schema.entityTypesEnum)[number],
+	additionalTags: Array<CacheTag> = [],
 ): Promise<void> {
 	const tags = cacheTagsByEntityType[entityType];
 
-	if (tags == null) {
+	if (tags == null && additionalTags.length === 0) {
 		return;
 	}
 
-	await dispatchWebhook({ tags });
+	await dispatchWebhook({ tags: [...(tags ?? []), ...additionalTags] });
 }
 
 /**

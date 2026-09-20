@@ -163,6 +163,9 @@ export function createCommandAction<
 				documentLinkedToUser: t(
 					"A user account is linked to this record. Update that user's linked person or country before deleting it.",
 				),
+				entityLinkedFromNavigation: t(
+					"This record is linked from a navigation menu. Remove the navigation link before deleting it.",
+				),
 				entitySlugConflict: t("An entity with this slug already exists."),
 				uniqueConflict: t("A record with these values already exists."),
 				missingRelatedRecord: t(

@@ -119,9 +119,9 @@ export const CalendarDateSchema = v.pipe(
 );
 
 /**
- * A reference to another entity. Every place that points at an entity — positions, related
- * entities, navigation items, article credits — uses this exact shape, so consumers need a single
- * code path to render a link, and a new field (e.g. `href`) is added in one place.
+ * A reference to another entity. Positions, related entities and article credits use this exact
+ * shape so consumers need a single code path to render a link. Navigation items use a slimmer
+ * route-specific shape because their own label is authoritative.
  */
 export const EntityRefSchema = v.pipe(
 	v.object({
@@ -129,10 +129,7 @@ export const EntityRefSchema = v.pipe(
 		id: v.pipe(v.string(), v.uuid()),
 		type: v.picklist(publicRelatedEntityTypesEnum),
 		slug: v.string(),
-		/**
-		 * Display name of the entity. Some embedding records, such as navigation items, may override
-		 * it.
-		 */
+		/** Display name of the entity. */
 		label: v.string(),
 		href: v.pipe(
 			v.nullable(v.string()),

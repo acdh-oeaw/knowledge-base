@@ -3,6 +3,7 @@ import { findUserFacingError } from "@/lib/user-facing-error";
 
 interface ErrorMessages {
 	documentLinkedToUser: string;
+	entityLinkedFromNavigation: string;
 	entitySlugConflict: string;
 	invalidData: string;
 	missingDariahEric: string;
@@ -64,6 +65,9 @@ export function getUserFacingErrorMessage(error: unknown, messages: ErrorMessage
 	}
 
 	switch (getUserFacingDatabaseError(error)) {
+		case "entity-linked-from-navigation": {
+			return messages.entityLinkedFromNavigation;
+		}
 		case "entity-slug-conflict": {
 			return messages.entitySlugConflict;
 		}

@@ -1,13 +1,30 @@
 import * as schema from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
-import { EntityRefSchema, LocaleQuerySchema } from "@/lib/schemas";
+import { LocaleQuerySchema, publicRelatedEntityTypesEnum } from "@/lib/schemas";
+
+const NavigationEntityRefSchema = v.pipe(
+	v.object({
+		/** Document id (stable across versions), not the id of a particular version. */
+		id: v.pipe(v.string(), v.uuid()),
+		type: v.picklist(publicRelatedEntityTypesEnum),
+		slug: v.string(),
+		href: v.pipe(
+			v.nullable(v.string()),
+			v.description(
+				"Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
+			),
+		),
+	}),
+	v.description("Reference to an entity linked from a navigation item"),
+	v.metadata({ ref: "NavigationEntityRef" }),
+);
 
 const NavigationItemBaseSchema = v.object({
 	...v.pick(schema.NavigationItemSelectSchema, ["id", "label", "href", "isExternal", "position"])
 		.entries,
 	/** Null for external links and for items whose href is typed in by hand. */
-	entity: v.nullable(EntityRefSchema),
+	entity: v.nullable(NavigationEntityRefSchema),
 });
 
 const NavigationItemSchema = v.pipe(

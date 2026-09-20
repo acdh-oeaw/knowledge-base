@@ -18,6 +18,10 @@ export interface EntityIdentity {
 	type: AdaptedEntityType;
 }
 
+export interface UpdatedEntitySlug extends EntityIdentity {
+	slugChanged: boolean;
+}
+
 export interface MergeEntitiesResult {
 	sourceId: string;
 	targetId: string;
@@ -68,7 +72,7 @@ export async function updateEntitySlug(
 	tx: Transaction,
 	documentId: string,
 	rawSlug: string,
-): Promise<EntityIdentity> {
+): Promise<UpdatedEntitySlug> {
 	const entity = await loadMergeableEntity(tx, documentId);
 
 	const slug = slugify(rawSlug);
@@ -77,7 +81,8 @@ export async function updateEntitySlug(
 	// error, since pasting a whole title in is an ordinary mistake and deserves a real message.
 	assertSlugWithinMaxLength(slug);
 
-	if (slug !== entity.slug) {
+	const slugChanged = slug !== entity.slug;
+	if (slugChanged) {
 		const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
 		const versionIds = [draftId, publishedId].filter((id): id is string => id != null);
 
@@ -87,7 +92,7 @@ export async function updateEntitySlug(
 			.where(inArray(schema.slugs.entityVersionId, versionIds));
 	}
 
-	return { ...entity, slug };
+	return { ...entity, slug, slugChanged };
 }
 
 // ---------------------------------------------------------------------------

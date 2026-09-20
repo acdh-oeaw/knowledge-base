@@ -14,6 +14,17 @@ describe("getUserFacingDatabaseError", () => {
 		expect(getUserFacingDatabaseError(error)).toBe("entity-slug-conflict");
 	});
 
+	it("recognises an entity still linked from navigation", () => {
+		const error = new Error("Failed query", {
+			cause: Object.assign(new Error("update or delete violates foreign key constraint"), {
+				code: "23503",
+				constraint: "navigation_items_entity_id_entities_id_fk",
+			}),
+		});
+
+		expect(getUserFacingDatabaseError(error)).toBe("entity-linked-from-navigation");
+	});
+
 	it.each([
 		["23505", "unique-conflict"],
 		["23503", "missing-related-record"],

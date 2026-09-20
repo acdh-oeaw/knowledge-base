@@ -12368,6 +12368,58 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         },
         "type": "array",
       },
+      "NavigationEntityRef": {
+        "description": "Reference to an entity linked from a navigation item",
+        "properties": {
+          "href": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "slug": {
+            "type": "string",
+          },
+          "type": {
+            "enum": [
+              "documents_policies",
+              "events",
+              "funding_calls",
+              "impact_case_studies",
+              "news",
+              "opportunities",
+              "pages",
+              "persons",
+              "projects",
+              "spotlight_articles",
+              "governance_body",
+              "national_consortium",
+              "country",
+              "institution",
+              "regional_hub",
+              "eric",
+              "working_group",
+            ],
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "type",
+          "slug",
+          "href",
+        ],
+        "type": "object",
+      },
       "NavigationItem": {
         "description": "Navigation item",
         "properties": {
@@ -12377,7 +12429,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 "entity": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/EntityRef",
+                      "$ref": "#/components/schemas/NavigationEntityRef",
                     },
                     {
                       "type": "null",
@@ -12425,7 +12477,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "entity": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EntityRef",
+                "$ref": "#/components/schemas/NavigationEntityRef",
               },
               {
                 "type": "null",
@@ -24408,20 +24460,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "navigation",
         ],
         "x-cache-tags": [
-          "documents-policies",
-          "events",
-          "funding-calls",
-          "governance-bodies",
-          "impact-case-studies",
-          "members-partners",
           "navigation",
-          "news",
-          "opportunities",
-          "pages",
-          "persons",
-          "projects",
-          "spotlight-articles",
-          "working-groups",
         ],
       },
     },

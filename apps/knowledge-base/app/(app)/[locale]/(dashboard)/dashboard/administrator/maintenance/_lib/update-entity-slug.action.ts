@@ -30,13 +30,12 @@ export const updateEntitySlugAction = createCommandAction({
 		const previousDescriptor = await getWebsiteDocumentDescriptorByEntityId(documentId);
 
 		const entity = await updateEntitySlug(tx, documentId, slug);
-		const slugChanged = previousDescriptor?.slug !== entity.slug;
 
 		return {
 			subjectId: documentId,
 			previousDescriptor,
 			entityType: entity.type,
-			slugChanged,
+			slugChanged: entity.slugChanged,
 			auditSummary: { slug: entity.slug, previousSlug: previousDescriptor?.slug },
 		};
 	},
@@ -48,6 +47,7 @@ export const updateEntitySlugAction = createCommandAction({
 		await syncWebsiteDocumentForEntity(result.subjectId);
 		await dispatchWebhookForEntityType(
 			result.entityType as Parameters<typeof dispatchWebhookForEntityType>[0],
+			result.slugChanged ? ["navigation"] : [],
 		);
 	},
 });

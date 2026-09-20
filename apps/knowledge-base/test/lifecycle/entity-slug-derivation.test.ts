@@ -11,6 +11,7 @@ import {
 	publishVersion,
 	updateDraftDocumentSlug,
 } from "@/lib/data/entity-lifecycle";
+import { updateEntitySlug } from "@/lib/data/entity-merge";
 import { personsLifecycleAdapter } from "@/lib/data/persons.lifecycle-adapter";
 import type { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
@@ -276,6 +277,21 @@ describe("updateDraftDocumentSlug", () => {
 			await publishVersion(tx, documentId, personsLifecycleAdapter);
 
 			await expect(updateDraftDocumentSlug(tx, documentId, slug)).resolves.toBeUndefined();
+		});
+	});
+});
+
+describe("updateEntitySlug", () => {
+	it("reports whether the slug actually changed", async () => {
+		await withTransaction(async (tx) => {
+			const typeId = await getEntityTypeId(tx, "news");
+			const { documentId, slug } = await createDraftDocumentFromTitle(tx, typeId, uniqueTitle());
+
+			const unchanged = await updateEntitySlug(tx, documentId, slug);
+			expect(unchanged.slugChanged).toBe(false);
+
+			const changed = await updateEntitySlug(tx, documentId, uniqueTitle());
+			expect(changed.slugChanged).toBe(true);
 		});
 	});
 });
