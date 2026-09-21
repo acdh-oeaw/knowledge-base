@@ -127,6 +127,27 @@ export interface ListDariahCampusCurriculaParams {
 	publicationYear?: string;
 }
 
+/**
+ * `nationalConsortiumCode` is client-side only — the DARIAH-Campus API has no query param for it.
+ * `listAll` fetches every page as usual, then keeps only items whose `dariah-national-consortia`
+ * includes an entry with this code. Not offered on the single-page `list` — filtering one page
+ * would make its `total`/pagination misleading (fewer matches on this page than exist overall).
+ */
+export interface ListAllDariahCampusResourcesParams extends Omit<
+	ListDariahCampusResourcesParams,
+	"limit" | "offset"
+> {
+	nationalConsortiumCode?: string;
+}
+
+/** See {@link ListAllDariahCampusResourcesParams}. */
+export interface ListAllDariahCampusCurriculaParams extends Omit<
+	ListDariahCampusCurriculaParams,
+	"limit" | "offset"
+> {
+	nationalConsortiumCode?: string;
+}
+
 export interface CreateDariahCampusClientConfig {
 	baseUrl: string;
 }
@@ -136,6 +157,17 @@ export interface CreateDariahCampusClientParams {
 }
 
 const pageSize = 100;
+
+function matchesNationalConsortium(
+	item: { "dariah-national-consortia": Array<DariahCampusNationalConsortium> },
+	code: string | undefined,
+): boolean {
+	if (code == null) {
+		return true;
+	}
+
+	return item["dariah-national-consortia"].some((consortium) => consortium.code === code);
+}
 
 function createListAll<TParams extends object, TItem>(
 	getPage: (
@@ -220,10 +252,21 @@ export function createDariahCampusClient(params: CreateDariahCampusClientParams)
 				return listCurricula(params);
 			},
 
-			listAll(
-				params: Omit<ListDariahCampusCurriculaParams, "limit" | "offset"> = {},
+			async listAll(
+				params: ListAllDariahCampusCurriculaParams = {},
 			): Promise<Result<Array<DariahCampusCurriculum>, RequestError>> {
-				return createListAll((pageParams) => listCurricula(pageParams))(params);
+				const { nationalConsortiumCode, ...listParams } = params;
+				const result = await createListAll((pageParams) => listCurricula(pageParams))(listParams);
+
+				if (result.isErr()) {
+					return result;
+				}
+
+				return Result.ok(
+					result.value.filter((item: DariahCampusCurriculum) =>
+						matchesNationalConsortium(item, nationalConsortiumCode),
+					),
+				);
 			},
 		},
 
@@ -234,10 +277,21 @@ export function createDariahCampusClient(params: CreateDariahCampusClientParams)
 				return listResources(params);
 			},
 
-			listAll(
-				params: Omit<ListDariahCampusResourcesParams, "limit" | "offset"> = {},
+			async listAll(
+				params: ListAllDariahCampusResourcesParams = {},
 			): Promise<Result<Array<DariahCampusResource>, RequestError>> {
-				return createListAll((pageParams) => listResources(pageParams))(params);
+				const { nationalConsortiumCode, ...listParams } = params;
+				const result = await createListAll((pageParams) => listResources(pageParams))(listParams);
+
+				if (result.isErr()) {
+					return result;
+				}
+
+				return Result.ok(
+					result.value.filter((item: DariahCampusResource) =>
+						matchesNationalConsortium(item, nationalConsortiumCode),
+					),
+				);
 			},
 		},
 	};

@@ -113,7 +113,7 @@ export async function ingestSshocServices(
 	] = await Promise.all([
 		sshoc.items
 			.searchAll({
-				"f.keyword": ["DARIAH Resource"],
+				"c.actor_id": ["9403"],
 				categories: ["tool-or-service"],
 				order: ["label"],
 			})

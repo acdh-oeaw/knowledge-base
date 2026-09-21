@@ -1,9 +1,7 @@
 import { log } from "@acdh-oeaw/lib";
 import type { DariahCampusClient } from "@dariah-eric/client-campus";
-import type { EpisciencesClient, EpisciencesSearchDocument } from "@dariah-eric/client-episciences";
 import type { SshocClient } from "@dariah-eric/client-sshoc";
 import type { ZenodoClient } from "@dariah-eric/client-zenodo";
-import type { ZoteroClient } from "@dariah-eric/client-zotero";
 import {
 	type ResourceDocument,
 	type SearchService,
@@ -14,7 +12,6 @@ import type { SearchAdminService } from "@dariah-eric/search/admin";
 import { Result } from "better-result";
 
 import {
-	type EpisciencesPaperEntry,
 	type OrgUnitResourceLookups,
 	type SearchIndexResourceSourceData,
 	createSearchIndexResourceDocuments,
@@ -30,19 +27,22 @@ export interface SearchResourcesCache<CacheError = unknown> {
 
 export interface CreateSearchResourcesServiceParams {
 	campus: DariahCampusClient;
-	episciences: EpisciencesClient;
 	search: SearchAdminService;
 	searchService: SearchService;
 	sshoc: SshocClient;
 	sshocMarketplaceBaseUrl: string;
 	zenodo: ZenodoClient;
-	zotero: ZoteroClient;
-	zoteroGroupId: string;
 	/**
 	 * Lookups used to resolve sshoc actor ids and zotero collection names to the slugs of national
 	 * consortia and working groups that own a resource.
 	 */
 	orgUnits: OrgUnitResourceLookups;
+	/**
+	 * DARIAH-Campus has no server-side filter for this, so it is applied client-side after `listAll`
+	 * fetches every page (see `ListAllDariahCampusResourcesParams`). Unset ingests campus resources
+	 * from every national consortium, matching every other source in this service.
+	 */
+	campusNationalConsortiumCode?: string;
 }
 
 export interface FetchSearchResourcesParams {
@@ -80,51 +80,17 @@ function getOrFetch<T, FetchError, CacheError>(
 	return cache.getOrFetch(key, fetcher);
 }
 
-/**
- * Episciences is an overlay journal: the journal DOI and the links to the external repository
- * deposits (HAL, Zenodo, ...) a paper overlays are only present on the full paper record, not in
- * the minimal Solr documents returned by the search endpoint. We therefore fetch each paper
- * individually to enrich the search results. Papers that fail to load are skipped so a single bad
- * record does not abort the whole ingest.
- */
-async function fetchEpisciencesPapers(
-	episciences: EpisciencesClient,
-	documents: Array<EpisciencesSearchDocument>,
-): Promise<Result<Array<EpisciencesPaperEntry>, never>> {
-	const docIds = documents
-		.map((document) => document.docid)
-		.filter((docId): docId is number => docId != null);
-
-	const results = await Promise.all(docIds.map((docId) => episciences.papers.get(docId)));
-
-	const papers: Array<EpisciencesPaperEntry> = [];
-	for (const [index, result] of results.entries()) {
-		const docId = docIds[index]!;
-		if (result.isOk()) {
-			papers.push({ docId, paper: result.value.data });
-		} else {
-			log.error("Failed to fetch episciences paper.", { docId, error: result.error });
-		}
-	}
-
-	return Result.ok(papers);
-}
-
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function createSearchResourcesService(params: CreateSearchResourcesServiceParams) {
 	const {
 		campus,
-		episciences,
 		search,
 		searchService,
 		sshoc,
 		sshocMarketplaceBaseUrl,
 		zenodo,
-		// NOTE: zotero source temporarily disabled (see note in `resources.ts`). To re-enable, restore
-		// these and the zotero fetch in `fetchSearchIndexResourceSourceData` below.
-		// zotero,
-		// zoteroGroupId,
 		orgUnits,
+		campusNationalConsortiumCode,
 	} = params;
 
 	const externalSourcesFilter = `source:[${resourceSources.join(",")}]`;
@@ -135,63 +101,39 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 		const cache = options?.cache;
 
 		const result = await Result.gen(async function* () {
-			const [
-				sshocItemsResult,
-				campusResourcesResult,
-				campusCurriculaResult,
-				episciencesDocumentsResult,
-				zenodoRecordsResult,
-				// NOTE: zotero source temporarily disabled (see note in `resources.ts`). To re-enable,
-				// restore these results, the `yield*` unwrapping, and the return fields below.
-				// zoteroItemsResult,
-				// zoteroCollectionsResult,
-			] = await Promise.all([
-				getOrFetch(cache, "sshoc/items", () =>
-					sshoc.items.searchAll({
-						"f.keyword": ["DARIAH Resource"],
-						categories: ["tool-or-service", "training-material", "workflow"],
-						order: ["label"],
-					}),
-				),
-				getOrFetch(cache, "campus/resources", () => campus.resources.listAll()),
-				getOrFetch(cache, "campus/curricula", () => campus.curricula.listAll()),
-				getOrFetch(cache, "episciences/documents", () => episciences.search.listAll()),
-				getOrFetch(cache, "zenodo/records", () => zenodo.records.listAll()),
-				// NOTE: zotero source temporarily disabled (see note above). The zotero api is prone to
-				// timeout errors, so we avoid fetching data we currently do not index.
-				// getOrFetch(cache, "zotero/items", () => zotero.items.listAll({ groupId: zoteroGroupId })),
-				// getOrFetch(cache, "zotero/collections", () =>
-				// 	zotero.collections.listAll({ groupId: zoteroGroupId }),
-				// ),
-			]);
+			const [sshocItemsResult, campusResourcesResult, campusCurriculaResult, zenodoRecordsResult] =
+				await Promise.all([
+					getOrFetch(cache, "sshoc/items", () =>
+						sshoc.items.searchAll({
+							"f.keyword": ["DARIAH Resource"],
+							categories: ["tool-or-service", "training-material", "workflow"],
+							order: ["label"],
+						}),
+					),
+					getOrFetch(cache, "campus/resources", () =>
+						campus.resources.listAll({ nationalConsortiumCode: campusNationalConsortiumCode }),
+					),
+					getOrFetch(cache, "campus/curricula", () =>
+						campus.curricula.listAll({ nationalConsortiumCode: campusNationalConsortiumCode }),
+					),
+					getOrFetch(cache, "zenodo/records", () => zenodo.records.listAll()),
+				]);
 
 			const sshocItems = yield* sshocItemsResult;
 			const campusResources = yield* campusResourcesResult;
 			const campusCurricula = yield* campusCurriculaResult;
-			const episciencesDocuments = yield* episciencesDocumentsResult;
 			const zenodoRecords = yield* zenodoRecordsResult;
-			// NOTE: zotero source temporarily disabled (see note above).
-			// const zoteroItems = yield* zoteroItemsResult;
-			// const zoteroCollections = yield* zoteroCollectionsResult;
 
 			/**
 			 * Depends on the search documents above (needs their doc ids), so it cannot run in the
 			 * parallel batch and is fetched afterwards.
 			 */
-			const episciencesPapers = yield* await getOrFetch(cache, "episciences/papers", () =>
-				fetchEpisciencesPapers(episciences, episciencesDocuments),
-			);
 
 			return Result.ok({
 				campusCurricula,
 				campusResources,
-				episciencesDocuments,
-				episciencesPapers,
 				sshocItems,
 				zenodoRecords,
-				// NOTE: zotero source temporarily disabled (see note above).
-				// zoteroItems,
-				// zoteroCollections,
 			});
 		});
 

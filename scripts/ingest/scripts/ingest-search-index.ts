@@ -2,10 +2,8 @@ import * as path from "node:path";
 
 import { assert, log } from "@acdh-oeaw/lib";
 import { createDariahCampusClient } from "@dariah-eric/client-campus";
-import { createEpisciencesClient } from "@dariah-eric/client-episciences";
 import { createSshocClient } from "@dariah-eric/client-sshoc";
 import { createZenodoClient } from "@dariah-eric/client-zenodo";
-import { createZoteroClient } from "@dariah-eric/client-zotero";
 import { createDatabaseService } from "@dariah-eric/database";
 import { createSearchService } from "@dariah-eric/search";
 import { createSearchResourcesService, loadOrgUnitLookups } from "@dariah-eric/search-resources";
@@ -72,21 +70,12 @@ assert(
 	"Missing environment variable: `SSHOC_MARKETPLACE_BASE_URL`.",
 );
 assert(env.ZENODO_API_BASE_URL, "Missing environment variable: `ZENODO_API_BASE_URL`.");
-assert(env.ZOTERO_API_BASE_URL, "Missing environment variable: `ZOTERO_API_BASE_URL`.");
-assert(env.ZOTERO_GROUP_ID, "Missing environment variable: `ZOTERO_GROUP_ID`.");
 
 const sshocMarketplaceBaseUrl = env.SSHOC_MARKETPLACE_BASE_URL;
-const zoteroGroupId = env.ZOTERO_GROUP_ID;
 
 const campus = createDariahCampusClient({
 	config: {
 		baseUrl: env.CAMPUS_API_BASE_URL,
-	},
-});
-
-const episciences = createEpisciencesClient({
-	config: {
-		baseUrl: env.EPISCIENCES_API_BASE_URL,
 	},
 });
 
@@ -101,13 +90,6 @@ const zenodo = createZenodoClient({
 	apiKey: env.ZENODO_API_KEY,
 });
 
-const zotero = createZoteroClient({
-	config: {
-		apiKey: env.ZOTERO_API_KEY,
-		baseUrl: env.ZOTERO_API_BASE_URL,
-	},
-});
-
 const websiteSearchIndex = createWebsiteSearchIndexService({ db, search, searchService });
 
 async function main(): Promise<void> {
@@ -115,14 +97,11 @@ async function main(): Promise<void> {
 
 	const searchResources = createSearchResourcesService({
 		campus,
-		episciences,
 		search,
 		searchService,
 		sshoc,
 		sshocMarketplaceBaseUrl,
 		zenodo,
-		zotero,
-		zoteroGroupId,
 		orgUnits,
 	});
 

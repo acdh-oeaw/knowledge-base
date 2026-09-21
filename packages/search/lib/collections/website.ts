@@ -60,15 +60,7 @@ export type WebsiteDocumentType = WebsiteEntityType | WebsiteResourceType;
 export const websiteEntitySources = ["the-knowledge-base"] as const;
 export type WebsiteEntitySource = (typeof websiteEntitySources)[number];
 
-export const websiteResourceSources = [
-	"dariah-campus",
-	"episciences",
-	"hal",
-	"open-aire",
-	"ssh-open-marketplace",
-	"zenodo",
-	"zotero",
-] as const;
+export const websiteResourceSources = ["dariah-campus", "ssh-open-marketplace", "zenodo"] as const;
 export type WebsiteResourceSource = (typeof websiteResourceSources)[number];
 
 export type WebsiteDocumentSource = WebsiteEntitySource | WebsiteResourceSource;

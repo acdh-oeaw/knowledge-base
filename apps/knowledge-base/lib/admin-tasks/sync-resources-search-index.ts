@@ -1,9 +1,7 @@
 import { assert } from "@acdh-oeaw/lib";
 import { createDariahCampusClient } from "@dariah-eric/client-campus";
-import { createEpisciencesClient } from "@dariah-eric/client-episciences";
 import { createSshocClient } from "@dariah-eric/client-sshoc";
 import { createZenodoClient } from "@dariah-eric/client-zenodo";
-import { createZoteroClient } from "@dariah-eric/client-zotero";
 import { createSearchService } from "@dariah-eric/search";
 import {
 	type SyncSearchResourcesResult,
@@ -20,7 +18,6 @@ export type SyncResourcesSearchIndexResult = SyncSearchResourcesResult;
 
 export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchIndexResult> {
 	assert(env.CAMPUS_API_BASE_URL, "Missing environment variable: `CAMPUS_API_BASE_URL`.");
-	assert(env.EPISCIENCES_API_BASE_URL, "Missing environment variable: `EPISCIENCES_API_BASE_URL`.");
 	assert(
 		env.SSHOC_MARKETPLACE_API_BASE_URL,
 		"Missing environment variable: `SSHOC_MARKETPLACE_API_BASE_URL`.",
@@ -30,21 +27,12 @@ export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchInd
 		"Missing environment variable: `SSHOC_MARKETPLACE_BASE_URL`.",
 	);
 	assert(env.ZENODO_API_BASE_URL, "Missing environment variable: `ZENODO_API_BASE_URL`.");
-	assert(env.ZOTERO_API_BASE_URL, "Missing environment variable: `ZOTERO_API_BASE_URL`.");
-	assert(env.ZOTERO_GROUP_ID, "Missing environment variable: `ZOTERO_GROUP_ID`.");
 
 	const sshocMarketplaceBaseUrl = env.SSHOC_MARKETPLACE_BASE_URL;
-	const zoteroGroupId = env.ZOTERO_GROUP_ID;
 
 	const campus = createDariahCampusClient({
 		config: {
 			baseUrl: env.CAMPUS_API_BASE_URL,
-		},
-	});
-
-	const episciences = createEpisciencesClient({
-		config: {
-			baseUrl: env.EPISCIENCES_API_BASE_URL,
 		},
 	});
 
@@ -57,13 +45,6 @@ export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchInd
 	const zenodo = createZenodoClient({
 		baseUrl: env.ZENODO_API_BASE_URL,
 		apiKey: env.ZENODO_API_KEY,
-	});
-
-	const zotero = createZoteroClient({
-		config: {
-			apiKey: env.ZOTERO_API_KEY,
-			baseUrl: env.ZOTERO_API_BASE_URL,
-		},
 	});
 
 	const searchService = createSearchService({
@@ -85,15 +66,16 @@ export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchInd
 
 	const searchResources = createSearchResourcesService({
 		campus,
-		episciences,
 		search,
 		searchService,
 		sshoc,
 		sshocMarketplaceBaseUrl,
 		zenodo,
-		zotero,
-		zoteroGroupId,
 		orgUnits,
+		// This instance is Austria-only for now — scope DARIAH-Campus resources to its national
+		// consortium so search doesn't surface training material from other countries. Revisit if this
+		// deployment ever grows to cover more than one consortium.
+		campusNationalConsortiumCode: "at",
 	});
 
 	return searchResources.syncSearchResources();

@@ -113,7 +113,7 @@ export interface CreateZenodoClientParams {
 	apiKey?: string;
 }
 
-const defaultCommunityId = "dariah";
+const defaultCommunityId = "clariah-at";
 
 /**
  * Zenodo caps the page size at 25 for unauthenticated requests and allows up to 100 for
@@ -124,11 +124,15 @@ const defaultCommunityId = "dariah";
 const anonymousPageSize = 25;
 const authenticatedPageSize = 100;
 
+// https://github.com/DARIAH-ERIC/knowledge-base/commit/5387d15637a944e859509a6aa0aa7b70981c6baa
+
+const userAgent = "the-knowledge-base (https://github.com/acdh-oeaw/knowledge-base)";
+
 /**
  * Zenodo records search and community filtering:
  *
  * @see {@link https://developers.zenodo.org/}
- * @see {@link https://zenodo.org/communities/dariah}
+ * @see {@link https://zenodo.org/communities/clariah-at}
  */
 function createListAll<TParams extends object>(
 	getPage: (
@@ -166,7 +170,11 @@ export function createZenodoClient(params: CreateZenodoClientParams) {
 
 	const pageSize = apiKey != null ? authenticatedPageSize : anonymousPageSize;
 
-	const headers = apiKey != null ? { authorization: `Bearer ${apiKey}` } : undefined;
+	const headers: Record<string, string> = { "user-agent": userAgent };
+
+	if (apiKey != null) {
+		headers["authorization"] = `Bearer ${apiKey}`;
+	}
 
 	/** @see {@link https://developers.zenodo.org/} */
 	function listRecords(

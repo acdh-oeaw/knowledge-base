@@ -41,6 +41,8 @@ export type ItemStatus =
 
 export type ItemFacet = "activity" | "keyword" | "language";
 
+export type ItemContributor = "actor_id";
+
 /**
  * Dynamic expression filter fields for the `d.` query param prefix.
  *
@@ -237,10 +239,12 @@ export interface CheckedCount {
 	checked: boolean;
 }
 
+type ItemContributorParams = { [K in ItemContributor as `c.${K}`]?: Array<string> };
 type ItemFacetParams = { [K in ItemFacet as `f.${K}`]?: Array<string> };
 type ItemDynamicParams = { [K in ItemDynamicField as `d.${K}`]?: Array<string> };
 
-export interface ItemSearchParams extends ItemFacetParams, ItemDynamicParams {
+export interface ItemSearchParams
+	extends ItemFacetParams, ItemDynamicParams, ItemContributorParams {
 	q?: string;
 	categories?: Array<ItemCategory>;
 	order?: Array<ItemSearchOrder>;

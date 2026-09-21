@@ -6,7 +6,7 @@ import { toPlainText } from "./html/to-plain-text";
 
 /**
  * @see {@link https://developers.zenodo.org/}
- * @see {@link https://zenodo.org/communities/dariah}
+ * @see {@link https://zenodo.org/communities/clariah-at}
  */
 export function createZenodoRecord(item: ZenodoRecord): ResourceDocument {
 	const source = "zenodo" as const;
