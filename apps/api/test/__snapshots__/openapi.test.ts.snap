@@ -174,14 +174,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "type": "string",
         },
       },
-      "GetNavigationQuery": {
-        "description": "Filter to a single menu by name; returns every menu when omitted",
-        "in": "query",
-        "name": "menu",
-        "schema": {
-          "type": "string",
-        },
-      },
       "GetNewsItemByIdParams": {
         "in": "path",
         "name": "id",
@@ -33217,7 +33209,20 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "operationId": "getNavigation",
         "parameters": [
           {
-            "$ref": "#/components/parameters/GetNavigationQuery",
+            "description": "Filter to a single menu by name; returns every menu when omitted",
+            "in": "query",
+            "name": "menu",
+            "schema": {
+              "type": "string",
+            },
+          },
+          {
+            "description": "BCP 47-style locale code (e.g. "de" or "de-AT"); falls back to the default locale when omitted or unrecognized",
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "type": "string",
+            },
           },
         ],
         "responses": {
