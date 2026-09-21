@@ -39,17 +39,15 @@ export const NavigationMenuListSchema = v.pipe(
 export type NavigationMenuList = v.InferOutput<typeof NavigationMenuListSchema>;
 
 export const GetNavigation = {
-	QuerySchema: v.pipe(
-		v.object({
-			menu: v.pipe(
-				v.optional(v.string()),
-				v.description("Filter to a single menu by name; returns every menu when omitted"),
-			),
-			...LocaleQuerySchema.entries,
-		}),
-		v.description("Get navigation query params"),
-		v.metadata({ ref: "GetNavigationQuery" }),
-	),
+	// A plain object, like every other route's query schema: wrapping it in `v.metadata({ ref })` makes
+	// it a `$ref` component, which OpenAPI tooling cannot expand into individual query parameters.
+	QuerySchema: v.object({
+		menu: v.pipe(
+			v.optional(v.string()),
+			v.description("Filter to a single menu by name; returns every menu when omitted"),
+		),
+		...LocaleQuerySchema.entries,
+	}),
 	ResponseSchema: v.pipe(
 		NavigationMenuListSchema,
 		v.description("List of navigation menus with items"),

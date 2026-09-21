@@ -194,6 +194,88 @@ describe("navigation", () => {
 			});
 		});
 
+		it("should only return items belonging to the requested locale", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const defaultLocale = await db.query.locales.findFirst({
+					columns: { id: true },
+					where: { isDefault: true },
+				});
+				expect(defaultLocale).toBeDefined();
+
+				const [otherLocale] = await db
+					.insert(schema.locales)
+					.values({ languageCode: "zz", name: "Test locale", isDefault: false })
+					.returning({ id: schema.locales.id });
+
+				const menuId = uuidv7();
+				const menuName = f.word.noun();
+				await db.insert(schema.navigationMenus).values({ id: menuId, name: menuName });
+
+				await db.insert(schema.navigationItems).values([
+					// Legacy row: NULL locale_id means the default locale.
+					{
+						id: uuidv7(),
+						menuId,
+						label: "legacy-default",
+						href: "/a",
+						position: 0,
+						localeId: null,
+					},
+					{
+						id: uuidv7(),
+						menuId,
+						label: "explicit-default",
+						href: "/b",
+						position: 1,
+						localeId: defaultLocale!.id,
+					},
+					{
+						id: uuidv7(),
+						menuId,
+						label: "other-locale",
+						href: "/c",
+						position: 0,
+						localeId: otherLocale!.id,
+					},
+				]);
+
+				const defaultResponse = await client.navigation.$get({ query: { menu: menuName } });
+				const defaultData = await defaultResponse.json();
+				expect(defaultData[0]!.items.map((item) => item.label)).toEqual([
+					"legacy-default",
+					"explicit-default",
+				]);
+
+				const otherResponse = await client.navigation.$get({
+					query: { menu: menuName, locale: "zz" },
+				});
+				const otherData = await otherResponse.json();
+				expect(otherData[0]!.items.map((item) => item.label)).toEqual(["other-locale"]);
+			});
+		});
+
+		it("should still return a menu with no items in the requested locale", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const { menuName } = await seed(db);
+
+				await db
+					.insert(schema.locales)
+					.values({ languageCode: "zy", name: "Empty locale", isDefault: false });
+
+				const response = await client.navigation.$get({
+					query: { menu: menuName, locale: "zy" },
+				});
+				const data = await response.json();
+
+				expect(data).toHaveLength(1);
+				expect(data[0]).toMatchObject({ name: menuName, items: [] });
+			});
+		});
+
 		it("should return empty array for non-existing menu name", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);

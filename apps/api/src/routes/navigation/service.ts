@@ -100,7 +100,19 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 			`.as("entity_type"),
 		})
 		.from(schema.navigationMenus)
-		.leftJoin(schema.navigationItems, eq(schema.navigationMenus.id, schema.navigationItems.menuId))
+		.leftJoin(
+			schema.navigationItems,
+			and(
+				eq(schema.navigationMenus.id, schema.navigationItems.menuId),
+				// Items are maintained per locale. Legacy rows have a NULL `locale_id`, which means the
+				// default locale. In the join (not the WHERE) so a menu with no items in this locale is
+				// still returned, just empty.
+				or(
+					eq(schema.navigationItems.localeId, localeId),
+					and(isNull(schema.navigationItems.localeId), sql`${localeId} = ${defaultLocaleId}`),
+				),
+			),
+		)
 		.leftJoin(schema.entities, eq(schema.navigationItems.entityId, schema.entities.id))
 		.leftJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
 		.leftJoin(
