@@ -31,26 +31,20 @@ const entityVersionColumns = {
 } as const;
 
 /**
- * Featured announcements followed by news, opportunities and funding calls interleaved into a
- * single reverse-chronological feed, for consumers rendering one overview page across all three.
+ * News, opportunities and funding calls interleaved into a single reverse-chronological feed, for
+ * consumers rendering one overview page across all three. Featured items are not ranked first:
+ * consumers which want them on top merge in `/featured-entities`, as they do for events.
  *
  * The three tables share no columns to sort by, so the page is selected by a `UNION ALL` of just
- * `(id, type, publishedAt)` — with featured ids ranked before ordering, limiting and offsetting in
- * the database — and only the resulting page is hydrated with its images and relations. Merging
- * full rows in application code instead would have to over-fetch `offset + limit` rows from every
- * table to stay correct.
+ * `(id, type, publishedAt)` — ordered, limited and offset in the database — and only the resulting
+ * page is hydrated with its images and relations. Merging full rows in application code instead
+ * would have to over-fetch `offset + limit` rows from every table to stay correct.
  */
 export async function getAnnouncements(db: Database | Transaction, params: GetAnnouncementsParams) {
 	const { limit = 10, offset = 0, type } = params;
 
 	const requested = type == null ? [] : Array.isArray(type) ? type : [type];
 	const types = requested.length > 0 ? requested : [...announcementTypeValues];
-	const metadata = await db.query.siteMetadata.findFirst({
-		columns: {
-			featuredItemIds: true,
-		},
-	});
-	const featuredIds = [...new Set(metadata?.featuredItemIds?.news ?? [])];
 
 	/**
 	 * One `(id, type, published_at)` branch per type, published-only via the same lifecycle join the
@@ -108,13 +102,6 @@ export async function getAnnouncements(db: Database | Transaction, params: GetAn
 	} satisfies Record<AnnouncementType, unknown>;
 
 	const selected = types.map((t) => branches[t]);
-	const featuredOrder =
-		featuredIds.length > 0
-			? sql`CASE id ${sql.join(
-					featuredIds.map((id, index) => sql`WHEN ${id} THEN ${index}::integer`),
-					sql` `,
-				)} ELSE ${featuredIds.length}::integer END`
-			: sql`0::integer`;
 
 	const [result, aggregates] = await Promise.all([
 		// Formatted to ISO here because `execute` returns raw driver values rather than mapped
@@ -126,7 +113,7 @@ export async function getAnnouncements(db: Database | Transaction, params: GetAn
 				type,
 				to_char(published_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS published_at_iso
 			FROM (${sql.join(selected, sql` UNION ALL `)}) AS announcements
-			ORDER BY ${featuredOrder}, published_at DESC, id DESC
+			ORDER BY published_at DESC, id DESC
 			LIMIT ${limit} OFFSET ${offset}
 		`),
 		Promise.all(

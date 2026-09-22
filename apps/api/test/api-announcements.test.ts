@@ -191,57 +191,45 @@ describe("announcements", () => {
 			});
 		});
 
-		it("should put featured announcements first in configured order without duplicates", async () => {
+		it("should not rank featured announcements first", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);
 				const { newsItem, opportunity, fundingCall } = await seed(db);
+
+				const featuredItemIds = {
+					news: [newsItem.versionId, opportunity.versionId],
+					events: [],
+					projects: [],
+				};
 
 				await db
 					.insert(schema.siteMetadata)
 					.values({
 						id: 1,
-						featuredItemIds: {
-							news: [
-								newsItem.versionId,
-								fundingCall.versionId,
-								newsItem.versionId,
-								opportunity.versionId,
-							],
-							events: [],
-							projects: [],
-						},
+						featuredItemIds,
 					})
 					.onConflictDoUpdate({
 						target: schema.siteMetadata.id,
-						set: {
-							featuredItemIds: {
-								news: [
-									newsItem.versionId,
-									fundingCall.versionId,
-									newsItem.versionId,
-									opportunity.versionId,
-								],
-								events: [],
-								projects: [],
-							},
-							updatedAt: sql`NOW()`,
-						},
+						set: { featuredItemIds, updatedAt: sql`NOW()` },
 					});
 
 				const response = await client.announcements.$get({
-					query: { limit: "3", offset: "0" },
+					query: { limit: "100", offset: "0" },
 				});
 
 				expect(response.status).toBe(200);
 
 				const data = await response.json();
 
-				expect(data.data.map((item) => item.id)).toEqual([
-					newsItem.versionId,
+				const seeded = data.data.filter((item) =>
+					[newsItem.title, opportunity.title, fundingCall.title].includes(item.title),
+				);
+
+				expect(seeded.map((item) => item.id)).toEqual([
 					fundingCall.versionId,
 					opportunity.versionId,
+					newsItem.versionId,
 				]);
-				expect(new Set(data.data.map((item) => item.id)).size).toBe(3);
 			});
 		});
 
