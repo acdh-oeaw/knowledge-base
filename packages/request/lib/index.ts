@@ -1,4 +1,4 @@
-import { Result, UnhandledException } from "better-result";
+import { Result } from "better-result";
 import isNetworkError from "is-network-error";
 
 import {
@@ -8,6 +8,7 @@ import {
 	ParseError,
 	type RequestError,
 	TimeoutError,
+	UnknownError,
 } from "./errors";
 
 export type HttpMethod = "delete" | "get" | "head" | "options" | "patch" | "post" | "put" | "trace";
@@ -124,16 +125,46 @@ export async function request<TResponseType extends ResponseType>(
 	}
 
 	/**
-	 * Every attempt needs its own `Request`, because a request body can only be read once: retrying
-	 * with the already-dispatched request makes `fetch` throw. The timeout is per attempt for the
-	 * same reason - its `AbortSignal` is part of the request.
+	 * The first attempt constructs eagerly, so an invalid url or method still fails fast. Every later
+	 * attempt needs its own `Request`, because a request body can only be read once: retrying with
+	 * the already-dispatched request makes `fetch` throw. The timeout is per attempt for the same
+	 * reason - its `AbortSignal` is part of the request.
 	 */
-	let request: Request;
+	let request = createRequest();
+
+	/**
+	 * Reading a response body can fail for reasons unrelated to the request itself: the connection
+	 * dropped mid-stream, a multipart body is malformed, the payload is too large to allocate. They
+	 * all mean the same thing - the response arrived but could not be decoded - which is exactly what
+	 * `ParseError` describes.
+	 */
+	async function readBody<TData>(response: Response, read: () => Promise<TData>): Promise<TData> {
+		try {
+			return await read();
+		} catch (error) {
+			throw new ParseError({ cause: error, request, response });
+		}
+	}
+
+	/**
+	 * Only a `ReadableStream` body cannot be sent twice - every other `BodyInit` is read afresh when
+	 * the next `Request` is constructed from it. Retrying a streamed body therefore throws while
+	 * building the retry, which would replace the real failure (the 500, the timeout) with a
+	 * confusing one about a disturbed body, so such a request is not retried at all.
+	 */
+	const isReplayable = !(body instanceof ReadableStream);
+
+	const retryConfig =
+		retry != null && isReplayable
+			? { ...retry, shouldRetry: retry.shouldRetry ?? isRetryableByDefault }
+			: undefined;
 
 	return Result.tryPromise(
 		{
-			async try() {
-				request = createRequest();
+			async try({ attempt }) {
+				if (attempt > 1) {
+					request = createRequest();
+				}
 
 				const response = await fetch(request);
 
@@ -148,40 +179,38 @@ export async function request<TResponseType extends ResponseType>(
 
 				switch (responseType) {
 					case "arrayBuffer": {
-						const data = await response.arrayBuffer();
+						const data = await readBody(response, () => response.arrayBuffer());
 						return { data, headers: response.headers };
 					}
 
 					case "blob": {
-						const data = await response.blob();
+						const data = await readBody(response, () => response.blob());
 						return { data, headers: response.headers };
 					}
 
 					case "bytes": {
-						const data = await response.bytes();
+						const data = await readBody(response, () => response.bytes());
 						return { data, headers: response.headers };
 					}
 
 					case "formData": {
-						// eslint-disable-next-line @typescript-eslint/no-deprecated
-						const data = await response.formData();
+						const data = await readBody(response, () =>
+							// eslint-disable-next-line @typescript-eslint/no-deprecated
+							response.formData(),
+						);
 						return { data, headers: response.headers };
 					}
 
 					case "json": {
 						if (response.status === 204 || response.headers.get("content-length") === "0") {
-							await response.body?.cancel();
+							await discardBody(response);
 							const data = null;
 							return { data, headers: response.headers };
 						}
 
-						try {
-							const data = await response.json();
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-							return { data: data as any, headers: response.headers };
-						} catch (error) {
-							throw new ParseError({ cause: error, request, response });
-						}
+						const data = await readBody(response, () => response.json());
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+						return { data: data as any, headers: response.headers };
 					}
 
 					case "response": {
@@ -195,12 +224,12 @@ export async function request<TResponseType extends ResponseType>(
 					}
 
 					case "text": {
-						const data = await response.text();
+						const data = await readBody(response, () => response.text());
 						return { data, headers: response.headers };
 					}
 
 					case "void": {
-						await response.body?.cancel();
+						await discardBody(response);
 						const data = null;
 						return { data, headers: response.headers };
 					}
@@ -229,13 +258,36 @@ export async function request<TResponseType extends ResponseType>(
 					}
 				}
 
-				throw new UnhandledException({ cause });
+				return new UnknownError({ cause, request });
 			},
 		},
 		{
-			retry,
+			retry: retryConfig,
 		},
 	);
+}
+
+/**
+ * Release the body of a response whose content we discard, so its connection can go back to the
+ * pool instead of being held open by an unread body. This is cleanup, not part of the result: a
+ * body that is already disturbed or locked has nothing left to release, so a failure here says
+ * nothing about whether the request succeeded and must not be reported as if it did.
+ */
+async function discardBody(response: Response): Promise<void> {
+	try {
+		await response.body?.cancel();
+	} catch {
+		// Already released - which is the outcome we wanted anyway.
+	}
+}
+
+/**
+ * The failures that surface as {@link UnknownError} are misuse or malformed input - an invalid url,
+ * a body that cannot be read - rather than transient faults, so repeating them just wastes the
+ * attempt budget. Everything else stays retryable, matching `better-result`'s own default.
+ */
+function isRetryableByDefault(error: RequestError): boolean {
+	return !UnknownError.is(error);
 }
 
 type JsonPrimitive = string | number | boolean | null | undefined;
