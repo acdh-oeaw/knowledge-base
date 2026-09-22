@@ -257,6 +257,47 @@ function resolveGalleryItemCaption(item: {
  */
 const blockFigurePadding = "py-2";
 
+/** The `<iframe title>` for an embed: its stored title, or a fallback when it has none. */
+function getEmbedTitle(title: string | null | undefined, url: string, embedUrl: string): string {
+	const trimmed = title?.trim();
+
+	return trimmed != null && trimmed !== "" ? trimmed : getFallbackEmbedTitle(url, embedUrl);
+}
+
+/**
+ * The `<iframe title>` for an embed with no stored title. Never the url itself: that is what a
+ * screen reader announces when an iframe has no accessible name at all, and axe's `frame-title`
+ * rule names it as unhelpful — but the host says who the content comes from, so it rides along with
+ * the short generic phrase that rule asks for instead. The api applies the same fallback (see
+ * `getFallbackEmbedTitle` in `apps/api/src/lib/content-blocks.ts`).
+ */
+function getFallbackEmbedTitle(url: string, embedUrl: string): string {
+	// `getEmbedUrl` only rewrites a url it recognised as YouTube, so this is the one case where the
+	// medium is known rather than guessed.
+	const kind = embedUrl.startsWith("https://www.youtube-nocookie.com/embed/")
+		? "Embedded video"
+		: "Embedded content";
+
+	// The host of the url as entered, never of `embedUrl`, which names a privacy proxy rather than
+	// the provider.
+	const host = getEmbedHostname(url);
+
+	return host != null ? `${kind} from ${host}` : kind;
+}
+
+/** A schemeless paste still has a host, so it is retried with a scheme. */
+function getEmbedHostname(url: string): string | null {
+	for (const candidate of [url, `https://${url}`]) {
+		try {
+			return new URL(candidate).hostname.replace(/^www\./, "");
+		} catch {
+			continue;
+		}
+	}
+
+	return null;
+}
+
 /** Renders a richtext caption inside a `figcaption`, or nothing when the caption is empty. */
 function CaptionFigcaption({
 	caption,
@@ -482,7 +523,7 @@ function ContentBlockView({ contentBlock }: Readonly<ContentBlockViewProps>): Re
 							className="block-full inline-full"
 							sandbox="allow-scripts allow-same-origin allow-presentation"
 							src={embedUrl}
-							title={title ?? embedUrl}
+							title={getEmbedTitle(title, url, embedUrl)}
 						/>
 					</div>
 					<CaptionFigcaption caption={caption} />

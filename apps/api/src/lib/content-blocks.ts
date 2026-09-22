@@ -63,6 +63,12 @@ export const EmbedContentBlockSchema = v.object({
 	url: v.string(),
 	/** `url` normalised to a `youtube-nocookie.com` embed URL, ready for an `<iframe src>`. */
 	embedUrl: v.string(),
+	/**
+	 * The embed's accessible name, for the `<iframe title>` (WCAG technique H64). Never empty, so a
+	 * consumer can set the attribute unconditionally: the editor requires the field, and the handful
+	 * of rows that predate it fall back to a generic description of the embed.
+	 */
+	title: v.string(),
 	caption: v.nullable(v.any()),
 });
 
@@ -200,6 +206,7 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			calloutTitle: schema.calloutContentBlocks.title,
 			richTextContent: schema.richTextContentBlocks.content,
 			embedUrl: schema.embedContentBlocks.url,
+			embedTitle: schema.embedContentBlocks.title,
 			embedCaption: schema.embedContentBlocks.caption,
 			imageCaption: schema.imageContentBlocks.caption,
 			imageCaptionMode: schema.imageContentBlocks.captionMode,
@@ -515,12 +522,62 @@ async function annotateAssetLinks<T>(db: Database | Transaction, value: T): Prom
 	return annotateLinkTargets(value, resolved);
 }
 
+/** The `<iframe title>` for an embed: its stored title, or a fallback when it has none. */
+function getEmbedTitle(title: string | null, url: string, embedUrl: string): string {
+	const trimmed = title?.trim();
+
+	return trimmed != null && trimmed !== "" ? trimmed : getFallbackEmbedTitle(url, embedUrl);
+}
+
+/**
+ * The accessible name for an embed whose stored title is empty, which only a row predating the
+ * editor's required title field can be — a WordPress import whose source `<iframe>` carried
+ * `title=""`.
+ *
+ * Deliberately not the url itself. A url is what a screen reader falls back to announcing when an
+ * iframe has no accessible name at all, and it is the value axe's `frame-title` rule names as
+ * unhelpful: spelled out, a path of ids and query params describes nothing. The host alone is the
+ * part a listener can actually act on — it says who the content comes from, which is what decides
+ * whether to engage with it — so it rides along with the short generic phrase that rule asks for.
+ *
+ * Two embeds from one provider still share a name, so a page carrying both would trip axe's
+ * `frame-title-unique` best-practice rule. That is weaker than a url, and unreachable from anything
+ * an editor can save today.
+ */
+function getFallbackEmbedTitle(url: string, embedUrl: string): string {
+	// `getEmbedUrl` only rewrites a url it recognised as YouTube, so this is the one case where the
+	// medium is known rather than guessed.
+	const kind = embedUrl.startsWith("https://www.youtube-nocookie.com/embed/")
+		? "Embedded video"
+		: "Embedded content";
+
+	// The host of the url as entered, never of `embedUrl`: a viewer told the content came from
+	// `youtube-nocookie.com` would be told the name of a privacy proxy rather than of the provider.
+	const host = getEmbedHostname(url);
+
+	return host != null ? `${kind} from ${host}` : kind;
+}
+
+/** Mirrors `parseUrl` in `@/lib/embed-url`: a schemeless paste still has a host. */
+function getEmbedHostname(url: string): string | null {
+	for (const candidate of [url, `https://${url}`]) {
+		try {
+			return new URL(candidate).hostname.replace(/^www\./, "");
+		} catch {
+			continue;
+		}
+	}
+
+	return null;
+}
+
 function normalizeRow(row: {
 	blockType: string;
 	calloutIntent: (typeof schema.calloutIntentsEnum)[number] | null;
 	calloutTitle: string | null;
 	richTextContent: unknown;
 	embedUrl: string | null;
+	embedTitle: string | null;
 	embedCaption: JSONContent | null;
 	imageCaption: JSONContent | null;
 	imageCaptionMode: ImageCaptionMode | null;
@@ -575,10 +632,13 @@ function normalizeRow(row: {
 			return { type: "rich_text", content: row.richTextContent };
 		}
 		case "embed": {
+			const embedUrl = getEmbedUrl(row.embedUrl!);
+
 			return {
 				type: "embed",
 				url: row.embedUrl!,
-				embedUrl: getEmbedUrl(row.embedUrl!),
+				embedUrl,
+				title: getEmbedTitle(row.embedTitle, row.embedUrl!, embedUrl),
 				caption: row.embedCaption,
 			};
 		}
