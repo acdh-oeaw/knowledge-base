@@ -99,7 +99,7 @@ export async function request<TResponseType extends ResponseType>(
 		}
 	}
 
-	let body: RequestBody = null;
+	let body: RequestInit["body"] = null;
 
 	if (_body !== undefined) {
 		if (isJsonBody(_body)) {
@@ -113,17 +113,28 @@ export async function request<TResponseType extends ResponseType>(
 		}
 	}
 
-	const timeoutSignal = timeout !== false ? AbortSignal.timeout(timeout) : null;
-	const signal =
-		_signal && timeoutSignal
-			? AbortSignal.any([_signal, timeoutSignal])
-			: (_signal ?? timeoutSignal);
+	function createRequest(): Request {
+		const timeoutSignal = timeout !== false ? AbortSignal.timeout(timeout) : null;
+		const signal =
+			_signal && timeoutSignal
+				? AbortSignal.any([_signal, timeoutSignal])
+				: (_signal ?? timeoutSignal);
 
-	const request = new Request(String(url), { ...rest, body, headers, method, signal });
+		return new Request(String(url), { ...rest, body, headers, method, signal });
+	}
+
+	/**
+	 * Every attempt needs its own `Request`, because a request body can only be read once: retrying
+	 * with the already-dispatched request makes `fetch` throw. The timeout is per attempt for the
+	 * same reason - its `AbortSignal` is part of the request.
+	 */
+	let request: Request;
 
 	return Result.tryPromise(
 		{
 			async try() {
+				request = createRequest();
+
 				const response = await fetch(request);
 
 				if (!response.ok) {
