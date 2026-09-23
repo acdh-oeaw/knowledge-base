@@ -1,5 +1,44 @@
 import type { Locator, Page } from "@playwright/test";
 
+/**
+ * Resolves both bounding boxes needed for a reorder drag, retrying on a momentary miss (a row not
+ * yet stable/attached) instead of failing on the first snapshot. `boundingBox()` takes a single
+ * point-in-time reading with no built-in retry, unlike Playwright's auto-waiting assertions —
+ * re-querying the locators fresh each attempt recovers from a row that was mid-re-render when first
+ * measured.
+ */
+async function resolveReorderBoundingBoxes(
+	page: Page,
+	handle: Locator,
+	belowRow: Locator,
+): Promise<{
+	handleBox: NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>;
+	belowBox: NonNullable<Awaited<ReturnType<Locator["boundingBox"]>>>;
+}> {
+	const attempts = 5;
+
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		await handle.scrollIntoViewIfNeeded().catch(() => undefined);
+		await belowRow.scrollIntoViewIfNeeded().catch(() => undefined);
+
+		const [handleBox, belowBox] = await Promise.all([
+			handle.boundingBox().catch(() => null),
+			belowRow.boundingBox().catch(() => null),
+		]);
+
+		if (handleBox != null && belowBox != null) {
+			return { handleBox, belowBox };
+		}
+
+		if (attempt < attempts) {
+			// oxlint-disable-next-line playwright/no-wait-for-timeout
+			await page.waitForTimeout(200);
+		}
+	}
+
+	throw new Error("Could not resolve bounding boxes for reorder.");
+}
+
 const BASE_PATH = "/en/dashboard/website/featured";
 
 /** Accessible names for one featured section's selection list and its "add" popover trigger. */
@@ -81,10 +120,30 @@ class FeaturedSection {
 	async removeFeatured(name: string): Promise<void> {
 		const row = this.featuredRow(name);
 		await row.waitFor({ state: "visible" });
-		// The button aria-labels are not locator-friendly in the e2e build, so distinguish by slot:
-		// the drag handle has slot="drag", the remove button does not.
-		await row.locator('button:not([slot="drag"])').click();
-		await row.waitFor({ state: "hidden" });
+
+		// Retry the click: a single attempt can land on a row that's mid-re-render and get lost (the
+		// click "succeeds" against a node about to be replaced, but its `remove` never applies) — same
+		// class of instability `resolveReorderBoundingBoxes` retries around for drag reordering.
+		const attempts = 5;
+		for (let attempt = 1; attempt <= attempts; attempt++) {
+			// The button aria-labels are not locator-friendly in the e2e build, so distinguish by slot:
+			// the drag handle has slot="drag", the remove button does not.
+			await row
+				.locator('button:not([slot="drag"])')
+				.click({ timeout: 5000 })
+				.catch(() => undefined);
+
+			try {
+				await row.waitFor({ state: "hidden", timeout: 5000 });
+				return;
+			} catch {
+				if (attempt === attempts) {
+					throw new Error(
+						`Row "${name}" did not disappear after ${String(attempts)} remove attempts.`,
+					);
+				}
+			}
+		}
 	}
 
 	/** Whether a given option is disabled in the popover (e.g. because the max is reached). */
@@ -117,16 +176,16 @@ class FeaturedSection {
 			throw new Error(`No row below "${name}" to move past.`);
 		}
 
-		// The drag handle is the button with slot="drag". Coordinate-based mouse moves do not
-		// auto-scroll, so bring it into view first.
-		const handle = this.featuredRow(name).locator('button[slot="drag"]');
-		await handle.scrollIntoViewIfNeeded();
+		// `getFeaturedNames` finding `belowName` doesn't mean its row is actually visible/stable yet —
+		// wait for it explicitly too, the same as `name`'s row above, before measuring either box.
+		const belowRow = this.featuredRow(belowName);
+		await belowRow.waitFor({ state: "visible" });
 
-		const handleBox = await handle.boundingBox();
-		const belowBox = await this.featuredRow(belowName).boundingBox();
-		if (handleBox == null || belowBox == null) {
-			throw new Error("Could not resolve bounding boxes for reorder.");
-		}
+		// The drag handle is the button with slot="drag". Coordinate-based mouse moves do not
+		// auto-scroll, so bring it into view first — resolveReorderBoundingBoxes retries the
+		// scroll+measure pair, since a row can still be mid-re-render just after becoming "visible".
+		const handle = this.featuredRow(name).locator('button[slot="drag"]');
+		const { handleBox, belowBox } = await resolveReorderBoundingBoxes(this.page, handle, belowRow);
 
 		const startX = handleBox.x + handleBox.width / 2;
 		const startY = handleBox.y + handleBox.height / 2;
