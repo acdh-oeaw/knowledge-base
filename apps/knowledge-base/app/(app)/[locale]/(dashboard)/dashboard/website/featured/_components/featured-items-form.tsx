@@ -16,12 +16,16 @@ import {
 import { updateFeaturedItemsAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/featured/_lib/update-featured-items.action";
 import type { AnnouncementOption } from "@/lib/data/announcements";
 import type { EventOption } from "@/lib/data/events";
+import type { FeaturedProjectOption } from "@/lib/data/projects";
 
 const MAX_ALLOWED_FEATURED_ITEMS = 3;
 
-type Option = AnnouncementOption | EventOption;
+type Option = AnnouncementOption | EventOption | FeaturedProjectOption;
 
-/** Builds a page fetcher for one of the featured-options endpoints (announcements / events). */
+/**
+ * Builds a page fetcher for one of the featured-options endpoints (announcements / events /
+ * projects).
+ */
 function createFetchOptionsPage(endpoint: string) {
 	return async function fetchOptionsPage(
 		params: Readonly<AsyncOptionsFetchPageParams>,
@@ -49,24 +53,31 @@ function createFetchOptionsPage(endpoint: string) {
 
 const fetchAnnouncementsPage = createFetchOptionsPage("/api/announcements/options");
 const fetchEventsPage = createFetchOptionsPage("/api/events/options");
+const fetchProjectsPage = createFetchOptionsPage("/api/projects/featured-options");
 
 interface FeaturedItemsFormProps {
 	initialFeaturedNewsOptions: { items: Array<AnnouncementOption>; total: number };
 	initialFeaturedEventOptions: { items: Array<EventOption>; total: number };
+	initialFeaturedProjectOptions: { items: Array<FeaturedProjectOption>; total: number };
 	/** The currently-featured announcements, resolved by id and ordered, for labelling the selection. */
 	selectedFeaturedNews: Array<AnnouncementOption>;
 	/** The currently-featured events, resolved by id and ordered, for labelling the selection. */
 	selectedFeaturedEvents: Array<EventOption>;
+	/** The currently-featured projects, resolved by id and ordered, for labelling the selection. */
+	selectedFeaturedProjects: Array<FeaturedProjectOption>;
 	featuredNewsIds: Array<string>;
 	featuredEventIds: Array<string>;
+	featuredProjectIds: Array<string>;
 }
 
 export function FeaturedItemsForm(props: Readonly<FeaturedItemsFormProps>): ReactNode {
 	const {
 		initialFeaturedNewsOptions,
 		initialFeaturedEventOptions,
+		initialFeaturedProjectOptions,
 		selectedFeaturedNews,
 		selectedFeaturedEvents,
+		selectedFeaturedProjects,
 	} = props;
 
 	const t = useExtracted();
@@ -81,6 +92,9 @@ export function FeaturedItemsForm(props: Readonly<FeaturedItemsFormProps>): Reac
 	);
 	const [featuredEventIds, setFeaturedEventIds] = useState<Array<string>>(
 		() => props.featuredEventIds,
+	);
+	const [featuredProjectIds, setFeaturedProjectIds] = useState<Array<string>>(
+		() => props.featuredProjectIds,
 	);
 
 	return (
@@ -127,6 +141,28 @@ export function FeaturedItemsForm(props: Readonly<FeaturedItemsFormProps>): Reac
 					/>
 					{featuredEventIds.map((id, index) => (
 						<input key={id} name={`featuredEventIds.${String(index)}`} type="hidden" value={id} />
+					))}
+				</FormSection>
+
+				<FormSection
+					description={t("Featured projects on the landing page. Drag to reorder.")}
+					title={t("Featured projects")}
+				>
+					<AsyncListSelect
+						addLabel={t("Add project")}
+						aria-label={t("Featured projects")}
+						emptySelectionMessage={t("No featured projects yet.")}
+						fetchPage={fetchProjectsPage}
+						initialItems={initialFeaturedProjectOptions.items}
+						initialTotal={initialFeaturedProjectOptions.total}
+						isOrderable={true}
+						maxItems={MAX_ALLOWED_FEATURED_ITEMS}
+						onChange={setFeaturedProjectIds}
+						selectedItems={selectedFeaturedProjects}
+						value={featuredProjectIds}
+					/>
+					{featuredProjectIds.map((id, index) => (
+						<input key={id} name={`featuredProjectIds.${String(index)}`} type="hidden" value={id} />
 					))}
 				</FormSection>
 

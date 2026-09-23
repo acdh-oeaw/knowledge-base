@@ -4,10 +4,13 @@ import type { User } from "@dariah-eric/auth";
 import * as schema from "@dariah-eric/database/schema";
 import { forbidden } from "next/navigation";
 
+import { relationOptionsPageSize } from "@/lib/constants/relations";
+import { publishedEntityVersionWhere } from "@/lib/data/current-entity-version";
 import { getSocialMediaOptions, getSocialMediaOptionsByIds } from "@/lib/data/social-media";
 import { db } from "@/lib/db";
 import { matchesAllTerms } from "@/lib/db/search";
-import { alias, and, count, desc, eq, sql } from "@/lib/db/sql";
+import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
+import { getEntityTypeLabel } from "@/lib/entity-type-label";
 
 export type ProjectsSort = "name" | "acronym" | "funding" | "scope";
 
@@ -181,7 +184,6 @@ export async function getProjectBySlugForAdmin(currentUser: Pick<User, "role">, 
 		},
 		columns: {
 			acronym: true,
-			call: true,
 			duration: true,
 			funding: true,
 			id: true,
@@ -217,6 +219,12 @@ export async function getProjectBySlugForAdmin(currentUser: Pick<User, "role">, 
 				columns: {
 					id: true,
 					scope: true,
+				},
+			},
+			call: {
+				columns: {
+					id: true,
+					call: true,
 				},
 			},
 		},
@@ -395,4 +403,78 @@ export async function getProjectEditDataForAdmin(currentUser: Pick<User, "role">
 		scopes,
 		selectedSocialMediaItems,
 	};
+}
+
+/**
+ * Distinct from `getProjectOptions` in `project-partners.ts`: that one backs the admin partner
+ * picker (includes drafts, keyed by entity id). This one is published-only and keyed by entity
+ * version id, matching `getEventOptions`/`getAnnouncementOptions` — required for the featured-items
+ * picker, whose ids must resolve through `isPublishedEntityVersions`.
+ */
+export interface FeaturedProjectOption {
+	description: string;
+	id: string;
+	name: string;
+}
+
+interface GetFeaturedProjectOptionsParams {
+	limit?: number;
+	offset?: number;
+	q?: string;
+}
+
+export async function getFeaturedProjectOptions(
+	params: GetFeaturedProjectOptionsParams = {},
+): Promise<{ items: Array<FeaturedProjectOption>; total: number }> {
+	const { limit = relationOptionsPageSize, offset = 0, q } = params;
+	const query = q?.trim();
+	const searchWhere = matchesAllTerms(query, schema.projects.name);
+	const where = and(publishedEntityVersionWhere(), searchWhere);
+
+	const [rows, aggregate] = await Promise.all([
+		db
+			.select({ id: schema.projects.id, name: schema.projects.name })
+			.from(schema.projects)
+			.innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(where)
+			.orderBy(schema.projects.name)
+			.limit(limit)
+			.offset(offset),
+		db
+			.select({ total: count() })
+			.from(schema.projects)
+			.innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(where),
+	]);
+
+	const description = getEntityTypeLabel({ entityType: "projects" });
+	const items = rows.map((item) => {
+		return { ...item, description };
+	});
+
+	return { items, total: aggregate.at(0)?.total ?? 0 };
+}
+
+export async function getFeaturedProjectOptionsByIds(ids: ReadonlyArray<string>) {
+	if (ids.length === 0) {
+		return [];
+	}
+
+	const rows = await db
+		.select({ id: schema.projects.id, name: schema.projects.name })
+		.from(schema.projects)
+		.innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
+		.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+		.where(and(publishedEntityVersionWhere(), inArray(schema.projects.id, [...ids])))
+		.orderBy(schema.projects.name);
+
+	const itemById = new Map(rows.map((row) => [row.id, row] as const));
+	const description = getEntityTypeLabel({ entityType: "projects" });
+
+	return ids.flatMap((id) => {
+		const item = itemById.get(id);
+		return item != null ? [{ ...item, description }] : [];
+	});
 }

@@ -11,6 +11,7 @@ import {
 import { FeaturedItemsForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/featured/_components/featured-items-form";
 import { getAnnouncementOptions, getAnnouncementOptionsByIds } from "@/lib/data/announcements";
 import { getEventOptions, getEventOptionsByIds } from "@/lib/data/events";
+import { getFeaturedProjectOptions, getFeaturedProjectOptionsByIds } from "@/lib/data/projects";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/server/create-metadata";
 
@@ -42,17 +43,22 @@ export default async function DashboardWebsiteFeaturedPage(
 
 	const featuredNewsIds = siteMetadataRow?.featuredItemIds?.news ?? [];
 	const featuredEventIds = siteMetadataRow?.featuredItemIds?.events ?? [];
+	const featuredProjectIds = siteMetadataRow?.featuredItemIds?.projects ?? [];
 
 	const [
 		initialFeaturedNewsOptions,
 		selectedFeaturedNews,
 		initialFeaturedEventOptions,
 		selectedFeaturedEvents,
+		initialFeaturedProjectOptions,
+		selectedFeaturedProjects,
 	] = await Promise.all([
 		getAnnouncementOptions(),
 		getAnnouncementOptionsByIds(featuredNewsIds),
 		getEventOptions(),
 		getEventOptionsByIds(featuredEventIds),
+		getFeaturedProjectOptions(),
+		getFeaturedProjectOptionsByIds(featuredProjectIds),
 	]);
 
 	return (
@@ -70,10 +76,13 @@ export default async function DashboardWebsiteFeaturedPage(
 				<FeaturedItemsForm
 					featuredEventIds={featuredEventIds}
 					featuredNewsIds={featuredNewsIds}
+					featuredProjectIds={featuredProjectIds}
 					initialFeaturedEventOptions={initialFeaturedEventOptions}
 					initialFeaturedNewsOptions={initialFeaturedNewsOptions}
+					initialFeaturedProjectOptions={initialFeaturedProjectOptions}
 					selectedFeaturedEvents={selectedFeaturedEvents}
 					selectedFeaturedNews={selectedFeaturedNews}
+					selectedFeaturedProjects={selectedFeaturedProjects}
 				/>
 			</div>
 		</div>

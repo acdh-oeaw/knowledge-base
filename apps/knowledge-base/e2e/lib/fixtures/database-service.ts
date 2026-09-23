@@ -209,6 +209,7 @@ export class DatabaseService {
 	async getSiteMetadataFeaturedItemIds(): Promise<{
 		news: Array<string>;
 		events: Array<string>;
+		projects: Array<string>;
 	}> {
 		const row = await this.db.query.siteMetadata.findFirst({
 			columns: { featuredItemIds: true },
@@ -217,6 +218,7 @@ export class DatabaseService {
 		return {
 			news: row?.featuredItemIds?.news ?? [],
 			events: row?.featuredItemIds?.events ?? [],
+			projects: row?.featuredItemIds?.projects ?? [],
 		};
 	}
 
@@ -226,9 +228,17 @@ export class DatabaseService {
 	 * known state before/after the featured-items tests.
 	 */
 	async resetSiteMetadataFeaturedItems(
-		featuredItemIds: { news?: Array<string>; events?: Array<string> } = {},
+		featuredItemIds: {
+			news?: Array<string>;
+			events?: Array<string>;
+			projects?: Array<string>;
+		} = {},
 	): Promise<void> {
-		const value = { news: featuredItemIds.news ?? [], events: featuredItemIds.events ?? [] };
+		const value = {
+			news: featuredItemIds.news ?? [],
+			events: featuredItemIds.events ?? [],
+			projects: featuredItemIds.projects ?? [],
+		};
 
 		await this.db
 			.insert(schema.siteMetadata)

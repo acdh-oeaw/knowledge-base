@@ -2715,6 +2715,7 @@ msgid "ysd3t3"
 msgstr "Add a project this unit participates in and its role."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/unit-projects-section.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/featured/_components/featured-items-form.tsx
 msgid "p4N4J3"
 msgstr "Add project"
 
@@ -7532,6 +7533,18 @@ msgstr "Featured events"
 #: app/(app)/[locale]/(dashboard)/dashboard/website/featured/_components/featured-items-form.tsx
 msgid "Xzm5Ny"
 msgstr "No featured events yet."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/featured/_components/featured-items-form.tsx
+msgid "-ITDif"
+msgstr "Featured projects on the landing page. Drag to reorder."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/featured/_components/featured-items-form.tsx
+msgid "2kEhCS"
+msgstr "Featured projects"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/featured/_components/featured-items-form.tsx
+msgid "FCfSbz"
+msgstr "No featured projects yet."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/featured/_lib/update-featured-items.action.ts
 msgid "VClwQ5"

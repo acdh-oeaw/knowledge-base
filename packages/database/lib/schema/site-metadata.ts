@@ -13,9 +13,10 @@ import { assets } from "./assets";
 export interface FeaturedItems {
 	news: Array<string>;
 	events: Array<string>;
+	projects: Array<string>;
 }
 
-export const emptyFeaturedItems: FeaturedItems = { news: [], events: [] };
+export const emptyFeaturedItems: FeaturedItems = { news: [], events: [], projects: [] };
 
 export const siteMetadata = p.snakeCase.table(
 	"site_metadata",

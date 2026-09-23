@@ -210,6 +210,7 @@ describe("announcements", () => {
 								opportunity.versionId,
 							],
 							events: [],
+							projects: [],
 						},
 					})
 					.onConflictDoUpdate({
@@ -223,6 +224,7 @@ describe("announcements", () => {
 									opportunity.versionId,
 								],
 								events: [],
+								projects: [],
 							},
 							updatedAt: sql`NOW()`,
 						},

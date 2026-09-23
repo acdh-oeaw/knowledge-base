@@ -7566,10 +7566,17 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             },
             "type": "array",
           },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/FeaturedProject",
+            },
+            "type": "array",
+          },
         },
         "required": [
           "news",
           "events",
+          "projects",
         ],
         "type": "object",
       },
@@ -7721,6 +7728,249 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "image",
           "duration",
           "entity",
+          "publishedAt",
+        ],
+        "type": "object",
+      },
+      "FeaturedProject": {
+        "description": "Featured project",
+        "properties": {
+          "acronym": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "call": {
+            "anyOf": [
+              {
+                "properties": {
+                  "call": {
+                    "enum": [
+                      "clariah_at_project_funding",
+                      "go_digital_1_0",
+                      "go_digital_2_0",
+                      "go_digital_3_0",
+                      "go_digital_next_generation",
+                    ],
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "call",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "duration": {
+            "properties": {
+              "end": {
+                "format": "date-time",
+                "type": "string",
+              },
+              "start": {
+                "format": "date-time",
+                "type": "string",
+              },
+            },
+            "required": [
+              "start",
+            ],
+            "type": "object",
+          },
+          "entity": {
+            "properties": {
+              "slug": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "slug",
+            ],
+            "type": "object",
+          },
+          "funding": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "number",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "image": {
+            "anyOf": [
+              {
+                "properties": {
+                  "alt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "caption": {
+                    "anyOf": [
+                      {},
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "height": {
+                    "anyOf": [
+                      {
+                        "description": "Source height in pixels; null for vectors",
+                        "type": "number",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "license": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                          },
+                          "url": {
+                            "type": "string",
+                          },
+                        },
+                        "required": [
+                          "name",
+                          "url",
+                        ],
+                        "type": "object",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "srcUrl": {
+                    "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` to request a rendition",
+                    "type": "string",
+                  },
+                  "url": {
+                    "description": "Default rendition, sized for this placement",
+                    "type": "string",
+                  },
+                  "width": {
+                    "anyOf": [
+                      {
+                        "description": "Source width in pixels; null for vectors",
+                        "type": "number",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                },
+                "required": [
+                  "url",
+                  "srcUrl",
+                  "width",
+                  "height",
+                  "alt",
+                  "caption",
+                  "license",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "name": {
+            "type": "string",
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string",
+          },
+          "scope": {
+            "properties": {
+              "scope": {
+                "enum": [
+                  "eu",
+                  "national",
+                  "regional",
+                ],
+                "type": "string",
+              },
+            },
+            "required": [
+              "scope",
+            ],
+            "type": "object",
+          },
+          "socialMedia": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectSocialMedia",
+            },
+            "type": "array",
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "type": {
+            "const": "projects",
+          },
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "acronym",
+          "summary",
+          "topic",
+          "funding",
+          "image",
+          "duration",
+          "entity",
+          "scope",
+          "call",
+          "socialMedia",
           "publishedAt",
         ],
         "type": "object",
@@ -31773,8 +32023,18 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
     },
     "/api/v1/featured-entities": {
       "get": {
-        "description": "Retrieve the list of featured entities configured in site metadata",
+        "description": "Retrieve the list of featured entities configured in site metadata, localized into the requested locale (falling back to the default locale for entities without a translation)",
         "operationId": "getFeaturedEntities",
+        "parameters": [
+          {
+            "description": "BCP 47-style locale code (e.g. "de" or "de-AT"); falls back to the default locale when omitted or unrecognized",
+            "in": "query",
+            "name": "locale",
+            "schema": {
+              "type": "string",
+            },
+          },
+        ],
         "responses": {
           "200": {
             "content": {
