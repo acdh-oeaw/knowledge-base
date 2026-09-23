@@ -115,6 +115,16 @@ function createWebsiteDocumentId(descriptor: WebsiteDocumentDescriptor): string 
 	return [descriptor.type, descriptor.slug].join(":");
 }
 
+/**
+ * Formats a locale's `{languageCode, regionCode}` pair as a plain BCP-47-ish string (e.g. `en`,
+ * `en-GB`), suitable for indexing in Typesense's `locale` field.
+ */
+function formatLocaleCode(locale: { languageCode: string; regionCode: string | null }): string {
+	return locale.regionCode != null
+		? `${locale.languageCode}-${locale.regionCode}`
+		: locale.languageCode;
+}
+
 function mergeDescription(...values: Array<string | null | undefined>): string {
 	const parts = values
 		.map((value) => value?.trim())
@@ -130,6 +140,7 @@ function createWebsiteEntityDocument(params: {
 	importedAt: number;
 	label: string;
 	link: string;
+	locale: string;
 	sourceId: string;
 	sourceUpdatedAt: Date;
 	type: CanonicalWebsiteEntityType;
@@ -140,6 +151,7 @@ function createWebsiteEntityDocument(params: {
 		importedAt,
 		label,
 		link,
+		locale,
 		sourceId,
 		documentId = sourceId,
 		sourceUpdatedAt,
@@ -154,10 +166,11 @@ function createWebsiteEntityDocument(params: {
 		source_updated_at: sourceUpdatedAt.getTime(),
 		imported_at: importedAt,
 		type,
-		id: [type, documentId].join(":"),
+		id: [type, documentId, locale].join(":"),
 		label,
 		description,
 		link,
+		locale,
 	};
 }
 
@@ -280,6 +293,7 @@ const countrySlugs = alias(schema.slugs, "country_slugs");
 const itemEntities = alias(schema.entities, "item_entities");
 const itemEntityVersions = alias(schema.entityVersions, "item_entity_versions");
 const itemSlugs = alias(schema.slugs, "item_slugs");
+const itemLocales = alias(schema.locales, "item_locales");
 const organisationalRelationStatus = alias(
 	schema.organisationalUnitStatus,
 	"organisational_relation_status",
@@ -293,6 +307,7 @@ interface CountryScopedUnit {
 	entityId: string;
 	itemSlug: string;
 	label: string;
+	locale: { languageCode: string; regionCode: string | null };
 	sourceUpdatedAt: Date;
 	versionId: string;
 }
@@ -300,6 +315,7 @@ interface CountryScopedUnit {
 interface ViewBackedWebsiteEntity {
 	entityId: string;
 	id: string;
+	locale: { languageCode: string; regionCode: string | null };
 	name: string;
 	slug: string;
 	summary: string | null;
@@ -309,6 +325,7 @@ interface ViewBackedWebsiteEntity {
 interface PublishedOpportunity {
 	entityId: string;
 	id: string;
+	locale: { languageCode: string; regionCode: string | null };
 	slug: string;
 	summary: string;
 	title: string;
@@ -335,12 +352,17 @@ async function getPublishedOpportunities(
 			title: schema.opportunities.title,
 			summary: schema.opportunities.summary,
 			updatedAt: schema.opportunities.updatedAt,
+			locale: {
+				languageCode: schema.locales.languageCode,
+				regionCode: schema.locales.regionCode,
+			},
 		})
 		.from(schema.opportunities)
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.opportunities.id))
 		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
 		.where(and(...conditions));
 }
 
@@ -364,12 +386,17 @@ async function getPublishedMembersAndPartners(
 			name: schema.membersAndPartners.name,
 			summary: schema.membersAndPartners.summary,
 			updatedAt: schema.membersAndPartners.updatedAt,
+			locale: {
+				languageCode: schema.locales.languageCode,
+				regionCode: schema.locales.regionCode,
+			},
 		})
 		.from(schema.membersAndPartners)
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.membersAndPartners.id))
 		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
 		.where(and(...conditions));
 }
 
@@ -393,12 +420,17 @@ async function getPublishedDariahProjects(
 			name: schema.dariahProjects.name,
 			summary: schema.dariahProjects.summary,
 			updatedAt: schema.dariahProjects.updatedAt,
+			locale: {
+				languageCode: schema.locales.languageCode,
+				regionCode: schema.locales.regionCode,
+			},
 		})
 		.from(schema.dariahProjects)
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.dariahProjects.id))
 		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
 		.where(and(...conditions));
 }
 
@@ -422,12 +454,17 @@ async function getPublishedWorkingGroups(
 			name: schema.workingGroups.name,
 			summary: schema.workingGroups.summary,
 			updatedAt: schema.workingGroups.updatedAt,
+			locale: {
+				languageCode: schema.locales.languageCode,
+				regionCode: schema.locales.regionCode,
+			},
 		})
 		.from(schema.workingGroups)
 		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.workingGroups.id))
 		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
 		.where(and(...conditions));
 }
 
@@ -489,11 +526,16 @@ async function getCountryScopedUnits(
 			label: schema.organisationalUnits.name,
 			description: schema.organisationalUnits.summary,
 			sourceUpdatedAt: schema.organisationalUnits.updatedAt,
+			locale: {
+				languageCode: itemLocales.languageCode,
+				regionCode: itemLocales.regionCode,
+			},
 		})
 		.from(schema.organisationalUnits)
 		.innerJoin(itemEntityVersions, eq(schema.organisationalUnits.id, itemEntityVersions.id))
 		.innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
 		.innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
+		.innerJoin(itemLocales, eq(itemLocales.id, itemEntityVersions.localeId))
 		.innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
 		.innerJoin(
 			organisationalUnitType,
@@ -955,6 +997,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								item.description ?? "",
 							),
 							link: getEntityHref({ type: "country", slug: item.countrySlug }),
+							locale: formatLocaleCode(item.locale),
 						});
 
 						// A unit can be both a partner and a cooperating partner institution of the ERIC;
@@ -967,21 +1010,19 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 			}
 
 			case "country": {
-				const item = await getPublishedMembersAndPartners(db, { entityId }).then(
-					(rows) => rows[0] ?? null,
-				);
+				const rows = await getPublishedMembersAndPartners(db, { entityId });
 
-				if (item == null) {
+				if (rows.length === 0) {
 					return [];
 				}
 
 				const descriptions = await getPlainTextFieldContentByVersionId(
 					db,
-					[item.id],
+					rows.map((item) => item.id),
 					"description",
 				);
 
-				return [
+				return rows.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -991,12 +1032,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "country", slug: item.slug }),
+						locale: formatLocaleCode(item.locale),
 					}),
-				];
+				);
 			}
 
 			case "document-or-policy": {
-				const item = await db.query.documentsPolicies.findFirst({
+				const items = await db.query.documentsPolicies.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1020,16 +1062,22 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1039,12 +1087,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.title,
 						description: item.summary ?? "",
 						link: getEntityHref({ type: "document-or-policy" }),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "event": {
-				const item = await db.query.events.findFirst({
+				const items = await db.query.events.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1069,16 +1118,22 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1088,12 +1143,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.title,
 						description: item.summary,
 						link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "funding-call": {
-				const item = await db.query.fundingCalls.findFirst({
+				const items = await db.query.fundingCalls.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1117,16 +1173,22 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1136,12 +1198,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.title,
 						description: item.summary ?? "",
 						link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "impact-case-study": {
-				const item = await db.query.impactCaseStudies.findFirst({
+				const items = await db.query.impactCaseStudies.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1166,16 +1229,22 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1188,12 +1257,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							type: "impact-case-study",
 							slug: item.entityVersion.slug!.value,
 						}),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "news-item": {
-				const item = await db.query.news.findFirst({
+				const items = await db.query.news.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1218,18 +1288,28 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				const content = await getPlainTextFieldContentByVersionId(db, [item.id], "content");
+				const content = await getPlainTextFieldContentByVersionId(
+					db,
+					items.map((item) => item.id),
+					"content",
+				);
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1239,22 +1319,25 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.title,
 						description: mergeDescription(content.get(item.id), item.summary),
 						link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "opportunity": {
-				const item = await getPublishedOpportunities(db, { entityId }).then(
-					(rows) => rows[0] ?? null,
-				);
+				const rows = await getPublishedOpportunities(db, { entityId });
 
-				if (item == null) {
+				if (rows.length === 0) {
 					return [];
 				}
 
-				const content = await getPlainTextFieldContentByVersionId(db, [item.id], "content");
+				const content = await getPlainTextFieldContentByVersionId(
+					db,
+					rows.map((item) => item.id),
+					"content",
+				);
 
-				return [
+				return rows.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1264,12 +1347,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.title,
 						description: mergeDescription(content.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "opportunity", slug: item.slug }),
+						locale: formatLocaleCode(item.locale),
 					}),
-				];
+				);
 			}
 
 			case "page": {
-				const item = await db.query.pages.findFirst({
+				const items = await db.query.pages.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1294,42 +1378,55 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				// Interim: a page's real pathname is not yet stored in the CMS. Skip pages with no
-				// mapped website route so we never index a link that would 404. Remove once pages
-				// own a `path` column (docs/website-url-resolution.md).
-				const path = resolveInterimPagePath(item.entityVersion.slug!.value);
+				const content = await getPlainTextFieldContentByVersionId(
+					db,
+					items.map((item) => item.id),
+					"content",
+				);
 
-				if (path == null) {
-					return [];
-				}
+				return items.flatMap((item) => {
+					// Interim: a page's real pathname is not yet stored in the CMS. Skip pages with no
+					// mapped website route so we never index a link that would 404. Remove once pages
+					// own a `path` column (docs/website-url-resolution.md).
+					const path = resolveInterimPagePath(item.entityVersion.slug!.value);
 
-				const content = await getPlainTextFieldContentByVersionId(db, [item.id], "content");
+					if (path == null) {
+						return [];
+					}
 
-				return [
-					createWebsiteEntityDocument({
-						entityId,
-						importedAt,
-						type: "page",
-						sourceId: item.entityVersion.slug!.value,
-						sourceUpdatedAt: item.publicationDate,
-						label: item.title,
-						description: mergeDescription(content.get(item.id), item.summary),
-						link: getEntityHref({ type: "page", path }),
-					}),
-				];
+					return [
+						createWebsiteEntityDocument({
+							entityId,
+							importedAt,
+							type: "page",
+							sourceId: item.entityVersion.slug!.value,
+							sourceUpdatedAt: item.publicationDate,
+							label: item.title,
+							description: mergeDescription(content.get(item.id), item.summary),
+							link: getEntityHref({ type: "page", path }),
+							locale: formatLocaleCode(item.entityVersion.locale),
+						}),
+					];
+				});
 			}
 
 			case "person": {
-				const item = await db.query.persons.findFirst({
+				const items = await db.query.persons.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1352,18 +1449,28 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				const biographies = await getPlainTextFieldContentByVersionId(db, [item.id], "biography");
+				const biographies = await getPlainTextFieldContentByVersionId(
+					db,
+					items.map((item) => item.id),
+					"biography",
+				);
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1373,26 +1480,25 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.name,
 						description: biographies.get(item.id) ?? "",
 						link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "project": {
-				const item = await getPublishedDariahProjects(db, { entityId }).then(
-					(rows) => rows[0] ?? null,
-				);
+				const rows = await getPublishedDariahProjects(db, { entityId });
 
-				if (item == null) {
+				if (rows.length === 0) {
 					return [];
 				}
 
 				const descriptions = await getPlainTextFieldContentByVersionId(
 					db,
-					[item.id],
+					rows.map((item) => item.id),
 					"description",
 				);
 
-				return [
+				return rows.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1402,12 +1508,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "project", slug: item.slug }),
+						locale: formatLocaleCode(item.locale),
 					}),
-				];
+				);
 			}
 
 			case "spotlight-article": {
-				const item = await db.query.spotlightArticles.findFirst({
+				const items = await db.query.spotlightArticles.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1432,18 +1539,28 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
-				const content = await getPlainTextFieldContentByVersionId(db, [item.id], "content");
+				const content = await getPlainTextFieldContentByVersionId(
+					db,
+					items.map((item) => item.id),
+					"content",
+				);
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1456,26 +1573,25 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							type: "spotlight-article",
 							slug: item.entityVersion.slug!.value,
 						}),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 
 			case "working-group": {
-				const item = await getPublishedWorkingGroups(db, { entityId }).then(
-					(rows) => rows[0] ?? null,
-				);
+				const rows = await getPublishedWorkingGroups(db, { entityId });
 
-				if (item == null) {
+				if (rows.length === 0) {
 					return [];
 				}
 
 				const descriptions = await getPlainTextFieldContentByVersionId(
 					db,
-					[item.id],
+					rows.map((item) => item.id),
 					"description",
 				);
 
-				return [
+				return rows.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1485,12 +1601,13 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "working-group", slug: item.slug }),
+						locale: formatLocaleCode(item.locale),
 					}),
-				];
+				);
 			}
 
 			case "governance-body": {
-				const item = await db.query.organisationalUnits.findFirst({
+				const items = await db.query.organisationalUnits.findMany({
 					where: {
 						entityVersion: {
 							entityId,
@@ -1517,22 +1634,28 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 										value: true,
 									},
 								},
+								locale: {
+									columns: {
+										languageCode: true,
+										regionCode: true,
+									},
+								},
 							},
 						},
 					},
 				});
 
-				if (item == null) {
+				if (items.length === 0) {
 					return [];
 				}
 
 				const descriptions = await getPlainTextFieldContentByVersionId(
 					db,
-					[item.id],
+					items.map((item) => item.id),
 					"description",
 				);
 
-				return [
+				return items.map((item) =>
 					createWebsiteEntityDocument({
 						entityId,
 						importedAt,
@@ -1545,8 +1668,9 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							type: "governance-body",
 							slug: item.entityVersion.slug!.value,
 						}),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
-				];
+				);
 			}
 		}
 	}
@@ -1664,6 +1788,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -1680,6 +1810,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: item.summary ?? "",
 					link: getEntityHref({ type: "document-or-policy" }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -1708,6 +1839,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -1724,6 +1861,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: item.summary,
 					link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -1751,6 +1889,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -1767,6 +1911,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: item.summary ?? "",
 					link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -1795,6 +1940,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -1811,6 +1962,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: item.summary,
 					link: getEntityHref({ type: "impact-case-study", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -1828,6 +1980,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.name,
 					description: mergeDescription(countryDescriptions.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "country", slug: item.slug }),
+					locale: formatLocaleCode(item.locale),
 				}),
 			),
 		);
@@ -1863,6 +2016,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						item.description ?? "",
 					),
 					link: getEntityHref({ type: "country", slug: item.countrySlug }),
+					locale: formatLocaleCode(item.locale),
 				});
 
 				countryScopedDocumentsById.set(document.id, document);
@@ -1962,6 +2116,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -1978,6 +2138,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: mergeDescription(newsContent.get(item.id), item.summary),
 					link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -1995,6 +2156,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: mergeDescription(opportunityContent.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "opportunity", slug: item.slug }),
+					locale: formatLocaleCode(item.locale),
 				}),
 			),
 		);
@@ -2023,6 +2185,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -2048,6 +2216,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						label: item.title,
 						description: mergeDescription(pageContent.get(item.id), item.summary),
 						link: getEntityHref({ type: "page", path }),
+						locale: formatLocaleCode(item.entityVersion.locale),
 					}),
 				];
 			}),
@@ -2075,6 +2244,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -2091,6 +2266,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.name,
 					description: personBiographies.get(item.id) ?? "",
 					link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -2108,6 +2284,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.name,
 					description: mergeDescription(projectDescriptions.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "project", slug: item.slug }),
+					locale: formatLocaleCode(item.locale),
 				}),
 			),
 		);
@@ -2136,6 +2313,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -2152,6 +2335,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.title,
 					description: mergeDescription(spotlightContent.get(item.id), item.summary),
 					link: getEntityHref({ type: "spotlight-article", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);
@@ -2169,6 +2353,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					label: item.name,
 					description: mergeDescription(workingGroupDescriptions.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "working-group", slug: item.slug }),
+					locale: formatLocaleCode(item.locale),
 				}),
 			),
 		);
@@ -2199,6 +2384,12 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								value: true,
 							},
 						},
+						locale: {
+							columns: {
+								languageCode: true,
+								regionCode: true,
+							},
+						},
 					},
 				},
 			},
@@ -2221,6 +2412,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						type: "governance-body",
 						slug: item.entityVersion.slug!.value,
 					}),
+					locale: formatLocaleCode(item.entityVersion.locale),
 				}),
 			),
 		);

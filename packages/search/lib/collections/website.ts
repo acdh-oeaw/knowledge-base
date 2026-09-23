@@ -21,6 +21,10 @@ export const websiteCollection = defineCollection({
 		{ name: "source_updated_at", type: "int64", index: true, optional: true, sort: true },
 		{ name: "imported_at", type: "int64", index: false },
 		{ name: "type", type: "string", index: true, facet: true },
+		// Locale of the entity version this document was derived from. Only set on entity
+		// documents (an entity_version always has a locale); resource documents have no
+		// knowledge-base locale concept.
+		{ name: "locale", type: "string", index: true, facet: true, optional: true },
 		{ name: "label", type: "string", index: true, sort: true },
 		{ name: "description", type: "string", index: true },
 		{ name: "link", type: "string", index: false, optional: true },
@@ -60,7 +64,15 @@ export type WebsiteDocumentType = WebsiteEntityType | WebsiteResourceType;
 export const websiteEntitySources = ["the-knowledge-base"] as const;
 export type WebsiteEntitySource = (typeof websiteEntitySources)[number];
 
-export const websiteResourceSources = ["dariah-campus", "ssh-open-marketplace", "zenodo"] as const;
+export const websiteResourceSources = [
+	"dariah-campus",
+	"episciences",
+	"hal",
+	"open-aire",
+	"ssh-open-marketplace",
+	"zenodo",
+	"zotero",
+] as const;
 export type WebsiteResourceSource = (typeof websiteResourceSources)[number];
 
 export type WebsiteDocumentSource = WebsiteEntitySource | WebsiteResourceSource;
