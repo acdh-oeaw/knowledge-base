@@ -5,20 +5,21 @@ import { expect, test } from "@/e2e/lib/test";
 interface FeaturedIds {
 	news: Array<string>;
 	events: Array<string>;
+	projects: Array<string>;
 }
 
 /**
- * Drives one featured section (news or events). Both are `AsyncListSelect`s (isOrderable,
- * maxItems=3): selected items render as drag-reorderable rows, added via a searchable popover. The
- * two sections persist into the same singleton `site_metadata` row under separate `news` / `events`
- * keys, so each config resets and asserts only its own key.
+ * Drives one featured section (news, events, or projects). All three are `AsyncListSelect`s
+ * (isOrderable, maxItems=3): selected items render as drag-reorderable rows, added via a searchable
+ * popover. The sections persist into the same singleton `site_metadata` row under separate `news` /
+ * `events` / `projects` keys, so each config resets and asserts only its own key.
  */
 interface SectionConfig {
 	label: string;
 	getItems: (db: DatabaseService) => Promise<Array<{ id: string; name: string }>>;
 	section: (page: AdminFeaturedItemsPage) => AdminFeaturedItemsPage["news"];
 	reset: (db: DatabaseService, ids: Array<string>) => Promise<void>;
-	/** Expected persisted shape when this section holds `ids` and the other is empty. */
+	/** Expected persisted shape when this section holds `ids` and the others are empty. */
 	expected: (ids: Array<string>) => FeaturedIds;
 }
 
@@ -29,7 +30,7 @@ const SECTION_CONFIGS: Array<SectionConfig> = [
 		section: (page) => page.news,
 		reset: (db, ids) => db.resetSiteMetadataFeaturedItems({ news: ids }),
 		expected: (ids) => {
-			return { news: ids, events: [] };
+			return { news: ids, events: [], projects: [] };
 		},
 	},
 	{
@@ -38,7 +39,16 @@ const SECTION_CONFIGS: Array<SectionConfig> = [
 		section: (page) => page.events,
 		reset: (db, ids) => db.resetSiteMetadataFeaturedItems({ events: ids }),
 		expected: (ids) => {
-			return { news: [], events: ids };
+			return { news: [], events: ids, projects: [] };
+		},
+	},
+	{
+		label: "projects",
+		getItems: (db) => db.getPublishedProjects(4),
+		section: (page) => page.projects,
+		reset: (db, ids) => db.resetSiteMetadataFeaturedItems({ projects: ids }),
+		expected: (ids) => {
+			return { news: [], events: [], projects: ids };
 		},
 	},
 ];
@@ -103,7 +113,7 @@ for (const config of SECTION_CONFIGS) {
 			expect(await section.isOptionDisabled(fourth!.name)).toBe(true);
 		});
 
-		test.fixme("should remove a featured item", async ({ createAdminFeaturedItemsPage, db }) => {
+		test("should remove a featured item", async ({ createAdminFeaturedItemsPage, db }) => {
 			const [first, second] = items;
 			await config.reset(db, [first!.id, second!.id]);
 
@@ -122,10 +132,7 @@ for (const config of SECTION_CONFIGS) {
 			);
 		});
 
-		test.fixme("should persist a reordered selection", async ({
-			createAdminFeaturedItemsPage,
-			db,
-		}) => {
+		test("should persist a reordered selection", async ({ createAdminFeaturedItemsPage, db }) => {
 			const [first, second, third] = items;
 			await config.reset(db, [first!.id, second!.id, third!.id]);
 
@@ -151,16 +158,18 @@ for (const config of SECTION_CONFIGS) {
 	});
 }
 
-// The two sections write into distinct keys of the same singleton row; this guards against one
-// section's save clobbering the other's selection.
-test.describe("website featured items - news and events together", () => {
+// The three sections write into distinct keys of the same singleton row; this guards against one
+// section's save clobbering another's selection.
+test.describe("website featured items - news, events and projects together", () => {
 	let newsItems: Array<{ id: string; name: string }> = [];
 	let events: Array<{ id: string; name: string }> = [];
+	let projects: Array<{ id: string; name: string }> = [];
 
 	test.beforeAll(async ({ db }) => {
-		[newsItems, events] = await Promise.all([
+		[newsItems, events, projects] = await Promise.all([
 			db.getPublishedNewsItems(2),
 			db.getPublishedEvents(2),
+			db.getPublishedProjects(2),
 		]);
 	});
 
@@ -168,7 +177,7 @@ test.describe("website featured items - news and events together", () => {
 		await db.resetSiteMetadataFeaturedItems({});
 	});
 
-	test("should persist news and events independently", async ({
+	test("should persist news, events and projects independently", async ({
 		createAdminFeaturedItemsPage,
 		db,
 	}) => {
@@ -179,15 +188,18 @@ test.describe("website featured items - news and events together", () => {
 
 		await featuredPage.news.addFeatured(newsItems[0]!.name);
 		await featuredPage.events.addFeatured(events[0]!.name);
+		await featuredPage.projects.addFeatured(projects[0]!.name);
 
 		expect(await featuredPage.news.getFeaturedNames()).toStrictEqual([newsItems[0]!.name]);
 		expect(await featuredPage.events.getFeaturedNames()).toStrictEqual([events[0]!.name]);
+		expect(await featuredPage.projects.getFeaturedNames()).toStrictEqual([projects[0]!.name]);
 
 		await featuredPage.save();
 
 		expect(await db.getSiteMetadataFeaturedItemIds()).toStrictEqual({
 			news: [newsItems[0]!.id],
 			events: [events[0]!.id],
+			projects: [projects[0]!.id],
 		});
 	});
 });

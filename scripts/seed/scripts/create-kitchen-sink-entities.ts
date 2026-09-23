@@ -544,6 +544,24 @@ async function main() {
 					versionId: createId(`version:event:${entry.slug}`),
 				};
 			});
+			/**
+			 * Extra published projects so the featured-projects e2e test has enough options. Same naming
+			 * discipline as `featuredNewsDocuments`/`featuredEventDocuments` (distinct, non-prefixing
+			 * titles that sort before "Kitchen Sink Project") so the picker's first page and Playwright's
+			 * role locators stay unambiguous.
+			 */
+			const featuredProjectDocuments = [
+				{ slug: "featured-test-project-alpha", title: "Featured Test Project Alpha" },
+				{ slug: "featured-test-project-bravo", title: "Featured Test Project Bravo" },
+				{ slug: "featured-test-project-charlie", title: "Featured Test Project Charlie" },
+				{ slug: "featured-test-project-delta", title: "Featured Test Project Delta" },
+			].map((entry) => {
+				return {
+					...entry,
+					id: createId(`entity:project:${entry.slug}`),
+					versionId: createId(`version:project:${entry.slug}`),
+				};
+			});
 			const fundingCallDocument = {
 				id: createId("entity:funding-call"),
 				versionId: createId("version:funding-call"),
@@ -786,6 +804,18 @@ async function main() {
 						id: doc.id,
 						versionId: doc.versionId,
 						typeId: assertLookupId(entityTypeIds.get("events"), 'Missing entity type "events".'),
+						statusId: publishedStatusId,
+						slug: doc.slug,
+					};
+				}),
+				...featuredProjectDocuments.map((doc) => {
+					return {
+						id: doc.id,
+						versionId: doc.versionId,
+						typeId: assertLookupId(
+							entityTypeIds.get("projects"),
+							'Missing entity type "projects".',
+						),
 						statusId: publishedStatusId,
 						slug: doc.slug,
 					};
@@ -1143,6 +1173,16 @@ async function main() {
 				imageId: createId("asset:image"),
 				scopeId: assertLookupId(projectScopeIds.get("eu"), 'Missing project scope "eu".'),
 			});
+			for (const doc of featuredProjectDocuments) {
+				await upsertById(tx, schema.projects, {
+					id: entityIdsBySeedId.get(doc.id)!.versionId,
+					name: doc.title,
+					summary: "A published project seeded for the featured-items e2e tests.",
+					duration: createTimestampRange("2025-01-01T00:00:00.000Z", "2027-12-31T23:59:59.000Z"),
+					imageId: createId("asset:image"),
+					scopeId: assertLookupId(projectScopeIds.get("eu"), 'Missing project scope "eu".'),
+				});
+			}
 
 			const socialMediaRows = [
 				{

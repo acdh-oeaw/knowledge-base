@@ -13,10 +13,11 @@ interface FeaturedSectionConfig {
 const SECTIONS = {
 	news: { gridLabel: "Featured news items", addLabel: "Add news item" },
 	events: { gridLabel: "Featured events", addLabel: "Add event" },
+	projects: { gridLabel: "Featured projects", addLabel: "Add project" },
 } satisfies Record<string, FeaturedSectionConfig>;
 
 /**
- * One featured section (news or events) on the website featured-items page. Each is an
+ * One featured section (news, events, or projects) on the website featured-items page. Each is an
  * `AsyncListSelect` (isOrderable, maxItems=3): selected items render as full-width,
  * drag-reorderable rows; a popover (opened via its "add" button) provides a searchable,
  * multi-select option list.
@@ -79,6 +80,7 @@ class FeaturedSection {
 
 	async removeFeatured(name: string): Promise<void> {
 		const row = this.featuredRow(name);
+		await row.waitFor({ state: "visible" });
 		// The button aria-labels are not locator-friendly in the e2e build, so distinguish by slot:
 		// the drag handle has slot="drag", the remove button does not.
 		await row.locator('button:not([slot="drag"])').click();
@@ -154,19 +156,21 @@ class FeaturedSection {
 }
 
 /**
- * Page object for the website featured-items page. The page hosts two independent featured sections
- * — news and events — each exposed via {@link news} / {@link events}; `goto` and `save` act on the
- * shared page and form.
+ * Page object for the website featured-items page. The page hosts three independent featured
+ * sections — news, events, and projects — each exposed via {@link news} / {@link events} /
+ * {@link projects}; `goto` and `save` act on the shared page and form.
  */
 export class AdminFeaturedItemsPage {
 	readonly page: Page;
 	readonly news: FeaturedSection;
 	readonly events: FeaturedSection;
+	readonly projects: FeaturedSection;
 
 	constructor(page: Page) {
 		this.page = page;
 		this.news = new FeaturedSection(page, SECTIONS.news);
 		this.events = new FeaturedSection(page, SECTIONS.events);
+		this.projects = new FeaturedSection(page, SECTIONS.projects);
 	}
 
 	async goto(): Promise<void> {

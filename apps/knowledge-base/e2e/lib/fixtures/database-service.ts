@@ -203,6 +203,27 @@ export class DatabaseService {
 	}
 
 	/**
+	 * Returns published projects (id = published version id, matching what the featured-items picker
+	 * uses) ordered by name, the same order as the picker's first page.
+	 */
+	async getPublishedProjects(count: number): Promise<Array<{ id: string; name: string }>> {
+		const rows = await this.db
+			.select({ id: schema.projects.id, name: schema.projects.name })
+			.from(schema.projects)
+			.innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
+			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
+			.where(eq(schema.entityStatus.type, "published"))
+			.orderBy(schema.projects.name)
+			.limit(count);
+
+		if (rows.length < count) {
+			throw new Error(`Expected at least ${String(count)} published projects for featured tests.`);
+		}
+
+		return rows;
+	}
+
+	/**
 	 * Reads the singleton site_metadata row's `featuredItemIds`, grouped by entity type (empty lists
 	 * when unset).
 	 */
