@@ -16,12 +16,13 @@ describe("resolveInterimPagePath", () => {
 		expect(resolveInterimPagePath("working-groups")).toBe("/network/working-groups");
 		// Footer legal pages are CMS `page` entities.
 		expect(resolveInterimPagePath("legal-notice")).toBe("/privacy-and-legal/legal-notice");
+		expect(resolveInterimPagePath("partnerships-and-collaborations")).toBe(
+			"/network/partnerships-and-collaborations",
+		);
 	});
 
 	it("returns null for pages with no known route (callers must skip them)", () => {
 		expect(resolveInterimPagePath("some-unrouted-page")).toBeNull();
-		// Unresolved target in #703 — intentionally excluded.
-		expect(resolveInterimPagePath("partnerships-and-collaborations")).toBeNull();
 		// The footer privacy-notice link no longer exists on the website.
 		expect(resolveInterimPagePath("privacy-notice")).toBeNull();
 	});

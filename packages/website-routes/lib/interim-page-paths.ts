@@ -15,8 +15,6 @@
  * {@link getEntityHref} directly. Pages whose slug is not listed here have no (known) website route
  * and must not be linked — {@link resolveInterimPagePath} returns null so callers skip them and no
  * broken (404) search links are emitted.
- *
- * Not included: `partnerships-and-collaborations` — its target path is unresolved in #703.
  */
 export const interimPagePathBySlug: Readonly<Record<string, string>> = {
 	// About
@@ -26,6 +24,7 @@ export const interimPagePathBySlug: Readonly<Record<string, string>> = {
 	"impact-case-studies": "/about/impact-case-studies",
 	// Network
 	"members-and-partners": "/network/members-and-partners",
+	"partnerships-and-collaborations": "/network/partnerships-and-collaborations",
 	"regional-hubs": "/network/regional-hubs",
 	"working-groups": "/network/working-groups",
 	// Resources
