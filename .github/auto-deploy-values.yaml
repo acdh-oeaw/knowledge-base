@@ -21,6 +21,7 @@ ingress:
   path: "/"
   className: "traefik-proxy-protocol"
   annotations:
+    acme.cert-manager.io/http01-ingress-ingressclassname: traefik-proxy-protocol
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     # nginx.ingress.kubernetes.io/proxy-body-size: "8m" equvalent needed?
     # nginx.ingress.kubernetes.io/proxy-buffering: "off" equvalent needed?
