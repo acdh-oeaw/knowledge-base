@@ -19,11 +19,12 @@ service:
 ingress:
   enabled: true
   path: "/"
-  className: "nginx-proxy-protocol"
+  className: "traefik-proxy-protocol"
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    # nginx.ingress.kubernetes.io/proxy-body-size: "8m" equvalent needed?
+    # nginx.ingress.kubernetes.io/proxy-buffering: "off" equvalent needed?
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-global-error-pages@kubernetescrd
 livenessProbe:
   path: /health
   initialDelaySeconds: 15
