@@ -143,6 +143,7 @@ function createWebsiteEntityDocument(params: {
 	locale: string;
 	sourceId: string;
 	sourceUpdatedAt: Date;
+	summary?: string;
 	type: CanonicalWebsiteEntityType;
 }): WebsiteEntityDocument {
 	const {
@@ -155,6 +156,7 @@ function createWebsiteEntityDocument(params: {
 		sourceId,
 		documentId = sourceId,
 		sourceUpdatedAt,
+		summary,
 		type,
 	} = params;
 
@@ -171,6 +173,7 @@ function createWebsiteEntityDocument(params: {
 		description,
 		link,
 		locale,
+		summary,
 	};
 }
 
@@ -998,6 +1001,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							),
 							link: getEntityHref({ type: "country", slug: item.countrySlug }),
 							locale: formatLocaleCode(item.locale),
+							summary: item.description ?? undefined,
 						});
 
 						// A unit can be both a partner and a cooperating partner institution of the ERIC;
@@ -1033,6 +1037,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "country", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
+						summary: item.summary ?? undefined,
 					}),
 				);
 			}
@@ -1088,6 +1093,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: item.summary ?? "",
 						link: getEntityHref({ type: "document-or-policy" }),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary ?? undefined,
 					}),
 				);
 			}
@@ -1144,6 +1150,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: item.summary,
 						link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary,
 					}),
 				);
 			}
@@ -1199,6 +1206,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: item.summary ?? "",
 						link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary ?? undefined,
 					}),
 				);
 			}
@@ -1258,6 +1266,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							slug: item.entityVersion.slug!.value,
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary,
 					}),
 				);
 			}
@@ -1320,6 +1329,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: mergeDescription(content.get(item.id), item.summary),
 						link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary,
 					}),
 				);
 			}
@@ -1348,6 +1358,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: mergeDescription(content.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "opportunity", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
+						summary: item.summary,
 					}),
 				);
 			}
@@ -1420,6 +1431,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							description: mergeDescription(content.get(item.id), item.summary),
 							link: getEntityHref({ type: "page", path }),
 							locale: formatLocaleCode(item.entityVersion.locale),
+							summary: item.summary,
 						}),
 					];
 				});
@@ -1509,6 +1521,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "project", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
+						summary: item.summary ?? undefined,
 					}),
 				);
 			}
@@ -1574,6 +1587,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							slug: item.entityVersion.slug!.value,
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary,
 					}),
 				);
 			}
@@ -1602,6 +1616,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
 						link: getEntityHref({ type: "working-group", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
+						summary: item.summary ?? undefined,
 					}),
 				);
 			}
@@ -1669,6 +1684,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							slug: item.entityVersion.slug!.value,
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary ?? undefined,
 					}),
 				);
 			}
@@ -1811,6 +1827,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: item.summary ?? "",
 					link: getEntityHref({ type: "document-or-policy" }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary ?? undefined,
 				}),
 			),
 		);
@@ -1862,6 +1879,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: item.summary,
 					link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary,
 				}),
 			),
 		);
@@ -1912,6 +1930,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: item.summary ?? "",
 					link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary ?? undefined,
 				}),
 			),
 		);
@@ -1963,6 +1982,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: item.summary,
 					link: getEntityHref({ type: "impact-case-study", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary,
 				}),
 			),
 		);
@@ -1981,6 +2001,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: mergeDescription(countryDescriptions.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "country", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
+					summary: item.summary ?? undefined,
 				}),
 			),
 		);
@@ -2017,6 +2038,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					),
 					link: getEntityHref({ type: "country", slug: item.countrySlug }),
 					locale: formatLocaleCode(item.locale),
+					summary: item.description ?? undefined,
 				});
 
 				countryScopedDocumentsById.set(document.id, document);
@@ -2139,6 +2161,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: mergeDescription(newsContent.get(item.id), item.summary),
 					link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary,
 				}),
 			),
 		);
@@ -2157,6 +2180,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: mergeDescription(opportunityContent.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "opportunity", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
+					summary: item.summary,
 				}),
 			),
 		);
@@ -2217,6 +2241,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: mergeDescription(pageContent.get(item.id), item.summary),
 						link: getEntityHref({ type: "page", path }),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary,
 					}),
 				];
 			}),
@@ -2285,6 +2310,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: mergeDescription(projectDescriptions.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "project", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
+					summary: item.summary ?? undefined,
 				}),
 			),
 		);
@@ -2336,6 +2362,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: mergeDescription(spotlightContent.get(item.id), item.summary),
 					link: getEntityHref({ type: "spotlight-article", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary,
 				}),
 			),
 		);
@@ -2354,6 +2381,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: mergeDescription(workingGroupDescriptions.get(item.id), item.summary ?? ""),
 					link: getEntityHref({ type: "working-group", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
+					summary: item.summary ?? undefined,
 				}),
 			),
 		);
@@ -2413,6 +2441,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						slug: item.entityVersion.slug!.value,
 					}),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary ?? undefined,
 				}),
 			),
 		);

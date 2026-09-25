@@ -27,6 +27,7 @@ export const websiteCollection = defineCollection({
 		{ name: "locale", type: "string", index: true, facet: true, optional: true },
 		{ name: "label", type: "string", index: true, sort: true },
 		{ name: "description", type: "string", index: true },
+		{ name: "summary", type: "string", index: false, optional: true },
 		{ name: "link", type: "string", index: false, optional: true },
 	] as const,
 });
