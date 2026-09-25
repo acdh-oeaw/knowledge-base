@@ -1,5 +1,6 @@
 import type { Metadata, ResolvingMetadata } from "next";
 import { getExtracted } from "next-intl/server";
+import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
@@ -11,6 +12,7 @@ import {
 import { SiteMetadataForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/metadata/_components/site-metadata-form";
 import { imageGridOptions } from "@/config/assets.config";
 import { getMediaLibraryAssets } from "@/lib/data/assets";
+import { getLocales } from "@/lib/data/locales";
 import {
 	selectedImageColumns,
 	selectedImageWith,
@@ -35,13 +37,27 @@ export async function generateMetadata(
 }
 
 export default async function DashboardWebsiteMetadataPage(
-	_props: Readonly<DashboardWebsiteMetadataPageProps>,
+	props: Readonly<DashboardWebsiteMetadataPageProps>,
 ): Promise<ReactNode> {
+	const { searchParams: searchParamsPromise } = props;
+
 	const t = await getExtracted();
+
+	const { locale: localeParam } = await searchParamsPromise;
+
+	const locales = await getLocales();
+	const requestedLocale = locales.find((locale) => locale.code === localeParam);
+	const selectedLocale =
+		requestedLocale ?? locales.find((locale) => locale.isDefault) ?? locales[0];
+
+	if (selectedLocale == null) {
+		notFound();
+	}
 
 	const [{ items: initialAssets }, siteMetadataRow] = await Promise.all([
 		getMediaLibraryAssets({ imageUrlOptions: imageGridOptions, prefix: "images" }),
-		db.query.siteMetadata.findFirst({
+		db.query.siteMetadataTranslations.findFirst({
+			where: { localeId: selectedLocale.id },
 			columns: {
 				title: true,
 				description: true,
@@ -83,7 +99,13 @@ export default async function DashboardWebsiteMetadataPage(
 			</Header>
 
 			<div className="p-(--layout-padding)">
-				<SiteMetadataForm initialAssets={initialAssets} siteMetadata={siteMetadata} />
+				<SiteMetadataForm
+					initialAssets={initialAssets}
+					localeId={selectedLocale.id}
+					locales={locales}
+					selectedLocaleCode={selectedLocale.code}
+					siteMetadata={siteMetadata}
+				/>
 			</div>
 		</div>
 	);

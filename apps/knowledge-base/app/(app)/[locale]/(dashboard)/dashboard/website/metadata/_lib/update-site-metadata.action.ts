@@ -11,7 +11,10 @@ import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 export const updateSiteMetadataAction = createMutationAction({
 	schema: UpdateSiteMetadataActionInputSchema,
 	requireAdmin: true,
-	/** Site metadata is a singleton — no per-row id. */
+	/**
+	 * One row per locale — `localeId` (submitted as a hidden field) is the conflict target, not an
+	 * id.
+	 */
 	audit: { action: "update", subjectType: "metadata" },
 	revalidate: "/[locale]/dashboard/website/metadata",
 
@@ -29,10 +32,14 @@ export const updateSiteMetadataAction = createMutationAction({
 			}
 		}
 
+		// The featured-items action does a plain `UPDATE ... WHERE id = 1`, which is a silent no-op if
+		// this singleton row doesn't exist yet — ensure it does, independent of translation saves.
+		await tx.insert(schema.siteMetadata).values({ id: 1 }).onConflictDoNothing();
+
 		await tx
-			.insert(schema.siteMetadata)
+			.insert(schema.siteMetadataTranslations)
 			.values({
-				id: 1,
+				localeId: input.localeId,
 				title: input.title,
 				description: input.description,
 				ogTitle: input.ogTitle,
@@ -40,7 +47,7 @@ export const updateSiteMetadataAction = createMutationAction({
 				ogImageId,
 			})
 			.onConflictDoUpdate({
-				target: schema.siteMetadata.id,
+				target: schema.siteMetadataTranslations.localeId,
 				set: {
 					title: input.title,
 					description: input.description,

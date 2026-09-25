@@ -726,9 +726,14 @@ export const relations = defineRelations(schema, (r) => {
 				optional: false,
 			}),
 		},
-		siteMetadata: {
+		siteMetadataTranslations: {
+			locale: r.one.locales({
+				from: r.siteMetadataTranslations.localeId,
+				to: r.locales.id,
+				optional: false,
+			}),
 			ogImage: r.one.assets({
-				from: r.siteMetadata.ogImageId,
+				from: r.siteMetadataTranslations.ogImageId,
 				to: r.assets.id,
 				optional: true,
 			}),

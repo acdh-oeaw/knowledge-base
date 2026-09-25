@@ -21,19 +21,27 @@ import {
 	ImageSelectField,
 	type SelectedImage,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { updateSiteMetadataAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/metadata/_lib/update-site-metadata.action";
 
 interface SiteMetadataFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
+	/** The locale whose translation this form edits — submitted as a hidden field. */
+	localeId: string;
+	locales: Array<{ code: string; name: string }>;
+	selectedLocaleCode: string;
 	siteMetadata:
-		| (Pick<schema.SiteMetadata, "title" | "description" | "ogTitle" | "ogDescription"> & {
+		| (Pick<
+				schema.SiteMetadataTranslation,
+				"title" | "description" | "ogTitle" | "ogDescription"
+		  > & {
 				ogImage: SelectedImage | null;
 		  })
 		| null;
 }
 
 export function SiteMetadataForm(props: Readonly<SiteMetadataFormProps>): ReactNode {
-	const { initialAssets, siteMetadata } = props;
+	const { initialAssets, localeId, locales, selectedLocaleCode, siteMetadata } = props;
 
 	const t = useExtracted();
 
@@ -48,7 +56,16 @@ export function SiteMetadataForm(props: Readonly<SiteMetadataFormProps>): ReactN
 
 	return (
 		<FormLayout>
+			<div className="flex items-center justify-between gap-4">
+				<p className="text-sm text-muted-fg">
+					{t("Title, description, and Open Graph fields are translated per locale.")}
+				</p>
+				<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
+			</div>
+
 			<Form action={action} className="flex flex-col gap-y-6" state={state}>
+				<input name="localeId" type="hidden" value={localeId} />
+
 				<FormSection
 					description={t("Default title and description for the website.")}
 					title={t("Details")}

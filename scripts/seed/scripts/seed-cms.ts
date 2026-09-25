@@ -574,10 +574,12 @@ async function seedCms(tx: Transaction) {
 
 	// Site metadata
 
+	await tx.insert(schema.siteMetadata).values({ id: 1 }).onConflictDoNothing();
+
 	await tx
-		.insert(schema.siteMetadata)
+		.insert(schema.siteMetadataTranslations)
 		.values({
-			id: 1,
+			localeId: defaultLocaleId,
 			title: "DARIAH-EU",
 			description: "The pan-European infrastructure for arts and humanities scholars.",
 		})

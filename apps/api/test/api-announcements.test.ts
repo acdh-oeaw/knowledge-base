@@ -200,8 +200,6 @@ describe("announcements", () => {
 					.insert(schema.siteMetadata)
 					.values({
 						id: 1,
-						title: "Announcements test",
-						description: "Announcements test",
 						featuredItemIds: {
 							news: [
 								newsItem.versionId,

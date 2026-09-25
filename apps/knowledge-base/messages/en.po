@@ -7671,6 +7671,10 @@ msgid "ZbJtUu"
 msgstr "Website dashboard - Impact case studies"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/metadata/_components/site-metadata-form.tsx
+msgid "izmxo5"
+msgstr "Title, description, and Open Graph fields are translated per locale."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/metadata/_components/site-metadata-form.tsx
 msgid "JteUB5"
 msgstr "Default title and description for the website."
 

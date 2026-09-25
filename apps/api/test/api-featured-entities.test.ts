@@ -188,8 +188,6 @@ describe("featured entities", () => {
 					.insert(schema.siteMetadata)
 					.values({
 						id: 1,
-						title: "Featured entities test",
-						description: "Featured entities test",
 						featuredItemIds: {
 							news: [opportunity.versionId, fundingCall.versionId, newsItem.versionId],
 							events: [event.versionId],
@@ -284,8 +282,6 @@ describe("featured entities", () => {
 					.insert(schema.siteMetadata)
 					.values({
 						id: 1,
-						title: "Featured entities locale test",
-						description: "Featured entities locale test",
 						featuredItemIds: { news: [], events: [], projects: [project.versionId] },
 					})
 					.onConflictDoUpdate({

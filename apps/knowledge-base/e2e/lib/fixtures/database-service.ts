@@ -244,8 +244,7 @@ export class DatabaseService {
 	}
 
 	/**
-	 * Upserts the singleton site_metadata row, setting `featuredItemIds` (and ensuring title +
-	 * description exist so the form can be saved without filling them). Used to put the page into a
+	 * Upserts the singleton site_metadata row, setting `featuredItemIds`. Used to put the page into a
 	 * known state before/after the featured-items tests.
 	 */
 	async resetSiteMetadataFeaturedItems(
@@ -265,8 +264,6 @@ export class DatabaseService {
 			.insert(schema.siteMetadata)
 			.values({
 				id: 1,
-				title: "E2E Site Title",
-				description: "E2E Site Description",
 				featuredItemIds: value,
 			})
 			.onConflictDoUpdate({
