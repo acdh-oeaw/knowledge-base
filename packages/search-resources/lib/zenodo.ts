@@ -20,18 +20,13 @@ export function createZenodoRecord(item: ZenodoRecord): ResourceDocument {
 	const keywords =
 		[item.metadata.keywords, item.metadata.keyword].find((value) => isNonEmptyArray(value)) ?? [];
 
-	function resolveLink(link: string | Record<string, string> | undefined): string | undefined {
-		if (link == null) {
-			return undefined;
-		}
-		return typeof link === "string" ? link : link.href;
-	}
-
-	/** Zenodo record page (the ingest source website). Zenodo hosts the record itself. */
-	const sourceUrl =
-		resolveLink(item.links.html) ??
-		resolveLink(item.links.self) ??
-		`https://zenodo.org/records/${String(item.id)}`;
+	/**
+	 * Zenodo record page (the ingest source website). Zenodo hosts the record itself. Never use
+	 * `links.self`, which is the json api url, not a page.
+	 */
+	const sourceUrl = isNonEmptyString(item.links.self_html)
+		? item.links.self_html
+		: `https://zenodo.org/records/${String(item.id)}`;
 
 	/** External url pointing to where the record is citable. */
 	const links = isNonEmptyString(item.doi) ? [`https://doi.org/${item.doi}`] : [];

@@ -52,13 +52,24 @@ export interface ZenodoRecordMetadata {
 	[metadataField: string]: unknown;
 }
 
+/**
+ * Zenodo (InvenioRDM) record links. Only the links we read are named: `self` is the json api url,
+ * `self_html` is the record page.
+ */
+export interface ZenodoRecordLinks {
+	self?: string;
+	self_html?: string;
+	doi?: string;
+	[link: string]: string | Record<string, string> | undefined;
+}
+
 export interface ZenodoRecord {
 	id: number;
 	conceptrecid?: string;
 	created?: string | null;
 	doi?: string;
 	files?: Array<ZenodoRecordFile>;
-	links: Record<string, string | Record<string, string>>;
+	links: ZenodoRecordLinks;
 	metadata: ZenodoRecordMetadata;
 	modified?: string | null;
 	record_id?: number;
