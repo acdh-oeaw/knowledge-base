@@ -414,7 +414,7 @@ async function getPublishedMembersAndPartners(
 		.where(and(...conditions));
 }
 
-async function getPublishedDariahProjects(
+async function getPublishedProjects(
 	db: Database,
 	params?: {
 		entityId?: string;
@@ -428,25 +428,25 @@ async function getPublishedDariahProjects(
 
 	return db
 		.select({
-			id: schema.dariahProjects.id,
+			id: schema.projects.id,
 			entityId: schema.entities.id,
 			slug: schema.slugs.value,
-			name: schema.dariahProjects.name,
-			summary: schema.dariahProjects.summary,
-			updatedAt: schema.dariahProjects.updatedAt,
+			name: schema.projects.name,
+			summary: schema.projects.summary,
+			updatedAt: schema.projects.updatedAt,
 			imageKey: schema.assets.key,
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
 			},
 		})
-		.from(schema.dariahProjects)
-		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.dariahProjects.id))
+		.from(schema.projects)
+		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.projects.id))
 		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
-		.leftJoin(schema.assets, eq(schema.assets.id, schema.dariahProjects.imageId))
+		.leftJoin(schema.assets, eq(schema.assets.id, schema.projects.imageId))
 		.where(and(...conditions));
 }
 
@@ -911,7 +911,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 			}
 
 			case "project": {
-				const items = await db.query.dariahProjects.findMany({
+				const items = await db.query.projects.findMany({
 					where: {
 						entityVersion: {
 							status: {
@@ -1554,7 +1554,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 			}
 
 			case "project": {
-				const rows = await getPublishedDariahProjects(db, { entityId });
+				const rows = await getPublishedProjects(db, { entityId });
 
 				if (rows.length === 0) {
 					return [];
@@ -1825,7 +1825,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 			getPlainTextFieldContentByVersionId(
 				db,
 				(
-					await db.query.dariahProjects.findMany({
+					await db.query.projects.findMany({
 						columns: { id: true },
 					})
 				).map((item) => item.id),
@@ -2405,10 +2405,10 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 			),
 		);
 
-		const dariahProjects = await getPublishedDariahProjects(db);
+		const projects = await getPublishedProjects(db);
 
 		website.push(
-			...dariahProjects.map((item) =>
+			...projects.map((item) =>
 				createWebsiteEntityDocument({
 					importedAt,
 					entityId: item.entityId,
