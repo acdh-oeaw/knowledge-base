@@ -137,6 +137,7 @@ function createWebsiteEntityDocument(params: {
 	description: string;
 	documentId?: string;
 	entityId: string;
+	imageKey?: string;
 	importedAt: number;
 	label: string;
 	link: string;
@@ -149,6 +150,7 @@ function createWebsiteEntityDocument(params: {
 	const {
 		description,
 		entityId,
+		imageKey,
 		importedAt,
 		label,
 		link,
@@ -171,6 +173,7 @@ function createWebsiteEntityDocument(params: {
 		id: [type, documentId, locale].join(":"),
 		label,
 		description,
+		image_key: imageKey,
 		link,
 		locale,
 		summary,
@@ -297,6 +300,7 @@ const itemEntities = alias(schema.entities, "item_entities");
 const itemEntityVersions = alias(schema.entityVersions, "item_entity_versions");
 const itemSlugs = alias(schema.slugs, "item_slugs");
 const itemLocales = alias(schema.locales, "item_locales");
+const itemAssets = alias(schema.assets, "item_assets");
 const organisationalRelationStatus = alias(
 	schema.organisationalUnitStatus,
 	"organisational_relation_status",
@@ -308,6 +312,7 @@ interface CountryScopedUnit {
 	countrySlug: string;
 	description: string | null;
 	entityId: string;
+	imageKey: string | null;
 	itemSlug: string;
 	label: string;
 	locale: { languageCode: string; regionCode: string | null };
@@ -318,6 +323,7 @@ interface CountryScopedUnit {
 interface ViewBackedWebsiteEntity {
 	entityId: string;
 	id: string;
+	imageKey: string | null;
 	locale: { languageCode: string; regionCode: string | null };
 	name: string;
 	slug: string;
@@ -328,6 +334,7 @@ interface ViewBackedWebsiteEntity {
 interface PublishedOpportunity {
 	entityId: string;
 	id: string;
+	imageKey: string | null;
 	locale: { languageCode: string; regionCode: string | null };
 	slug: string;
 	summary: string;
@@ -355,6 +362,7 @@ async function getPublishedOpportunities(
 			title: schema.opportunities.title,
 			summary: schema.opportunities.summary,
 			updatedAt: schema.opportunities.updatedAt,
+			imageKey: schema.assets.key,
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -366,6 +374,7 @@ async function getPublishedOpportunities(
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
+		.leftJoin(schema.assets, eq(schema.assets.id, schema.opportunities.imageId))
 		.where(and(...conditions));
 }
 
@@ -389,6 +398,7 @@ async function getPublishedMembersAndPartners(
 			name: schema.membersAndPartners.name,
 			summary: schema.membersAndPartners.summary,
 			updatedAt: schema.membersAndPartners.updatedAt,
+			imageKey: schema.assets.key,
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -400,6 +410,7 @@ async function getPublishedMembersAndPartners(
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
+		.leftJoin(schema.assets, eq(schema.assets.id, schema.membersAndPartners.imageId))
 		.where(and(...conditions));
 }
 
@@ -423,6 +434,7 @@ async function getPublishedDariahProjects(
 			name: schema.dariahProjects.name,
 			summary: schema.dariahProjects.summary,
 			updatedAt: schema.dariahProjects.updatedAt,
+			imageKey: schema.assets.key,
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -434,6 +446,7 @@ async function getPublishedDariahProjects(
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
+		.leftJoin(schema.assets, eq(schema.assets.id, schema.dariahProjects.imageId))
 		.where(and(...conditions));
 }
 
@@ -457,6 +470,7 @@ async function getPublishedWorkingGroups(
 			name: schema.workingGroups.name,
 			summary: schema.workingGroups.summary,
 			updatedAt: schema.workingGroups.updatedAt,
+			imageKey: schema.assets.key,
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -468,6 +482,7 @@ async function getPublishedWorkingGroups(
 		.innerJoin(schema.entityStatus, eq(schema.entityStatus.id, schema.entityVersions.statusId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
+		.leftJoin(schema.assets, eq(schema.assets.id, schema.workingGroups.imageId))
 		.where(and(...conditions));
 }
 
@@ -529,6 +544,7 @@ async function getCountryScopedUnits(
 			label: schema.organisationalUnits.name,
 			description: schema.organisationalUnits.summary,
 			sourceUpdatedAt: schema.organisationalUnits.updatedAt,
+			imageKey: itemAssets.key,
 			locale: {
 				languageCode: itemLocales.languageCode,
 				regionCode: itemLocales.regionCode,
@@ -539,6 +555,7 @@ async function getCountryScopedUnits(
 		.innerJoin(itemEntities, eq(itemEntityVersions.entityId, itemEntities.id))
 		.innerJoin(itemSlugs, eq(itemSlugs.entityVersionId, itemEntityVersions.id))
 		.innerJoin(itemLocales, eq(itemLocales.id, itemEntityVersions.localeId))
+		.leftJoin(itemAssets, eq(itemAssets.id, schema.organisationalUnits.imageId))
 		.innerJoin(publishedEntityStatus, eq(itemEntityVersions.statusId, publishedEntityStatus.id))
 		.innerJoin(
 			organisationalUnitType,
@@ -1002,6 +1019,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							link: getEntityHref({ type: "country", slug: item.countrySlug }),
 							locale: formatLocaleCode(item.locale),
 							summary: item.description ?? undefined,
+							imageKey: item.imageKey ?? undefined,
 						});
 
 						// A unit can be both a partner and a cooperating partner institution of the ERIC;
@@ -1038,6 +1056,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "country", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
+						imageKey: item.imageKey ?? undefined,
 					}),
 				);
 			}
@@ -1132,6 +1151,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1151,6 +1175,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1188,6 +1213,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1207,6 +1237,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1245,6 +1276,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1267,6 +1303,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1305,6 +1342,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1330,6 +1372,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1359,6 +1402,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "opportunity", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary,
+						imageKey: item.imageKey ?? undefined,
 					}),
 				);
 			}
@@ -1397,6 +1441,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1432,6 +1481,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							link: getEntityHref({ type: "page", path }),
 							locale: formatLocaleCode(item.entityVersion.locale),
 							summary: item.summary,
+							imageKey: item.image?.key,
 						}),
 					];
 				});
@@ -1469,6 +1519,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1493,6 +1548,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: biographies.get(item.id) ?? "",
 						link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1522,6 +1578,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "project", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
+						imageKey: item.imageKey ?? undefined,
 					}),
 				);
 			}
@@ -1560,6 +1617,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1588,6 +1650,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1617,6 +1680,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "working-group", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
+						imageKey: item.imageKey ?? undefined,
 					}),
 				);
 			}
@@ -1657,6 +1721,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								},
 							},
 						},
+						image: {
+							columns: {
+								key: true,
+							},
+						},
 					},
 				});
 
@@ -1685,6 +1754,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
+						imageKey: item.image?.key,
 					}),
 				);
 			}
@@ -1864,6 +1934,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -1880,6 +1955,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
+					imageKey: item.image?.key,
 				}),
 			),
 		);
@@ -1915,6 +1991,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -1931,6 +2012,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
+					imageKey: item.image?.key,
 				}),
 			),
 		);
@@ -1967,6 +2049,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -1983,6 +2070,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "impact-case-study", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
+					imageKey: item.image?.key,
 				}),
 			),
 		);
@@ -2002,6 +2090,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "country", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
+					imageKey: item.imageKey ?? undefined,
 				}),
 			),
 		);
@@ -2039,6 +2128,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "country", slug: item.countrySlug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.description ?? undefined,
+					imageKey: item.imageKey ?? undefined,
 				});
 
 				countryScopedDocumentsById.set(document.id, document);
@@ -2146,6 +2236,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -2162,6 +2257,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
+					imageKey: item.image?.key,
 				}),
 			),
 		);
@@ -2181,6 +2277,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "opportunity", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary,
+					imageKey: item.imageKey ?? undefined,
 				}),
 			),
 		);
@@ -2217,6 +2314,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -2242,6 +2344,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "page", path }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
+						imageKey: item.image?.key,
 					}),
 				];
 			}),
@@ -2277,6 +2380,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -2292,6 +2400,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: personBiographies.get(item.id) ?? "",
 					link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
+					imageKey: item.image?.key,
 				}),
 			),
 		);
@@ -2311,6 +2420,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "project", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
+					imageKey: item.imageKey ?? undefined,
 				}),
 			),
 		);
@@ -2347,6 +2457,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -2363,6 +2478,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "spotlight-article", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
+					imageKey: item.image?.key,
 				}),
 			),
 		);
@@ -2382,6 +2498,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "working-group", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
+					imageKey: item.imageKey ?? undefined,
 				}),
 			),
 		);
@@ -2420,6 +2537,11 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						},
 					},
 				},
+				image: {
+					columns: {
+						key: true,
+					},
+				},
 			},
 		});
 
@@ -2442,6 +2564,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					}),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
+					imageKey: item.image?.key,
 				}),
 			),
 		);
