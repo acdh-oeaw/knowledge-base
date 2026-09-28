@@ -3,7 +3,7 @@
 	"dockerComposeFile": [
 		"docker-compose.postgres.yaml",
 		"docker-compose.apps.yaml",
-		"docker-compose.minio.yaml",
+		"docker-compose.rustfs.yaml",
 		"docker-compose.imgproxy.yaml",
 		"docker-compose.mailpit.yaml",
 		"docker-compose.typesense.yaml"
@@ -34,8 +34,8 @@
 		"imgproxy:8080",
 		"mailpit:1025",
 		"mailpit:8025",
-		"minio:9000",
-		"minio:9001",
+		"rustfs:9000",
+		"rustfs:9001",
 		"postgres:5432",
 		"typesense:8108",
 		"typesense-dashboard:5050"
@@ -56,11 +56,11 @@
 		"mailpit:8025": {
 			"label": "Mailpit API and Web UI"
 		},
-		"minio:9000": {
-			"label": "MinIO"
+		"rustfs:9000": {
+			"label": "RustFS"
 		},
-		"minio:9001": {
-			"label": "MinIO Web UI"
+		"rustfs:9001": {
+			"label": "RustFS Web UI"
 		},
 		"postgres:5432": {
 			"label": "PostgreSQL"
