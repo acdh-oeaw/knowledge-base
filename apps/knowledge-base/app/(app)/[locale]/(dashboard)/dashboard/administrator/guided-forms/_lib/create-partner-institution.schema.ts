@@ -26,8 +26,8 @@ export const CreatePartnerInstitutionActionInputSchema = v.pipe(
 	}),
 	v.forward(
 		v.check(
-			(input) => input.statusEnd == null || input.statusEnd > input.statusStart,
-			"The end date must be after the start date.",
+			(input) => input.statusEnd == null || input.statusEnd >= input.statusStart,
+			"The end must be on or after the start.",
 		),
 		["statusEnd"],
 	),

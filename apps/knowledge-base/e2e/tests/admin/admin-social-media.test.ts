@@ -128,6 +128,27 @@ test.describe("social media admin", () => {
 		expect(updated?.duration).toBeNull();
 	});
 
+	test("should reject an end date before the start date", async ({
+		page,
+		createAdminSocialMediaPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const socialMediaPage = createAdminSocialMediaPage(workerIndex);
+		const name = `${socialMediaPage.workerPrefix} Reversed ${randomUUID()}`;
+
+		await socialMediaPage.gotoCreate();
+		await socialMediaPage.fillName(name);
+		await socialMediaPage.fillUrl("https://example.com/social-reversed");
+		await socialMediaPage.selectFirstType();
+		await socialMediaPage.fillDatePicker("Start date", 2024, 12, 31);
+		await socialMediaPage.fillDatePicker("End date", 2024, 1, 15);
+		await page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
+
+		await expect(page.getByText("The end must be on or after the start.")).toBeVisible();
+		expect(await db.getSocialMediaByName(name)).toBeNull();
+	});
+
 	test("should delete a social media entry", async ({ createAdminSocialMediaPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const socialMediaPage = createAdminSocialMediaPage(workerIndex);

@@ -103,9 +103,10 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 	const format = useFormatter();
 
 	const [localRelations, setLocalRelations] = useState(relations);
-	const [itemToEnd, setItemToEnd] = useState<{ id: string } | null>(null);
+	const [itemToEnd, setItemToEnd] = useState<{ id: string; start: Date } | null>(null);
 	const [itemToDelete, setItemToDelete] = useState<{ id: string } | null>(null);
 	const [selectedEndDate, setSelectedEndDate] = useState<CalendarDate | null>(null);
+	const minEndDate = dateToCalendarDate(itemToEnd?.start);
 	const [itemToEdit, setItemToEdit] = useState<UnitRelation | null>(null);
 	const [editStatusId, setEditStatusId] = useState<string | null>(null);
 	const [editUnitItem, setEditUnitItem] = useState<AsyncOption | null>(null);
@@ -307,7 +308,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 												<RowActionsMenu.Action
 													icon={<ArchiveBoxXMarkIcon className="me-2 block-4 inline-4" />}
 													onAction={() => {
-														setItemToEnd({ id: relation.id });
+														setItemToEnd({ id: relation.id, start: relation.duration.start });
 														setSelectedEndDate(null);
 													}}
 												>
@@ -456,6 +457,7 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 				<ModalBody>
 					<DatePicker
 						granularity="day"
+						minValue={minEndDate ?? undefined}
 						onChange={(date) => {
 							setSelectedEndDate(date);
 						}}
@@ -468,7 +470,10 @@ export function UnitRelationsSection(props: Readonly<UnitRelationsSectionProps>)
 				<ModalFooter>
 					<ModalClose>{t("Cancel")}</ModalClose>
 					<Button
-						isDisabled={selectedEndDate == null}
+						isDisabled={
+							selectedEndDate == null ||
+							(minEndDate != null && selectedEndDate.compare(minEndDate) < 0)
+						}
 						onPress={() => {
 							if (itemToEnd == null || selectedEndDate == null) {
 								return;

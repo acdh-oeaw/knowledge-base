@@ -113,9 +113,10 @@ export function ContributionsSection(props: Readonly<ContributionsSectionProps>)
 	const format = useFormatter();
 
 	const [localContributions, setLocalContributions] = useState(contributions);
-	const [itemToEnd, setItemToEnd] = useState<{ id: string } | null>(null);
+	const [itemToEnd, setItemToEnd] = useState<{ id: string; start: Date } | null>(null);
 	const [itemToDelete, setItemToDelete] = useState<{ id: string } | null>(null);
 	const [selectedEndDate, setSelectedEndDate] = useState<CalendarDate | null>(null);
+	const minEndDate = dateToCalendarDate(itemToEnd?.start);
 
 	const [selectedRoleTypeId, setSelectedRoleTypeId] = useState<string | null>(null);
 	const [selectedUnit, setSelectedUnit] = useState<AsyncOption | null>(null);
@@ -314,7 +315,10 @@ export function ContributionsSection(props: Readonly<ContributionsSectionProps>)
 												<RowActionsMenu.Action
 													icon={<ArchiveBoxXMarkIcon className="me-2 block-4 inline-4" />}
 													onAction={() => {
-														setItemToEnd({ id: contribution.id });
+														setItemToEnd({
+															id: contribution.id,
+															start: contribution.duration.start,
+														});
 														setSelectedEndDate(null);
 													}}
 												>
@@ -474,6 +478,7 @@ export function ContributionsSection(props: Readonly<ContributionsSectionProps>)
 				<ModalBody>
 					<DatePicker
 						granularity="day"
+						minValue={minEndDate ?? undefined}
 						onChange={(date) => {
 							setSelectedEndDate(date);
 						}}
@@ -486,7 +491,10 @@ export function ContributionsSection(props: Readonly<ContributionsSectionProps>)
 				<ModalFooter>
 					<ModalClose>{t("Cancel")}</ModalClose>
 					<Button
-						isDisabled={selectedEndDate == null}
+						isDisabled={
+							selectedEndDate == null ||
+							(minEndDate != null && selectedEndDate.compare(minEndDate) < 0)
+						}
 						onPress={() => {
 							if (itemToEnd == null || selectedEndDate == null) {
 								return;

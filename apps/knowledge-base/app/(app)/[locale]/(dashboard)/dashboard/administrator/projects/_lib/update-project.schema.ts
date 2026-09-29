@@ -1,6 +1,7 @@
 import { ProjectUpdateSchema } from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
+import { DurationInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/duration-input.schema";
 import { ContentBlockInputSchema } from "@/lib/content-block-input";
 import { EntitySlugInputSchema } from "@/lib/entity-slug-input";
 
@@ -12,10 +13,7 @@ export const UpdateProjectActionInputSchema = v.object({
 	acronym: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	callId: v.nullish(v.pipe(v.string(), v.uuid()), null),
 	summary: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
-	duration: v.object({
-		start: v.pipe(v.string(), v.isoDate(), v.toDate()),
-		end: v.optional(v.pipe(v.string(), v.isoDate(), v.toDate())),
-	}),
+	duration: DurationInputSchema,
 	funding: v.nullish(v.pipe(v.string(), v.toNumber(), v.minValue(0)), null),
 	topic: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	imageKey: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),

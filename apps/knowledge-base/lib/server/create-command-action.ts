@@ -178,7 +178,7 @@ export function createCommandAction<
 				missingPairedRelationUnit: t(
 					"The governance body this role must also be recorded against could not be found.",
 				),
-				relationEndBeforeStart: t("The end date must fall after the relation started."),
+				relationEndBeforeStart: t("The end date must be on or after the start of the relation."),
 				relationNotEndable: t(
 					"This relation is not one this form can end, or it has already been ended. Refresh the page and try again.",
 				),

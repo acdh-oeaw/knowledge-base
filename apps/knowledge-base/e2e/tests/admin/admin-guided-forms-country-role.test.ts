@@ -262,4 +262,57 @@ test.describe("guided forms - country role", () => {
 			expect(relation.end).toStrictEqual(expectedEnd);
 		}
 	});
+
+	/**
+	 * An end on the start date is a valid one-day period, for the appointment and for a committee
+	 * seat that began that same day — only an end strictly before the start is inverted.
+	 */
+	test("ends an appointment and its committee seat on the day they started", async ({
+		db,
+		page,
+	}) => {
+		const person = await createPerson(db, "End Same Day");
+
+		await fillAppointment(page, {
+			personName: person.name,
+			countryName,
+			role: "national coordinator",
+		});
+		await submitAndWait(
+			page,
+			"Save",
+			"The appointment and its committee membership have been saved.",
+		);
+
+		await page.goto(BASE_PATH);
+		await page.getByRole("radio", { name: "End an appointment" }).click();
+		await selectAsyncOption(page, "No person selected", person.name);
+		await page.getByRole("button", { name: "Continue" }).click();
+
+		// The day before the start is still inverted, so the wizard must not let it through. The seat
+		// would be inverted too, so it drops out of the review and the button names the appointment only.
+		await fillDatePicker(page, "End date", 2025, 12, 31);
+		await page.getByRole("button", { name: "Review" }).click();
+		await expect(
+			page.getByRole("button", { name: "End the appointment", exact: true }),
+		).toBeDisabled();
+
+		await page.getByRole("button", { name: "Back" }).click();
+		await fillDatePicker(page, "End date", 2026, 1, 1);
+		await page.getByRole("button", { name: "Review" }).click();
+
+		await submitAndWait(
+			page,
+			"End both relations",
+			"The appointment and its governance-body membership have been ended.",
+		);
+
+		const expectedEnd = new Date(Date.UTC(2026, 0, 1, 0, 0, 0, 0));
+		const relations = await db.getPersonRelations(person.documentId);
+
+		expect(relations).toHaveLength(2);
+		for (const relation of relations) {
+			expect(relation.end).toStrictEqual(expectedEnd);
+		}
+	});
 });

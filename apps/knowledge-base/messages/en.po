@@ -8236,8 +8236,8 @@ msgstr "The governance body this role must also be recorded against could not be
 
 #: lib/server/create-command-action.ts
 #: lib/server/create-server-action.ts
-msgid "Ehoi3a"
-msgstr "The end date must fall after the relation started."
+msgid "Ib7Qkd"
+msgstr "The end date must be on or after the start of the relation."
 
 #: lib/server/create-command-action.ts
 #: lib/server/create-server-action.ts

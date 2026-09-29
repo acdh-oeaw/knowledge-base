@@ -213,6 +213,7 @@ export function SocialMediaRelationsFields(
 						<DatePicker granularity="day" name="duration.end">
 							<Label>{t("End date (optional)")}</Label>
 							<DatePickerTrigger />
+							<FieldError />
 						</DatePicker>
 					</ModalBody>
 					<ModalFooter>

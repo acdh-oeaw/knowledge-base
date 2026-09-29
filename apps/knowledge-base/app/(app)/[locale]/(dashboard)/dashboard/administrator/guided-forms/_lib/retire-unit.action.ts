@@ -7,6 +7,7 @@ import { RetireUnitActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/da
 import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { inArray } from "@/lib/db/sql";
 import { createMutationAction } from "@/lib/server/create-mutation-action";
+import { UserFacingError } from "@/lib/user-facing-error";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 /**
@@ -45,6 +46,10 @@ export const retireUnitAction = createMutationAction({
 					continue;
 				}
 
+				if (input.end < row.duration.start) {
+					throw new UserFacingError("relation-end-before-start");
+				}
+
 				await tx
 					.update(schema.organisationalUnitsRelations)
 					.set({ duration: { start: row.duration.start, end: input.end } })
@@ -71,6 +76,10 @@ export const retireUnitAction = createMutationAction({
 			for (const row of rows) {
 				if (row.duration.end != null) {
 					continue;
+				}
+
+				if (input.end < row.duration.start) {
+					throw new UserFacingError("relation-end-before-start");
 				}
 
 				await tx

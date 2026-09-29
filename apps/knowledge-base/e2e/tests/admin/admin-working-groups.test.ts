@@ -250,8 +250,13 @@ test.describe("working groups admin", () => {
 		expect(relations[0]!.duration.start).toStrictEqual(new Date("2025-01-01T00:00:00.000Z"));
 		expect(relations[0]!.duration.end).toBeUndefined();
 
-		// End the relation.
+		// End the relation. An end before the start would invert the period, so it cannot be
+		// confirmed; the start date itself is the earliest valid end.
 		await workingGroupsPage.clickEndRelation();
+		await workingGroupsPage.fillEndRelationDate(2024, 12, 31);
+		await expect(workingGroupsPage.endRelationConfirmButton()).toBeDisabled();
+		await workingGroupsPage.fillEndRelationDate(2025, 1, 1);
+		await expect(workingGroupsPage.endRelationConfirmButton()).toBeEnabled();
 		await workingGroupsPage.fillEndRelationDate(2025, 12, 31);
 		await workingGroupsPage.confirmEndRelation();
 

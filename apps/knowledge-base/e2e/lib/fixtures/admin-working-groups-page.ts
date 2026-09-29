@@ -204,6 +204,12 @@ export class AdminWorkingGroupsPage {
 		await this.page.keyboard.type(String(year));
 	}
 
+	endRelationConfirmButton(): Locator {
+		return this.page
+			.getByRole("alertdialog", { name: "End relation" })
+			.getByRole("button", { name: "Confirm" });
+	}
+
 	async confirmEndRelation(): Promise<void> {
 		const dialog = this.page.getByRole("alertdialog", { name: "End relation" });
 		await dialog.getByRole("button", { name: "Confirm" }).click();

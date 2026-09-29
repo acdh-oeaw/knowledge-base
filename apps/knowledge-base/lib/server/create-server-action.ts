@@ -143,7 +143,7 @@ export function createServerAction<
 				relationPeriodOverlap: t(
 					"This relation already exists during an overlapping period. Adjust the dates and try again.",
 				),
-				relationEndBeforeStart: t("The end date must fall after the relation started."),
+				relationEndBeforeStart: t("The end date must be on or after the start of the relation."),
 				relationNotEndable: t(
 					"This relation is not one this form can end, or it has already been ended. Refresh the page and try again.",
 				),

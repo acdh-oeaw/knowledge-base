@@ -7,6 +7,7 @@ import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
+import { UserFacingError } from "@/lib/user-facing-error";
 
 export async function endUnitRelationAction(id: string, end: Date): Promise<void> {
 	const auditSession = await assertAdmin();
@@ -18,6 +19,10 @@ export async function endUnitRelationAction(id: string, end: Date): Promise<void
 
 	if (relation == null) {
 		return;
+	}
+
+	if (end < relation.duration.start) {
+		throw new UserFacingError("relation-end-before-start");
 	}
 
 	await db

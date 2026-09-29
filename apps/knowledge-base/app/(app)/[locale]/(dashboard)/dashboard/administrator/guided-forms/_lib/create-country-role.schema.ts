@@ -32,8 +32,8 @@ export const CreateCountryRoleActionInputSchema = v.pipe(
 	}),
 	v.forward(
 		v.check(
-			(input) => input.end == null || input.end > input.start,
-			"The end date must be after the start date.",
+			(input) => input.end == null || input.end >= input.start,
+			"The end must be on or after the start.",
 		),
 		["end"],
 	),

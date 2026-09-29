@@ -60,7 +60,7 @@ export const endCountryRoleAction = createMutationAction({
 			throw new UserFacingError("relation-not-endable");
 		}
 
-		if (input.end <= appointment.duration.start) {
+		if (input.end < appointment.duration.start) {
 			throw new UserFacingError("relation-end-before-start");
 		}
 
@@ -86,7 +86,7 @@ export const endCountryRoleAction = createMutationAction({
 
 		// An open counterpart that began after the end date would be inverted by it; the preflight
 		// warns about that case and it is left for the admin to sort out by hand.
-		if (counterpart != null && counterpart.start < input.end) {
+		if (counterpart != null && counterpart.start <= input.end) {
 			await tx
 				.update(schema.personsToOrganisationalUnits)
 				.set({ duration: { start: counterpart.start, end: input.end } })

@@ -1,6 +1,7 @@
 import { ProjectInsertSchema } from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
+import { DurationInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/duration-input.schema";
 import { ContentBlockInputSchema } from "@/lib/content-block-input";
 import { EntitySlugInputSchema } from "@/lib/entity-slug-input";
 
@@ -9,10 +10,7 @@ export const CreateProjectActionInputSchema = v.object({
 	...v.pick(ProjectInsertSchema, ["acronym", "name", "scopeId", "summary", "topic"]).entries,
 	callId: v.nullish(v.pipe(v.string(), v.uuid()), null),
 	funding: v.optional(v.pipe(v.string(), v.toNumber(), v.minValue(0))),
-	duration: v.object({
-		start: v.pipe(v.string(), v.isoDate(), v.toDate()),
-		end: v.optional(v.pipe(v.string(), v.isoDate(), v.toDate())),
-	}),
+	duration: DurationInputSchema,
 	imageKey: v.optional(v.pipe(v.string(), v.nonEmpty())),
 	descriptionContentBlocks: v.optional(
 		v.array(v.pipe(v.string(), v.parseJson(), ContentBlockInputSchema)),

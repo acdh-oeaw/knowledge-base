@@ -8,6 +8,7 @@ import { assertCan } from "@/lib/auth/permissions";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
+import { UserFacingError } from "@/lib/user-facing-error";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export async function endContributionAction(id: string, end: Date): Promise<void> {
@@ -27,6 +28,10 @@ export async function endContributionAction(id: string, end: Date): Promise<void
 		type: "organisational_unit",
 		id: contribution.organisationalUnitDocumentId,
 	});
+
+	if (end < contribution.duration.start) {
+		throw new UserFacingError("relation-end-before-start");
+	}
 
 	await db
 		.update(schema.personsToOrganisationalUnits)

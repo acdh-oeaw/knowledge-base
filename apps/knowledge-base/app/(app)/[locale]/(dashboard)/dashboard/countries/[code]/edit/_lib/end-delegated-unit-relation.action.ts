@@ -8,6 +8,7 @@ import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { eq } from "@/lib/db/sql";
+import { UserFacingError } from "@/lib/user-facing-error";
 
 /** Delegated counterpart of `endUnitRelationAction` for country partner-institution relations. */
 export async function endDelegatedUnitRelationAction(id: string, end: Date): Promise<void> {
@@ -26,6 +27,10 @@ export async function endDelegatedUnitRelationAction(id: string, end: Date): Pro
 		institutionDocumentId: relation.unitDocumentId,
 		relatedUnitDocumentId: relation.relatedUnitDocumentId,
 	});
+
+	if (end < relation.duration.start) {
+		throw new UserFacingError("relation-end-before-start");
+	}
 
 	await db
 		.update(schema.organisationalUnitsRelations)

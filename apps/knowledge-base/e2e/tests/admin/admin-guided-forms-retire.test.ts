@@ -74,6 +74,7 @@ test.describe("guided forms - retire a unit", () => {
 
 	interface Retirable {
 		name: string;
+		documentId: string;
 		partOfRelationId: string;
 		chairRelationId: string;
 	}
@@ -117,7 +118,7 @@ test.describe("guided forms - retire a unit", () => {
 		});
 		personRelationIds.push(chairRelationId);
 
-		return { name, partOfRelationId, chairRelationId };
+		return { name, documentId: workingGroup.documentId, partOfRelationId, chairRelationId };
 	}
 
 	test("ends the unit's own relation and its dependent person relation on one date", async ({
@@ -164,5 +165,40 @@ test.describe("guided forms - retire a unit", () => {
 
 		expect(await db.getUnitRelationEndById(unit.partOfRelationId)).toStrictEqual(expectedEnd);
 		expect(await db.getPersonRelationEndById(unit.chairRelationId)).toBeNull();
+	});
+
+	/**
+	 * A relation that only begins after the retirement date cannot be ended on it — the period would
+	 * be inverted. The whole retirement is refused, so the admin is not left with half of it
+	 * applied.
+	 */
+	test("refuses to end a relation that starts after the end date", async ({ db, page }) => {
+		const unit = await seedRetirableWorkingGroup(db, "Late");
+
+		const prefix = `[e2e-worker-${String(test.info().workerIndex)}]`;
+		const personName = `${prefix} Retire Late Chair ${randomUUID()}`;
+		const person = await db.createPublishedPerson({
+			name: personName,
+			sortName: personName,
+			slug: `e2e-retire-person-${randomUUID()}`,
+		});
+		const lateRelationId = await db.addPersonRelation({
+			personDocumentId: person.documentId,
+			organisationalUnitDocumentId: unit.documentId,
+			roleType: "is_chair_of",
+			start: new Date(Date.UTC(END_DATE.year + 1, 0, 1)),
+		});
+		personRelationIds.push(lateRelationId);
+
+		await openReviewFor(page, unit.name);
+
+		await page.getByRole("button", { name: "End the selected relations" }).click();
+		await expect(
+			page.getByText("The end date must be on or after the start of the relation."),
+		).toBeVisible();
+
+		expect(await db.getUnitRelationEndById(unit.partOfRelationId)).toBeNull();
+		expect(await db.getPersonRelationEndById(unit.chairRelationId)).toBeNull();
+		expect(await db.getPersonRelationEndById(lateRelationId)).toBeNull();
 	});
 });
