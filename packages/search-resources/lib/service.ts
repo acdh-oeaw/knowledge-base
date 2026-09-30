@@ -105,8 +105,8 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 				await Promise.all([
 					getOrFetch(cache, "sshoc/items", () =>
 						sshoc.items.searchAll({
-							"f.keyword": ["DARIAH Resource"],
-							categories: ["tool-or-service", "training-material", "workflow"],
+							"c.actor_id": ["9403"],
+							categories: ["tool-or-service"],
 							order: ["label"],
 						}),
 					),
