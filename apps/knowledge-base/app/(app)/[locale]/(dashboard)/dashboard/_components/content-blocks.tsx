@@ -687,6 +687,7 @@ function ContentBlockPanel({
 					blocks={[
 						"embed",
 						"callout",
+						"leadIn",
 						"accordion",
 						"mediaText",
 						"gallery",

@@ -20,6 +20,7 @@ import {
 	SeparatorHorizontalIcon,
 	SuperscriptIcon,
 	TableIcon,
+	TextInitialIcon,
 	VideoIcon,
 } from "lucide-react";
 import { useExtracted } from "next-intl";
@@ -36,6 +37,9 @@ import { canInsertBlock } from "@/lib/rich-text-slash-menu";
  *
  * `placeholderValue` is the one entry that is not a single action: it stands for a family of inline
  * nodes, one per kind, so the toolbar renders it as a submenu rather than through this registry.
+ *
+ * `leadIn` is not inserted either: it is a text style, offered beside the headings, that turns the
+ * paragraph at the cursor into lead-in text.
  */
 export type RichTextInsertableBlock =
 	| "accordion"
@@ -44,6 +48,7 @@ export type RichTextInsertableBlock =
 	| "embed"
 	| "footnote"
 	| "gallery"
+	| "leadIn"
 	| "mediaText"
 	| "placeholderValue";
 
@@ -87,6 +92,7 @@ export interface RichTextActiveState {
 	isItalic: boolean | undefined;
 	isCode: boolean | undefined;
 	isParagraph: boolean | undefined;
+	isLeadIn: boolean | undefined;
 	isHeading2: boolean | undefined;
 	isHeading3: boolean | undefined;
 	isHeading4: boolean | undefined;
@@ -107,6 +113,7 @@ export function selectRichTextActiveState(ctx: { editor: Editor | null }): RichT
 		isItalic: ctx.editor?.isActive("italic"),
 		isCode: ctx.editor?.isActive("code"),
 		isParagraph: ctx.editor?.isActive("paragraph"),
+		isLeadIn: ctx.editor?.isActive("leadIn"),
 		isHeading2: ctx.editor?.isActive("heading", { level: 2 }),
 		isHeading3: ctx.editor?.isActive("heading", { level: 3 }),
 		isHeading4: ctx.editor?.isActive("heading", { level: 4 }),
@@ -198,6 +205,22 @@ export function useRichTextActions({
 					editor.chain().focus().setParagraph().run();
 				},
 			},
+			...(blocks.includes("leadIn")
+				? [
+						{
+							id: "lead-in",
+							group: "block-style" as const,
+							label: t("Lead-in"),
+							keywords: ["lead", "intro", "introduction", "standfirst", "summary"],
+							icon: TextInitialIcon,
+							isActive: activeState?.isLeadIn,
+							run() {
+								// Toggles back to a paragraph, so choosing it again on a lead-in undoes it.
+								editor.chain().focus().toggleNode("leadIn", "paragraph").run();
+							},
+						},
+					]
+				: []),
 			{
 				id: "heading-2",
 				group: "block-style",

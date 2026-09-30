@@ -1038,6 +1038,35 @@ const DocumentWithContainers = Node.create({
 });
 
 /**
+ * Lead-in text: a sentence or paragraph set apart as the introduction to what follows. It is a
+ * paragraph in every respect but its role, so it is a textblock of its own rather than a
+ * callout-like container — an author turns a paragraph into a lead-in and back through the text
+ * style menu, the same way they would make it a heading.
+ *
+ * Rendered with the `lead` class the `richtext` styles already know, so the editor, the dashboard
+ * preview and anything else rendering stored content show it the same way without a node view. The
+ * data attribute is what parses it back: a pasted `<p class="lead">` from elsewhere stays a
+ * paragraph.
+ */
+export const LeadInNode = Node.create({
+	name: "leadIn",
+	group: "block",
+	content: "inline*",
+	parseHTML() {
+		return [
+			{
+				tag: "p[data-lead-in]",
+				// Above the paragraph's plain `p` rule, which would otherwise claim the element first.
+				priority: 60,
+			},
+		];
+	},
+	renderHTML({ HTMLAttributes }) {
+		return ["p", mergeAttributes(HTMLAttributes, { class: "lead", "data-lead-in": "" }), 0];
+	},
+});
+
+/**
  * Inline call-to-action node: a link rendered to look like a button. Stored as structured
  * `href`/`label`/`variant` attributes (not styled text) and edited through a popover anchored to
  * the button itself, mirroring the `EmbedNode`/`CalloutNode` pattern but at the inline level.
@@ -2849,6 +2878,7 @@ export function createRichTextExtensions(
 		),
 		createEmbedNode(options?.hasFootnotes),
 		CalloutNode,
+		LeadInNode,
 		AccordionNode,
 		AccordionItemNode,
 		ButtonLinkNode,

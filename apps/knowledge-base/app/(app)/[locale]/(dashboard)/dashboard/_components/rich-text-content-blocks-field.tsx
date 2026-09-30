@@ -92,7 +92,7 @@ export function RichTextContentBlocksField({
 		<>
 			<RichTextEditor
 				aria-label={ariaLabel}
-				blocks={["callout", "buttonLink", "placeholderValue"]}
+				blocks={["callout", "leadIn", "buttonLink", "placeholderValue"]}
 				content={initialContent}
 				onChange={setEditorContent}
 				renderAssetMetadata={renderAssetMetadata}

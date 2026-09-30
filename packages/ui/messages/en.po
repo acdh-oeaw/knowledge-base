@@ -223,6 +223,11 @@ msgstr "Paragraph"
 
 #: lib/rich-text-actions.tsx
 msgctxt "ui"
+msgid "2AISuA"
+msgstr "Lead-in"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
 msgid "Zqekct"
 msgstr "Heading 2"
 

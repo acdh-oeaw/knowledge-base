@@ -69,6 +69,7 @@ function visit(node: unknown, parts: Array<string>) {
 		node.type === "bulletList" ||
 		node.type === "codeBlock" ||
 		node.type === "heading" ||
+		node.type === "leadIn" ||
 		node.type === "listItem" ||
 		node.type === "orderedList" ||
 		node.type === "paragraph"

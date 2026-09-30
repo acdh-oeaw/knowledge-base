@@ -267,7 +267,7 @@ export const WithContent: Story = {
 export const WithOptionalBlocks: Story = {
 	args: {
 		content: sampleContent,
-		blocks: ["embed", "callout", "mediaText", "buttonLink"],
+		blocks: ["embed", "callout", "leadIn", "mediaText", "buttonLink"],
 	},
 	render(props) {
 		return (

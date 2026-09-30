@@ -72,6 +72,7 @@ function visit(node: unknown, parts: Array<string>) {
 		node.type === "bulletList" ||
 		node.type === "codeBlock" ||
 		node.type === "heading" ||
+		node.type === "leadIn" ||
 		node.type === "listItem" ||
 		node.type === "orderedList" ||
 		node.type === "paragraph"
@@ -346,7 +347,7 @@ export function isEmptyRichTextDocument(content: JSONContent | null | undefined)
 	}
 
 	return nodes.every((node) => {
-		if (node.type === "paragraph") {
+		if (node.type === "paragraph" || node.type === "leadIn") {
 			const paragraphContent = node.content ?? [];
 			if (paragraphContent.length === 0) {
 				return true;

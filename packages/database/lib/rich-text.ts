@@ -6,6 +6,7 @@ const STRUCTURAL_NODE_TYPES = new Set([
 	"codeBlock",
 	"doc",
 	"heading",
+	"leadIn",
 	"listItem",
 	"orderedList",
 	"paragraph",
