@@ -16,7 +16,7 @@ export const createNavigationItemAction = createMutationAction({
 
 	async mutate(tx, input) {
 		const siblings = await tx
-			.select({ id: schema.navigationItems.id })
+			.select({ id: schema.navigationItems.id, position: schema.navigationItems.position })
 			.from(schema.navigationItems)
 			.where(
 				and(
@@ -30,6 +30,8 @@ export const createNavigationItemAction = createMutationAction({
 				),
 			);
 
+		const nextPosition = Math.max(-1, ...siblings.map((sibling) => sibling.position)) + 1;
+
 		await tx.insert(schema.navigationItems).values({
 			menuId: input.menuId,
 			parentId: input.parentId ?? null,
@@ -38,7 +40,7 @@ export const createNavigationItemAction = createMutationAction({
 			href: input.href ?? null,
 			entityId: input.entityId ?? null,
 			isExternal: input.isExternal ?? false,
-			position: siblings.length,
+			position: nextPosition,
 		});
 
 		return { subjectId: input.menuId };
