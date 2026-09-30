@@ -239,6 +239,8 @@ function mapPersonContributors(
 		imageCaption: JSONContent | null;
 		imageWidth: number | null;
 		imageHeight: number | null;
+		imageAspectRatio: number | null;
+		imageMimeType: string | null;
 		personImageCaption: JSONContent | null;
 		personImageCaptionMode: ImageCaptionMode;
 		licenseName: string | null;
@@ -255,6 +257,8 @@ function mapPersonContributors(
 			imageCaption,
 			imageWidth: imageSourceWidth,
 			imageHeight: imageSourceHeight,
+			imageAspectRatio,
+			imageMimeType,
 			personImageCaption,
 			personImageCaptionMode,
 			licenseName,
@@ -275,6 +279,8 @@ function mapPersonContributors(
 							caption: imageCaption,
 							width: imageSourceWidth,
 							height: imageSourceHeight,
+							aspectRatio: imageAspectRatio,
+							mimeType: imageMimeType!,
 							licenseName,
 							licenseUrl,
 						}),
@@ -740,6 +746,8 @@ async function getContributors(
 			imageKey: schema.assets.key,
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
+			imageAspectRatio: schema.assets.aspectRatio,
+			imageMimeType: schema.assets.mimeType,
 			imageAlt: schema.assets.alt,
 			imageCaption: schema.assets.caption,
 			personImageCaption: schema.persons.imageCaption,

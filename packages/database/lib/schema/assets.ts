@@ -30,6 +30,8 @@ export const assets = p.snakeCase.table("assets", {
 	 */
 	width: p.integer("width"),
 	height: p.integer("height"),
+	/** Intrinsic width/height ratio for both raster and vector images. */
+	aspectRatio: p.doublePrecision("aspect_ratio"),
 	caption: p.jsonb("caption").$type<JSONContent>(),
 	alt: p.text("alt"),
 	licenseId: p.uuid("license_id").references(() => licenses.id),

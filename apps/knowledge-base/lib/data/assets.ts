@@ -5,7 +5,12 @@ import type { ReadableStream } from "node:stream/web";
 
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
-import { type Dimensions, toDisplayDimensions } from "@dariah-eric/storage/lib";
+import {
+	type Dimensions,
+	getAspectRatio,
+	getSvgAspectRatio,
+	toDisplayDimensions,
+} from "@dariah-eric/storage/lib";
 import sharp from "sharp";
 
 import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
@@ -254,14 +259,19 @@ const vectorMimeType = "image/svg+xml";
  * meaningful to record: vectors have no raster resolution, and sharp cannot measure every file it
  * accepts.
  */
-async function prepareImageForUpload(
-	file: File,
-): Promise<{ input: Readable | Buffer; size: number; dimensions: Dimensions | null }> {
+async function prepareImageForUpload(file: File): Promise<{
+	input: Readable | Buffer;
+	size: number;
+	dimensions: Dimensions | null;
+	aspectRatio: number | null;
+}> {
 	if (file.type === vectorMimeType) {
+		const input = Buffer.from(await file.arrayBuffer());
 		return {
-			input: Readable.fromWeb(file.stream() as ReadableStream),
-			size: file.size,
+			input,
+			size: input.byteLength,
 			dimensions: null,
+			aspectRatio: getSvgAspectRatio(input),
 		};
 	}
 
@@ -274,14 +284,16 @@ async function prepareImageForUpload(
 	 * dimensions).
 	 */
 	if (!Number.isFinite(resolution)) {
-		return { input: buffer, size: buffer.byteLength, dimensions: null };
+		return { input: buffer, size: buffer.byteLength, dimensions: null, aspectRatio: null };
 	}
 
 	if (resolution <= imageMaxResolution) {
+		const dimensions = toDisplayDimensions({ width, height, orientation });
 		return {
 			input: buffer,
 			size: buffer.byteLength,
-			dimensions: toDisplayDimensions({ width, height, orientation }),
+			dimensions,
+			aspectRatio: getAspectRatio(dimensions.width, dimensions.height),
 		};
 	}
 
@@ -299,10 +311,12 @@ async function prepareImageForUpload(
 	 */
 	const resizedMetadata = await sharp(resized).metadata();
 
+	const dimensions = { width: resizedMetadata.width, height: resizedMetadata.height };
 	return {
 		input: resized,
 		size: resized.byteLength,
-		dimensions: { width: resizedMetadata.width, height: resizedMetadata.height },
+		dimensions,
+		aspectRatio: getAspectRatio(dimensions.width, dimensions.height),
 	};
 }
 
@@ -318,12 +332,13 @@ interface UploadAssetParams {
 export async function uploadAsset(params: UploadAssetParams) {
 	const { file, licenseId, prefix, label, alt, caption } = params;
 
-	const { input, size, dimensions } = file.type.startsWith("image/")
+	const { input, size, dimensions, aspectRatio } = file.type.startsWith("image/")
 		? await prepareImageForUpload(file)
 		: {
 				input: Readable.fromWeb(file.stream() as ReadableStream),
 				size: file.size,
 				dimensions: null,
+				aspectRatio: null,
 			};
 	const metadata = { "content-type": file.type, name: file.name };
 
@@ -339,6 +354,7 @@ export async function uploadAsset(params: UploadAssetParams) {
 			size,
 			width: dimensions?.width,
 			height: dimensions?.height,
+			aspectRatio,
 			label: label ?? file.name,
 			alt,
 			caption,

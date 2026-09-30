@@ -353,6 +353,17 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "aspectRatio": {
+            "anyOf": [
+              {
+                "description": "Intrinsic width/height ratio; null when unavailable",
+                "type": "number",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
           "height": {
             "anyOf": [
               {
@@ -386,6 +397,10 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "mimeType": {
+            "description": "Image media type",
+            "type": "string",
+          },
           "srcUrl": {
             "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` to request a rendition",
             "type": "string",
@@ -411,6 +426,8 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "srcUrl",
           "width",
           "height",
+          "aspectRatio",
+          "mimeType",
           "alt",
           "license",
         ],
@@ -9485,6 +9502,17 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "aspectRatio": {
+            "anyOf": [
+              {
+                "description": "Intrinsic width/height ratio; null when unavailable",
+                "type": "number",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
           "caption": {
             "anyOf": [
               {},
@@ -9526,6 +9554,10 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "mimeType": {
+            "description": "Image media type",
+            "type": "string",
+          },
           "srcUrl": {
             "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` to request a rendition",
             "type": "string",
@@ -9551,6 +9583,8 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "srcUrl",
           "width",
           "height",
+          "aspectRatio",
+          "mimeType",
           "alt",
           "caption",
           "license",

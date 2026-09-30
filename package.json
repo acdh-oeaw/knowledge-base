@@ -8,6 +8,7 @@
 		"build": "turbo run build",
 		"data:audit:unused-assets": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:audit:unused-assets",
 		"data:audit:unused-social-media": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:audit:unused-social-media",
+		"data:backfill:image-aspect-ratios": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"maintenance\" run data:backfill:image-aspect-ratios",
 		"data:clean:empty-content-blocks": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:clean:empty-content-blocks",
 		"data:clean:richtext-links": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"maintenance\" run data:clean:richtext-links",
 		"data:clean:wordpress": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:clean:wordpress",

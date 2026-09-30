@@ -246,6 +246,8 @@ function institutionQuery(
 			logoKey: schema.assets.key,
 			logoWidth: schema.assets.width,
 			logoHeight: schema.assets.height,
+			logoAspectRatio: schema.assets.aspectRatio,
+			logoMimeType: schema.assets.mimeType,
 			logoAlt: schema.assets.alt,
 			logoCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
@@ -326,6 +328,8 @@ interface InstitutionRow {
 	logoKey: string | null;
 	logoWidth: number | null;
 	logoHeight: number | null;
+	logoAspectRatio: number | null;
+	logoMimeType: string | null;
 	logoAlt: string | null;
 	logoCaption: JSONContent | null;
 	licenseName: string | null;
@@ -362,6 +366,8 @@ function mapInstitutionRow(row: InstitutionRow) {
 				caption: row.logoCaption,
 				width: row.logoWidth,
 				height: row.logoHeight,
+				aspectRatio: row.logoAspectRatio,
+				mimeType: row.logoMimeType!,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
 			}),

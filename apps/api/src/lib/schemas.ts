@@ -53,6 +53,10 @@ export const ImageObjectSchema = v.object({
 	height: v.nullable(
 		v.pipe(v.number(), v.description("Source height in pixels; null for vectors")),
 	),
+	aspectRatio: v.nullable(
+		v.pipe(v.number(), v.description("Intrinsic width/height ratio; null when unavailable")),
+	),
+	mimeType: v.pipe(v.string(), v.description("Image media type")),
 	alt: v.nullable(v.string()),
 	/** Richtext caption as Tiptap JSON (bold/italic/link); consumers render it like other richtext. */
 	caption: v.nullable(v.any()),

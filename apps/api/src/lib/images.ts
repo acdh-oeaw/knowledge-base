@@ -18,8 +18,10 @@ export const imageAssetColumns = {
 		key: true,
 		alt: true,
 		caption: true,
+		mimeType: true,
 		width: true,
 		height: true,
+		aspectRatio: true,
 	},
 	with: {
 		license: {
@@ -35,8 +37,10 @@ export interface ImageAsset {
 	key: string;
 	alt: string | null;
 	caption: JSONContent | null;
+	mimeType: string;
 	width: number | null;
 	height: number | null;
+	aspectRatio?: number | null;
 	license: { name: string | null; url: string | null } | null;
 }
 
@@ -61,6 +65,9 @@ export interface Image {
 	 */
 	width: number | null;
 	height: number | null;
+	/** Intrinsic width/height ratio, including for vectors whose raster dimensions are null. */
+	aspectRatio: number | null;
+	mimeType: string;
 	alt: string | null;
 	caption: JSONContent | null;
 	license: { name: string; url: string } | null;
@@ -75,8 +82,10 @@ interface FlatImageAsset {
 	key: string;
 	alt: string | null;
 	caption: JSONContent | null;
+	mimeType: string | null;
 	width: number | null;
 	height: number | null;
+	aspectRatio: number | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
 }
@@ -96,8 +105,12 @@ export function toImageAsset(
 		key: image.key,
 		alt: image.alt,
 		caption: image.caption,
+		mimeType: image.mimeType!,
 		width: image.width,
 		height: image.height,
+		aspectRatio:
+			image.aspectRatio ??
+			(image.width != null && image.height != null ? image.width / image.height : null),
 		license: { name: image.licenseName, url: image.licenseUrl },
 	};
 }
@@ -165,6 +178,10 @@ export function generateImageUrl(
 		srcUrl: getAssetImageUrl(image.key),
 		width: image.width,
 		height: image.height,
+		aspectRatio:
+			image.aspectRatio ??
+			(image.width != null && image.height != null ? image.width / image.height : null),
+		mimeType: image.mimeType,
 		alt: image.alt,
 		caption: image.caption,
 		license,

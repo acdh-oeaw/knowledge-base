@@ -214,6 +214,8 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			imageKey: schema.assets.key,
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
+			imageAspectRatio: schema.assets.aspectRatio,
+			imageMimeType: schema.assets.mimeType,
 			imageAlt: schema.assets.alt,
 			imageAssetCaption: schema.assets.caption,
 			imageLicenseName: schema.licenses.name,
@@ -225,6 +227,8 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			heroImageKey: heroAssets.key,
 			heroImageWidth: heroAssets.width,
 			heroImageHeight: heroAssets.height,
+			heroImageAspectRatio: heroAssets.aspectRatio,
+			heroImageMimeType: heroAssets.mimeType,
 			heroImageAlt: heroAssets.alt,
 			heroImageCaption: heroAssets.caption,
 			heroLicenseName: heroLicenses.name,
@@ -240,6 +244,8 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			mediaTextImageKey: mediaTextAssets.key,
 			mediaTextImageWidth: mediaTextAssets.width,
 			mediaTextImageHeight: mediaTextAssets.height,
+			mediaTextImageAspectRatio: mediaTextAssets.aspectRatio,
+			mediaTextImageMimeType: mediaTextAssets.mimeType,
 			mediaTextImageAlt: mediaTextAssets.alt,
 			mediaTextImageCaption: mediaTextAssets.caption,
 			mediaTextLicenseName: mediaTextLicenses.name,
@@ -424,6 +430,8 @@ async function getGalleryItems(
 			imageKey: galleryAssets.key,
 			imageWidth: galleryAssets.width,
 			imageHeight: galleryAssets.height,
+			imageAspectRatio: galleryAssets.aspectRatio,
+			imageMimeType: galleryAssets.mimeType,
 			imageAlt: galleryAssets.alt,
 			imageAssetCaption: galleryAssets.caption,
 			licenseName: galleryLicenses.name,
@@ -448,6 +456,8 @@ async function getGalleryItems(
 				caption: row.imageAssetCaption,
 				width: row.imageWidth,
 				height: row.imageHeight,
+				aspectRatio: row.imageAspectRatio,
+				mimeType: row.imageMimeType,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
 			}),
@@ -585,6 +595,8 @@ function normalizeRow(row: {
 	imageKey: string | null;
 	imageWidth: number | null;
 	imageHeight: number | null;
+	imageAspectRatio: number | null;
+	imageMimeType: string | null;
 	imageAlt: string | null;
 	imageAssetCaption: JSONContent | null;
 	imageLicenseName: string | null;
@@ -596,6 +608,8 @@ function normalizeRow(row: {
 	heroImageKey: string | null;
 	heroImageWidth: number | null;
 	heroImageHeight: number | null;
+	heroImageAspectRatio: number | null;
+	heroImageMimeType: string | null;
 	heroImageAlt: string | null;
 	heroImageCaption: JSONContent | null;
 	heroCaption: JSONContent | null;
@@ -611,6 +625,8 @@ function normalizeRow(row: {
 	mediaTextImageKey: string | null;
 	mediaTextImageWidth: number | null;
 	mediaTextImageHeight: number | null;
+	mediaTextImageAspectRatio: number | null;
+	mediaTextImageMimeType: string | null;
 	mediaTextImageAlt: string | null;
 	mediaTextImageCaption: JSONContent | null;
 	mediaTextLicenseName: string | null;
@@ -654,6 +670,8 @@ function normalizeRow(row: {
 					caption: row.imageAssetCaption,
 					width: row.imageWidth,
 					height: row.imageHeight,
+					aspectRatio: row.imageAspectRatio,
+					mimeType: row.imageMimeType!,
 					licenseName: row.imageLicenseName,
 					licenseUrl: row.imageLicenseUrl,
 				}),
@@ -691,6 +709,8 @@ function normalizeRow(row: {
 					caption: row.heroImageCaption,
 					width: row.heroImageWidth,
 					height: row.heroImageHeight,
+					aspectRatio: row.heroImageAspectRatio,
+					mimeType: row.heroImageMimeType!,
 					licenseName: row.heroLicenseName,
 					licenseUrl: row.heroLicenseUrl,
 				}),
@@ -733,6 +753,8 @@ function normalizeRow(row: {
 					caption: row.mediaTextImageCaption,
 					width: row.mediaTextImageWidth,
 					height: row.mediaTextImageHeight,
+					aspectRatio: row.mediaTextImageAspectRatio,
+					mimeType: row.mediaTextImageMimeType!,
 					licenseName: row.mediaTextLicenseName,
 					licenseUrl: row.mediaTextLicenseUrl,
 				}),
