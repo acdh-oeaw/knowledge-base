@@ -3,6 +3,7 @@ import { getExtracted } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
 
 import { CountryMembershipSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/country-membership-section";
+import { DuplicateAssetsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets-section";
 import { EmptyContentBlocksSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/empty-content-blocks-section";
 import { HeadingHierarchySection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/heading-hierarchy-section";
 import { InactiveUnitRelationsSection } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/inactive-unit-relations-section";
@@ -43,6 +44,11 @@ export default async function DashboardAdministratorMaintenancePage(
 			countryMembership={
 				<Suspense fallback={<MaintenanceSectionFallback />}>
 					<CountryMembershipSection />
+				</Suspense>
+			}
+			duplicateAssets={
+				<Suspense fallback={<MaintenanceSectionFallback />}>
+					<DuplicateAssetsSection />
 				</Suspense>
 			}
 			emptyContentBlocks={

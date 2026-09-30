@@ -5,6 +5,7 @@ export default defineConfig({
 	dts: true,
 	entry: [
 		"./lib/index.ts",
+		"./lib/asset-deduplication-service.ts",
 		"./lib/asset-cleanup-service.ts",
 		"./lib/placeholder-values.ts",
 		"./lib/placeholder-values-service.ts",

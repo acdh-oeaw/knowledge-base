@@ -23,7 +23,7 @@ export function qualifiedTable(column: CatalogColumn): SQL {
 }
 
 /** Columns holding a foreign key that references `<referencedTable>.id`. */
-async function getForeignKeyColumns(
+export async function getForeignKeyColumns(
 	db: Database | Transaction,
 	referencedTable: string,
 ): Promise<Array<CatalogColumn>> {

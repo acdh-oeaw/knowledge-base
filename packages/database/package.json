@@ -11,6 +11,7 @@
 	"sideEffects": false,
 	"exports": {
 		".": "./dist/index.mjs",
+		"./asset-deduplication-service": "./dist/asset-deduplication-service.mjs",
 		"./asset-cleanup-service": "./dist/asset-cleanup-service.mjs",
 		"./placeholder-values": "./dist/placeholder-values.mjs",
 		"./placeholder-values-service": "./dist/placeholder-values-service.mjs",
