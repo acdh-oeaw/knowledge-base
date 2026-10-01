@@ -223,6 +223,11 @@ msgstr "Paragraph"
 
 #: ../../packages/ui/lib/rich-text-actions.tsx
 msgctxt "ui"
+msgid "2AISuA"
+msgstr "Lead-in"
+
+#: ../../packages/ui/lib/rich-text-actions.tsx
+msgctxt "ui"
 msgid "Zqekct"
 msgstr "Heading 2"
 
@@ -4279,12 +4284,22 @@ msgstr "DARIAH branding"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_components/service-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/users-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/website/events/_components/event-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_components/impact-case-study-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_components/opportunity-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/pages/_components/page-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_components/spotlight-article-details.tsx
 msgid "a5msuh"
 msgstr "Yes"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/internal-services/_components/service-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/users/_components/users-page.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/website/events/_components/event-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_components/impact-case-study-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_components/opportunity-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/pages/_components/page-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_components/spotlight-article-details.tsx
 msgid "oUWADl"
 msgstr "No"
 
@@ -7621,6 +7636,15 @@ msgstr "Manage the news items featured on the landing page."
 msgid "fAjBRv"
 msgstr "New funding call"
 
+#: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_components/impact-case-study-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_components/opportunity-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/pages/_components/page-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_components/spotlight-article-details.tsx
+#: app/(app)/[locale]/(default)/documentation/_components/documentation-article.tsx
+msgid "gjyzc7"
+msgstr "Table of contents"
+
 #: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-edit.tsx
 msgid "Gf7cjh"
 msgstr "Edit funding call"
@@ -7628,6 +7652,14 @@ msgstr "Edit funding call"
 #: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-form.tsx
 msgid "pJTTVP"
 msgstr "Enter the funding call details."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_components/impact-case-study-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_components/opportunity-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/pages/_components/page-item-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_components/spotlight-article-form.tsx
+msgid "ydlJPF"
+msgstr "Display table of contents"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-form.tsx
 msgid "70IjCC"
@@ -8123,10 +8155,6 @@ msgstr "Failed to send message."
 msgid "hrWbQB"
 msgstr "Successfully sent message."
 
-#: app/(app)/[locale]/(default)/documentation/_components/documentation-article.tsx
-msgid "gjyzc7"
-msgstr "Table of contents"
-
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
 msgid "CbmDsw"
 msgstr "Guides and reference material for working with the DARIAH Knowledge Base."
@@ -8215,8 +8243,20 @@ msgid "yJqGgj"
 msgstr "This SSHOC marketplace actor id is already assigned to another organisational unit."
 
 #: lib/format-project-call.ts
-msgid "6sf2lD"
-msgstr "CLARIAH-AT Project Funding"
+msgid "89LTDD"
+msgstr "CLARIAH-AT Project Funding 2022"
+
+#: lib/format-project-call.ts
+msgid "8mVCC_"
+msgstr "CLARIAH-AT Project Funding 2024"
+
+#: lib/format-project-call.ts
+msgid "bC6aCY"
+msgstr "CLARIAH-AT Project Funding 2025"
+
+#: lib/format-project-call.ts
+msgid "aaDht4"
+msgstr "CLARIAH-AT Project Funding 2026"
 
 #: lib/format-project-call.ts
 msgid "_ErBVb"
@@ -8238,6 +8278,11 @@ msgstr "Go!Digital Next Generation"
 #: lib/server/create-server-action.ts
 msgid "aca-RI"
 msgstr "A user account is linked to this record. Update that user's linked person or country before deleting it."
+
+#: lib/server/create-command-action.ts
+#: lib/server/create-server-action.ts
+msgid "ddbnQB"
+msgstr "This record is linked from a navigation menu. Remove the navigation link before deleting it."
 
 #: lib/server/create-command-action.ts
 #: lib/server/create-server-action.ts

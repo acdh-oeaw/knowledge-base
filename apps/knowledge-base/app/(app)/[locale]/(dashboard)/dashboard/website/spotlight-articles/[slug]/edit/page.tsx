@@ -110,6 +110,7 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 				id: true,
 				imageCaption: true,
 				imageCaptionMode: true,
+				showTableOfContents: true,
 				publicationDate: true,
 				title: true,
 				summary: true,

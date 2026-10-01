@@ -104,6 +104,7 @@ export default async function DashboardWebsiteFundingCallsDetailsPage(
 		columns: {
 			imageCaption: true,
 			imageCaptionMode: true,
+			showTableOfContents: true,
 			id: true,
 			duration: true,
 			title: true,

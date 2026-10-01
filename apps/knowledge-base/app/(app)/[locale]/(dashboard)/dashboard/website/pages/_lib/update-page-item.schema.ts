@@ -14,6 +14,10 @@ export const UpdatePageItemActionInputSchema = v.object({
 	publicationDate: v.pipe(v.string(), v.isoDate(), v.toDate()),
 	imageKey: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	...FeaturedImageCaptionInputSchema,
+	showTableOfContents: v.pipe(
+		v.optional(v.string(), "false"),
+		v.transform((s) => s === "true"),
+	),
 	contentBlocks: v.optional(
 		v.array(v.pipe(v.string(), v.parseJson(), ContentBlockInputSchema)),
 		[],

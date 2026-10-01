@@ -36,7 +36,8 @@ export type ImpactCaseStudyList = v.InferOutput<typeof ImpactCaseStudyListSchema
 
 export const ImpactCaseStudySchema = v.pipe(
 	v.object({
-		...v.pick(schema.ImpactCaseStudySelectSchema, ["id", "title", "summary"]).entries,
+		...v.pick(schema.ImpactCaseStudySelectSchema, ["id", "title", "summary", "showTableOfContents"])
+			.entries,
 		image: ImageSchema,
 		contributors: v.array(
 			v.object({

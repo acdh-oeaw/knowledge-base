@@ -35,7 +35,7 @@ export type PageList = v.InferOutput<typeof PageListSchema>;
 
 export const PageSchema = v.pipe(
 	v.object({
-		...v.pick(schema.PageSelectSchema, ["id", "title", "summary"]).entries,
+		...v.pick(schema.PageSelectSchema, ["id", "title", "summary", "showTableOfContents"]).entries,
 		image: v.nullable(ImageSchema),
 		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),

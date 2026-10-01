@@ -29,6 +29,8 @@ export const fundingCalls = p.snakeCase.table(
 		 */
 		imageCaption: p.jsonb("image_caption").$type<JSONContent>(),
 		imageCaptionMode: imageCaptionModeColumn("image_caption_mode"),
+		/** Whether the website renders a table of contents built from the content's headings. */
+		showTableOfContents: p.boolean("show_table_of_contents").notNull().default(false),
 		...f.timestamps(),
 	},
 	(t) => [

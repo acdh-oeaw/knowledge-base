@@ -12,6 +12,10 @@ export const UpdateFundingCallActionInputSchema = v.object({
 	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(FundingCallUpdateSchema, ["title", "summary"]).entries,
 	...FeaturedImageInputSchema,
+	showTableOfContents: v.pipe(
+		v.optional(v.string(), "false"),
+		v.transform((s) => s === "true"),
+	),
 	relatedEntityIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),
 	relatedResourceIds: v.optional(v.array(v.pipe(v.string(), v.nonEmpty())), []),
 	duration: DurationInputSchema,

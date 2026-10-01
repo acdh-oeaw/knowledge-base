@@ -10,6 +10,10 @@ export const CreateImpactCaseStudyActionInputSchema = v.object({
 	...v.pick(ImpactCaseStudyInsertSchema, ["title", "summary"]).entries,
 	publicationDate: v.pipe(v.string(), v.isoDate(), v.toDate()),
 	...FeaturedImageInputSchema,
+	showTableOfContents: v.pipe(
+		v.optional(v.string(), "false"),
+		v.transform((s) => s === "true"),
+	),
 	contentBlocks: v.optional(
 		v.array(v.pipe(v.string(), v.parseJson(), ContentBlockInputSchema)),
 		[],

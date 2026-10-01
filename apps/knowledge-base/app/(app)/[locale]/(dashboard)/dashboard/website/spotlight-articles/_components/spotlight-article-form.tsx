@@ -3,6 +3,7 @@
 import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
+import { Checkbox } from "@dariah-eric/ui/checkbox";
 import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
@@ -49,6 +50,7 @@ interface SpotlightArticleFormProps {
 		image: SelectedImage;
 		imageCaption?: JSONContent | null;
 		imageCaptionMode?: ImageCaptionMode;
+		showTableOfContents?: boolean;
 	};
 	formId?: string;
 	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
@@ -178,6 +180,13 @@ export function SpotlightArticleForm(props: Readonly<SpotlightArticleFormProps>)
 				) : null}
 
 				<FormSection description={t("Add the content.")} title={t("Content")} variant="stacked">
+					<Checkbox
+						defaultSelected={spotlightArticle?.showTableOfContents ?? false}
+						name="showTableOfContents"
+						value="true"
+					>
+						{t("Display table of contents")}
+					</Checkbox>
 					{/* Long-form editorial writing which sources what it reports, so it carries the same
 					    citation apparatus as an impact case study. */}
 					<ContentBlocks

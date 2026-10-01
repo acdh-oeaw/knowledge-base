@@ -36,7 +36,13 @@ interface ImpactCaseStudyDetailsProps {
 	selectedVersion: "draft" | "published";
 	impactCaseStudy: Pick<
 		schema.ImpactCaseStudy,
-		"id" | "title" | "summary" | "publicationDate" | "imageCaption" | "imageCaptionMode"
+		| "id"
+		| "publicationDate"
+		| "title"
+		| "summary"
+		| "imageCaption"
+		| "imageCaptionMode"
+		| "showTableOfContents"
 	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & {
@@ -147,6 +153,11 @@ export function ImpactCaseStudyDetails(props: Readonly<ImpactCaseStudyDetailsPro
 							))}
 						</ul>
 					) : null}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Table of contents")}</DescriptionTerm>
+				<DescriptionDetails>
+					{impactCaseStudy.showTableOfContents ? t("Yes") : t("No")}
 				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Content")}</DescriptionTerm>

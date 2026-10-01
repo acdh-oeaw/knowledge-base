@@ -100,6 +100,7 @@ export default async function DashboardWebsiteEditOpportunityPage(
 			id: true,
 			imageCaption: true,
 			imageCaptionMode: true,
+			showTableOfContents: true,
 			duration: true,
 			sourceId: true,
 			title: true,

@@ -47,6 +47,7 @@ export const createFundingCallAction = createMutationAction({
 			imageId: asset.id,
 			imageCaption: input.imageCaption,
 			imageCaptionMode: input.imageCaptionMode,
+			showTableOfContents: input.showTableOfContents,
 		});
 
 		const publishedRelatedEntityIds = await filterToPublishedDocumentIds(

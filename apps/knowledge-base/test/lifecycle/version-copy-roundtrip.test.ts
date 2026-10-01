@@ -209,6 +209,7 @@ const cases: Array<RoundtripCase> = [
 				imageId: refs.assetId,
 				imageCaption,
 				imageCaptionMode: "override" as const,
+				showTableOfContents: true,
 			};
 			await tx.insert(schema.pages).values({ id: versionId, ...values });
 			return values;
@@ -234,6 +235,7 @@ const cases: Array<RoundtripCase> = [
 				imageId: refs.assetId,
 				imageCaption,
 				imageCaptionMode: "override" as const,
+				showTableOfContents: true,
 			};
 			await tx.insert(schema.spotlightArticles).values({ id: versionId, ...values });
 			return values;
@@ -259,6 +261,7 @@ const cases: Array<RoundtripCase> = [
 				imageId: refs.assetId,
 				imageCaption,
 				imageCaptionMode: "override" as const,
+				showTableOfContents: true,
 			};
 			await tx.insert(schema.impactCaseStudies).values({ id: versionId, ...values });
 			return values;
@@ -284,6 +287,7 @@ const cases: Array<RoundtripCase> = [
 				imageId: refs.assetId,
 				imageCaption,
 				imageCaptionMode: "override" as const,
+				showTableOfContents: true,
 			};
 			await tx.insert(schema.fundingCalls).values({ id: versionId, ...values });
 			return values;
@@ -339,6 +343,7 @@ const cases: Array<RoundtripCase> = [
 				imageId: refs.assetId,
 				imageCaption,
 				imageCaptionMode: "override" as const,
+				showTableOfContents: true,
 			};
 			await tx.insert(schema.opportunities).values({ id: versionId, ...values });
 			return values;

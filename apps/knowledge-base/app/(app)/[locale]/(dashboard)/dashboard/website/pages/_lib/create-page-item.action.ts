@@ -48,6 +48,7 @@ export const createPageItemAction = createMutationAction({
 			imageId,
 			imageCaption: input.imageCaption,
 			imageCaptionMode: input.imageCaptionMode,
+			showTableOfContents: input.showTableOfContents,
 			publicationDate: input.publicationDate,
 			title: input.title,
 			summary: input.summary,

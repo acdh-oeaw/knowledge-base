@@ -12,6 +12,10 @@ export const UpdateOpportunityActionInputSchema = v.object({
 	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(OpportunityUpdateSchema, ["title", "summary", "sourceId", "website"]).entries,
 	...FeaturedImageInputSchema,
+	showTableOfContents: v.pipe(
+		v.optional(v.string(), "false"),
+		v.transform((s) => s === "true"),
+	),
 	relatedEntityIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),
 	relatedResourceIds: v.optional(v.array(v.pipe(v.string(), v.nonEmpty())), []),
 	duration: DurationInputSchema,

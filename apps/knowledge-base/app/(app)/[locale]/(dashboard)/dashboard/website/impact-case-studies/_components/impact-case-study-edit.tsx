@@ -40,6 +40,7 @@ interface ImpactCaseStudyEditFormProps {
 		image: SelectedImage;
 		imageCaption: JSONContent | null;
 		imageCaptionMode: ImageCaptionMode;
+		showTableOfContents: boolean;
 	};
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;

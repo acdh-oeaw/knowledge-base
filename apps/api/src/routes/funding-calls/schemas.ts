@@ -43,6 +43,7 @@ export type FundingCallList = v.InferOutput<typeof FundingCallListSchema>;
 export const FundingCallSchema = v.pipe(
 	v.object({
 		...fundingCallBaseObject.entries,
+		...v.pick(schema.FundingCallSelectSchema, ["showTableOfContents"]).entries,
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
 		relatedResources: v.optional(RelatedResourcesSchema, []),

@@ -3,6 +3,7 @@
 import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
+import { Checkbox } from "@dariah-eric/ui/checkbox";
 import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
@@ -46,6 +47,7 @@ interface ImpactCaseStudyFormProps {
 		image: SelectedImage;
 		imageCaption?: JSONContent | null;
 		imageCaptionMode?: ImageCaptionMode;
+		showTableOfContents?: boolean;
 	};
 	formId?: string;
 	isPublished?: boolean;
@@ -174,6 +176,13 @@ export function ImpactCaseStudyForm(props: Readonly<ImpactCaseStudyFormProps>): 
 				) : null}
 
 				<FormSection description={t("Add the content.")} title={t("Content")} variant="stacked">
+					<Checkbox
+						defaultSelected={impactCaseStudy?.showTableOfContents ?? false}
+						name="showTableOfContents"
+						value="true"
+					>
+						{t("Display table of contents")}
+					</Checkbox>
 					{/* A case study states its impact and then evidences it, which is what the migrated
 					    articles hand-numbered as `[1]`, `[2]` under "Evidence of the Impact". Spotlight
 					    articles carry the same apparatus. */}

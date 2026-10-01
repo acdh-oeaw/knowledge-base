@@ -45,6 +45,7 @@ export type OpportunityList = v.InferOutput<typeof OpportunityListSchema>;
 export const OpportunitySchema = v.pipe(
 	v.object({
 		...opportunityBaseObject.entries,
+		...v.pick(schema.OpportunitySelectSchema, ["showTableOfContents"]).entries,
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
 		relatedResources: v.optional(RelatedResourcesSchema, []),

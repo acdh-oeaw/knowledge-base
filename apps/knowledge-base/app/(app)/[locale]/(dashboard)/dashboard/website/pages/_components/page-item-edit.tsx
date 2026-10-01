@@ -30,6 +30,7 @@ interface PageItemEditFormProps {
 		image: SelectedImage | null;
 		imageCaption: JSONContent | null;
 		imageCaptionMode: ImageCaptionMode;
+		showTableOfContents: boolean;
 	};
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;

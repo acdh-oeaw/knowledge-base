@@ -3,6 +3,7 @@
 import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
 import type * as schema from "@dariah-eric/database/schema";
 import { createActionStateInitial } from "@dariah-eric/next-lib/actions";
+import { Checkbox } from "@dariah-eric/ui/checkbox";
 import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
@@ -46,6 +47,7 @@ interface PageItemFormProps {
 		image: SelectedImage | null;
 		imageCaption?: JSONContent | null;
 		imageCaptionMode?: ImageCaptionMode;
+		showTableOfContents?: boolean;
 	};
 	formId?: string;
 	/** Whether the edited entity is published, which freezes its slug. Unused when creating. */
@@ -163,6 +165,13 @@ export function PageItemForm(props: Readonly<PageItemFormProps>): ReactNode {
 				) : null}
 
 				<FormSection description={t("Add the content.")} title={t("Content")} variant="stacked">
+					<Checkbox
+						defaultSelected={pageItem?.showTableOfContents ?? false}
+						name="showTableOfContents"
+						value="true"
+					>
+						{t("Display table of contents")}
+					</Checkbox>
 					<ContentBlocks initialAssets={initialAssets} items={contentBlocks ?? []} />
 				</FormSection>
 

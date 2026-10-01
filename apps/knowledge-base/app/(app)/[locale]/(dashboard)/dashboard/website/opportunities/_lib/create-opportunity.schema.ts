@@ -10,6 +10,10 @@ export const CreateOpportunityActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
 	...v.pick(OpportunityInsertSchema, ["title", "summary", "sourceId", "website"]).entries,
 	...FeaturedImageInputSchema,
+	showTableOfContents: v.pipe(
+		v.optional(v.string(), "false"),
+		v.transform((s) => s === "true"),
+	),
 	relatedEntityIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),
 	relatedResourceIds: v.optional(v.array(v.pipe(v.string(), v.nonEmpty())), []),
 	duration: DurationInputSchema,

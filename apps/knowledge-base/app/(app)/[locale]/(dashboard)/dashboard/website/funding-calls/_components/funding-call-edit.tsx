@@ -40,6 +40,7 @@ interface FundingCallEditFormProps {
 		image: SelectedImage;
 		imageCaption: JSONContent | null;
 		imageCaptionMode: ImageCaptionMode;
+		showTableOfContents: boolean;
 	};
 	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
 	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;

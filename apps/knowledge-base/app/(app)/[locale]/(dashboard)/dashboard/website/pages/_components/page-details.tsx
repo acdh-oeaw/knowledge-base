@@ -31,7 +31,13 @@ interface PageItemDetailsProps {
 	selectedVersion: "draft" | "published";
 	pageItem: Pick<
 		schema.Page,
-		"id" | "publicationDate" | "title" | "summary" | "imageCaption" | "imageCaptionMode"
+		| "id"
+		| "publicationDate"
+		| "title"
+		| "summary"
+		| "imageCaption"
+		| "imageCaptionMode"
+		| "showTableOfContents"
 	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & {
@@ -122,6 +128,9 @@ export function PageItemDetails(props: Readonly<PageItemDetailsProps>): ReactNod
 						</DescriptionDetails>
 					</Fragment>
 				) : null}
+
+				<DescriptionTerm>{t("Table of contents")}</DescriptionTerm>
+				<DescriptionDetails>{pageItem.showTableOfContents ? t("Yes") : t("No")}</DescriptionDetails>
 
 				<DescriptionTerm>{t("Content")}</DescriptionTerm>
 				<DescriptionDetails>

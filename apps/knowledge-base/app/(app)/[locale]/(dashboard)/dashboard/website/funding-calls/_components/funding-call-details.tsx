@@ -31,7 +31,13 @@ interface FundingCallDetailsProps {
 	selectedVersion: "draft" | "published";
 	fundingCall: Pick<
 		schema.FundingCall,
-		"id" | "duration" | "title" | "summary" | "imageCaption" | "imageCaptionMode"
+		| "id"
+		| "duration"
+		| "title"
+		| "summary"
+		| "imageCaption"
+		| "imageCaptionMode"
+		| "showTableOfContents"
 	> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & {
@@ -121,6 +127,11 @@ export function FundingCallDetails(props: Readonly<FundingCallDetailsProps>): Re
 						imageCaption={fundingCall.imageCaption}
 						imageCaptionMode={fundingCall.imageCaptionMode}
 					/>
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Table of contents")}</DescriptionTerm>
+				<DescriptionDetails>
+					{fundingCall.showTableOfContents ? t("Yes") : t("No")}
 				</DescriptionDetails>
 
 				<DescriptionTerm>{t("Content")}</DescriptionTerm>

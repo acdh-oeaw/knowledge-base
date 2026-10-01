@@ -176,6 +176,7 @@ export async function getPageById(db: Database | Transaction, params: GetPageByI
 			columns: {
 				imageCaption: true,
 				imageCaptionMode: true,
+				showTableOfContents: true,
 				id: true,
 				publicationDate: true,
 				title: true,
@@ -312,6 +313,7 @@ export async function getPageBySlug(db: Database | Transaction, params: GetPageB
 		columns: {
 			imageCaption: true,
 			imageCaptionMode: true,
+			showTableOfContents: true,
 			id: true,
 			publicationDate: true,
 			title: true,

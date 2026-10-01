@@ -36,7 +36,12 @@ export type SpotlightArticleList = v.InferOutput<typeof SpotlightArticleListSche
 
 export const SpotlightArticleSchema = v.pipe(
 	v.object({
-		...v.pick(schema.SpotlightArticleSelectSchema, ["id", "title", "summary"]).entries,
+		...v.pick(schema.SpotlightArticleSelectSchema, [
+			"id",
+			"title",
+			"summary",
+			"showTableOfContents",
+		]).entries,
 		image: ImageSchema,
 		entity: v.object({ slug: schema.SlugSelectSchema.entries.value }),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
