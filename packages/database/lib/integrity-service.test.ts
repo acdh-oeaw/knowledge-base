@@ -813,6 +813,22 @@ describe("buildCountryMembershipFindings", () => {
 		});
 	});
 
+	it("does not flag the day between consecutive country statuses (observer, then member)", () => {
+		// Dates are stored at midnight, so "observer until 31/05, member from 01/06" leaves 31 May
+		// itself uncovered by the raw timestamps.
+		expect(
+			build(
+				requiredRule,
+				[{ start: d("2022-01-01T00:00:00Z") }],
+				ongoingIn("c-1", "2022-01-01T00:00:00Z"),
+				[
+					{ start: d("2021-01-01T00:00:00Z"), end: d("2023-05-31T00:00:00Z") },
+					{ start: d("2023-06-01T00:00:00Z") },
+				],
+			),
+		).toEqual([]);
+	});
+
 	it("flags the period before the country became a member", () => {
 		const findings = build(
 			requiredRule,

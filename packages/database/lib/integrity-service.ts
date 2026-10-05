@@ -1451,7 +1451,9 @@ export function buildCountryMembershipFindings(
 				continue;
 			}
 
-			const countryStatus = toRawIntervals(
+			// Merged, so consecutive statuses (e.g. observer until 31/05, member from 01/06) leave no
+			// one-day gap (see {@link mergeGapMs}).
+			const countryStatus = toIntervals(
 				countryStatusByCountry.get(location.countryDocumentId) ?? [],
 			);
 
