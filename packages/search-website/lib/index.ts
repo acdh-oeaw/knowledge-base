@@ -136,6 +136,7 @@ function mergeDescription(...values: Array<string | null | undefined>): string {
 function createWebsiteEntityDocument(params: {
 	description: string;
 	documentId?: string;
+	duration?: { start: Date; end?: Date };
 	entityId: string;
 	imageKey?: string;
 	importedAt: number;
@@ -149,6 +150,7 @@ function createWebsiteEntityDocument(params: {
 }): WebsiteEntityDocument {
 	const {
 		description,
+		duration,
 		entityId,
 		imageKey,
 		importedAt,
@@ -173,9 +175,11 @@ function createWebsiteEntityDocument(params: {
 		id: [type, documentId, locale].join(":"),
 		label,
 		description,
+		end_date: duration?.end?.getTime(),
 		image_key: imageKey,
 		link,
 		locale,
+		start_date: duration?.start.getTime(),
 		summary,
 	};
 }
@@ -1952,6 +1956,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.duration.start,
 					label: item.title,
 					description: item.summary,
+					duration: item.duration,
 					link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
