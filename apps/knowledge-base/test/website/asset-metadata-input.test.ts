@@ -2,6 +2,7 @@ import { getFormDataValues } from "@acdh-oeaw/lib";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
+import { getAssetMetadataCacheTags } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/asset-metadata-cache-tags";
 import { UpdateAssetMetadataInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.schema";
 
 /** Parses a submitted form the way `createMutationAction` does. */
@@ -50,5 +51,15 @@ describe("asset metadata form input", () => {
 
 	it("requires a label", () => {
 		expect(() => parseForm({ id: "asset-id", label: "   " })).toThrow();
+	});
+});
+
+describe("asset metadata cache tags", () => {
+	it("invalidates only assets for an ordinary image", () => {
+		expect(getAssetMetadataCacheTags(false)).toStrictEqual(["assets"]);
+	});
+
+	it("also invalidates site metadata for the configured open-graph image", () => {
+		expect(getAssetMetadataCacheTags(true)).toStrictEqual(["assets", "site-metadata"]);
 	});
 });

@@ -60,7 +60,7 @@ export const router = createRouter()
 			summary: "Get governance body slugs",
 			description: "Retrieve a paginated list of governance body slugs",
 			operationId: "getGovernanceBodySlugs",
-			"x-cache-tags": ["assets", "governance-bodies", "persons", "social-media"],
+			"x-cache-tags": ["governance-bodies"],
 			responses: {
 				200: {
 					description: "Success response",

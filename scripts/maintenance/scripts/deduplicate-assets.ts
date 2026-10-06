@@ -1,12 +1,8 @@
-import { createHash } from "node:crypto";
 import * as path from "node:path";
-import type { Readable } from "node:stream";
 
 import { log } from "@acdh-oeaw/lib";
 import { createDatabaseService } from "@dariah-eric/database";
 import { sql } from "@dariah-eric/database/sql";
-import { createStorageService } from "@dariah-eric/storage";
-import sharp from "sharp";
 
 import { env } from "../config/env.config";
 import { writeTsvReport } from "../lib/tsv-report";
@@ -17,9 +13,11 @@ import { writeTsvReport } from "../lib/tsv-report";
  * or storage objects — run `data:clean:unused-assets` afterwards to remove the now-unused
  * duplicates.
  *
- * Duplicates are matched by mime type, file size, image dimensions and SHA-256 hash of the stored
- * object. References are rewritten both by id (foreign keys to `assets.id`) and by key (exact
- * string values embedded in JSON/rich-text columns).
+ * Duplicates are matched by the SHA-256 digest recorded in `assets.content_hash`, so no stored
+ * object is downloaded; images without a recorded hash are skipped until
+ * `data:backfill:asset-content-hashes` has hashed them. References are rewritten both by id
+ * (foreign keys to `assets.id`) and by key (exact string values embedded in JSON/rich-text
+ * columns).
  *
  * @example
  * 	pnpm run data:deduplicate:assets
@@ -43,32 +41,18 @@ const db = createDatabaseService({
 	logger: false,
 }).unwrap();
 
-const storage = createStorageService({
-	config: {
-		accessKey: env.S3_ACCESS_KEY,
-		bucketName: env.S3_BUCKET_NAME,
-		endPoint: env.S3_HOST,
-		port: env.S3_PORT,
-		secretKey: env.S3_SECRET_KEY,
-		useSSL: env.S3_PROTOCOL === "https",
-	},
-});
-
 type QueryExecutor = Pick<typeof db, "execute">;
 
-interface CandidateAsset {
+interface FingerprintedAsset {
 	id: string;
 	key: string;
 	label: string;
 	mimeType: string;
-	size: number;
-	createdAt: string;
-}
-
-interface FingerprintedAsset extends CandidateAsset {
+	size: number | null;
 	width: number | null;
 	height: number | null;
 	sha256: string;
+	createdAt: string;
 }
 
 interface CatalogColumn {
@@ -95,17 +79,6 @@ function readFlagValue(name: string): string | undefined {
 	}
 
 	return value;
-}
-
-async function streamToBuffer(stream: Readable): Promise<Buffer> {
-	const chunks: Array<Buffer> = [];
-
-	for await (const chunk of stream) {
-		// oxlint-disable-next-line typescript/no-unsafe-argument
-		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-	}
-
-	return Buffer.concat(chunks);
 }
 
 function groupBy<T>(items: Array<T>, getKey: (item: T) => string): Map<string, Array<T>> {
@@ -142,10 +115,10 @@ function chooseCanonical(
 	})[0]!;
 }
 
-async function findCandidateAssets(filters: {
+async function findDuplicateCandidates(filters: {
 	label: string | undefined;
-}): Promise<Array<CandidateAsset>> {
-	const conditions = [sql`mime_type like 'image/%'`, sql`size is not null`];
+}): Promise<{ assets: Array<FingerprintedAsset>; unhashed: number }> {
+	const conditions = [sql`mime_type like 'image/%'`];
 
 	if (filters.label != null) {
 		conditions.push(sql`label ilike ${`%${filters.label}%`}`);
@@ -156,43 +129,48 @@ async function findCandidateAssets(filters: {
 		key: string;
 		label: string;
 		mime_type: string;
-		size: string;
+		size: string | null;
+		width: number | null;
+		height: number | null;
+		content_hash: string;
 		created_at: string;
 	}>(sql`
-		select id::text, key, label, mime_type, size::text, created_at::text
-		from assets
-		where ${sql.join(conditions, sql` and `)}
+		with candidates as (
+			select id, key, label, mime_type, size, width, height, content_hash, created_at
+			from assets
+			where ${sql.join(conditions, sql` and `)} and content_hash is not null
+		)
+		select id::text, key, label, mime_type, size::text, width, height, content_hash,
+			created_at::text
+		from candidates
+		where content_hash in (
+			select content_hash from candidates group by content_hash having count(*) > 1
+		)
 		order by created_at, id
 	`);
 
-	return result.rows.map((row) => {
-		return {
-			id: row.id,
-			key: row.key,
-			label: row.label,
-			mimeType: row.mime_type,
-			size: Number(row.size),
-			createdAt: row.created_at,
-		};
-	});
-}
+	const unhashed = await db.execute<{ count: string }>(sql`
+		select count(*)::text as count
+		from assets
+		where ${sql.join(conditions, sql` and `)} and content_hash is null
+	`);
 
-async function fingerprintAsset(asset: CandidateAsset): Promise<FingerprintedAsset | null> {
-	try {
-		const stream = (await storage.download(asset.key)).unwrap();
-		const buffer = await streamToBuffer(stream);
-		const metadata = await sharp(buffer).metadata();
-
-		return {
-			...asset,
-			width: metadata.width ?? null,
-			height: metadata.height ?? null,
-			sha256: createHash("sha256").update(buffer).digest("hex"),
-		};
-	} catch (error) {
-		log.error(`Could not fingerprint \`${asset.key}\`: ${String(error)}`);
-		return null;
-	}
+	return {
+		assets: result.rows.map((row) => {
+			return {
+				id: row.id,
+				key: row.key,
+				label: row.label,
+				mimeType: row.mime_type,
+				size: row.size != null ? Number(row.size) : null,
+				width: row.width,
+				height: row.height,
+				sha256: row.content_hash,
+				createdAt: row.created_at,
+			};
+		}),
+		unhashed: Number(unhashed.rows[0]?.count ?? 0),
+	};
 }
 
 async function getForeignKeyColumns(): Promise<Array<CatalogColumn>> {
@@ -430,37 +408,15 @@ async function createDuplicatePlans(options: {
 	key: string | undefined;
 	label: string | undefined;
 }): Promise<Array<DuplicatePlan>> {
-	const candidates = await findCandidateAssets({ label: options.label });
-	const possibleDuplicateGroups = Array.from(
-		groupBy(candidates, (asset) => `${asset.mimeType}\0${String(asset.size)}`).values(),
-	).filter((group) => group.length > 1);
+	const { assets, unhashed } = await findDuplicateCandidates({ label: options.label });
 
-	log.info(
-		`Fingerprinting ${String(possibleDuplicateGroups.reduce((sum, group) => sum + group.length, 0))} candidate asset(s) from ${String(possibleDuplicateGroups.length)} size/mime group(s)...`,
-	);
-
-	const fingerprinted: Array<FingerprintedAsset> = [];
-
-	for (const group of possibleDuplicateGroups) {
-		for (const asset of group) {
-			const fingerprint = await fingerprintAsset(asset);
-			if (fingerprint != null) {
-				fingerprinted.push(fingerprint);
-			}
-		}
+	if (unhashed > 0) {
+		log.warn(
+			`Skipping ${String(unhashed)} image(s) without a content hash. Run \`data:backfill:asset-content-hashes\` to include them.`,
+		);
 	}
 
-	const duplicateGroups = Array.from(
-		groupBy(fingerprinted, (asset) =>
-			[
-				asset.mimeType,
-				String(asset.size),
-				String(asset.width ?? ""),
-				String(asset.height ?? ""),
-				asset.sha256,
-			].join("\0"),
-		).values(),
-	).filter((group) => group.length > 1);
+	const duplicateGroups = Array.from(groupBy(assets, (asset) => asset.sha256).values());
 
 	const foreignKeyColumns = await getForeignKeyColumns();
 	const jsonColumns = await getJsonColumns();
@@ -523,7 +479,7 @@ async function writeReport(plans: Array<DuplicatePlan>): Promise<void> {
 			plan.stale.key,
 			plan.stale.label,
 			plan.stale.mimeType,
-			String(plan.stale.size),
+			plan.stale.size != null ? String(plan.stale.size) : "",
 			plan.stale.width != null ? String(plan.stale.width) : "",
 			plan.stale.height != null ? String(plan.stale.height) : "",
 			plan.fingerprint,

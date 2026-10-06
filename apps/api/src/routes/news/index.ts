@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get news item slugs",
 			description: "Retrieve a paginated list of news item slugs",
 			operationId: "getNewsItemSlugs",
-			"x-cache-tags": ["assets", "news"],
+			"x-cache-tags": ["news"],
 			responses: {
 				200: {
 					description: "Success response",

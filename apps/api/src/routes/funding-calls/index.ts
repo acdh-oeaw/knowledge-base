@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get funding call slugs",
 			description: "Retrieve a paginated list of funding call slugs",
 			operationId: "getFundingCallSlugs",
-			"x-cache-tags": ["assets", "funding-calls"],
+			"x-cache-tags": ["funding-calls"],
 			responses: {
 				200: {
 					description: "Success response",

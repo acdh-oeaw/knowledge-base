@@ -4516,6 +4516,38 @@ msgstr "not a member"
 msgid "j-hMBq"
 msgstr "is a member"
 
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "rQ-e9u"
+msgstr "{count} images have no content hash yet and are not compared. Run the content-hash backfill to include them."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "iFLovM"
+msgstr "No duplicate images found."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "VBQ0VM"
+msgstr "Could not merge the duplicate images. Please try again."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "tQM9Ud"
+msgstr "{count} groups of binary-identical images found."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "0aMIVb"
+msgstr "{count} copies · {size} each · {references} references"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "F_v4Gm"
+msgstr "Merging..."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "UTU_zh"
+msgstr "Use selected image"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-assets.tsx
+msgid "ke1Aps"
+msgstr "{count} references"
+
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/duplicate-entity.tsx
 msgid "QDKJ5r"
 msgstr "Could not duplicate the entity. Please try again."
@@ -4733,6 +4765,10 @@ msgid "eUKwKz"
 msgstr "Unused assets"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/maintenance-dashboard.tsx
+msgid "AE-sqH"
+msgstr "Duplicate images"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/maintenance-dashboard.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/unused-social-media-cleanup.tsx
 msgid "83nm5m"
 msgstr "Unused social media"
@@ -4744,6 +4780,10 @@ msgstr "Rich-text normalisation"
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/maintenance-dashboard.tsx
 msgid "ZzEr58"
 msgstr "Assets (images) which are not referenced by any record or embedded in any rich-text field. Review and select the ones to permanently remove from storage and the database."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/maintenance-dashboard.tsx
+msgid "1vCev-"
+msgstr "Binary-identical images stored more than once. Choose the canonical copy and rewrite every database and rich-text reference to it. The other copies are kept until they are reviewed in Unused assets."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/maintenance/_components/maintenance-dashboard.tsx
 msgid "6qo9NM"

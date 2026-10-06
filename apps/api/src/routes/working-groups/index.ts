@@ -28,7 +28,7 @@ export const router = createRouter()
 			summary: "Get working groups",
 			description: "Retrieve a paginated list of working groups",
 			operationId: "getWorkingGroups",
-			"x-cache-tags": ["assets", "persons", "social-media", "working-groups"],
+			"x-cache-tags": ["assets", "social-media", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get working group slugs",
 			description: "Retrieve a paginated list of working group slugs",
 			operationId: "getWorkingGroupSlugs",
-			"x-cache-tags": ["assets", "persons", "social-media", "working-groups"],
+			"x-cache-tags": ["working-groups"],
 			responses: {
 				200: {
 					description: "Success response",

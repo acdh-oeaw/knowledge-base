@@ -14,16 +14,13 @@ export interface DuplicateAssetCandidate {
 	label: string;
 	mimeType: string;
 	size: number;
+	width: number | null;
+	height: number | null;
+	contentHash: string;
 	createdAt: string;
 }
 
-export interface AssetFingerprint {
-	sha256: string;
-	width: number | null;
-	height: number | null;
-}
-
-export interface DuplicateAsset extends DuplicateAssetCandidate, AssetFingerprint {
+export interface DuplicateAsset extends DuplicateAssetCandidate {
 	foreignKeyReferences: number;
 	jsonReferences: number;
 }
@@ -33,7 +30,11 @@ export interface DuplicateAssetGroup {
 	assets: Array<DuplicateAsset>;
 }
 
-export type FingerprintAsset = (asset: DuplicateAssetCandidate) => Promise<AssetFingerprint | null>;
+export interface DuplicateAssetsResult {
+	groups: Array<DuplicateAssetGroup>;
+	/** Images without a recorded content hash, which cannot be compared until they are backfilled. */
+	unhashedImages: number;
+}
 
 interface JsonColumn extends CatalogColumn {
 	dataType: string;
@@ -107,99 +108,154 @@ function rewriteJsonValue(value: unknown, staleKey: string, canonicalKey: string
 	return value;
 }
 
+interface ReferenceCounts {
+	foreignKeyReferences: Map<string, number>;
+	jsonReferences: Map<string, number>;
+}
+
+/** Counts references for all assets at once: one query per column rather than per asset and column. */
 async function countReferences(
 	db: Database | Transaction,
-	asset: DuplicateAssetCandidate,
+	assets: Array<DuplicateAssetCandidate>,
 	foreignKeys: Array<CatalogColumn>,
 	jsonColumns: Array<JsonColumn>,
-): Promise<{ foreignKeyReferences: number; jsonReferences: number }> {
-	let foreignKeyReferences = 0;
-	for (const column of foreignKeys) {
-		const result = await db.execute<{ count: string }>(sql`
-			select count(*)::text as count from ${qualifiedTable(column)}
-			where ${qualifiedColumn(column)} = ${asset.id}
-		`);
-		foreignKeyReferences += Number(result.rows[0]?.count ?? 0);
+): Promise<ReferenceCounts> {
+	const foreignKeyReferences = new Map<string, number>();
+	const jsonReferences = new Map<string, number>();
+	if (assets.length === 0) {
+		return { foreignKeyReferences, jsonReferences };
 	}
 
-	let jsonReferences = 0;
-	for (const column of jsonColumns) {
-		const result = await db.execute<{ value: unknown }>(sql`
-			select ${qualifiedColumn(column)} as value from ${qualifiedTable(column)}
-			where ${qualifiedColumn(column)}::text like '%' || ${asset.key} || '%'
+	// Scalar `VALUES` lists rather than array parameters — drizzle expands an array in a template
+	// into a tuple `($1, $2, …)`, which cannot be cast to an array type.
+	const idValues = sql.join(
+		assets.map((asset) => sql`(${asset.id})`),
+		sql`, `,
+	);
+	for (const column of foreignKeys) {
+		const result = await db.execute<{ id: string; count: string }>(sql`
+			select ${qualifiedColumn(column)}::text as id, count(*)::text as count
+			from ${qualifiedTable(column)}
+			where ${qualifiedColumn(column)} in (select a.id::uuid from (values ${idValues}) as a(id))
+			group by 1
 		`);
 		for (const row of result.rows) {
-			jsonReferences += countJsonValue(row.value, asset.key);
+			foreignKeyReferences.set(row.id, (foreignKeyReferences.get(row.id) ?? 0) + Number(row.count));
 		}
 	}
+
+	const keyValues = sql.join(
+		assets.map((asset) => sql`(${asset.key})`),
+		sql`, `,
+	);
+	for (const column of jsonColumns) {
+		const result = await db.execute<{ value: unknown }>(sql`
+			select t.${sql.identifier(column.column)} as value from ${qualifiedTable(column)} as t
+			where exists (
+				select 1 from (values ${keyValues}) as a(key)
+				where t.${sql.identifier(column.column)}::text like '%' || a.key || '%'
+			)
+		`);
+		for (const row of result.rows) {
+			for (const asset of assets) {
+				const count = countJsonValue(row.value, asset.key);
+				if (count > 0) {
+					jsonReferences.set(asset.key, (jsonReferences.get(asset.key) ?? 0) + count);
+				}
+			}
+		}
+	}
+
 	return { foreignKeyReferences, jsonReferences };
 }
 
+/**
+ * Groups images by their recorded `content_hash`. Identical digests mean identical bytes, so no
+ * object has to be downloaded; images uploaded before hashes were tracked are only counted, until
+ * `data:backfill:asset-content-hashes` has hashed them.
+ */
 export async function findDuplicateAssets(
 	db: Database | Transaction,
-	fingerprintAsset: FingerprintAsset,
-	options: { label?: string } = {},
-): Promise<Array<DuplicateAssetGroup>> {
+	options: { ids?: Array<string>; label?: string } = {},
+): Promise<DuplicateAssetsResult> {
 	const labelFilter = options.label?.trim();
+	const ids = options.ids;
+	if (ids?.length === 0) {
+		return { groups: [], unhashedImages: 0 };
+	}
+	const filters = sql`
+		${labelFilter != null && labelFilter !== "" ? sql`and label ilike ${`%${labelFilter}%`}` : sql``}
+		${
+			ids != null
+				? sql`and id::text in (${sql.join(
+						ids.map((id) => sql`${id}`),
+						sql`, `,
+					)})`
+				: sql``
+		}
+	`;
+
 	const result = await db.execute<{
 		id: string;
 		key: string;
 		label: string;
 		mime_type: string;
-		size: string;
+		size: string | null;
+		width: number | null;
+		height: number | null;
+		content_hash: string;
 		created_at: string;
 	}>(sql`
-		select id::text, key, label, mime_type, size::text, created_at::text
-		from assets
-		where mime_type like 'image/%' and size is not null
-			${labelFilter != null && labelFilter !== "" ? sql`and label ilike ${`%${labelFilter}%`}` : sql``}
-		order by created_at, id
+		with candidates as (
+			select id, key, label, mime_type, size, width, height, content_hash, created_at
+			from assets
+			where mime_type like 'image/%' and content_hash is not null ${filters}
+		)
+		select id::text, key, label, mime_type, size::text, width, height, content_hash,
+			created_at::text
+		from candidates
+		where content_hash in (
+			select content_hash from candidates group by content_hash having count(*) > 1
+		)
+		order by content_hash, created_at, id
 	`);
+	const unhashed = await db.execute<{ count: string }>(sql`
+		select count(*)::text as count from assets
+		where mime_type like 'image/%' and content_hash is null ${filters}
+	`);
+
 	const candidates = result.rows.map((row): DuplicateAssetCandidate => {
 		return {
 			id: row.id,
 			key: row.key,
 			label: row.label,
 			mimeType: row.mime_type,
-			size: Number(row.size),
+			size: Number(row.size ?? 0),
+			width: row.width,
+			height: row.height,
+			contentHash: row.content_hash,
 			createdAt: row.created_at,
 		};
 	});
-	const possibleGroups = groupBy(
-		candidates,
-		(asset) => `${asset.mimeType}\0${String(asset.size)}`,
-	).filter((group) => group.length > 1);
-	const fingerprinted: Array<DuplicateAssetCandidate & AssetFingerprint> = [];
-	for (const group of possibleGroups) {
-		for (const asset of group) {
-			const fingerprint = await fingerprintAsset(asset);
-			if (fingerprint != null) {
-				fingerprinted.push({ ...asset, ...fingerprint });
-			}
-		}
-	}
 
 	const foreignKeys = await getForeignKeyColumns(db, "assets");
 	const jsonColumns = await getJsonColumns(db);
-	const duplicateGroups = groupBy(fingerprinted, (asset) =>
-		[asset.mimeType, asset.size, asset.width, asset.height, asset.sha256].join("\0"),
-	).filter((group) => group.length > 1);
+	const references = await countReferences(db, candidates, foreignKeys, jsonColumns);
 
-	return Promise.all(
-		duplicateGroups.map(async (group) => {
-			return {
-				fingerprint: group[0]!.sha256,
-				assets: await Promise.all(
-					group.map(async (asset) => {
-						return {
-							...asset,
-							...(await countReferences(db, asset, foreignKeys, jsonColumns)),
-						};
-					}),
-				),
-			};
-		}),
-	);
+	const groups = groupBy(candidates, (asset) => asset.contentHash).map((group) => {
+		return {
+			fingerprint: group[0]!.contentHash,
+			assets: group.map((asset) => {
+				return {
+					...asset,
+					foreignKeyReferences: references.foreignKeyReferences.get(asset.id) ?? 0,
+					jsonReferences: references.jsonReferences.get(asset.key) ?? 0,
+				};
+			}),
+		};
+	});
+
+	return { groups, unhashedImages: Number(unhashed.rows[0]?.count ?? 0) };
 }
 
 export interface MergeDuplicateAssetsResult {
@@ -212,10 +268,9 @@ export async function mergeDuplicateAssets(
 	db: Database,
 	canonicalId: string,
 	staleIds: Array<string>,
-	fingerprintAsset: FingerprintAsset,
 ): Promise<MergeDuplicateAssetsResult> {
 	const requested = new Set([canonicalId, ...staleIds]);
-	const groups = await findDuplicateAssets(db, fingerprintAsset);
+	const { groups } = await findDuplicateAssets(db, { ids: Array.from(requested) });
 	const group = groups.find((item) => item.assets.some((asset) => asset.id === canonicalId));
 	if (
 		group == null ||

@@ -6,6 +6,7 @@
 	"sideEffects": false,
 	"scripts": {
 		"data:backfill:accordions": "tsx ./scripts/backfill-accordions.ts",
+		"data:backfill:asset-content-hashes": "tsx ./scripts/backfill-asset-content-hashes.ts",
 		"data:backfill:cta-button-links": "tsx ./scripts/backfill-cta-button-links.ts",
 		"data:backfill:full-resolution-images": "tsx ./scripts/backfill-full-resolution-images.ts",
 		"data:backfill:galleries-from-wordpress": "tsx ./scripts/backfill-galleries-from-wordpress.ts",

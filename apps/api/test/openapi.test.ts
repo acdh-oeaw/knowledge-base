@@ -141,6 +141,57 @@ describe("openapi", () => {
 			expect(unreadTags).toEqual([]);
 		});
 
+		it("should keep global metadata and slug-list cache tags narrow", async () => {
+			const client = testClient(createApp().route("/docs", openapi));
+
+			const response = await client.docs["openapi.json"].$get();
+			const data = (await response.json()) as OpenAPIV3_1.Document;
+			const tagsByOperationId = new Map<string, ReadonlyArray<CacheTag>>();
+
+			for (const pathItem of Object.values(data.paths ?? {})) {
+				if (pathItem == null || "$ref" in pathItem) {
+					continue;
+				}
+
+				for (const method of operationMethods) {
+					const operation = pathItem[method];
+					if (operation?.operationId == null) {
+						continue;
+					}
+
+					const tags = (operation as Record<string, unknown>)[cacheTagsExtension];
+					if (Array.isArray(tags)) {
+						tagsByOperationId.set(operation.operationId, tags as Array<CacheTag>);
+					}
+				}
+			}
+
+			expect(tagsByOperationId.get("getSiteMetadata")).toEqual(["site-metadata"]);
+
+			const slugOperationTags = {
+				getDariahProjectSlugs: "projects",
+				getDocumentOrPolicySlugs: "documents-policies",
+				getEventSlugs: "events",
+				getFundingCallSlugs: "funding-calls",
+				getGovernanceBodySlugs: "governance-bodies",
+				getImpactCaseStudySlugs: "impact-case-studies",
+				getInstitutionSlugs: "members-partners",
+				getMemberOrPartnerSlugs: "members-partners",
+				getNationalConsortiumSlugs: "members-partners",
+				getNewsItemSlugs: "news",
+				getOpportunitySlugs: "opportunities",
+				getPageSlugs: "pages",
+				getPersonSlugs: "persons",
+				getProjectSlugs: "projects",
+				getSpotlightArticleSlugs: "spotlight-articles",
+				getWorkingGroupSlugs: "working-groups",
+			} as const satisfies Record<string, CacheTag>;
+
+			for (const [operationId, tag] of Object.entries(slugOperationTags)) {
+				expect(tagsByOperationId.get(operationId), operationId).toEqual([tag]);
+			}
+		});
+
 		it("should document the revalidation webhook against the cache tag vocabulary", async () => {
 			const client = testClient(createApp().route("/docs", openapi));
 

@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get opportunity slugs",
 			description: "Retrieve a paginated list of opportunity slugs",
 			operationId: "getOpportunitySlugs",
-			"x-cache-tags": ["assets", "opportunities"],
+			"x-cache-tags": ["opportunities"],
 			responses: {
 				200: {
 					description: "Success response",

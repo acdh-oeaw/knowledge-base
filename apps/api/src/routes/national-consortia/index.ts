@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get national consortium slugs",
 			description: "Retrieve a paginated list of national consortium slugs",
 			operationId: "getNationalConsortiumSlugs",
-			"x-cache-tags": ["assets", "members-partners"],
+			"x-cache-tags": ["members-partners"],
 			responses: {
 				200: {
 					description: "Success response",

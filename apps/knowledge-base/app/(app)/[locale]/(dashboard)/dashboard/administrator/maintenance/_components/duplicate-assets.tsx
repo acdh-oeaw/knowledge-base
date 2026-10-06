@@ -13,9 +13,13 @@ import { useRouter } from "@/lib/navigation/navigation";
 
 interface DuplicateAssetsProps {
 	groups: Array<DuplicateAssetPreviewGroup>;
+	unhashedImages: number;
 }
 
-export function DuplicateAssets({ groups }: Readonly<DuplicateAssetsProps>): ReactNode {
+export function DuplicateAssets({
+	groups,
+	unhashedImages,
+}: Readonly<DuplicateAssetsProps>): ReactNode {
 	const t = useExtracted();
 	const router = useRouter();
 	const [canonicalIds, setCanonicalIds] = useState<Record<string, string>>(() =>
@@ -25,8 +29,23 @@ export function DuplicateAssets({ groups }: Readonly<DuplicateAssetsProps>): Rea
 	const [error, setError] = useState<string | null>(null);
 	const [isRefreshing, startRefreshTransition] = useTransition();
 
+	const unhashedNotice =
+		unhashedImages > 0 ? (
+			<p className="text-sm text-muted-fg" role="status">
+				{t(
+					"{count} images have no content hash yet and are not compared. Run the content-hash backfill to include them.",
+					{ count: String(unhashedImages) },
+				)}
+			</p>
+		) : null;
+
 	if (groups.length === 0) {
-		return <p className="my-8 text-sm text-muted-fg">{t("No duplicate images found.")}</p>;
+		return (
+			<Fragment>
+				{unhashedNotice}
+				<p className="my-8 text-sm text-muted-fg">{t("No duplicate images found.")}</p>
+			</Fragment>
+		);
 	}
 
 	async function merge(group: DuplicateAssetPreviewGroup) {
@@ -50,6 +69,7 @@ export function DuplicateAssets({ groups }: Readonly<DuplicateAssetsProps>): Rea
 
 	return (
 		<div className="flex flex-col gap-y-(--layout-padding)">
+			{unhashedNotice}
 			<p className="text-sm text-muted-fg">
 				{t("{count} groups of binary-identical images found.", { count: String(groups.length) })}
 			</p>

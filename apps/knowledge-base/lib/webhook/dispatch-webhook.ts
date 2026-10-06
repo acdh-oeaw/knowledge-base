@@ -28,8 +28,8 @@ const cacheTagsByEntityType: Partial<
 	persons: ["persons"],
 	projects: ["projects"],
 	spotlight_articles: ["spotlight-articles"],
-	// Organisational units surface in the api as countries/institutions or working groups.
-	organisational_units: ["members-partners", "working-groups"],
+	// Organisational units surface in the api as countries/institutions, governance bodies or working groups.
+	organisational_units: ["governance-bodies", "members-partners", "working-groups"],
 };
 
 /** Tags of the published documents whose richtext embeds placeholder-value nodes. */

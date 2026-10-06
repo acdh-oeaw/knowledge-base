@@ -21953,9 +21953,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "tags": [
           "assets",
         ],
-        "x-cache-tags": [
-          "assets",
-        ],
+        "x-cache-tags": [],
       },
     },
     "/api/v1/dariah-projects": {
@@ -22102,9 +22100,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "dariah-projects",
         ],
         "x-cache-tags": [
-          "assets",
           "projects",
-          "social-media",
         ],
       },
     },
@@ -22408,6 +22404,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "documents-policies",
         ],
         "x-cache-tags": [
+          "assets",
           "documents-policies",
         ],
       },
@@ -22445,6 +22442,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "documents-policies",
         ],
         "x-cache-tags": [
+          "assets",
           "documents-policies",
         ],
       },
@@ -22530,6 +22528,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "documents-policies",
         ],
         "x-cache-tags": [
+          "assets",
           "documents-policies",
         ],
       },
@@ -22577,6 +22576,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "documents-policies",
         ],
         "x-cache-tags": [
+          "assets",
           "documents-policies",
         ],
       },
@@ -22730,7 +22730,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "events",
         ],
         "x-cache-tags": [
-          "assets",
           "events",
         ],
       },
@@ -23042,7 +23041,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "funding-calls",
         ],
         "x-cache-tags": [
-          "assets",
           "funding-calls",
         ],
       },
@@ -23274,10 +23272,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "governance-bodies",
         ],
         "x-cache-tags": [
-          "assets",
           "governance-bodies",
-          "persons",
-          "social-media",
         ],
       },
     },
@@ -23452,7 +23447,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "x-cache-tags": [
           "assets",
           "impact-case-studies",
-          "persons",
         ],
       },
     },
@@ -23519,9 +23513,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "impact-case-studies",
         ],
         "x-cache-tags": [
-          "assets",
           "impact-case-studies",
-          "persons",
         ],
       },
     },
@@ -23796,7 +23788,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "institutions",
         ],
         "x-cache-tags": [
-          "assets",
           "members-partners",
         ],
       },
@@ -23976,7 +23967,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "x-cache-tags": [
           "assets",
           "members-partners",
-          "persons",
           "social-media",
         ],
       },
@@ -24044,10 +24034,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "members-partners",
         ],
         "x-cache-tags": [
-          "assets",
           "members-partners",
-          "persons",
-          "social-media",
         ],
       },
     },
@@ -24296,7 +24283,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "national-consortia",
         ],
         "x-cache-tags": [
-          "assets",
           "members-partners",
         ],
       },
@@ -24595,7 +24581,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "news",
         ],
         "x-cache-tags": [
-          "assets",
           "news",
         ],
       },
@@ -24872,7 +24857,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "opportunities",
         ],
         "x-cache-tags": [
-          "assets",
           "opportunities",
         ],
       },
@@ -25118,7 +25102,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "pages",
         ],
         "x-cache-tags": [
-          "assets",
           "pages",
         ],
       },
@@ -25298,10 +25281,8 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "x-cache-tags": [
           "assets",
           "governance-bodies",
-          "impact-case-studies",
           "members-partners",
           "persons",
-          "spotlight-articles",
           "working-groups",
         ],
       },
@@ -25369,13 +25350,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "persons",
         ],
         "x-cache-tags": [
-          "assets",
-          "governance-bodies",
-          "impact-case-studies",
-          "members-partners",
           "persons",
-          "spotlight-articles",
-          "working-groups",
         ],
       },
     },
@@ -25643,9 +25618,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "projects",
         ],
         "x-cache-tags": [
-          "assets",
           "projects",
-          "social-media",
         ],
       },
     },
@@ -25812,10 +25785,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "site-metadata",
         ],
         "x-cache-tags": [
-          "assets",
-          "members-partners",
           "site-metadata",
-          "social-media",
         ],
       },
     },
@@ -26044,7 +26014,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "x-cache-tags": [
           "assets",
-          "persons",
           "spotlight-articles",
         ],
       },
@@ -26112,8 +26081,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "spotlight-articles",
         ],
         "x-cache-tags": [
-          "assets",
-          "persons",
           "spotlight-articles",
         ],
       },
@@ -26342,7 +26309,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "x-cache-tags": [
           "assets",
-          "persons",
           "social-media",
           "working-groups",
         ],
@@ -26411,9 +26377,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "working-groups",
         ],
         "x-cache-tags": [
-          "assets",
-          "persons",
-          "social-media",
           "working-groups",
         ],
       },

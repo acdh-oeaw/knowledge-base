@@ -74,7 +74,7 @@ export const router = createRouter()
 			description:
 				"Sign an imgproxy rendition of an image asset and redirect to it, by storage key. Widths and aspect ratios are restricted to the supported sets. Omitting the width serves the source as stored, which is the only rendition a vector image has.",
 			operationId: "getAssetImage",
-			"x-cache-tags": ["assets"],
+			"x-cache-tags": [],
 			responses: {
 				302: {
 					description: "Redirect to the signed imgproxy url for the requested rendition",

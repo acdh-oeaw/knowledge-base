@@ -145,23 +145,13 @@ export function MaintenanceDashboard(props: Readonly<MaintenanceDashboardProps>)
 				<TabPanel id="cleanup">
 					<Tabs>
 						<TabList aria-label={t("Cleanup tasks")}>
-							<Tab id="duplicate-assets">{t("Duplicate images")}</Tab>
 							<Tab id="unused-assets">{t("Unused assets")}</Tab>
+							<Tab id="duplicate-assets">{t("Duplicate images")}</Tab>
 							<Tab id="empty-content-blocks">{t("Empty content blocks")}</Tab>
 							<Tab id="unused-social-media">{t("Unused social media")}</Tab>
 							<Tab id="richtext">{t("Rich-text normalisation")}</Tab>
 							<Tab id="heading-hierarchy">{t("Heading hierarchy")}</Tab>
 						</TabList>
-
-						<TabPanel id="duplicate-assets" className="flex flex-col gap-y-(--layout-padding)">
-							<p className="text-sm text-balance text-muted-fg">
-								{t(
-									"Binary-identical images stored more than once. Choose the canonical copy and rewrite every database and rich-text reference to it. The other copies are kept until they are reviewed in Unused assets.",
-								)}
-							</p>
-
-							{duplicateAssets}
-						</TabPanel>
 
 						<TabPanel id="unused-assets" className="flex flex-col gap-y-(--layout-padding)">
 							<p className="text-sm text-balance text-muted-fg">
@@ -171,6 +161,16 @@ export function MaintenanceDashboard(props: Readonly<MaintenanceDashboardProps>)
 							</p>
 
 							{unusedAssets}
+						</TabPanel>
+
+						<TabPanel id="duplicate-assets" className="flex flex-col gap-y-(--layout-padding)">
+							<p className="text-sm text-balance text-muted-fg">
+								{t(
+									"Binary-identical images stored more than once. Choose the canonical copy and rewrite every database and rich-text reference to it. The other copies are kept until they are reviewed in Unused assets.",
+								)}
+							</p>
+
+							{duplicateAssets}
 						</TabPanel>
 
 						<TabPanel id="empty-content-blocks" className="flex flex-col gap-y-(--layout-padding)">

@@ -56,7 +56,7 @@ export const router = createRouter()
 			summary: "Get event slugs",
 			description: "Retrieve a paginated list of event slugs",
 			operationId: "getEventSlugs",
-			"x-cache-tags": ["assets", "events"],
+			"x-cache-tags": ["events"],
 			responses: {
 				200: {
 					description: "Success response",

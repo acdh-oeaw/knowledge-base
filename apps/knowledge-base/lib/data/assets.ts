@@ -1,13 +1,11 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import { Readable } from "node:stream";
-import type { ReadableStream } from "node:stream/web";
-
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import {
 	type Dimensions,
 	getAspectRatio,
+	getContentHash,
 	getSvgAspectRatio,
 	toDisplayDimensions,
 } from "@dariah-eric/storage/lib";
@@ -260,7 +258,7 @@ const vectorMimeType = "image/svg+xml";
  * accepts.
  */
 async function prepareImageForUpload(file: File): Promise<{
-	input: Readable | Buffer;
+	input: Buffer;
 	size: number;
 	dimensions: Dimensions | null;
 	aspectRatio: number | null;
@@ -335,11 +333,16 @@ export async function uploadAsset(params: UploadAssetParams) {
 	const { input, size, dimensions, aspectRatio } = file.type.startsWith("image/")
 		? await prepareImageForUpload(file)
 		: {
-				input: Readable.fromWeb(file.stream() as ReadableStream),
+				/**
+				 * Buffered rather than streamed so it can be hashed; uploads are capped well below memory
+				 * limits.
+				 */
+				input: Buffer.from(await file.arrayBuffer()),
 				size: file.size,
 				dimensions: null,
 				aspectRatio: null,
 			};
+	const contentHash = getContentHash(input);
 	const metadata = { "content-type": file.type, name: file.name };
 
 	const { key } = (await s3.upload({ input, prefix, metadata, size })).unwrap();
@@ -355,6 +358,7 @@ export async function uploadAsset(params: UploadAssetParams) {
 			width: dimensions?.width,
 			height: dimensions?.height,
 			aspectRatio,
+			contentHash,
 			label: label ?? file.name,
 			alt,
 			caption,

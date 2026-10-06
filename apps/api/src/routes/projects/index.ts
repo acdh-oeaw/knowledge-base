@@ -66,7 +66,7 @@ export const router = createRouter()
 			summary: "Get project slugs",
 			description: "Retrieve a paginated list of project slugs",
 			operationId: "getProjectSlugs",
-			"x-cache-tags": ["assets", "projects", "social-media"],
+			"x-cache-tags": ["projects"],
 			responses: {
 				200: {
 					description: "Success response",
