@@ -5,6 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import {
 	generateImageUrl,
@@ -328,7 +329,7 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 			},
 			with: {
 				entityVersion: {
-					columns: { updatedAt: true },
+					columns: { updatedAt: true, entityId: true },
 					with: {
 						slug: {
 							columns: { value: true },
@@ -348,10 +349,11 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 	const duration = serializeDateRange(item.duration);
 
-	const [links, relatedEntities, relatedResources] = await Promise.all([
+	const [links, relatedEntities, relatedResources, translations] = await Promise.all([
 		getAdjacentEvents(db, { id, startDate: item.duration.start }),
 		getRelatedEntities(db, id),
 		getRelatedResources(db, id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	return {
@@ -362,6 +364,7 @@ export async function getEventById(db: Database | Transaction, params: GetEventB
 		links,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }
 
@@ -467,7 +470,7 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { updatedAt: true, entityId: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -485,11 +488,12 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 	const duration = serializeDateRange(item.duration);
 
-	const [fields, links, relatedEntities, relatedResources] = await Promise.all([
+	const [fields, links, relatedEntities, relatedResources, translations] = await Promise.all([
 		getContentBlocks(db, item.id),
 		getAdjacentEvents(db, { id: item.id, startDate: item.duration.start, localeId }),
 		getRelatedEntities(db, item.id),
 		getRelatedResources(db, item.id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	return {
@@ -500,5 +504,6 @@ export async function getEventBySlug(db: Database | Transaction, params: GetEven
 		links,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }

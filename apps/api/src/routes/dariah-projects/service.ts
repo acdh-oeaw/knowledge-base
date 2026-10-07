@@ -5,6 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import { type ImageAsset, generateImageUrl, imageAssetColumns, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
@@ -345,12 +346,12 @@ export async function getDariahProjectById(
 		return null;
 	}
 
-	const [relatedEntities, relatedResources] = await Promise.all([
+	const [relatedEntities, relatedResources, projectPartners, translations] = await Promise.all([
 		getRelatedEntities(db, id),
 		getRelatedResources(db, id),
+		getPublishedProjectPartners(db, item.entityVersion.entity.id),
+		getEntityTranslations(db, item.entityVersion.entity.id),
 	]);
-
-	const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
 	const rest = item;
 
 	const participants = projectPartners
@@ -368,6 +369,7 @@ export async function getDariahProjectById(
 		coordinators,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }
 
@@ -518,13 +520,14 @@ export async function getDariahProjectBySlug(
 		return null;
 	}
 
-	const [fields, relatedEntities, relatedResources] = await Promise.all([
-		getContentBlocks(db, item.id),
-		getRelatedEntities(db, item.id),
-		getRelatedResources(db, item.id),
-	]);
-
-	const projectPartners = await getPublishedProjectPartners(db, item.entityVersion.entity.id);
+	const [fields, relatedEntities, relatedResources, projectPartners, translations] =
+		await Promise.all([
+			getContentBlocks(db, item.id),
+			getRelatedEntities(db, item.id),
+			getRelatedResources(db, item.id),
+			getPublishedProjectPartners(db, item.entityVersion.entity.id),
+			getEntityTranslations(db, item.entityVersion.entity.id),
+		]);
 	const rest = item;
 
 	const participants = projectPartners
@@ -542,5 +545,6 @@ export async function getDariahProjectBySlug(
 		coordinators,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }

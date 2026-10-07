@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	EntityTranslationSchema,
 	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
@@ -51,6 +52,7 @@ export const ImpactCaseStudySchema = v.pipe(
 		content: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
 		relatedResources: v.optional(RelatedResourcesSchema, []),
+		translations: v.array(EntityTranslationSchema),
 	}),
 	v.description("Impact case study"),
 	v.metadata({ ref: "ImpactCaseStudy" }),

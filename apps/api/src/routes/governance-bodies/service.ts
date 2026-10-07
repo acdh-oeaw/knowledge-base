@@ -6,6 +6,7 @@ import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
 
 import { getContentBlocks } from "@/lib/content-blocks";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import {
 	generateImageUrl,
@@ -235,6 +236,8 @@ async function getHardcodedWorkingGroupsGovernanceBodyDetails(db: Database | Tra
 		description: hardcodedWorkingGroupsGovernanceBody.description,
 		relatedEntities: [],
 		relatedResources: [],
+		// Not a real document — nothing to resolve a translation from.
+		translations: [],
 	};
 }
 
@@ -483,7 +486,7 @@ export async function getGovernanceBodyById(
 				},
 				with: {
 					entityVersion: {
-						columns: { updatedAt: true },
+						columns: { updatedAt: true, entityId: true },
 						with: {
 							slug: {
 								columns: { value: true },
@@ -520,6 +523,7 @@ export async function getGovernanceBodyById(
 	}
 
 	const image = generateImageUrl(item.image, imageWidth.featured);
+	const translations = await getEntityTranslations(db, item.entityVersion.entityId);
 
 	return {
 		...flattenEntityVersion(item),
@@ -529,6 +533,7 @@ export async function getGovernanceBodyById(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }
 
@@ -645,7 +650,7 @@ export async function getGovernanceBodyBySlug(
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { updatedAt: true, entityId: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -676,12 +681,14 @@ export async function getGovernanceBodyBySlug(
 		return null;
 	}
 
-	const [fields, relatedEntities, relatedResources, personsByGovernanceBody] = await Promise.all([
-		getContentBlocks(db, item.id),
-		getRelatedEntities(db, item.id),
-		getRelatedResources(db, item.id),
-		getActiveGovernanceBodyPersons(db, [item.id]),
-	]);
+	const [fields, relatedEntities, relatedResources, personsByGovernanceBody, translations] =
+		await Promise.all([
+			getContentBlocks(db, item.id),
+			getRelatedEntities(db, item.id),
+			getRelatedResources(db, item.id),
+			getActiveGovernanceBodyPersons(db, [item.id]),
+			getEntityTranslations(db, item.entityVersion.entityId),
+		]);
 
 	const image = generateImageUrl(item.image, imageWidth.featured);
 
@@ -693,5 +700,6 @@ export async function getGovernanceBodyBySlug(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }

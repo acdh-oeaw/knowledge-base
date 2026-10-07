@@ -489,6 +489,76 @@ describe("projects", () => {
 			});
 		});
 
+		it("should return a translation entry for every locale the project is published in", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const items = createItems(1);
+				await seed(db, items);
+
+				const item = items.at(0)!;
+				const id = item.version.id;
+
+				const [status, projectType, scope, [otherLocale]] = await Promise.all([
+					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+					db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "projects" } }),
+					db.query.projectScopes.findFirst({ columns: { id: true } }),
+					db
+						.insert(schema.locales)
+						.values({ languageCode: "zz", name: "Test locale", isDefault: false })
+						.returning({ id: schema.locales.id }),
+				]);
+
+				assert(status, "No entity status in database.");
+				assert(projectType, "No projects entity type in database.");
+				assert(scope, "No project scope in database.");
+				assert(otherLocale, "Failed to insert test locale.");
+
+				const translatedVersionId = uuidv7();
+				const translatedSlug = `${item.entity.slug}-zz`;
+
+				await db.insert(schema.entityVersions).values({
+					id: translatedVersionId,
+					entityId: item.entity.id,
+					statusId: status.id,
+					localeId: otherLocale.id,
+				});
+
+				await db.insert(schema.slugs).values({
+					entityVersionId: translatedVersionId,
+					entityId: item.entity.id,
+					typeId: projectType.id,
+					localeId: otherLocale.id,
+					isPublished: true,
+					value: translatedSlug,
+				});
+
+				await db.insert(schema.projects).values({
+					id: translatedVersionId,
+					name: `${item.project.name} (translated)`,
+					summary: item.project.summary,
+					duration: item.project.duration,
+					scopeId: scope.id,
+				});
+
+				const response = await client.projects[":id"].$get({
+					param: { id },
+				});
+
+				expect(response.status).toBe(200);
+
+				/** @see {@link https://github.com/honojs/hono/issues/2280} */
+				const data = (await response.json()) as Project;
+
+				expect(data.translations).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ locale: "zz", slug: translatedSlug }),
+						expect.objectContaining({ slug: item.entity.slug }),
+					]),
+				);
+			});
+		});
+
 		it("should return 400 for invalid id", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);

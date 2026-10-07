@@ -4,6 +4,7 @@ import * as v from "valibot";
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	EntityRefSchema,
+	EntityTranslationSchema,
 	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
@@ -86,6 +87,7 @@ export const PersonSchema = v.pipe(
 		socialMedia: v.array(PersonSocialMediaSchema),
 		biography: v.optional(v.array(ContentBlockSchema), []),
 		articles: v.array(PersonArticleSchema),
+		translations: v.array(EntityTranslationSchema),
 	}),
 	v.description("Person"),
 	v.metadata({ ref: "Person" }),

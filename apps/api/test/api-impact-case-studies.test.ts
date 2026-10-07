@@ -312,6 +312,79 @@ describe("impact-case-studies", () => {
 			});
 		});
 
+		it("should return a translation entry for every locale the impact case study is published in", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const items = createItems(1);
+				await seed(db, items);
+
+				const item = items.at(0)!;
+				const id = item.version.id;
+
+				const [status, articleType, asset, [otherLocale]] = await Promise.all([
+					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+					db.query.entityTypes.findFirst({
+						columns: { id: true },
+						where: { type: "impact_case_studies" },
+					}),
+					db.query.assets.findFirst({ columns: { id: true } }),
+					db
+						.insert(schema.locales)
+						.values({ languageCode: "zz", name: "Test locale", isDefault: false })
+						.returning({ id: schema.locales.id }),
+				]);
+
+				assert(status, "No entity status in database.");
+				assert(articleType, "No impact_case_studies entity type in database.");
+				assert(asset, "No assets in database.");
+				assert(otherLocale, "Failed to insert test locale.");
+
+				const translatedVersionId = uuidv7();
+				const translatedSlug = `${item.entity.slug}-zz`;
+
+				await db.insert(schema.entityVersions).values({
+					id: translatedVersionId,
+					entityId: item.entity.id,
+					statusId: status.id,
+					localeId: otherLocale.id,
+				});
+
+				await db.insert(schema.slugs).values({
+					entityVersionId: translatedVersionId,
+					entityId: item.entity.id,
+					typeId: articleType.id,
+					localeId: otherLocale.id,
+					isPublished: true,
+					value: translatedSlug,
+				});
+
+				await db.insert(schema.impactCaseStudies).values({
+					id: translatedVersionId,
+					title: `${item.impactCaseStudy.title} (translated)`,
+					summary: item.impactCaseStudy.summary,
+					publicationDate: item.impactCaseStudy.publicationDate,
+					imageId: asset.id,
+				});
+
+				const response = await client["impact-case-studies"][":id"].$get({
+					param: { id },
+				});
+
+				expect(response.status).toBe(200);
+
+				/** @see {@link https://github.com/honojs/hono/issues/2280} */
+				const data = (await response.json()) as ImpactCaseStudy;
+
+				expect(data.translations).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ locale: "zz", slug: translatedSlug }),
+						expect.objectContaining({ slug: item.entity.slug }),
+					]),
+				);
+			});
+		});
+
 		it("should return 400 for invalid id", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);

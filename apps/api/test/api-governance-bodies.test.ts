@@ -219,4 +219,106 @@ describe("governance-bodies", () => {
 			});
 		});
 	});
+
+	describe("GET /api/governance-bodies/:id", () => {
+		it("should return a translation entry for every locale the governance body is published in", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const versionId = uuidv7();
+				const entityId = uuidv7();
+				const name = f.lorem.sentence();
+				const slug = slugify(name);
+
+				const [status, entityType, governanceBodyType, defaultLocale] = await Promise.all([
+					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+					db.query.entityTypes.findFirst({
+						columns: { id: true },
+						where: { type: "organisational_units" },
+					}),
+					db.query.organisationalUnitTypes.findFirst({
+						columns: { id: true },
+						where: { type: "governance_body" },
+					}),
+					db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+				]);
+
+				assert(status, "No entity status in database.");
+				assert(entityType, "No organisational unit entity type in database.");
+				assert(governanceBodyType, "No governance_body type in database.");
+				assert(defaultLocale, "No default locale in database.");
+				const localeId = defaultLocale.id;
+
+				await db.insert(schema.entities).values({ id: entityId, typeId: entityType.id });
+				await db.insert(schema.entityVersions).values({
+					id: versionId,
+					entityId,
+					statusId: status.id,
+					localeId,
+				});
+				await db.insert(schema.slugs).values({
+					entityVersionId: versionId,
+					entityId,
+					typeId: entityType.id,
+					localeId,
+					isPublished: true,
+					value: slug,
+				});
+				await db.insert(schema.organisationalUnits).values({
+					id: versionId,
+					name,
+					summary: f.lorem.paragraph(),
+					typeId: governanceBodyType.id,
+				});
+
+				const [otherLocale] = await db
+					.insert(schema.locales)
+					.values({ languageCode: "zz", name: "Test locale", isDefault: false })
+					.returning({ id: schema.locales.id });
+
+				assert(otherLocale, "Failed to insert test locale.");
+
+				const translatedVersionId = uuidv7();
+				const translatedSlug = `${slug}-zz`;
+
+				await db.insert(schema.entityVersions).values({
+					id: translatedVersionId,
+					entityId,
+					statusId: status.id,
+					localeId: otherLocale.id,
+				});
+
+				await db.insert(schema.slugs).values({
+					entityVersionId: translatedVersionId,
+					entityId,
+					typeId: entityType.id,
+					localeId: otherLocale.id,
+					isPublished: true,
+					value: translatedSlug,
+				});
+
+				await db.insert(schema.organisationalUnits).values({
+					id: translatedVersionId,
+					name: `${name} (translated)`,
+					summary: f.lorem.paragraph(),
+					typeId: governanceBodyType.id,
+				});
+
+				const response = await client["governance-bodies"][":id"].$get({
+					param: { id: versionId },
+				});
+
+				expect(response.status).toBe(200);
+
+				const data = (await response.json()) as GovernanceBody;
+
+				expect(data.translations).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ locale: "zz", slug: translatedSlug }),
+						expect.objectContaining({ slug }),
+					]),
+				);
+			});
+		});
+	});
 });

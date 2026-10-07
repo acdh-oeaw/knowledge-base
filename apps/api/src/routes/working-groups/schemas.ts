@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	EntityTranslationSchema,
 	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
@@ -94,6 +95,7 @@ export const WorkingGroupSchema = v.pipe(
 		description: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
 		relatedResources: v.optional(RelatedResourcesSchema, []),
+		translations: v.array(EntityTranslationSchema),
 	}),
 	v.description("Working group"),
 	v.metadata({ ref: "WorkingGroup" }),

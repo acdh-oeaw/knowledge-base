@@ -5,6 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import {
 	generateImageUrl,
@@ -254,7 +255,7 @@ export async function getOpportunityById(
 			},
 			with: {
 				entityVersion: {
-					columns: { updatedAt: true },
+					columns: { updatedAt: true, entityId: true },
 					with: {
 						slug: {
 							columns: { value: true },
@@ -277,9 +278,10 @@ export async function getOpportunityById(
 		return null;
 	}
 
-	const [relatedEntities, relatedResources] = await Promise.all([
+	const [relatedEntities, relatedResources, translations] = await Promise.all([
 		getRelatedEntities(db, id),
 		getRelatedResources(db, id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	const duration = serializeDateRange(item.duration);
@@ -292,6 +294,7 @@ export async function getOpportunityById(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }
 
@@ -401,7 +404,7 @@ export async function getOpportunityBySlug(
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { updatedAt: true, entityId: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -422,10 +425,11 @@ export async function getOpportunityBySlug(
 		return null;
 	}
 
-	const [fields, relatedEntities, relatedResources] = await Promise.all([
+	const [fields, relatedEntities, relatedResources, translations] = await Promise.all([
 		getContentBlocks(db, item.id),
 		getRelatedEntities(db, item.id),
 		getRelatedResources(db, item.id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	const duration = serializeDateRange(item.duration);
@@ -438,5 +442,6 @@ export async function getOpportunityBySlug(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }

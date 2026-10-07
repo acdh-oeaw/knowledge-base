@@ -4,6 +4,7 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import {
 	generateImageUrl,
@@ -244,7 +245,7 @@ export async function getPersonById(db: Database | Transaction, params: GetPerso
 			},
 			with: {
 				entityVersion: {
-					columns: { updatedAt: true },
+					columns: { updatedAt: true, entityId: true },
 					with: {
 						slug: {
 							columns: { value: true },
@@ -263,9 +264,10 @@ export async function getPersonById(db: Database | Transaction, params: GetPerso
 		return null;
 	}
 
-	const [positions, formerPositions] = await Promise.all([
+	const [positions, formerPositions, translations] = await Promise.all([
 		getPersonPositions(db, [item.id]),
 		getPersonPositions(db, [item.id], { when: "former" }),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
@@ -278,6 +280,7 @@ export async function getPersonById(db: Database | Transaction, params: GetPerso
 		socialMedia: mapPersonSocialMedia(item.socialMedia),
 		...fields,
 		articles,
+		translations,
 	};
 }
 
@@ -381,7 +384,7 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { updatedAt: true, entityId: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -399,11 +402,12 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 
 	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 
-	const [positions, formerPositions, fields, articles] = await Promise.all([
+	const [positions, formerPositions, fields, articles, translations] = await Promise.all([
 		getPersonPositions(db, [item.id]),
 		getPersonPositions(db, [item.id], { when: "former" }),
 		getContentBlocks(db, item.id),
 		getPersonArticles(db, item.id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	return {
@@ -414,5 +418,6 @@ export async function getPersonBySlug(db: Database | Transaction, params: GetPer
 		socialMedia: mapPersonSocialMedia(item.socialMedia),
 		...fields,
 		articles,
+		translations,
 	};
 }

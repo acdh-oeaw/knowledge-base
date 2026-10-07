@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
+	EntityTranslationSchema,
 	ImageSchema,
 	PaginatedResponseSchema,
 	PaginationQuerySchema,
@@ -88,6 +89,7 @@ export const GovernanceBodySchema = v.pipe(
 		description: v.optional(v.array(ContentBlockSchema), []),
 		relatedEntities: v.optional(RelatedEntitiesSchema, []),
 		relatedResources: v.optional(RelatedResourcesSchema, []),
+		translations: v.array(EntityTranslationSchema),
 	}),
 	v.description("Governance body"),
 	v.metadata({ ref: "GovernanceBody" }),

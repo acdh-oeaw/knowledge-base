@@ -4,6 +4,7 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import { resolveLocaleContext } from "@/lib/locales";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -283,7 +284,7 @@ export async function getDocumentOrPolicyById(
 			},
 			with: {
 				entityVersion: {
-					columns: { updatedAt: true },
+					columns: { updatedAt: true, entityId: true },
 					with: {
 						slug: {
 							columns: { value: true },
@@ -306,7 +307,9 @@ export async function getDocumentOrPolicyById(
 		return null;
 	}
 
-	return { ...flattenEntityVersion(item), ...fields };
+	const translations = await getEntityTranslations(db, item.entityVersion.entityId);
+
+	return { ...flattenEntityVersion(item), ...fields, translations };
 }
 
 //
@@ -495,7 +498,7 @@ export async function getDocumentOrPolicyBySlug(
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { updatedAt: true, entityId: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -516,7 +519,10 @@ export async function getDocumentOrPolicyBySlug(
 		return null;
 	}
 
-	const fields = await getContentBlocks(db, item.id);
+	const [fields, translations] = await Promise.all([
+		getContentBlocks(db, item.id),
+		getEntityTranslations(db, item.entityVersion.entityId),
+	]);
 
-	return { ...flattenEntityVersion(item), ...fields };
+	return { ...flattenEntityVersion(item), ...fields, translations };
 }

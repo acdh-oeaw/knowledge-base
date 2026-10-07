@@ -7,6 +7,7 @@ import { getAssetDownloadUrl } from "@/lib/asset-download";
 import { assetsByPosition } from "@/lib/assets-by-position";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import { generateImageUrl, imageAssetColumns, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
@@ -358,9 +359,10 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 		};
 	});
 
-	const [projectPartners, affiliatedPersons] = await Promise.all([
+	const [projectPartners, affiliatedPersons, translations] = await Promise.all([
 		getPublishedProjectPartners(db, item.entityVersion.entity.id),
 		getPublishedProjectAffiliatedPersons(db, item.entityVersion.entity.id),
+		getEntityTranslations(db, item.entityVersion.entity.id),
 	]);
 	const rest = flattenEntityVersion(item);
 
@@ -384,6 +386,7 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 		funders,
 		partners,
 		affiliatedPersons,
+		translations,
 		...fields,
 	};
 }
@@ -559,9 +562,10 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 
 	const fields = await getContentBlocks(db, item.id);
 
-	const [projectPartners, affiliatedPersons] = await Promise.all([
+	const [projectPartners, affiliatedPersons, translations] = await Promise.all([
 		getPublishedProjectPartners(db, item.entityVersion.entity.id),
 		getPublishedProjectAffiliatedPersons(db, item.entityVersion.entity.id),
+		getEntityTranslations(db, item.entityVersion.entity.id),
 	]);
 	const rest = flattenEntityVersion(item);
 
@@ -585,6 +589,7 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 		funders,
 		partners,
 		affiliatedPersons,
+		translations,
 		...fields,
 	};
 }

@@ -144,6 +144,27 @@ export const EntityRefSchema = v.pipe(
 export type EntityRef = v.InferOutput<typeof EntityRefSchema>;
 
 /**
+ * A locale an entity is published in, with that locale's own slug — for a language switcher on a
+ * detail page to link to the same entity in another language. See `getEntityTranslations` in
+ * `@/lib/entity-translations`, which every entity-detail route uses to populate this.
+ */
+export const EntityTranslationSchema = v.pipe(
+	v.object({
+		locale: v.pipe(
+			v.string(),
+			v.description(
+				'BCP 47-style locale code (e.g. "de" or "de-AT"), matching the `?locale=` query param this api accepts elsewhere',
+			),
+		),
+		slug: v.string(),
+	}),
+	v.description("A locale this entity is published in, with that locale's own slug"),
+	v.metadata({ ref: "EntityTranslation" }),
+);
+
+export type EntityTranslation = v.InferOutput<typeof EntityTranslationSchema>;
+
+/**
  * A person's roles in organisational units — a relation, so the role, its note and the period it is
  * held for sit alongside a reference to the unit itself. Whether a list holds current or former
  * roles is carried by the field it is returned in, not by the items.

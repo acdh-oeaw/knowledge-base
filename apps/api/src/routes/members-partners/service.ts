@@ -6,6 +6,7 @@ import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
 
 import { type ContentBlock, getContentBlocks } from "@/lib/content-blocks";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { generateImageUrl, toImageAsset, withResolvedCaption } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
 import { getPersonPositions } from "@/lib/persons";
@@ -83,6 +84,7 @@ function fromMembersAndPartners(db: Database | Transaction, ctx: MembersAndPartn
 	return db
 		.select({
 			id: schema.organisationalUnits.id,
+			entityId: eligible.entityId,
 			metadata: schema.organisationalUnits.metadata,
 			name: schema.organisationalUnits.name,
 			summary: schema.organisationalUnits.summary,
@@ -130,6 +132,7 @@ function fromMembersAndPartners(db: Database | Transaction, ctx: MembersAndPartn
 
 interface MembersAndPartnersRow {
 	id: string;
+	entityId: string;
 	metadata: unknown;
 	name: string;
 	summary: string | null;
@@ -294,9 +297,6 @@ function hasContent(block: ContentBlock): boolean {
 		case "rich_text": {
 			return hasRichTextContent(block.content);
 		}
-		case "media_text": {
-			return hasRichTextContent(block.content);
-		}
 		case "accordion": {
 			return block.items.some(
 				(item) => item.title.trim().length > 0 || item.blocks.some(hasContent),
@@ -313,10 +313,22 @@ function hasContent(block: ContentBlock): boolean {
 				(block.ctas?.length ?? 0) > 0
 			);
 		}
+		// `media_text`'s image is required (not nullable), unlike `hero`'s optional one, so it is
+		// always content-bearing regardless of its text — grouped with the other always-true types.
 		case "data":
 		case "embed":
-		case "image": {
+		case "image":
+		case "media_text": {
 			return true;
+		}
+		default: {
+			// Exhaustiveness check: if `ContentBlock` ever gains a type not handled above, this line
+			// fails to compile (the unhandled member can't be assigned to `never`) — the `return`
+			// right after is what makes this function's return type `boolean` rather than
+			// `boolean | undefined` regardless of whether a given TS version's control-flow analysis
+			// also recognizes the `switch` above as exhaustive on its own.
+			const exhaustiveCheck: never = block;
+			return exhaustiveCheck;
 		}
 	}
 }
@@ -822,12 +834,14 @@ async function buildMemberOrPartnerDetail(
 	const status = item.status;
 	assert(status, `Members-and-partners status missing for document version "${item.id}".`);
 
-	const [fields, relatedEntities, relatedResources, socialMediaMap] = await Promise.all([
-		getContentBlocks(db, item.id),
-		getRelatedEntities(db, item.id),
-		getRelatedResources(db, item.id),
-		getSocialMediaByOrganisationalUnitIds(db, [item.id]),
-	]);
+	const [fields, relatedEntities, relatedResources, socialMediaMap, translations] =
+		await Promise.all([
+			getContentBlocks(db, item.id),
+			getRelatedEntities(db, item.id),
+			getRelatedResources(db, item.id),
+			getSocialMediaByOrganisationalUnitIds(db, [item.id]),
+			getEntityTranslations(db, item.entityId),
+		]);
 
 	const base = {
 		id: item.id,
@@ -842,6 +856,7 @@ async function buildMemberOrPartnerDetail(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 
 	if (status === "is_member_of" || status === "is_observer_of") {

@@ -2,7 +2,12 @@ import * as schema from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
 import { ContentBlockSchema } from "@/lib/content-blocks";
-import { LocaleQuerySchema, PaginatedResponseSchema, PaginationQuerySchema } from "@/lib/schemas";
+import {
+	EntityTranslationSchema,
+	LocaleQuerySchema,
+	PaginatedResponseSchema,
+	PaginationQuerySchema,
+} from "@/lib/schemas";
 
 const DocumentPolicyGroupSchema = v.nullable(
 	v.object({
@@ -65,6 +70,7 @@ export const DocumentOrPolicySchema = v.pipe(
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 		description: v.optional(v.array(ContentBlockSchema), []),
 		group: DocumentPolicyGroupSchema,
+		translations: v.array(EntityTranslationSchema),
 	}),
 	v.description("Document or policy"),
 	v.metadata({ ref: "DocumentOrPolicy" }),

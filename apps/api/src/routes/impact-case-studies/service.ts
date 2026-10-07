@@ -4,6 +4,7 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import { getContentBlocks } from "@/lib/content-blocks";
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { flattenEntityVersion } from "@/lib/entity-version";
 import {
 	generateImageUrl,
@@ -262,7 +263,7 @@ export async function getImpactCaseStudyById(
 			},
 			with: {
 				entityVersion: {
-					columns: { updatedAt: true },
+					columns: { updatedAt: true, entityId: true },
 					with: {
 						slug: {
 							columns: { value: true },
@@ -280,9 +281,10 @@ export async function getImpactCaseStudyById(
 		return null;
 	}
 
-	const [relatedEntities, relatedResources] = await Promise.all([
+	const [relatedEntities, relatedResources, translations] = await Promise.all([
 		getRelatedEntities(db, id),
 		getRelatedResources(db, id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
@@ -296,6 +298,7 @@ export async function getImpactCaseStudyById(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }
 
@@ -407,7 +410,7 @@ export async function getImpactCaseStudyBySlug(
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { updatedAt: true, entityId: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -427,10 +430,11 @@ export async function getImpactCaseStudyBySlug(
 	const image = generateImageUrl(withResolvedCaption(item.image, item), imageWidth.featured);
 	const { publicationDate, ...data } = flattenEntityVersion(item);
 
-	const [fields, relatedEntities, relatedResources] = await Promise.all([
+	const [fields, relatedEntities, relatedResources, translations] = await Promise.all([
 		getContentBlocks(db, item.id),
 		getRelatedEntities(db, item.id),
 		getRelatedResources(db, item.id),
+		getEntityTranslations(db, item.entityVersion.entityId),
 	]);
 
 	return {
@@ -441,5 +445,6 @@ export async function getImpactCaseStudyBySlug(
 		...fields,
 		relatedEntities,
 		relatedResources,
+		translations,
 	};
 }
