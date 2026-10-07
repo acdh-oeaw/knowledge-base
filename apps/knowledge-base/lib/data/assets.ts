@@ -17,7 +17,7 @@ import {
 } from "@/lib/data/selected-image";
 import { db } from "@/lib/db";
 import { matchesAllTerms } from "@/lib/db/search";
-import { and, count, desc, eq, like } from "@/lib/db/sql";
+import { and, count, desc, eq, inArray, like } from "@/lib/db/sql";
 import { type ImageUrlOptions, images } from "@/lib/images";
 import { type AssetPrefix, assetPrefixes, storage as s3 } from "@/lib/storage";
 
@@ -141,6 +141,80 @@ export async function getMediaLibraryAssets(params: GetMediaLibraryAssetsParams)
 	});
 
 	return { items, total: aggregate.at(0)?.total ?? 0 };
+}
+
+export interface AssetOption {
+	id: string;
+	name: string;
+	description: string;
+	mimeType: string;
+	url: string;
+	key: string;
+}
+
+function toAssetOption(asset: {
+	id: string;
+	key: string;
+	label: string;
+	mimeType: string;
+	url: string;
+}): AssetOption {
+	return {
+		id: asset.id,
+		name: asset.label,
+		description: asset.mimeType,
+		mimeType: asset.mimeType,
+		url: asset.url,
+		key: asset.key,
+	};
+}
+
+interface GetAssetOptionsParams {
+	imageUrlOptions: ImageUrlOptions;
+	/** @default 20 */
+	limit?: number;
+	/** @default 0 */
+	offset?: number;
+	q?: string;
+}
+
+export async function getAssetOptions(
+	params: GetAssetOptionsParams,
+): Promise<{ items: Array<AssetOption>; total: number }> {
+	const { items, total } = await getMediaLibraryAssets(params);
+
+	return { items: items.map(toAssetOption), total };
+}
+
+export async function getAssetOptionsByIds(
+	ids: ReadonlyArray<string>,
+	imageUrlOptions: ImageUrlOptions,
+): Promise<Array<AssetOption>> {
+	if (ids.length === 0) {
+		return [];
+	}
+
+	const rows = await db
+		.select({
+			id: schema.assets.id,
+			key: schema.assets.key,
+			label: schema.assets.label,
+			mimeType: schema.assets.mimeType,
+		})
+		.from(schema.assets)
+		.where(inArray(schema.assets.id, [...ids]));
+
+	const optionById = new Map(
+		rows.map((row) => {
+			const { url } = images.generateSignedImageUrl({ key: row.key, options: imageUrlOptions });
+			return [row.id, toAssetOption({ ...row, url })] as const;
+		}),
+	);
+
+	return ids.flatMap((id) => {
+		const option = optionById.get(id);
+		return option != null ? [option] : [];
+	});
 }
 
 interface GetAssetByKeyParams {

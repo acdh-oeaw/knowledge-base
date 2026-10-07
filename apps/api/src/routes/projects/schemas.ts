@@ -47,6 +47,16 @@ export const ProjectSocialMediaSchema = v.pipe(
 	v.metadata({ ref: "ProjectSocialMedia" }),
 );
 
+export const ProjectAssetSchema = v.pipe(
+	v.object({
+		label: v.string(),
+		mimeType: v.string(),
+		url: v.string(),
+	}),
+	v.description("Project additional asset — an image or file, such as a PDF"),
+	v.metadata({ ref: "ProjectAsset" }),
+);
+
 export const ProjectBaseSchema = v.pipe(
 	v.object({
 		...v.pick(schema.ProjectSelectSchema, ["id", "name", "acronym", "summary", "topic", "funding"])
@@ -60,6 +70,7 @@ export const ProjectBaseSchema = v.pipe(
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
 		call: v.nullable(v.object({ call: v.picklist(schema.projectCallsEnum) })),
 		socialMedia: v.array(ProjectSocialMediaSchema),
+		assets: v.array(ProjectAssetSchema),
 		publishedAt: v.pipe(v.string(), v.isoTimestamp()),
 	}),
 	v.description("Project"),
@@ -89,6 +100,7 @@ export const ProjectSchema = v.pipe(
 		scope: v.object({ scope: v.picklist(schema.projectScopesEnum) }),
 		call: v.nullable(v.object({ call: v.picklist(schema.projectCallsEnum) })),
 		socialMedia: v.array(ProjectSocialMediaSchema),
+		assets: v.array(ProjectAssetSchema),
 		funders: v.array(ProjectOrganisationalUnitSchema),
 		partners: v.array(ProjectOrganisationalUnitSchema),
 		affiliatedPersons: v.array(ProjectPersonSchema),

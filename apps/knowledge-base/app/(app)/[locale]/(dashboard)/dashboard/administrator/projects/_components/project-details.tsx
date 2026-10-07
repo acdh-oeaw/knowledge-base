@@ -10,6 +10,7 @@ import { Note } from "@dariah-eric/ui/note";
 import { useExtracted, useFormatter } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
+import { AssetPreview } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-preview";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
@@ -64,6 +65,7 @@ interface ProjectDetailsProps {
 			url: string;
 			type: { type: string };
 		}>;
+		assets: Array<{ id: string; key: string; label: string; mimeType: string; url: string }>;
 	} & { image: { key: string; label: string; url: string } | null };
 	publishAction: (documentId: string) => Promise<unknown>;
 	discardDraftAction?: (documentId: string) => Promise<unknown>;
@@ -191,6 +193,29 @@ export function ProjectDetails(props: Readonly<ProjectDetailsProps>): ReactNode 
 									{" · "}
 									<a className="underline" href={item.url} rel="noreferrer" target="_blank">
 										{item.url}
+									</a>
+								</li>
+							))}
+						</ul>
+					) : null}
+				</DescriptionDetails>
+
+				<DescriptionTerm>{t("Additional assets")}</DescriptionTerm>
+				<DescriptionDetails>
+					{project.assets.length > 0 ? (
+						<ul className="flex flex-col gap-2">
+							{project.assets.map((asset) => (
+								<li key={asset.id} className="flex items-center gap-2 text-sm">
+									<AssetPreview
+										alt={asset.label}
+										className="shrink-0 rounded-sm block-10 inline-10"
+										imageClassName="object-cover"
+										mimeType={asset.mimeType}
+										src={asset.url}
+										storageKey={asset.key}
+									/>
+									<a className="underline" href={asset.url} rel="noreferrer" target="_blank">
+										{asset.label}
 									</a>
 								</li>
 							))}

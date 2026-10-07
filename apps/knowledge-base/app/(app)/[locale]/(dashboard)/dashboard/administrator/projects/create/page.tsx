@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { ProjectCreateForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-create-form";
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { getMediaLibraryAssets } from "@/lib/data/assets";
+import { getAssetOptions, getMediaLibraryAssets } from "@/lib/data/assets";
 import { getProjectCreateDataForAdmin } from "@/lib/data/cached/projects";
 import { getDefaultLocale } from "@/lib/data/locales";
 import { getEntityRelationOptions, getResourceRelationOptions } from "@/lib/data/relations";
@@ -40,16 +40,20 @@ export default async function DashboardAdministratorCreateProjectPage(
 		defaultLocale,
 		initialRelatedEntities,
 		initialRelatedResources,
+		initialAssetOptions,
 	] = await Promise.all([
 		getProjectCreateDataForAdmin(user),
 		getDefaultLocale(),
 		getEntityRelationOptions(),
 		getResourceRelationOptions(),
+		getAssetOptions({ imageUrlOptions: imageGridOptions }),
 	]);
 
 	return (
 		<ProjectCreateForm
 			defaultLocaleName={defaultLocale.name}
+			initialAssetItems={initialAssetOptions.items}
+			initialAssetTotal={initialAssetOptions.total}
 			initialAssets={initialAssets}
 			initialRelatedEntityItems={initialRelatedEntities.items}
 			initialRelatedEntityTotal={initialRelatedEntities.total}

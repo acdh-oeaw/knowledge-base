@@ -8,6 +8,7 @@ import { Fragment, type ReactNode } from "react";
 import { EntityFormHeader } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form";
 import { ProjectForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form";
 import { createProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/create-project.action";
+import type { AssetOption } from "@/lib/data/assets";
 
 interface ProjectCreateFormProps {
 	defaultLocaleName: string;
@@ -16,6 +17,8 @@ interface ProjectCreateFormProps {
 	calls: Array<Pick<schema.ProjectCall, "id" | "call">>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
+	initialAssetItems: Array<AssetOption>;
+	initialAssetTotal: number;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
 	initialRelatedResourceItems: Array<{ id: string; name: string; description?: string }>;
@@ -30,6 +33,8 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 		calls,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
+		initialAssetItems,
+		initialAssetTotal,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
 		initialRelatedResourceItems,
@@ -50,6 +55,8 @@ export function ProjectCreateForm(props: Readonly<ProjectCreateFormProps>): Reac
 
 			<ProjectForm
 				formAction={createProjectAction}
+				initialAssetItems={initialAssetItems}
+				initialAssetTotal={initialAssetTotal}
 				initialAssets={initialAssets}
 				initialRelatedEntityItems={initialRelatedEntityItems}
 				initialRelatedEntityTotal={initialRelatedEntityTotal}

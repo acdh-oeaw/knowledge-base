@@ -33,12 +33,30 @@ export const projectsLifecycleAdapter: EntityLifecycleAdapter = {
 				}),
 			);
 		}
+		const assets = await tx
+			.select({
+				position: schema.projectsToAssets.position,
+				assetId: schema.projectsToAssets.assetId,
+			})
+			.from(schema.projectsToAssets)
+			.where(eq(schema.projectsToAssets.projectId, sourceVersionId));
+
+		if (assets.length > 0) {
+			await tx.insert(schema.projectsToAssets).values(
+				assets.map((a) => {
+					return { projectId: targetVersionId, ...a };
+				}),
+			);
+		}
 	},
 
 	async wipeSubtype(tx, versionId) {
 		await tx
 			.delete(schema.projectsToSocialMedia)
 			.where(eq(schema.projectsToSocialMedia.projectId, versionId));
+		await tx
+			.delete(schema.projectsToAssets)
+			.where(eq(schema.projectsToAssets.projectId, versionId));
 		await tx.delete(schema.projects).where(eq(schema.projects.id, versionId));
 	},
 
@@ -57,6 +75,10 @@ export const projectsLifecycleAdapter: EntityLifecycleAdapter = {
 			.where(eq(schema.projectsToSocialMedia.projectId, targetVersionId));
 
 		await tx
+			.delete(schema.projectsToAssets)
+			.where(eq(schema.projectsToAssets.projectId, targetVersionId));
+
+		await tx
 			.update(schema.projects)
 			.set(subtypePayload(source))
 			.where(eq(schema.projects.id, targetVersionId));
@@ -73,6 +95,21 @@ export const projectsLifecycleAdapter: EntityLifecycleAdapter = {
 			await tx.insert(schema.projectsToSocialMedia).values(
 				socialMedia.map((s) => {
 					return { projectId: targetVersionId, ...s };
+				}),
+			);
+		}
+		const assets = await tx
+			.select({
+				position: schema.projectsToAssets.position,
+				assetId: schema.projectsToAssets.assetId,
+			})
+			.from(schema.projectsToAssets)
+			.where(eq(schema.projectsToAssets.projectId, sourceVersionId));
+
+		if (assets.length > 0) {
+			await tx.insert(schema.projectsToAssets).values(
+				assets.map((a) => {
+					return { projectId: targetVersionId, ...a };
 				}),
 			);
 		}

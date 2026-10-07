@@ -495,6 +495,10 @@ export const relations = defineRelations(schema, (r) => {
 				from: r.projects.id.through(r.projectsToSocialMedia.projectId),
 				to: r.socialMedia.id.through(r.projectsToSocialMedia.socialMediaId),
 			}),
+			assets: r.many.assets({
+				from: r.projects.id.through(r.projectsToAssets.projectId),
+				to: r.assets.id.through(r.projectsToAssets.assetId),
+			}),
 			projectsToOrganisationalUnits: r.many.projectsToOrganisationalUnits({
 				from: r.projects.id,
 				to: r.projectsToOrganisationalUnits.projectDocumentId,
@@ -711,6 +715,18 @@ export const relations = defineRelations(schema, (r) => {
 			socialMedia: r.one.socialMedia({
 				from: r.projectsToSocialMedia.socialMediaId,
 				to: r.socialMedia.id,
+				optional: false,
+			}),
+		},
+		projectsToAssets: {
+			project: r.one.projects({
+				from: r.projectsToAssets.projectId,
+				to: r.projects.id,
+				optional: false,
+			}),
+			asset: r.one.assets({
+				from: r.projectsToAssets.assetId,
+				to: r.assets.id,
 				optional: false,
 			}),
 		},

@@ -9,6 +9,7 @@ import { DatePicker, DatePickerTrigger } from "@dariah-eric/ui/date-picker";
 import { Description, FieldError, Label } from "@dariah-eric/ui/field";
 import { Form } from "@dariah-eric/ui/form";
 import { FormStatus } from "@dariah-eric/ui/form-status";
+import { GridListDescription, GridListLabel, GridListStart } from "@dariah-eric/ui/grid-list";
 import { Input } from "@dariah-eric/ui/input";
 import {
 	ModalBody,
@@ -29,6 +30,7 @@ import { CalendarDate } from "@internationalized/date";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode, useActionState, useState, useTransition } from "react";
 
+import { AssetPreview } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-preview";
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { EntityFormActions } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-form-actions";
 import { EntityRelationsFields } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-relations-fields";
@@ -41,11 +43,15 @@ import {
 	ImageSelectField,
 	type SelectedImage,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import type { MediaLibraryAsset } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-asset";
+import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
 import { RichTextContentBlocksField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/rich-text-content-blocks-field";
 import {
 	type CreatedSocialMedia,
 	createSocialMediaAction,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/create-social-media.action";
+import { documentMimeTypes } from "@/config/assets.config";
+import type { AssetOption } from "@/lib/data/assets";
 import { useProjectCallLabel } from "@/lib/format-project-call";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
@@ -72,6 +78,59 @@ async function fetchSocialMediaOptionsPage(
 	return (await response.json()) as { items: Array<AsyncOption>; total: number };
 }
 
+async function fetchAssetOptionsPage(
+	params: Readonly<AsyncOptionsFetchPageParams>,
+): Promise<{ items: Array<AssetOption>; total: number }> {
+	const searchParams = new URLSearchParams({
+		limit: String(params.limit),
+		offset: String(params.offset),
+	});
+
+	if (params.q !== "") {
+		searchParams.set("q", params.q);
+	}
+
+	const response = await fetch(`/api/assets/options?${searchParams.toString()}`, {
+		signal: params.signal,
+	});
+
+	if (!response.ok) {
+		throw new Error("Failed to load asset options.");
+	}
+
+	return (await response.json()) as { items: Array<AssetOption>; total: number };
+}
+
+/**
+ * `AsyncListSelect`'s `renderSelectedItem` is typed to plain `AsyncOption`, since a selected id
+ * that is not among `initialItems`/`selectedItems`/`displayedItems` falls back to a bare `{ id,
+ * name }` (see its `selectedItemMap`) — so the asset-specific fields read here are defensively
+ * optional.
+ */
+function renderSelectedAssetOption(item: AsyncOption): ReactNode {
+	const asset = item as Partial<AssetOption>;
+	const mimeType = asset.mimeType ?? "";
+
+	return (
+		<GridListStart>
+			<AssetPreview
+				alt={item.name}
+				className="shrink-0 rounded-sm block-8 inline-8"
+				imageClassName="object-cover"
+				mimeType={mimeType}
+				src={asset.url ?? ""}
+				storageKey={asset.key ?? ""}
+			/>
+			<div className="flex flex-col min-inline-0">
+				<GridListLabel className="truncate">{item.name}</GridListLabel>
+				{mimeType !== "" ? (
+					<GridListDescription className="truncate">{mimeType}</GridListDescription>
+				) : null}
+			</div>
+		</GridListStart>
+	);
+}
+
 interface ProjectFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	/**
@@ -80,6 +139,7 @@ interface ProjectFormProps {
 	 * to `true` (the create form has no locale concept, and always starts in the default locale).
 	 */
 	isDefaultLocale?: boolean;
+	/** The content locale of the version being edited — used to gate the German call-label override. */
 	selectedLocaleCode?: string;
 	project?: Pick<
 		schema.Project,
@@ -103,6 +163,10 @@ interface ProjectFormProps {
 	initialSocialMediaTotal: number;
 	selectedSocialMediaItems?: Array<AsyncOption>;
 	initialSocialMediaIds?: Array<string>;
+	initialAssetItems: Array<AssetOption>;
+	initialAssetTotal: number;
+	selectedAssetItems?: Array<AssetOption>;
+	initialAssetIds?: Array<string>;
 	initialRelatedEntityIds?: Array<string>;
 	initialRelatedEntityItems: Array<AsyncOption>;
 	initialRelatedEntityTotal: number;
@@ -126,6 +190,10 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 		initialSocialMediaTotal,
 		selectedSocialMediaItems,
 		initialSocialMediaIds,
+		initialAssetItems,
+		initialAssetTotal,
+		selectedAssetItems,
+		initialAssetIds,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -153,6 +221,32 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 	const [localSocialMediaItems, setLocalSocialMediaItems] = useState<Array<AsyncOption>>(
 		() => selectedSocialMediaItems ?? [],
 	);
+
+	const [selectedAssetIds, setSelectedAssetIds] = useState<Array<string>>(initialAssetIds ?? []);
+
+	const [localAssetItems, setLocalAssetItems] = useState<Array<AssetOption>>(
+		() => selectedAssetItems ?? [],
+	);
+
+	const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
+
+	function handleAddAsset(key: string, url: string, asset?: MediaLibraryAsset): void {
+		if (asset?.id == null) {
+			return;
+		}
+
+		const id = asset.id;
+		const mimeType = asset.mimeType ?? "";
+
+		setLocalAssetItems((prev) => {
+			if (prev.some((item) => item.id === id)) {
+				return prev;
+			}
+			return [...prev, { id, name: asset.label, description: mimeType, mimeType, url, key }];
+		});
+		setSelectedAssetIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+		setIsAddAssetOpen(false);
+	}
 
 	const [isCreateSocialMediaOpen, setIsCreateSocialMediaOpen] = useState(false);
 	const [createSocialMediaFormKey, setCreateSocialMediaFormKey] = useState(0);
@@ -426,6 +520,49 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 					</Button>
 					{selectedSocialMediaIds.map((id, index) => (
 						<input key={id} name={`socialMediaIds.${String(index)}`} type="hidden" value={id} />
+					))}
+				</FormSection>
+
+				<Separator className="my-6" />
+
+				<FormSection
+					description={t("Attach additional images and files, such as PDFs, to this project.")}
+					title={t("Additional assets")}
+				>
+					<AsyncListSelect
+						addLabel={t("Add existing asset")}
+						aria-label={t("Additional assets")}
+						emptySelectionMessage={t("No additional assets")}
+						fetchPage={fetchAssetOptionsPage}
+						initialItems={initialAssetItems}
+						initialTotal={initialAssetTotal}
+						isOrderable={true}
+						onChange={setSelectedAssetIds}
+						renderSelectedItem={renderSelectedAssetOption}
+						selectedItems={localAssetItems}
+						value={selectedAssetIds}
+					/>
+					<Button
+						className="self-start"
+						intent="outline"
+						onPress={() => {
+							setIsAddAssetOpen(true);
+						}}
+					>
+						<PlusIcon />
+						{t("Upload asset")}
+					</Button>
+					<MediaLibraryDialog
+						acceptedFileTypes={documentMimeTypes}
+						defaultPrefix="documents"
+						initialAssets={initialAssets}
+						isOpen={isAddAssetOpen}
+						onOpenChange={setIsAddAssetOpen}
+						onSelect={handleAddAsset}
+						prefixes={["documents"]}
+					/>
+					{selectedAssetIds.map((id, index) => (
+						<input key={id} name={`assetIds.${String(index)}`} type="hidden" value={id} />
 					))}
 				</FormSection>
 

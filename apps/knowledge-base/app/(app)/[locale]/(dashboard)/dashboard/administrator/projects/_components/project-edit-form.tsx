@@ -20,6 +20,7 @@ import { ProjectPartnersSection } from "@/app/(app)/[locale]/(dashboard)/dashboa
 import { discardProjectDraftAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/discard-project-draft.action";
 import { publishProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/publish-project.action";
 import { updateProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/update-project.action";
+import type { AssetOption } from "@/lib/data/assets";
 
 interface ProjectEditFormProps {
 	initialAssets: Array<{ key: string; label: string; url: string }>;
@@ -48,6 +49,10 @@ interface ProjectEditFormProps {
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
 	selectedSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
+	initialAssetItems: Array<AssetOption>;
+	initialAssetTotal: number;
+	selectedAssetItems: Array<AssetOption>;
+	initialAssetIds: Array<string>;
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
 	initialRelatedEntityTotal: number;
@@ -91,6 +96,10 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
 		selectedSocialMediaItems,
+		initialAssetItems,
+		initialAssetTotal,
+		selectedAssetItems,
+		initialAssetIds,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
 		initialRelatedEntityTotal,
@@ -139,6 +148,9 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 						selectedLocaleCode={selectedLocaleCode}
 						isPublished={isPublished}
 						formAction={updateProjectAction}
+						initialAssetIds={initialAssetIds}
+						initialAssetItems={initialAssetItems}
+						initialAssetTotal={initialAssetTotal}
 						initialAssets={initialAssets}
 						initialRelatedEntityIds={initialRelatedEntityIds}
 						initialRelatedEntityItems={initialRelatedEntityItems}
@@ -152,6 +164,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 						project={project}
 						scopes={scopes}
 						calls={calls}
+						selectedAssetItems={selectedAssetItems}
 						selectedRelatedEntities={selectedRelatedEntities}
 						selectedRelatedResources={selectedRelatedResources}
 						selectedSocialMediaItems={selectedSocialMediaItems}
@@ -165,6 +178,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 						roles={roles}
 					/>
 				</TabPanel>
+
 				<TabPanel id="affiliated-people" shouldPreserveState={true}>
 					<ProjectAffiliationsSection
 						affiliations={initialAffiliations}

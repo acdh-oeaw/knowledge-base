@@ -12,6 +12,7 @@ import {
 	updateDraftDocumentSlug,
 } from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
+import { syncProjectAssets } from "@/lib/data/project-assets-relations";
 import { projectsLifecycleAdapter } from "@/lib/data/projects.lifecycle-adapter";
 import { syncEntityRelations } from "@/lib/data/relations";
 import { syncProjectSocialMedia } from "@/lib/data/social-media-relations";
@@ -72,6 +73,7 @@ export const updateProjectAction = createMutationAction({
 		);
 
 		await syncProjectSocialMedia(tx, draftVersionId, input.socialMediaIds);
+		await syncProjectAssets(tx, draftVersionId, input.assetIds);
 
 		await syncEntityRelations(
 			tx,

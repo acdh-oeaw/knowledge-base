@@ -236,3 +236,24 @@ export const dariahProjects = p.snakeCase
 		scopeId: p.uuid("scope_id").notNull(),
 	})
 	.existing();
+
+export const projectsToAssets = p.snakeCase.table("projects_to_assets", {
+	id: p.uuid("id").primaryKey().default(uuidv7()),
+	projectId: p
+		.uuid("project_id")
+		.notNull()
+		.references(() => projects.id),
+	assetId: p
+		.uuid("asset_id")
+		.notNull()
+		.references(() => assets.id),
+	position: p.integer("position").notNull().default(0),
+	...f.timestamps(),
+});
+
+export type ProjectToAsset = typeof projectsToAssets.$inferSelect;
+export type ProjectToAssetInput = typeof projectsToAssets.$inferInsert;
+
+export const ProjectToAssetSelectSchema = createSelectSchema(projectsToAssets);
+export const ProjectToAssetInsertSchema = createInsertSchema(projectsToAssets);
+export const ProjectToAssetUpdateSchema = createUpdateSchema(projectsToAssets);

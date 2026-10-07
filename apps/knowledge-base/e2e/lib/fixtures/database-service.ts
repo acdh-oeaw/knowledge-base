@@ -1580,6 +1580,7 @@ export class DatabaseService {
 			personDocumentId: string;
 		}>;
 		socialMediaIds: Array<string>;
+		assetIds: Array<string>;
 	} | null> {
 		const project = await this.getProjectByName(name);
 
@@ -1615,10 +1616,17 @@ export class DatabaseService {
 			.where(eq(schema.projectsToSocialMedia.projectId, project.id))
 			.orderBy(schema.projectsToSocialMedia.position);
 
+		const assets = await this.db
+			.select({ assetId: schema.projectsToAssets.assetId })
+			.from(schema.projectsToAssets)
+			.where(eq(schema.projectsToAssets.projectId, project.id))
+			.orderBy(schema.projectsToAssets.position);
+
 		return {
 			partners,
 			affiliations,
 			socialMediaIds: socialMedia.map((item) => item.socialMediaId),
+			assetIds: assets.map((item) => item.assetId),
 		};
 	}
 

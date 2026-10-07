@@ -6,6 +6,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { CreateProjectActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/create-project.schema";
 import { createDraftDocumentWithSlug, publishVersion } from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
+import { syncProjectAssets } from "@/lib/data/project-assets-relations";
 import { projectsLifecycleAdapter } from "@/lib/data/projects.lifecycle-adapter";
 import { filterToPublishedDocumentIds } from "@/lib/data/relations";
 import { syncProjectSocialMedia } from "@/lib/data/social-media-relations";
@@ -85,6 +86,7 @@ export const createProjectAction = createMutationAction({
 		}
 
 		await syncProjectSocialMedia(tx, versionId, input.socialMediaIds);
+		await syncProjectAssets(tx, versionId, input.assetIds);
 
 		if (shouldSaveAndPublish(formData)) {
 			await publishVersion(tx, documentId, projectsLifecycleAdapter);

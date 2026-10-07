@@ -9,7 +9,7 @@ import { ProjectEditForm } from "@/app/(app)/[locale]/(dashboard)/dashboard/admi
 import { imageGridOptions } from "@/config/assets.config";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getEntityContentBlocks } from "@/lib/content-blocks-service";
-import { getMediaLibraryAssets } from "@/lib/data/assets";
+import { getAssetOptions, getAssetOptionsByIds, getMediaLibraryAssets } from "@/lib/data/assets";
 import {
 	ensureLocalizedDraftVersion,
 	getDocumentLifecycleStateForLocale,
@@ -174,9 +174,11 @@ export default async function DashboardAdministratorEditProjectPage(
 		existingPartners,
 		existingAffiliations,
 		existingSocialMedia,
+		existingAssets,
 		initialRelatedEntities,
 		initialRelatedResources,
 		relations,
+		initialAssetOptions,
 	] = await Promise.all([
 		getEntityContentBlocks(project.id, "description"),
 		db.query.projectScopes.findMany({
@@ -240,9 +242,15 @@ export default async function DashboardAdministratorEditProjectPage(
 			orderBy: { position: "asc" },
 			columns: { socialMediaId: true },
 		}),
+		db.query.projectsToAssets.findMany({
+			where: { projectId: project.id },
+			orderBy: { position: "asc" },
+			columns: { assetId: true },
+		}),
 		getEntityRelationOptions(),
 		getResourceRelationOptions(),
 		getEntityRelations(documentId),
+		getAssetOptions({ imageUrlOptions: imageGridOptions }),
 	]);
 
 	const [selectedRelatedEntities, selectedRelatedResources] = await Promise.all([
@@ -276,12 +284,19 @@ export default async function DashboardAdministratorEditProjectPage(
 
 	const selectedSocialMediaItems = await getSocialMediaOptionsByIds(initialSocialMediaIds);
 
+	const initialAssetIds = existingAssets.map((row) => row.assetId);
+
+	const selectedAssetItems = await getAssetOptionsByIds(initialAssetIds, imageGridOptions);
+
 	const image = project.image != null ? toSelectedImage(project.image, imageGridOptions) : null;
 
 	return (
 		<ProjectEditForm
 			documentId={documentId}
 			hasDraftChanges={hasDraftChanges}
+			initialAssetIds={initialAssetIds}
+			initialAssetItems={initialAssetOptions.items}
+			initialAssetTotal={initialAssetOptions.total}
 			initialAssets={initialAssets}
 			initialPartners={initialPartners}
 			initialAffiliations={initialAffiliations}
@@ -307,6 +322,7 @@ export default async function DashboardAdministratorEditProjectPage(
 			roles={roles}
 			scopes={scopes}
 			calls={calls}
+			selectedAssetItems={selectedAssetItems}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 			selectedSocialMediaItems={selectedSocialMediaItems}

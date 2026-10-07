@@ -169,7 +169,7 @@ export default async function DashboardAdministratorProjectDetailsPage(
 	);
 	const entityVersionSlug = project.entityVersion.slug;
 
-	const [descriptionContentBlocks, partners, affiliatedPersons, socialMediaLinks] =
+	const [descriptionContentBlocks, partners, affiliatedPersons, socialMediaLinks, assetLinks] =
 		await Promise.all([
 			getResolvedEntityContentBlocks(versionId, "description"),
 			getProjectPartnerUnits(documentId, displayLocaleId),
@@ -182,6 +182,16 @@ export default async function DashboardAdministratorProjectDetailsPage(
 					socialMedia: {
 						columns: { id: true, name: true, url: true },
 						with: { type: { columns: { type: true } } },
+					},
+				},
+			}),
+			db.query.projectsToAssets.findMany({
+				where: { projectId: project.id },
+				orderBy: { position: "asc" },
+				columns: {},
+				with: {
+					asset: {
+						columns: { id: true, key: true, label: true, mimeType: true },
 					},
 				},
 			}),
@@ -240,6 +250,15 @@ export default async function DashboardAdministratorProjectDetailsPage(
 					};
 				}),
 				socialMedia: socialMediaLinks.map((link) => link.socialMedia),
+				assets: assetLinks.map((link) => {
+					return {
+						...link.asset,
+						url: images.generateSignedImageUrl({
+							key: link.asset.key,
+							options: imageGridOptions,
+						}).url,
+					};
+				}),
 			}}
 			publishAction={publishProjectAction}
 			selectedRelatedEntities={selectedRelatedEntities}

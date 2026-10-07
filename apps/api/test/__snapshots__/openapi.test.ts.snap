@@ -16965,6 +16965,12 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             },
             "type": "array",
           },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAsset",
+            },
+            "type": "array",
+          },
           "call": {
             "anyOf": [
               {
@@ -17950,10 +17956,31 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "scope",
           "call",
           "socialMedia",
+          "assets",
           "funders",
           "partners",
           "affiliatedPersons",
           "publishedAt",
+        ],
+        "type": "object",
+      },
+      "ProjectAsset": {
+        "description": "Project additional asset — an image or file, such as a PDF",
+        "properties": {
+          "label": {
+            "type": "string",
+          },
+          "mimeType": {
+            "type": "string",
+          },
+          "url": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "label",
+          "mimeType",
+          "url",
         ],
         "type": "object",
       },
@@ -17969,6 +17996,12 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 "type": "null",
               },
             ],
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAsset",
+            },
+            "type": "array",
           },
           "call": {
             "anyOf": [
@@ -18111,6 +18144,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "scope",
           "call",
           "socialMedia",
+          "assets",
           "publishedAt",
         ],
         "type": "object",

@@ -3,6 +3,8 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
+import { getAssetDownloadUrl } from "@/lib/asset-download";
+import { assetsByPosition } from "@/lib/assets-by-position";
 import { getContentBlocks } from "@/lib/content-blocks";
 import { serializeDateRange } from "@/lib/date-range";
 import { flattenEntityVersion } from "@/lib/entity-version";
@@ -84,6 +86,40 @@ async function getSocialMediaByProjectVersionId(
 	}
 
 	return socialMediaByProjectId;
+}
+
+async function getAssetsByProjectVersionId(
+	db: Database | Transaction,
+	projectVersionIds: Array<string>,
+) {
+	const assetsByProjectId = new Map<
+		string,
+		Array<{ label: string; mimeType: string; url: string }>
+	>();
+
+	if (projectVersionIds.length === 0) {
+		return assetsByProjectId;
+	}
+
+	const rows = await db
+		.select({
+			projectId: schema.projectsToAssets.projectId,
+			label: schema.assets.label,
+			mimeType: schema.assets.mimeType,
+			key: schema.assets.key,
+		})
+		.from(schema.projectsToAssets)
+		.innerJoin(schema.assets, eq(schema.assets.id, schema.projectsToAssets.assetId))
+		.where(inArray(schema.projectsToAssets.projectId, projectVersionIds))
+		.orderBy(schema.projectsToAssets.position, schema.assets.id);
+
+	for (const row of rows) {
+		const list = assetsByProjectId.get(row.projectId) ?? [];
+		list.push({ label: row.label, mimeType: row.mimeType, url: getAssetDownloadUrl(row.key) });
+		assetsByProjectId.set(row.projectId, list);
+	}
+
+	return assetsByProjectId;
 }
 
 interface GetProjectsParams {
@@ -171,10 +207,16 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 			.where(statusFilter),
 	]);
 
-	const socialMediaByProjectId = await getSocialMediaByProjectVersionId(
-		db,
-		items.map((item) => item.id),
-	);
+	const [socialMediaByProjectId, assetsByProjectId] = await Promise.all([
+		getSocialMediaByProjectVersionId(
+			db,
+			items.map((item) => item.id),
+		),
+		getAssetsByProjectVersionId(
+			db,
+			items.map((item) => item.id),
+		),
+	]);
 
 	const total = aggregate.at(0)?.total ?? 0;
 
@@ -206,6 +248,7 @@ export async function getProjects(db: Database | Transaction, params: GetProject
 			entity: { slug: item.slug },
 			scope: { scope: item.scope },
 			socialMedia: socialMediaByProjectId.get(item.id) ?? [],
+			assets: assetsByProjectId.get(item.id) ?? [],
 			publishedAt: item.updatedAt.toISOString(),
 			image,
 		};
@@ -279,6 +322,14 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 						},
 					},
 				},
+				assets: {
+					...assetsByPosition,
+					columns: {
+						label: true,
+						mimeType: true,
+						key: true,
+					},
+				},
 			},
 		}),
 		getContentBlocks(db, id),
@@ -296,6 +347,14 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 		return {
 			...sm,
 			type: sm.type.type,
+		};
+	});
+
+	const assets = item.assets.map((asset) => {
+		return {
+			label: asset.label,
+			mimeType: asset.mimeType,
+			url: getAssetDownloadUrl(asset.key),
 		};
 	});
 
@@ -321,6 +380,7 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 		duration,
 		image,
 		socialMedia,
+		assets,
 		funders,
 		partners,
 		affiliatedPersons,
@@ -463,6 +523,14 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 					},
 				},
 			},
+			assets: {
+				...assetsByPosition,
+				columns: {
+					label: true,
+					mimeType: true,
+					key: true,
+				},
+			},
 		},
 	});
 
@@ -476,6 +544,14 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 		return {
 			...sm,
 			type: sm.type.type,
+		};
+	});
+
+	const assets = item.assets.map((asset) => {
+		return {
+			label: asset.label,
+			mimeType: asset.mimeType,
+			url: getAssetDownloadUrl(asset.key),
 		};
 	});
 
@@ -505,6 +581,7 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 		duration,
 		image,
 		socialMedia,
+		assets,
 		funders,
 		partners,
 		affiliatedPersons,

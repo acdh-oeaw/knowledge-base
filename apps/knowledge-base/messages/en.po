@@ -5490,6 +5490,11 @@ msgid "UdtpV7"
 msgstr "Topic"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+msgid "bHkq1H"
+msgstr "Additional assets"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
 msgid "Uu3DS2"
 msgstr "Partners"
 
@@ -5519,6 +5524,23 @@ msgstr "Add a short description."
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
 msgid "s_cah8"
 msgstr "Link social media accounts to this project."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+msgid "RXYmxk"
+msgstr "Attach additional images and files, such as PDFs, to this project."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+msgid "Sd-Bcr"
+msgstr "Add existing asset"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+msgid "_hkGZq"
+msgstr "No additional assets"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
+msgid "IKdCiO"
+msgstr "Upload asset"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-partners-section.tsx
 msgid "GANHz2"
@@ -7250,10 +7272,6 @@ msgstr "Dimensions"
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
 msgid "DAQ44c"
 msgstr "Describe the image for accessibility"
-
-#: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
-msgid "IKdCiO"
-msgstr "Upload asset"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
 msgid "IWtpYt"
