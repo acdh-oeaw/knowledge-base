@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { expect, test } from "@/e2e/lib/test";
 
 test.describe("governance bodies admin", () => {
@@ -133,7 +134,7 @@ test.describe("governance bodies admin", () => {
 
 		await governanceBodiesPage.searchByName(originalName);
 		const row = governanceBodiesPage.rowByName(originalName);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -184,11 +185,7 @@ test.describe("governance bodies admin", () => {
 		await governanceBodiesPage.confirmEndPersonRelation();
 
 		// Verify "End person relation" action is gone and "present" is replaced by a date.
-		await governanceBodiesPage
-			.peopleTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(governanceBodiesPage.peopleTable());
 		await expect(
 			governanceBodiesPage.page.getByRole("menuitem", { name: "End person relation" }),
 		).toBeHidden();
@@ -298,11 +295,7 @@ test.describe("governance bodies admin", () => {
 		await governanceBodiesPage.confirmEndRelation();
 
 		// Verify "End relation" action is gone and "present" is replaced by a date.
-		await governanceBodiesPage
-			.relationsTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(governanceBodiesPage.relationsTable());
 		await expect(
 			governanceBodiesPage.page.getByRole("menuitem", { name: "End relation" }),
 		).toBeHidden();

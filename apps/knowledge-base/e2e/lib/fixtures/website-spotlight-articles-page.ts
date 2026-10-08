@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
@@ -134,9 +135,12 @@ export class WebsiteSpotlightArticlesPage {
 		const captionEditor = caption.getByRole("textbox", { name: "Table caption" });
 		await captionEditor.click();
 
-		await caption.getByRole("button", { name: "Bold", exact: true }).click();
+		const bold = caption.getByRole("button", { name: "Bold", exact: true });
+		await bold.click();
+		await expect(bold).toHaveAttribute("aria-pressed", "true");
 		await this.page.keyboard.type(options.boldPrefix);
-		await caption.getByRole("button", { name: "Bold", exact: true }).click();
+		await bold.click();
+		await expect(bold).toHaveAttribute("aria-pressed", "false");
 
 		/** The separator is typed on its own, so each run's text is exactly what is asserted on. */
 		await this.page.keyboard.type(" ");
@@ -287,7 +291,7 @@ export class WebsiteSpotlightArticlesPage {
 
 	async openDeleteDialog(title: string): Promise<Locator> {
 		const row = this.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete spotlight article/i });
 	}
@@ -302,7 +306,7 @@ export class WebsiteSpotlightArticlesPage {
 
 	async gotoDetailsFromList(title: string): Promise<void> {
 		const row = this.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "View" }).click();
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
 	}

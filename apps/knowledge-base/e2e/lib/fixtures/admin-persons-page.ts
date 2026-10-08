@@ -2,6 +2,7 @@ import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
@@ -173,7 +174,7 @@ export class AdminPersonsPage {
 
 	async openDeleteDialog(name: string): Promise<Locator> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete person/i });
 	}
@@ -185,7 +186,7 @@ export class AdminPersonsPage {
 	async gotoEditFromList(name: string): Promise<void> {
 		await this.searchByName(name);
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			this.page.waitForURL("**/edit"),
 			this.page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -252,10 +253,7 @@ export class AdminPersonsPage {
 	}
 
 	async openFirstContributionsRowAction(action: string): Promise<void> {
-		await this.contributionsTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(this.contributionsTable());
 		await this.page.getByRole("menuitem", { name: action }).click();
 	}
 
@@ -334,7 +332,7 @@ export class AdminPersonsPage {
 
 	async gotoDetailsFromList(name: string): Promise<void> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "View" }).click();
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
 	}

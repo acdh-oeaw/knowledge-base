@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/administrator/users";
@@ -117,7 +118,7 @@ export class AdminUsersPage {
 
 	async openDeleteDialog(name: string): Promise<Locator> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete user/i });
 	}
@@ -132,7 +133,7 @@ export class AdminUsersPage {
 	 */
 	async startImpersonation(name: string): Promise<void> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Sign in as this user" }).click();
 		await this.page.waitForURL("**/dashboard");
 	}
@@ -140,7 +141,7 @@ export class AdminUsersPage {
 	/** Opens the row's actions menu and returns the impersonation item, for asserting it is disabled. */
 	async openImpersonationRowAction(name: string): Promise<Locator> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		return this.page.getByRole("menuitem", { name: "Sign in as this user" });
 	}
 }

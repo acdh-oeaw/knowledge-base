@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/administrator/internal-services";
@@ -154,7 +155,7 @@ export class AdminServicesPage {
 
 	async openDeleteDialog(name: string): Promise<Locator> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete service/i });
 	}

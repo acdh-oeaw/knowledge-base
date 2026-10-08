@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { expect, test } from "@/e2e/lib/test";
 
 test.describe("working groups admin", () => {
@@ -169,7 +170,7 @@ test.describe("working groups admin", () => {
 
 		await workingGroupsPage.searchByName(originalName);
 		const row = workingGroupsPage.rowByName(originalName);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -261,11 +262,7 @@ test.describe("working groups admin", () => {
 		await workingGroupsPage.confirmEndRelation();
 
 		// Verify "End relation" action is gone and "present" is replaced by a date.
-		await workingGroupsPage
-			.relationsTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(workingGroupsPage.relationsTable());
 		await expect(
 			workingGroupsPage.page.getByRole("menuitem", { name: "End relation" }),
 		).toBeHidden();

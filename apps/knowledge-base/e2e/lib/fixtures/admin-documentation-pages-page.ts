@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/administrator/documentation-pages";
@@ -82,7 +83,7 @@ export class AdminDocumentationPagesPage {
 
 	async openDeleteDialog(title: string): Promise<Locator> {
 		const row = this.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete documentation page/i });
 	}
@@ -97,7 +98,7 @@ export class AdminDocumentationPagesPage {
 
 	async gotoDetailsFromList(title: string): Promise<void> {
 		const row = this.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "View" }).click();
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
 	}

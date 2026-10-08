@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { JSONContent } from "@tiptap/core";
 
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { expect, test } from "@/e2e/lib/test";
 
 /** The first node of a kind anywhere in a stored document, for assertions that name one node. */
@@ -106,7 +107,7 @@ test.describe("website spotlight articles admin", () => {
 		const row = spotlightArticlesPage.rowByTitle(originalTitle);
 		await expect(row).toBeVisible();
 
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -158,7 +159,7 @@ test.describe("website spotlight articles admin", () => {
 
 		await spotlightArticlesPage.searchByTitle(title);
 		const row = spotlightArticlesPage.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),

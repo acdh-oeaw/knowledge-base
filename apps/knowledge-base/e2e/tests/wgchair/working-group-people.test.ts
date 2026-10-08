@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Page } from "@playwright/test";
 
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { AdminPersonsPage } from "@/e2e/lib/fixtures/admin-persons-page";
 import { expect, test } from "@/e2e/lib/test";
 
@@ -127,11 +128,7 @@ test.describe("working group people (delegated chair)", () => {
 
 		// Fix the typo via the row's "Edit person" action.
 		const peopleTable = page.getByRole("grid", { name: "people" });
-		await peopleTable
-			.getByRole("row")
-			.filter({ hasText: name })
-			.getByRole("button", { name: "Open actions menu" })
-			.click();
+		await openActionsMenu(peopleTable.getByRole("row").filter({ hasText: name }));
 		await page.getByRole("menuitem", { name: "Edit person", exact: true }).click();
 
 		const dialog = page.getByRole("dialog", { name: "Edit person" });

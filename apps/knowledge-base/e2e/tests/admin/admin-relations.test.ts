@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Locator, Page } from "@playwright/test";
 
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 import { expect, test } from "@/e2e/lib/test";
@@ -30,7 +31,7 @@ async function fillDatePicker(
 
 async function openRowAction(page: Page, rowText: string, action: string): Promise<void> {
 	const row = rowByText(page, rowText);
-	await row.getByRole("button", { name: "Open actions menu" }).click();
+	await openActionsMenu(row);
 	await page.getByRole("menuitem", { name: action }).click();
 }
 
@@ -461,7 +462,7 @@ test.describe("admin relation management", () => {
 		await projectsPage.searchByName(projectName);
 		const projectRow = projectsPage.projectRowByName(projectName);
 		await expect(projectRow).toBeVisible();
-		await projectRow.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(projectRow);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -664,11 +665,7 @@ test.describe("admin relation management", () => {
 		await governanceBodiesPage.fillRelationDatePicker("Start date", 2025, 1, 1);
 		await governanceBodiesPage.submitAddRelation();
 
-		await governanceBodiesPage
-			.relationsTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(governanceBodiesPage.relationsTable());
 		await expect(
 			governanceBodiesPage.page.getByRole("menuitem", { name: "Edit relation" }),
 		).toBeVisible();
@@ -714,11 +711,7 @@ test.describe("admin relation management", () => {
 		await governanceBodiesPage.fillPersonRelationDatePicker("Start date", 2025, 1, 1);
 		await governanceBodiesPage.submitAddPerson();
 
-		await governanceBodiesPage
-			.peopleTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(governanceBodiesPage.peopleTable());
 		await expect(
 			governanceBodiesPage.page.getByRole("menuitem", { name: "Edit person relation" }),
 		).toBeVisible();
@@ -764,11 +757,7 @@ test.describe("admin relation management", () => {
 		await workingGroupsPage.fillPersonRelationDatePicker("Start date", 2025, 1, 1);
 		await workingGroupsPage.submitAddPerson();
 
-		await workingGroupsPage
-			.peopleTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(workingGroupsPage.peopleTable());
 		await expect(
 			workingGroupsPage.page.getByRole("menuitem", { name: "Edit person relation" }),
 		).toBeVisible();
@@ -867,11 +856,7 @@ test.describe("admin relation management", () => {
 		await personsPage.fillContributionDescription("Initial relation description.");
 		await personsPage.submitAddContribution();
 
-		await personsPage
-			.contributionsTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(personsPage.contributionsTable());
 		await expect(
 			personsPage.page.getByRole("menuitem", { name: "Edit contribution" }),
 		).toBeVisible();

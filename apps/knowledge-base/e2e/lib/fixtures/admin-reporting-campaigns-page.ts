@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/administrator/reporting-campaigns";
@@ -120,7 +121,7 @@ export class AdminReportingCampaignsPage {
 
 	async openDeleteDialog(year: number): Promise<Locator> {
 		const row = this.rowByYear(year);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete reporting campaign/i });
 	}

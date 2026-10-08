@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { E2E_TEST_ASSET_KEY } from "@/e2e/lib/fixtures/database-service";
 import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
@@ -101,7 +102,7 @@ export class AdminInstitutionsPage {
 
 	async openDeleteDialog(name: string): Promise<Locator> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete institution/i });
 	}
@@ -113,7 +114,7 @@ export class AdminInstitutionsPage {
 	async gotoEditFromList(name: string): Promise<void> {
 		await this.searchByName(name);
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			this.page.waitForURL("**/edit"),
 			this.page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -184,7 +185,7 @@ export class AdminInstitutionsPage {
 
 	async gotoDetailsFromList(name: string): Promise<void> {
 		const row = this.rowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "View" }).click();
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
 	}

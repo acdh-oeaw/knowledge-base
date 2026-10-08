@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { withFailureInjection } from "@/e2e/lib/fixtures/failure-injection";
 import { expect, test } from "@/e2e/lib/test";
 
@@ -97,7 +98,7 @@ test.describe("persons admin", () => {
 		const row = personsPage.rowByName(originalName);
 		await expect(row).toBeVisible();
 
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -156,7 +157,7 @@ test.describe("persons admin", () => {
 
 		await personsPage.searchByName(originalName);
 		const row = personsPage.rowByName(originalName);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -250,11 +251,7 @@ test.describe("persons admin", () => {
 		await personsPage.confirmEndContribution();
 
 		// Verify "End contribution" action is gone and "present" is replaced by a date.
-		await personsPage
-			.contributionsTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(personsPage.contributionsTable());
 		await expect(personsPage.page.getByRole("menuitem", { name: "End contribution" })).toBeHidden();
 		await personsPage.page.keyboard.press("Escape");
 		await expect(personsPage.contributionsTable().getByText("present")).toBeHidden();

@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
@@ -90,7 +91,7 @@ export class AdminWorkingGroupReportsPage {
 	 */
 	async openDeleteDialog(workingGroupName: string, campaignYear: number): Promise<Locator> {
 		const row = this.rowByWorkingGroup(workingGroupName).filter({ hasText: String(campaignYear) });
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete working group report/i });
 	}

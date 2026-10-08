@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { expect, test } from "@/e2e/lib/test";
 
 test.describe("website news admin – related entities", () => {
@@ -63,7 +64,7 @@ test.describe("website news admin – related entities", () => {
 
 		await newsPage.searchByTitle(title);
 		const row = newsPage.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -101,7 +102,7 @@ test.describe("website news admin – related entities", () => {
 
 		await newsPage.searchByTitle(title);
 		const row = newsPage.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),
@@ -176,7 +177,7 @@ test.describe("website news admin – related entities", () => {
 
 		await newsPage.searchByTitle(title);
 		const row = newsPage.rowByTitle(title);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			page.waitForURL("**/edit"),
 			page.getByRole("menuitem", { name: "Edit" }).click(),

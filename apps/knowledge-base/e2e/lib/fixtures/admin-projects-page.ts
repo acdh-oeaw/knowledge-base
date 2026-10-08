@@ -2,6 +2,7 @@ import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
 import { dragGridRowDownByName } from "@/e2e/lib/fixtures/reorder";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
@@ -321,10 +322,7 @@ export class AdminProjectsPage {
 	}
 
 	async clickEditProjectPartner(): Promise<void> {
-		await this.projectPartnersTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(this.projectPartnersTable());
 		await this.page.getByRole("menuitem", { name: "Edit partner" }).click();
 	}
 
@@ -350,10 +348,7 @@ export class AdminProjectsPage {
 	}
 
 	async clickDeleteProjectPartner(): Promise<void> {
-		await this.projectPartnersTable()
-			.getByRole("button", { name: "Open actions menu" })
-			.first()
-			.click();
+		await openActionsMenu(this.projectPartnersTable());
 		await this.page.getByRole("menuitem", { name: "Delete partner" }).click();
 	}
 
@@ -496,7 +491,7 @@ export class AdminProjectsPage {
 
 	async openDeleteDialog(name: string): Promise<Locator> {
 		const row = this.projectRowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "Delete" }).click();
 		return this.page.getByRole("dialog", { name: /Delete project/i });
 	}
@@ -511,14 +506,14 @@ export class AdminProjectsPage {
 
 	async gotoDetailsFromList(name: string): Promise<void> {
 		const row = this.projectRowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await this.page.getByRole("menuitem", { name: "View" }).click();
 		await this.page.waitForURL(`**${BASE_PATH}/**/details`);
 	}
 
 	async gotoEditFromList(name: string): Promise<void> {
 		const row = this.projectRowByName(name);
-		await row.getByRole("button", { name: "Open actions menu" }).click();
+		await openActionsMenu(row);
 		await Promise.all([
 			this.page.waitForURL(`**${BASE_PATH}/**/edit`),
 			this.page.getByRole("menuitem", { name: "Edit" }).click(),
