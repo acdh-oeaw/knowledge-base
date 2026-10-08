@@ -22,40 +22,22 @@ export function ContactForm(): ReactNode {
 		<Form action={action} className="flex flex-col gap-y-8" state={state}>
 			<FormStatus state={state} />
 
-			<TextField
-				autoComplete="email"
-				defaultValue={(state.formData?.get("email") ?? "") as string}
-				isRequired={true}
-				name="email"
-				type="email"
-			>
+			<TextField autoComplete="email" isRequired={true} name="email" type="email">
 				<Label>{t("Email")}</Label>
 				<Input />
 			</TextField>
 
-			<TextField
-				defaultValue={(state.formData?.get("name") ?? "") as string}
-				isRequired={true}
-				name="name"
-			>
+			<TextField isRequired={true} name="name">
 				<Label>{t("Name")}</Label>
 				<Input />
 			</TextField>
 
-			<TextField
-				defaultValue={(state.formData?.get("subject") ?? "") as string}
-				isRequired={true}
-				name="subject"
-			>
+			<TextField isRequired={true} name="subject">
 				<Label>{t("Subject")}</Label>
 				<Input />
 			</TextField>
 
-			<TextField
-				defaultValue={(state.formData?.get("message") ?? "") as string}
-				isRequired={true}
-				name="message"
-			>
+			<TextField isRequired={true} name="message">
 				<Label>{t("Message")}</Label>
 				<TextArea rows={5} />
 			</TextField>

@@ -101,6 +101,12 @@ test.describe("contact page", () => {
 				{ timeout: statusTimeoutMs },
 			);
 
+			/** A successful submission resets the form. */
+			await expect(contactPage.form.name).toHaveValue("");
+			await expect(contactPage.form.email).toHaveValue("");
+			await expect(contactPage.form.subject).toHaveValue("");
+			await expect(contactPage.form.message).toHaveValue("");
+
 			await expect
 				.poll(
 					async () => {
@@ -161,6 +167,12 @@ test.describe("contact page", () => {
 					"Failed to send message.",
 					{ timeout: statusTimeoutMs },
 				);
+
+				/** A failed submission keeps the user's input. */
+				await expect(contactPage.form.name).toHaveValue(name);
+				await expect(contactPage.form.email).toHaveValue(email);
+				await expect(contactPage.form.subject).toHaveValue(subject);
+				await expect(contactPage.form.message).toHaveValue(message);
 
 				const data = await emailService.getMessages();
 

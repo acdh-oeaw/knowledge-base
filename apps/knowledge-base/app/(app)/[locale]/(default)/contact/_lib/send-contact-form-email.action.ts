@@ -32,7 +32,6 @@ export const sendContactFormEmailAction = createServerAction<
 		const errors = v.flatten<typeof SendContactFormInputSchema>(validation.issues);
 
 		return createActionStateError({
-			formData,
 			message: errors.root ?? t("Invalid or missing fields."),
 			validationErrors: errors.nested,
 		});
@@ -49,7 +48,6 @@ export const sendContactFormEmailAction = createServerAction<
 
 	if (result.isErr()) {
 		return createActionStateError({
-			formData,
 			message: t("Failed to send message."),
 		});
 	}

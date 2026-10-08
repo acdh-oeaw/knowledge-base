@@ -215,6 +215,43 @@ test.describe("persons admin", () => {
 		await expect(personsPage.rowByName(name)).toBeHidden();
 	});
 
+	test("should keep entered values when the action fails", async ({
+		page,
+		createAdminPersonsPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const personsPage = createAdminPersonsPage(workerIndex);
+
+		const name = `${personsPage.workerPrefix} KeepValues ${randomUUID()}`;
+		const sortName = "KeepValues, Person";
+		const biography = "Biography which must survive a failed save.";
+
+		await personsPage.gotoCreate();
+		await personsPage.fillName(name);
+		await personsPage.fillSortName(sortName);
+		await personsPage.selectImageFromMediaLibrary("E2E Test Asset");
+		await personsPage.fillBiography(biography);
+
+		await withFailureInjection(page, async () => {
+			await page.getByRole("button", { name: /^Save(?! and publish\b).*$/ }).click();
+			await expect(page.getByText("Internal server error.")).toBeVisible();
+		});
+
+		/** React's automatic form reset must not discard the user's input. */
+		await expect(page.getByLabel("Name", { exact: true })).toHaveValue(name);
+		await expect(page.getByLabel("Sort name")).toHaveValue(sortName);
+		await expect(page.getByRole("textbox", { name: "Biography" })).toContainText(biography);
+
+		/** Retrying without changes submits the kept values, including the rich-text biography. */
+		await personsPage.submitForm();
+
+		const created = await db.getPersonByName(name);
+		expect(created).toMatchObject({ name, sortName });
+		expect(created?.imageId).toBeTruthy();
+		expect(JSON.stringify(await db.getPersonBiographyByName(name))).toContain(biography);
+	});
+
 	test("should manage contributions", async ({ createAdminPersonsPage, db }) => {
 		const workerIndex = test.info().workerIndex;
 		const personsPage = createAdminPersonsPage(workerIndex);

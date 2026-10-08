@@ -50,6 +50,29 @@ test.describe("countries admin", () => {
 		expect(await db.getOrganisationalUnitSocialMediaIds(created!.id)).toStrictEqual([
 			socialMedia!.id,
 		]);
+		/** Saving as draft must not publish. */
+		expect(await db.getPublishedVersionId(created!.documentId)).toBeNull();
+	});
+
+	test("should publish a country created with save and publish", async ({
+		createAdminCountriesPage,
+		db,
+	}) => {
+		const workerIndex = test.info().workerIndex;
+		const countriesPage = createAdminCountriesPage(workerIndex);
+
+		const name = `${countriesPage.workerPrefix} Published Country ${randomUUID()}`;
+
+		await countriesPage.gotoCreate();
+		await countriesPage.fillName(name);
+		await countriesPage.fillSummary("E2E published country summary.");
+
+		/** The submit button's `intent` value must reach the server action. */
+		await countriesPage.submitFormAndPublish();
+
+		const created = await db.getCountryByName(name);
+		expect(created).not.toBeNull();
+		expect(await db.getPublishedVersionId(created!.documentId)).not.toBeNull();
 	});
 
 	test("should edit all country form fields", async ({ page, createAdminCountriesPage, db }) => {

@@ -78,6 +78,17 @@ export class AdminCountriesPage {
 		await this.goto();
 	}
 
+	async submitFormAndPublish(): Promise<void> {
+		await waitForActionRedirect({
+			page: this.page,
+			redirectPathname: new RegExp(`^${BASE_PATH}/[^/]+/details$`),
+			trigger: async () => {
+				await this.page.getByRole("button", { name: "Save and publish country" }).click();
+			},
+		});
+		await this.goto();
+	}
+
 	// ---------------------------------------------------------------------------
 	// List page helpers
 	// ---------------------------------------------------------------------------
