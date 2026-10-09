@@ -37,7 +37,13 @@ export const SitemapEntrySchema = v.pipe(
 		href: v.pipe(
 			v.string(),
 			v.description(
-				"Root-relative, locale-less website href. Prepend locale and origin, as for entity hrefs.",
+				"Root-relative website href, with its locale segment already prepended (e.g. `/en/...`, `/de/...`). Prepend only the origin.",
+			),
+		),
+		locale: v.pipe(
+			v.string(),
+			v.description(
+				'BCP 47-style locale code (e.g. "de" or "de-AT"), matching the `?locale=` query param this api accepts elsewhere and the locale segment already present in `href`',
 			),
 		),
 		type: v.pipe(

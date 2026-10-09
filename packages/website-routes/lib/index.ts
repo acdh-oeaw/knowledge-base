@@ -1,9 +1,9 @@
 /**
- * Canonical entity → DARIAH website href resolver.
+ * Canonical entity → CLARIAH-AT website href resolver.
  *
- * Single source of truth for the URL structure of the public DARIAH website
- * (github.com/DARIAH-ERIC/dariah-website). The templates below are derived from that repo's typed
- * route folders under `app/(default)/…` and MUST be kept in sync with them (see
+ * Single source of truth for the URL structure of the public CLARIAH-AT website
+ * (github.com/acdh-oeaw/clariah-at-platform). The templates below are derived from that repo's
+ * typed route folders under `app/(default)/…` and MUST be kept in sync with them (see
  * docs/website-url-resolution.md).
  *
  * Values are root-relative and locale-less; most are bare pathnames, but a type whose entity is
@@ -50,7 +50,7 @@ export type WebsiteEntityType = (typeof websiteEntityTypes)[number];
  * surface it as plain text instead.
  *
  * Two routes are prerequisites for the links this resolver emits (both on
- * github.com/DARIAH-ERIC/dariah-website), and must ship before Phase 1 emits their links: -
+ * github.com/acdh-oeaw/clariah-at-platform), and must ship before Phase 1 emits their links: -
  * `person` needs the `persons/[slug]` route. - `page` needs the single page catch-all that renders
  * a CMS page by its stored `path`; page paths are validated to not collide with the website's
  * existing typed routes (they win by priority).

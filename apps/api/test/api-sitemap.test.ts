@@ -132,11 +132,36 @@ function findEntry(entries: Array<SitemapEntry>, href: string) {
 	return entries.filter((entry) => entry.href === href);
 }
 
+async function getDefaultLocaleCode(db: Database): Promise<string> {
+	const locale = await db.query.locales.findFirst({
+		where: { isDefault: true },
+		columns: { languageCode: true, regionCode: true },
+	});
+
+	assert(locale, "No default locale in database.");
+
+	return locale.regionCode != null
+		? `${locale.languageCode}-${locale.regionCode}`
+		: locale.languageCode;
+}
+
+async function insertTestLocale(db: Database) {
+	const [locale] = await db
+		.insert(schema.locales)
+		.values({ languageCode: "zz", name: "Test locale", isDefault: false })
+		.returning({ id: schema.locales.id });
+
+	assert(locale, "Failed to insert test locale.");
+
+	return locale;
+}
+
 describe("sitemap", () => {
 	describe("GET /api/sitemap", () => {
-		it("should return a url per published document", async () => {
+		it("should return a locale-prefixed url per published document", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);
+				const localeCode = await getDefaultLocaleCode(db);
 
 				const slug = `news-item-${uuidv7()}`;
 				const updatedAt = new Date("2030-01-02T03:04:05.000Z");
@@ -154,12 +179,14 @@ describe("sitemap", () => {
 				expect(data.data).toEqual(
 					expect.arrayContaining([
 						{
-							href: `/news/${slug}`,
+							href: `/${localeCode}/news/${slug}`,
+							locale: localeCode,
 							type: "news",
 							lastModified: updatedAt.toISOString(),
 						},
 						expect.objectContaining({
-							href: `/network/working-groups/${workingGroupSlug}`,
+							href: `/${localeCode}/network/working-groups/${workingGroupSlug}`,
+							locale: localeCode,
 							type: "working_group",
 						}),
 					]),
@@ -169,9 +196,65 @@ describe("sitemap", () => {
 			});
 		});
 
+		it("should return a separate entry per locale a document is published in", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+				const defaultLocaleCode = await getDefaultLocaleCode(db);
+				const otherLocale = await insertTestLocale(db);
+
+				const slug = `news-item-${uuidv7()}`;
+				const { entityId } = await seedDocument(db, "news", slug);
+				const [status, newsType] = await Promise.all([
+					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+					db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "news" } }),
+				]);
+				assert(status, "No entity status in database.");
+				assert(newsType, "No news entity type in database.");
+
+				const translatedVersionId = uuidv7();
+				const translatedSlug = `${slug}-zz`;
+
+				await db.insert(schema.entityVersions).values({
+					id: translatedVersionId,
+					entityId,
+					statusId: status.id,
+					localeId: otherLocale.id,
+				});
+				await db.insert(schema.slugs).values({
+					entityVersionId: translatedVersionId,
+					entityId,
+					typeId: newsType.id,
+					localeId: otherLocale.id,
+					isPublished: true,
+					value: translatedSlug,
+				});
+				await db.insert(schema.news).values({
+					id: translatedVersionId,
+					title: f.lorem.sentence(),
+					summary: f.lorem.paragraph(),
+					publicationDate: f.date.past(),
+					imageId: (await db.query.assets.findFirst({ columns: { id: true } }))!.id,
+				});
+
+				const response = await client.sitemap.$get();
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+
+				expect(findEntry(data.data, `/${defaultLocaleCode}/news/${slug}`)).toEqual([
+					expect.objectContaining({ locale: defaultLocaleCode, type: "news" }),
+				]);
+				expect(findEntry(data.data, `/zz/news/${translatedSlug}`)).toEqual([
+					expect.objectContaining({ locale: "zz", type: "news" }),
+				]);
+			});
+		});
+
 		it("should not return unpublished documents", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);
+				const localeCode = await getDefaultLocaleCode(db);
 
 				const slug = `news-item-${uuidv7()}`;
 				await seedNewsItem(db, slug, { status: "draft" });
@@ -182,13 +265,14 @@ describe("sitemap", () => {
 
 				const data = await response.json();
 
-				expect(findEntry(data.data, `/news/${slug}`)).toEqual([]);
+				expect(findEntry(data.data, `/${localeCode}/news/${slug}`)).toEqual([]);
 			});
 		});
 
 		it("should collapse documents which share a url into a single entry", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);
+				const localeCode = await getDefaultLocaleCode(db);
 
 				/** Future timestamps, so the newest of the two is the newest in the database. */
 				const older = new Date("2030-01-01T00:00:00.000Z");
@@ -204,9 +288,10 @@ describe("sitemap", () => {
 				const data = await response.json();
 
 				/** Every document and policy is surfaced on the same page ... */
-				expect(findEntry(data.data, "/about/documents")).toEqual([
+				expect(findEntry(data.data, `/${localeCode}/about/documents`)).toEqual([
 					{
-						href: "/about/documents",
+						href: `/${localeCode}/about/documents`,
+						locale: localeCode,
 						type: "documents_policies",
 						/** ... which is only as old as its newest document. */
 						lastModified: newer.toISOString(),
@@ -218,6 +303,7 @@ describe("sitemap", () => {
 		it("should resolve pages through the interim slug to path map", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);
+				const localeCode = await getDefaultLocaleCode(db);
 
 				await seedPage(db, "strategy");
 
@@ -227,8 +313,8 @@ describe("sitemap", () => {
 
 				const data = await response.json();
 
-				expect(findEntry(data.data, "/about/strategy")).toEqual([
-					expect.objectContaining({ href: "/about/strategy", type: "pages" }),
+				expect(findEntry(data.data, `/${localeCode}/about/strategy`)).toEqual([
+					expect.objectContaining({ href: `/${localeCode}/about/strategy`, type: "pages" }),
 				]);
 			});
 		});

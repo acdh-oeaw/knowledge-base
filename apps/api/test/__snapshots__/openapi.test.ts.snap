@@ -18612,12 +18612,16 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "description": "Sitemap entry",
         "properties": {
           "href": {
-            "description": "Root-relative, locale-less website href. Prepend locale and origin, as for entity hrefs.",
+            "description": "Root-relative website href, with its locale segment already prepended (e.g. \`/en/...\`, \`/de/...\`). Prepend only the origin.",
             "type": "string",
           },
           "lastModified": {
             "description": "Most recent publish timestamp among the documents behind this url (\`publishedAt\` elsewhere in this api). Maps to sitemap \`lastmod\`.",
             "format": "date-time",
+            "type": "string",
+          },
+          "locale": {
+            "description": "BCP 47-style locale code (e.g. "de" or "de-AT"), matching the \`?locale=\` query param this api accepts elsewhere and the locale segment already present in \`href\`",
             "type": "string",
           },
           "type": {
@@ -18641,6 +18645,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         },
         "required": [
           "href",
+          "locale",
           "type",
           "lastModified",
         ],
