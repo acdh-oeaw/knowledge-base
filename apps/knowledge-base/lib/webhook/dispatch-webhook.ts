@@ -4,8 +4,8 @@ import * as schema from "@dariah-eric/database/schema";
 import { request } from "@dariah-eric/request";
 
 import { env } from "@/config/env.config";
-import { db } from "@/lib/db";
-import { eq, sql } from "@/lib/db/sql";
+import { type Database, type Transaction, db } from "@/lib/db";
+import { eq, inArray, or, sql } from "@/lib/db/sql";
 
 /**
  * Mutations touching these tags change membership/working-group data, which placeholder-value nodes
@@ -63,6 +63,201 @@ async function getPlaceholderValueEmbeddingTags(): Promise<Set<CacheTag>> {
 	}
 
 	return tags;
+}
+
+/** Every column referencing an asset by id, on a table whose primary key is an entity version. */
+const assetReferencingVersionColumns = [
+	{
+		table: schema.documentsPolicies,
+		versionId: schema.documentsPolicies.id,
+		assetId: schema.documentsPolicies.documentId,
+	},
+	{ table: schema.events, versionId: schema.events.id, assetId: schema.events.imageId },
+	{
+		table: schema.fundingCalls,
+		versionId: schema.fundingCalls.id,
+		assetId: schema.fundingCalls.imageId,
+	},
+	{
+		table: schema.impactCaseStudies,
+		versionId: schema.impactCaseStudies.id,
+		assetId: schema.impactCaseStudies.imageId,
+	},
+	{ table: schema.news, versionId: schema.news.id, assetId: schema.news.imageId },
+	{
+		table: schema.opportunities,
+		versionId: schema.opportunities.id,
+		assetId: schema.opportunities.imageId,
+	},
+	{
+		table: schema.organisationalUnits,
+		versionId: schema.organisationalUnits.id,
+		assetId: schema.organisationalUnits.imageId,
+	},
+	{ table: schema.pages, versionId: schema.pages.id, assetId: schema.pages.imageId },
+	{ table: schema.persons, versionId: schema.persons.id, assetId: schema.persons.imageId },
+	{ table: schema.projects, versionId: schema.projects.id, assetId: schema.projects.imageId },
+	{
+		table: schema.projectsToAssets,
+		versionId: schema.projectsToAssets.projectId,
+		assetId: schema.projectsToAssets.assetId,
+	},
+	{
+		table: schema.spotlightArticles,
+		versionId: schema.spotlightArticles.id,
+		assetId: schema.spotlightArticles.imageId,
+	},
+];
+
+/** Every column referencing an asset by id from a content block, keyed by that block's id. */
+const assetReferencingBlockColumns = [
+	{
+		table: schema.galleryContentBlockItems,
+		blockId: schema.galleryContentBlockItems.galleryContentBlockId,
+		assetId: schema.galleryContentBlockItems.imageId,
+	},
+	{
+		table: schema.heroContentBlocks,
+		blockId: schema.heroContentBlocks.id,
+		assetId: schema.heroContentBlocks.imageId,
+	},
+	{
+		table: schema.imageContentBlocks,
+		blockId: schema.imageContentBlocks.id,
+		assetId: schema.imageContentBlocks.imageId,
+	},
+	{
+		table: schema.mediaTextContentBlocks,
+		blockId: schema.mediaTextContentBlocks.id,
+		assetId: schema.mediaTextContentBlocks.imageId,
+	},
+];
+
+/**
+ * Every rich-text column on a content block, keyed by that block's id. An asset-targeted link
+ * stores the asset's key, and the api attaches the asset's filename and size to it wherever it sits
+ * in a document's blocks.
+ */
+const assetLinkingBlockColumns = [
+	{
+		table: schema.embedContentBlocks,
+		blockId: schema.embedContentBlocks.id,
+		content: schema.embedContentBlocks.caption,
+	},
+	{
+		table: schema.galleryContentBlocks,
+		blockId: schema.galleryContentBlocks.id,
+		content: schema.galleryContentBlocks.caption,
+	},
+	{
+		table: schema.galleryContentBlockItems,
+		blockId: schema.galleryContentBlockItems.galleryContentBlockId,
+		content: schema.galleryContentBlockItems.caption,
+	},
+	{
+		table: schema.heroContentBlocks,
+		blockId: schema.heroContentBlocks.id,
+		content: schema.heroContentBlocks.caption,
+	},
+	{
+		table: schema.heroContentBlocks,
+		blockId: schema.heroContentBlocks.id,
+		content: schema.heroContentBlocks.ctas,
+	},
+	{
+		table: schema.imageContentBlocks,
+		blockId: schema.imageContentBlocks.id,
+		content: schema.imageContentBlocks.caption,
+	},
+	{
+		table: schema.mediaTextContentBlocks,
+		blockId: schema.mediaTextContentBlocks.id,
+		content: schema.mediaTextContentBlocks.caption,
+	},
+	{
+		table: schema.mediaTextContentBlocks,
+		blockId: schema.mediaTextContentBlocks.id,
+		content: schema.mediaTextContentBlocks.content,
+	},
+	{
+		table: schema.richTextContentBlocks,
+		blockId: schema.richTextContentBlocks.id,
+		content: schema.richTextContentBlocks.content,
+	},
+];
+
+/**
+ * Tags of the api data that embeds the given assets, for changes to the assets themselves (their
+ * metadata, or a merge re-pointing their references). Wherever the api serves an image it embeds
+ * the asset's alt text, caption and license, and wherever it serves a link to one its filename and
+ * size, so the tags are those of every entity type placing or linking one of the assets, plus site
+ * metadata for its og image. Each operation embedding another type's images (a working group's
+ * chairs, a person's articles, …) already declares that type's tag, so this does not need to follow
+ * those relations. References from unpublished versions count too: that only ever purges more.
+ *
+ * Links are matched like the asset cleanup service matches them, by the key as a substring of the
+ * rich text, which can only over-match.
+ */
+export async function getAssetCacheTags(
+	db: Database | Transaction,
+	assetIds: ReadonlyArray<string>,
+): Promise<Array<CacheTag>> {
+	if (assetIds.length === 0) {
+		return [];
+	}
+
+	const ids = [...assetIds];
+
+	const blockIdQueries = [
+		...assetReferencingBlockColumns.map(({ table, blockId, assetId }) =>
+			db.select({ id: blockId }).from(table).where(inArray(assetId, ids)),
+		),
+		...assetLinkingBlockColumns.map(({ table, blockId, content }) =>
+			db
+				.select({ id: blockId })
+				.from(table)
+				.where(
+					sql`exists (select 1 from ${schema.assets} where ${inArray(schema.assets.id, ids)} and ${content}::text like '%' || ${schema.assets.key} || '%')`,
+				),
+		),
+	];
+
+	const versionIdQueries = [
+		...assetReferencingVersionColumns.map(({ table, versionId, assetId }) =>
+			db.select({ id: versionId }).from(table).where(inArray(assetId, ids)),
+		),
+		db
+			.select({ id: schema.fields.entityVersionId })
+			.from(schema.contentBlocks)
+			.innerJoin(schema.fields, eq(schema.fields.id, schema.contentBlocks.fieldId))
+			.where(or(...blockIdQueries.map((query) => inArray(schema.contentBlocks.id, query)))),
+	];
+
+	const rows = await db
+		.selectDistinct({ type: schema.entityTypes.type })
+		.from(schema.entityVersions)
+		.innerJoin(schema.entities, eq(schema.entities.id, schema.entityVersions.entityId))
+		.innerJoin(schema.entityTypes, eq(schema.entityTypes.id, schema.entities.typeId))
+		.where(or(...versionIdQueries.map((query) => inArray(schema.entityVersions.id, query))));
+
+	const siteMetadataRows = await db
+		.select({ id: schema.siteMetadataTranslations.id })
+		.from(schema.siteMetadataTranslations)
+		.where(inArray(schema.siteMetadataTranslations.ogImageId, ids))
+		.limit(1);
+
+	// `assets` itself is only read by the download endpoint, which can name the file after its label.
+	const tags = new Set<CacheTag>(["assets"]);
+	for (const row of rows) {
+		for (const tag of cacheTagsByEntityType[row.type] ?? []) {
+			tags.add(tag);
+		}
+	}
+	if (siteMetadataRows.length > 0) {
+		tags.add("site-metadata");
+	}
+
+	return [...tags];
 }
 
 async function send(payload: RevalidationWebhookPayload): Promise<void> {

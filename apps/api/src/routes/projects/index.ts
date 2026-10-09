@@ -28,7 +28,7 @@ export const router = createRouter()
 			summary: "Get projects",
 			description: "Retrieve a paginated list of projects",
 			operationId: "getProjects",
-			"x-cache-tags": ["assets", "projects", "social-media"],
+			"x-cache-tags": ["projects", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -104,7 +104,7 @@ export const router = createRouter()
 			summary: "Get project by id",
 			description: "Retrieve a project by id",
 			operationId: "getProjectById",
-			"x-cache-tags": ["assets", "projects", "social-media"],
+			"x-cache-tags": ["projects", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -145,7 +145,7 @@ export const router = createRouter()
 			summary: "Get project by slug",
 			description: "Retrieve a project by slug",
 			operationId: "getProjectBySlug",
-			"x-cache-tags": ["assets", "projects", "social-media"],
+			"x-cache-tags": ["projects", "social-media"],
 			responses: {
 				200: {
 					description: "Success response",

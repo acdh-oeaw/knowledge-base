@@ -28,7 +28,7 @@ export const router = createRouter()
 			summary: "Get news",
 			description: "Retrieve a paginated list of news",
 			operationId: "getNews",
-			"x-cache-tags": ["assets", "news"],
+			"x-cache-tags": ["news"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -104,7 +104,7 @@ export const router = createRouter()
 			summary: "Get news item by id",
 			description: "Retrieve an news item by id",
 			operationId: "getNewsItemById",
-			"x-cache-tags": ["assets", "news"],
+			"x-cache-tags": ["news"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -145,7 +145,7 @@ export const router = createRouter()
 			summary: "Get news item by slug",
 			description: "Retrieve an news item by slug",
 			operationId: "getNewsItemBySlug",
-			"x-cache-tags": ["assets", "news"],
+			"x-cache-tags": ["news"],
 			responses: {
 				200: {
 					description: "Success response",

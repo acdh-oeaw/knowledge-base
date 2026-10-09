@@ -19,14 +19,7 @@ export const router = createRouter()
 			description:
 				"Retrieve the list of featured entities configured in site metadata, localized into the requested locale (falling back to the default locale for entities without a translation)",
 			operationId: "getFeaturedEntities",
-			"x-cache-tags": [
-				"assets",
-				"events",
-				"featured-entities",
-				"funding-calls",
-				"news",
-				"opportunities",
-			],
+			"x-cache-tags": ["events", "featured-entities", "funding-calls", "news", "opportunities"],
 			responses: {
 				200: {
 					description: "Success response",

@@ -29,13 +29,7 @@ export const router = createRouter()
 			description: "Retrieve a paginated list of persons",
 			operationId: "getPersons",
 			// The list embeds each person's organisational-unit positions, but not their articles.
-			"x-cache-tags": [
-				"assets",
-				"governance-bodies",
-				"members-partners",
-				"persons",
-				"working-groups",
-			],
+			"x-cache-tags": ["governance-bodies", "members-partners", "persons", "working-groups"],
 			responses: {
 				200: {
 					description: "Success response",
@@ -113,7 +107,6 @@ export const router = createRouter()
 			operationId: "getPersonById",
 			// A person's payload embeds their positions and article contributions.
 			"x-cache-tags": [
-				"assets",
 				"governance-bodies",
 				"impact-case-studies",
 				"members-partners",
@@ -163,7 +156,6 @@ export const router = createRouter()
 			operationId: "getPersonBySlug",
 			// A person's payload embeds their positions and article contributions.
 			"x-cache-tags": [
-				"assets",
 				"governance-bodies",
 				"impact-case-studies",
 				"members-partners",
