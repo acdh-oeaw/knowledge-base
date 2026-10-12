@@ -33,6 +33,11 @@ import {
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface NewsItemFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	contentBlocks?: Array<ContentBlock>;
 	newsItem?: Pick<schema.NewsItem, "id" | "publicationDate" | "title" | "summary"> & {
@@ -59,6 +64,7 @@ interface NewsItemFormProps {
 
 export function NewsItemForm(props: Readonly<NewsItemFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		contentBlocks,
 		formAction,
@@ -168,6 +174,7 @@ export function NewsItemForm(props: Readonly<NewsItemFormProps>): ReactNode {
 					<Fragment>
 						<input name="id" type="hidden" value={newsItem.id} />
 						<input name="documentId" type="hidden" value={newsItem.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

@@ -165,6 +165,7 @@ export default async function CountryEditPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			nationalConsortium={{
 				...data.unit,
 				entityVersion: { ...data.unit.entityVersion, slug: entityVersionSlug },

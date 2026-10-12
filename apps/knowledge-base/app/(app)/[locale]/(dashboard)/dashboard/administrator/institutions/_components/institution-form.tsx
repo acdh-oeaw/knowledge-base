@@ -28,6 +28,11 @@ import { SocialMediaRelationsFields } from "@/app/(app)/[locale]/(dashboard)/das
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface InstitutionFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	/**
 	 * Acronym/ROR/SSHOC actor ID aren't translatable — the DB keeps them synced from the default
@@ -62,6 +67,7 @@ interface InstitutionFormProps {
 
 export function InstitutionForm(props: Readonly<InstitutionFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		formAction,
 		formId,
@@ -239,6 +245,7 @@ export function InstitutionForm(props: Readonly<InstitutionFormProps>): ReactNod
 					<Fragment>
 						<input name="id" type="hidden" value={institution.id} />
 						<input name="documentId" type="hidden" value={institution.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

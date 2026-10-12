@@ -10,8 +10,8 @@ export const discardEricDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/eric",
 	redirect: "/dashboard/administrator/eric",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

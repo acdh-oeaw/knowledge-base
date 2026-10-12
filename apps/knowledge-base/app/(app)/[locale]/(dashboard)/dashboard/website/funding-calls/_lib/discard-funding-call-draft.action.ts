@@ -10,8 +10,8 @@ export const discardFundingCallDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/funding-calls",
 	redirect: "/dashboard/website/funding-calls",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, fundingCallsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, fundingCallsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

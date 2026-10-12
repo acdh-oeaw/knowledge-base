@@ -12,8 +12,8 @@ export const publishFundingCallAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/funding-calls",
 	redirect: "/dashboard/website/funding-calls",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, fundingCallsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, fundingCallsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

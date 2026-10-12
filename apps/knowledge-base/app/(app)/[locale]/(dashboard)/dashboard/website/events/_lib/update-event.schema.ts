@@ -9,6 +9,7 @@ import { FeaturedImageInputSchema } from "@/lib/featured-image-input";
 export const UpdateEventActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(EventUpdateSchema, ["title", "summary", "location", "website"]).entries,
 	isFullDay: v.pipe(
 		v.optional(v.string(), "false"),

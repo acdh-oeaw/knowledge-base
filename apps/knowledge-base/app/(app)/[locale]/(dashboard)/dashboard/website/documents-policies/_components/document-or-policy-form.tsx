@@ -28,6 +28,11 @@ import { documentMimeTypes } from "@/config/assets.config";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface DocumentOrPolicyFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	contentBlocks?: Array<ContentBlock>;
 	documentOrPolicy?: Pick<
@@ -46,7 +51,15 @@ interface DocumentOrPolicyFormProps {
 }
 
 export function DocumentOrPolicyForm(props: Readonly<DocumentOrPolicyFormProps>): ReactNode {
-	const { initialAssets, contentBlocks, formAction, documentOrPolicy, groups, isPublished } = props;
+	const {
+		initialAssets,
+		contentBlocks,
+		formAction,
+		documentOrPolicy,
+		groups,
+		isPublished,
+		localeId,
+	} = props;
 
 	const t = useExtracted();
 
@@ -160,6 +173,7 @@ export function DocumentOrPolicyForm(props: Readonly<DocumentOrPolicyFormProps>)
 				<Fragment>
 					<input name="id" type="hidden" value={documentOrPolicy.id} />
 					<input name="documentId" type="hidden" value={documentOrPolicy.entityVersion.entity.id} />
+					{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 				</Fragment>
 			) : null}
 

@@ -8,6 +8,7 @@ import { PersonSocialMediaInputSchema } from "@/lib/person-social-media-input";
 
 export const UpdatePersonActionInputSchema = v.object({
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(PersonUpdateSchema, ["name", "sortName"]).entries,
 	slug: EntitySlugInputSchema,
 	email: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),

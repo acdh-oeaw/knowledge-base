@@ -189,6 +189,7 @@ export default async function DashboardWebsiteEditSpotlightArticlePage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 			spotlightArticle={{

@@ -5,13 +5,14 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { UpdatePersonActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_lib/update-person.schema";
 import {
-	ensureDraftVersion,
+	ensureLocalizedDraftVersion,
 	getDocumentSlug,
 	publishVersion,
 	touchVersion,
 	updateDraftDocumentSlug,
 } from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
+import { getLocaleSearch } from "@/lib/data/locales";
 import { syncPersonSocialMedia } from "@/lib/data/person-social-media";
 import { personsLifecycleAdapter } from "@/lib/data/persons.lifecycle-adapter";
 import { eq } from "@/lib/db/sql";
@@ -21,21 +22,30 @@ import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
 import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
-export const updatePersonAction = createMutationAction({
+export const updatePersonAction = createMutationAction<
+	typeof UpdatePersonActionInputSchema,
+	{ localeSearch: string }
+>({
 	schema: UpdatePersonActionInputSchema,
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "persons" },
 	revalidate: "/[locale]/dashboard/administrator/persons",
-	redirect: ({ result }) => `/dashboard/administrator/persons/${getResultSlug(result)}/details`,
+	redirect: ({ result }) =>
+		`/dashboard/administrator/persons/${getResultSlug(result)}/details${result.successData?.localeSearch ?? ""}`,
 
 	async mutate(tx, input, { formData }) {
-		const draftVersionId = await ensureDraftVersion(tx, input.documentId, personsLifecycleAdapter);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			input.documentId,
+			personsLifecycleAdapter,
+			input.localeId,
+		);
 
 		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
 		// re-checks that server-side, so a forged submission cannot rename a published page.
 		const requestedSlug = getRequestedSlug(input.slug);
 		if (requestedSlug != null) {
-			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug, input.localeId);
 		}
 
 		const asset =
@@ -71,12 +81,13 @@ export const updatePersonAction = createMutationAction({
 		await touchVersion(tx, draftVersionId);
 
 		if (shouldSaveAndPublish(formData)) {
-			await publishVersion(tx, input.documentId, personsLifecycleAdapter);
+			await publishVersion(tx, input.documentId, personsLifecycleAdapter, input.localeId);
 		}
 
 		return {
 			subjectId: input.documentId,
-			subjectSlug: await getDocumentSlug(tx, input.documentId),
+			subjectSlug: await getDocumentSlug(tx, input.documentId, input.localeId),
+			successData: { localeSearch: await getLocaleSearch(tx, input.localeId) },
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

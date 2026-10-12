@@ -13,11 +13,14 @@ import { redirect } from "@/lib/navigation/navigation";
 import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
-export async function publishDocumentOrPolicyAction(documentId: string): Promise<void> {
+export async function publishDocumentOrPolicyAction(
+	documentId: string,
+	localeId?: string,
+): Promise<void> {
 	const auditSession = await assertAdmin();
 
 	await db.transaction(async (tx) => {
-		await publishVersion(tx, documentId, documentsPoliciesLifecycleAdapter);
+		await publishVersion(tx, documentId, documentsPoliciesLifecycleAdapter, localeId);
 	});
 
 	after(async () => {

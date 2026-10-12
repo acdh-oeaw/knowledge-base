@@ -41,6 +41,7 @@ interface CountryEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	country: Pick<schema.OrganisationalUnit, "acronym" | "id" | "name" | "summary"> & {
 		descriptionContentBlocks?: Array<ContentBlock>;
 		entityVersion: {
@@ -81,6 +82,7 @@ export function CountryEditForm(props: Readonly<CountryEditFormProps>): ReactNod
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		country,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -128,15 +130,16 @@ export function CountryEditForm(props: Readonly<CountryEditFormProps>): ReactNod
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardCountryDraftAction}
+							discardDraftAction={(id) => discardCountryDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishCountryAction}
+							publishAction={(id) => publishCountryAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<CountryForm
+						localeId={selectedLocaleId}
 						key={country.id}
 						country={country}
 						formAction={updateCountryAction}

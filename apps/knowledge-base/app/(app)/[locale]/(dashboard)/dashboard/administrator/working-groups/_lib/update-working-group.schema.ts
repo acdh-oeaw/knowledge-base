@@ -7,6 +7,7 @@ import { EntitySlugInputSchema } from "@/lib/entity-slug-input";
 export const UpdateWorkingGroupActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(OrganisationalUnitUpdateSchema, ["name", "summary"]).entries,
 	summary: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	acronym: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),

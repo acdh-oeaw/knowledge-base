@@ -10,8 +10,8 @@ export const discardWorkingGroupDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/working-groups",
 	redirect: "/dashboard/administrator/working-groups",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

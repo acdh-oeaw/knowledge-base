@@ -5,7 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateSpotlightArticleActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_lib/update-spotlight-article.schema";
 import {
-	ensureDraftVersion,
+	ensureLocalizedDraftVersion,
 	getDocumentSlug,
 	publishVersion,
 	touchVersion,
@@ -16,6 +16,7 @@ import {
 	ensureEntityVersionField,
 	insertContentBlockTree,
 } from "@/lib/data/entity-version-fields";
+import { getLocaleSearch } from "@/lib/data/locales";
 import { syncEntityRelations } from "@/lib/data/relations";
 import { spotlightArticlesLifecycleAdapter } from "@/lib/data/spotlight-articles.lifecycle-adapter";
 import { eq } from "@/lib/db/sql";
@@ -25,26 +26,30 @@ import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
 import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
-export const updateSpotlightArticleAction = createMutationAction({
+export const updateSpotlightArticleAction = createMutationAction<
+	typeof UpdateSpotlightArticleActionInputSchema,
+	{ localeSearch: string }
+>({
 	schema: UpdateSpotlightArticleActionInputSchema,
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "spotlight_articles" },
 	revalidate: "/[locale]/dashboard/website/spotlight-articles",
 	redirect: ({ result }) =>
-		`/dashboard/website/spotlight-articles/${getResultSlug(result)}/details`,
+		`/dashboard/website/spotlight-articles/${getResultSlug(result)}/details${result.successData?.localeSearch ?? ""}`,
 
 	async mutate(tx, input, { formData }) {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			input.documentId,
 			spotlightArticlesLifecycleAdapter,
+			input.localeId,
 		);
 
 		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
 		// re-checks that server-side, so a forged submission cannot rename a published page.
 		const requestedSlug = getRequestedSlug(input.slug);
 		if (requestedSlug != null) {
-			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug, input.localeId);
 		}
 
 		const asset = await tx.query.assets.findFirst({
@@ -79,12 +84,13 @@ export const updateSpotlightArticleAction = createMutationAction({
 		await touchVersion(tx, draftVersionId);
 
 		if (shouldSaveAndPublish(formData)) {
-			await publishVersion(tx, input.documentId, spotlightArticlesLifecycleAdapter);
+			await publishVersion(tx, input.documentId, spotlightArticlesLifecycleAdapter, input.localeId);
 		}
 
 		return {
 			subjectId: input.documentId,
-			subjectSlug: await getDocumentSlug(tx, input.documentId),
+			subjectSlug: await getDocumentSlug(tx, input.documentId, input.localeId),
+			successData: { localeSearch: await getLocaleSearch(tx, input.localeId) },
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

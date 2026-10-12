@@ -12,8 +12,8 @@ export const publishEricAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/eric",
 	redirect: "/dashboard/administrator/eric",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

@@ -212,6 +212,7 @@ export default async function DashboardAdministratorEditWorkingGroupPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			personRelationRoleOptions={personRelationRoleOptions}
 			personRelations={personRelations}
 			relations={relations}

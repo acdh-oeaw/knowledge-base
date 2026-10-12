@@ -197,6 +197,7 @@ export default async function DashboardWebsiteEditOpportunityPage(
 			initialRelatedResourceTotal={initialRelatedResources.total}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}
 			sources={sources}

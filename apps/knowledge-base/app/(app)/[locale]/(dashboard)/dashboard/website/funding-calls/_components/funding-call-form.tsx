@@ -33,6 +33,11 @@ import {
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface FundingCallFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	contentBlocks?: Array<ContentBlock>;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityIds?: Array<string>;
@@ -61,6 +66,7 @@ interface FundingCallFormProps {
 
 export function FundingCallForm(props: Readonly<FundingCallFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		contentBlocks,
 		formAction,
@@ -183,6 +189,7 @@ export function FundingCallForm(props: Readonly<FundingCallFormProps>): ReactNod
 					<Fragment>
 						<input name="id" type="hidden" value={fundingCall.id} />
 						<input name="documentId" type="hidden" value={fundingCall.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

@@ -10,8 +10,8 @@ export const discardEventDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/events",
 	redirect: "/dashboard/website/events",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, eventsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, eventsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

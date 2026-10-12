@@ -34,6 +34,11 @@ import {
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface OpportunityFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	contentBlocks?: Array<ContentBlock>;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityIds?: Array<string>;
@@ -64,6 +69,7 @@ interface OpportunityFormProps {
 
 export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		contentBlocks,
 		formAction,
@@ -210,6 +216,7 @@ export function OpportunityForm(props: Readonly<OpportunityFormProps>): ReactNod
 					<Fragment>
 						<input name="id" type="hidden" value={opportunity.id} />
 						<input name="documentId" type="hidden" value={opportunity.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

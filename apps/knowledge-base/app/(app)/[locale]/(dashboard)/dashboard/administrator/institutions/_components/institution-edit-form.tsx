@@ -37,6 +37,7 @@ interface InstitutionEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	institution: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
@@ -75,6 +76,7 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		institution,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -121,15 +123,16 @@ export function InstitutionEditForm(props: Readonly<InstitutionEditFormProps>): 
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardInstitutionDraftAction}
+							discardDraftAction={(id) => discardInstitutionDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishInstitutionAction}
+							publishAction={(id) => publishInstitutionAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<InstitutionForm
+						localeId={selectedLocaleId}
 						key={institution.id}
 						isPublished={isPublished}
 						formAction={updateInstitutionAction}

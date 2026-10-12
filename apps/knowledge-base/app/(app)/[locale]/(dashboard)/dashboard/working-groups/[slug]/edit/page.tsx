@@ -130,6 +130,7 @@ export default async function WorkingGroupEditPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			personRelationRoleOptions={personRelationRoleOptions}
 			personRelations={personRelations}
 			selectedSocialMediaItems={data.selectedSocialMediaItems}

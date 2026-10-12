@@ -12,8 +12,8 @@ export const publishImpactCaseStudyAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/impact-case-studies",
 	redirect: "/dashboard/website/impact-case-studies",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, impactCaseStudiesLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, impactCaseStudiesLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

@@ -10,8 +10,8 @@ export const discardOpportunityDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/opportunities",
 	redirect: "/dashboard/website/opportunities",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, opportunitiesLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, opportunitiesLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

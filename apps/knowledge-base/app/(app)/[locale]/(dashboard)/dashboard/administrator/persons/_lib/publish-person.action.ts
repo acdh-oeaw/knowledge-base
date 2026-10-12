@@ -12,8 +12,8 @@ export const publishPersonAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/persons",
 	redirect: "/dashboard/administrator/persons",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, personsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, personsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

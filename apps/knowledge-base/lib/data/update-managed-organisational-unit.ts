@@ -2,7 +2,7 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
 import type { ContentBlockInput } from "@/lib/content-block-input";
-import { ensureDraftVersion, touchVersion } from "@/lib/data/entity-lifecycle";
+import { ensureLocalizedDraftVersion, touchVersion } from "@/lib/data/entity-lifecycle";
 import { replaceEntityVersionFieldContentBlocks } from "@/lib/data/entity-version-fields";
 import { organisationalUnitsLifecycleAdapter } from "@/lib/data/organisational-units.lifecycle-adapter";
 import { syncOrganisationalUnitSocialMedia } from "@/lib/data/social-media-relations";
@@ -11,6 +11,7 @@ import { eq } from "@/lib/db/sql";
 
 interface ManagedOrganisationalUnitUpdate {
 	documentId: string;
+	localeId: string;
 	name?: string;
 	acronym: string | null;
 	email?: string | null;
@@ -28,10 +29,11 @@ export async function updateManagedOrganisationalUnitDraft(
 	tx: Transaction,
 	input: ManagedOrganisationalUnitUpdate,
 ): Promise<void> {
-	const draftVersionId = await ensureDraftVersion(
+	const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 		tx,
 		input.documentId,
 		organisationalUnitsLifecycleAdapter,
+		input.localeId,
 	);
 
 	let imageId: string | null = null;

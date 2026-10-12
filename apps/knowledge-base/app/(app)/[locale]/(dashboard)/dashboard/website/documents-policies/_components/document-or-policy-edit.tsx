@@ -20,6 +20,7 @@ interface DocumentOrPolicyEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	documentOrPolicy: Pick<
 		schema.DocumentOrPolicy,
 		"id" | "title" | "summary" | "url" | "groupId"
@@ -43,6 +44,7 @@ export function DocumentOrPolicyEditForm(
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		documentOrPolicy,
 		groups,
 	} = props;
@@ -57,8 +59,8 @@ export function DocumentOrPolicyEditForm(
 					documentId,
 					hasDraft: hasDraftChanges,
 					isPublished,
-					publishAction: publishDocumentOrPolicyAction,
-					discardDraftAction: discardDocumentOrPolicyDraftAction,
+					publishAction: (id) => publishDocumentOrPolicyAction(id, selectedLocaleId),
+					discardDraftAction: (id) => discardDocumentOrPolicyDraftAction(id, selectedLocaleId),
 				}}
 				localeSelector={
 					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
@@ -66,6 +68,7 @@ export function DocumentOrPolicyEditForm(
 			/>
 
 			<DocumentOrPolicyForm
+				localeId={selectedLocaleId}
 				contentBlocks={contentBlocks}
 				documentOrPolicy={documentOrPolicy}
 				isPublished={isPublished}

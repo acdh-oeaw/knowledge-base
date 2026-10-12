@@ -30,6 +30,7 @@ interface ProjectEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	project: Pick<
 		schema.Project,
 		"acronym" | "duration" | "funding" | "id" | "name" | "summary" | "topic"
@@ -89,6 +90,7 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		project,
 		scopes,
 		calls,
@@ -134,15 +136,16 @@ export function ProjectEditForm(props: Readonly<ProjectEditFormProps>): ReactNod
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardProjectDraftAction}
+							discardDraftAction={(id) => discardProjectDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishProjectAction}
+							publishAction={(id) => publishProjectAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<ProjectForm
+						localeId={selectedLocaleId}
 						key={project.id}
 						isDefaultLocale={isDefaultLocale}
 						selectedLocaleCode={selectedLocaleCode}

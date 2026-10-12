@@ -675,8 +675,12 @@ export async function createDraftDocumentWithSlug(
  * The document's current slug: the draft's when one exists (forms edit the draft), else the
  * published slug.
  */
-export async function getDocumentSlug(tx: Transaction, documentId: string): Promise<string> {
-	const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
+export async function getDocumentSlug(
+	tx: Transaction,
+	documentId: string,
+	localeId?: string,
+): Promise<string> {
+	const { draftId, publishedId } = await getVersionsForLocale(tx, documentId, localeId);
 	const versionId = draftId ?? publishedId;
 	assert(versionId, `Entity "${documentId}" not found.`);
 
@@ -707,6 +711,27 @@ export async function getDocumentVersions(
 }
 
 /**
+ * The draft/published pair a lifecycle helper acts on: `localeId`'s own versions when given,
+ * otherwise the default locale's, which is all `document_lifecycle` can resolve.
+ */
+async function getVersionsForLocale(
+	tx: Transaction,
+	documentId: string,
+	localeId: string | undefined,
+): Promise<DocumentVersions> {
+	if (localeId == null) {
+		return getDocumentVersions(tx, documentId);
+	}
+
+	const { draftId, publishedId } = await getDocumentLifecycleStateForLocale(
+		tx,
+		documentId,
+		localeId,
+	);
+	return { draftId, publishedId };
+}
+
+/**
  * Apply a user-chosen slug to a document that has never been published.
  *
  * Renaming a draft is the safe case: it has no public URL yet, so nothing can break. A published
@@ -722,8 +747,9 @@ export async function updateDraftDocumentSlug(
 	tx: Transaction,
 	documentId: string,
 	slug: string,
+	localeId?: string,
 ): Promise<void> {
-	const currentSlug = await getDocumentSlug(tx, documentId);
+	const currentSlug = await getDocumentSlug(tx, documentId, localeId);
 
 	// Resubmitting the unchanged slug is what every ordinary save does; only an actual rename has to
 	// clear the published check.
@@ -735,7 +761,7 @@ export async function updateDraftDocumentSlug(
 	// is not blocked by a value it is not changing.
 	assertSlugWithinMaxLength(slug);
 
-	const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
+	const { draftId, publishedId } = await getVersionsForLocale(tx, documentId, localeId);
 	if (publishedId != null) {
 		// Reached only by a forged submission or a publish that raced this save — the form hides the
 		// field once published. A typed error so the action shows "change it on Maintenance" instead of
@@ -939,8 +965,9 @@ export async function publishVersion(
 	tx: Transaction,
 	documentId: string,
 	adapter: EntityLifecycleAdapter,
+	localeId?: string,
 ): Promise<string> {
-	const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
+	const { draftId, publishedId } = await getVersionsForLocale(tx, documentId, localeId);
 	assert(draftId, "Cannot publish: no draft version exists for this document.");
 	const draftVersion = await tx.query.entityVersions.findFirst({
 		where: { id: draftId },
@@ -990,13 +1017,25 @@ export async function discardDraftVersion(
 	tx: Transaction,
 	documentId: string,
 	adapter: EntityLifecycleAdapter,
+	localeId?: string,
 ): Promise<void> {
-	const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
+	const { draftId, publishedId } = await getVersionsForLocale(tx, documentId, localeId);
 	if (draftId == null) {
 		return;
 	}
 
 	await adapter.wipeSubtype(tx, draftId);
+
+	// An unpublished translation is only this locale's draft: the document and its default-locale
+	// versions stay, so drop the version alone rather than falling through to the whole-document
+	// delete below.
+	const isTranslation = localeId != null && localeId !== (await getDefaultLocaleId(tx));
+	if (publishedId == null && isTranslation) {
+		await wipeVersionContent(tx, draftId);
+		await tx.delete(schema.slugs).where(eq(schema.slugs.entityVersionId, draftId));
+		await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, draftId));
+		return;
+	}
 
 	// A never-published document has no published version to revert to, so discarding its only draft
 	// removes the whole document — including its document-level relations. Otherwise the `entities` row

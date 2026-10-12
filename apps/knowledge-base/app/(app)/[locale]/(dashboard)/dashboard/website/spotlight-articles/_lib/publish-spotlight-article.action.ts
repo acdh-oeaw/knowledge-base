@@ -12,8 +12,8 @@ export const publishSpotlightArticleAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/spotlight-articles",
 	redirect: "/dashboard/website/spotlight-articles",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, spotlightArticlesLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, spotlightArticlesLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

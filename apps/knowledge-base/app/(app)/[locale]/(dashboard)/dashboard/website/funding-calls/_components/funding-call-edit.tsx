@@ -21,6 +21,7 @@ interface FundingCallEditFormProps {
 	hasDraftChanges: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -51,6 +52,7 @@ export function FundingCallEditForm(props: Readonly<FundingCallEditFormProps>): 
 		hasDraftChanges,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		initialAssets,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -74,8 +76,8 @@ export function FundingCallEditForm(props: Readonly<FundingCallEditFormProps>): 
 					documentId,
 					hasDraft: hasDraftChanges,
 					isPublished,
-					publishAction: publishFundingCallAction,
-					discardDraftAction: discardFundingCallDraftAction,
+					publishAction: (id) => publishFundingCallAction(id, selectedLocaleId),
+					discardDraftAction: (id) => discardFundingCallDraftAction(id, selectedLocaleId),
 				}}
 				localeSelector={
 					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
@@ -83,6 +85,7 @@ export function FundingCallEditForm(props: Readonly<FundingCallEditFormProps>): 
 			/>
 
 			<FundingCallForm
+				localeId={selectedLocaleId}
 				contentBlocks={contentBlocks}
 				initialAssets={initialAssets}
 				initialRelatedEntityIds={initialRelatedEntityIds}

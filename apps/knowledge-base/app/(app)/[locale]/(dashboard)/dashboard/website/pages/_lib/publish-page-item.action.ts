@@ -12,8 +12,8 @@ export const publishPageItemAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/pages",
 	redirect: "/dashboard/website/pages",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, pagesLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, pagesLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

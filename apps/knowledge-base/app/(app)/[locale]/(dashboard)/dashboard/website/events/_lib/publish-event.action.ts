@@ -12,8 +12,8 @@ export const publishEventAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/events",
 	redirect: "/dashboard/website/events",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, eventsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, eventsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

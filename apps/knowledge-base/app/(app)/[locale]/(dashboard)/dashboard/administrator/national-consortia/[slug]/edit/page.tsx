@@ -159,6 +159,7 @@ export default async function DashboardAdministratorEditNationalConsortiumPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			memberInstitutions={memberInstitutions}
 			memberInstitutionStatusOptions={memberInstitutionStatusOptions}
 			nationalConsortium={{

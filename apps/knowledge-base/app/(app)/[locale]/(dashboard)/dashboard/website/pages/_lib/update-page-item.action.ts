@@ -5,7 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { UpdatePageItemActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/pages/_lib/update-page-item.schema";
 import {
-	ensureDraftVersion,
+	ensureLocalizedDraftVersion,
 	getDocumentSlug,
 	publishVersion,
 	touchVersion,
@@ -16,6 +16,7 @@ import {
 	ensureEntityVersionField,
 	insertContentBlockTree,
 } from "@/lib/data/entity-version-fields";
+import { getLocaleSearch } from "@/lib/data/locales";
 import { pagesLifecycleAdapter } from "@/lib/data/pages.lifecycle-adapter";
 import { syncEntityRelations } from "@/lib/data/relations";
 import { eq } from "@/lib/db/sql";
@@ -25,21 +26,30 @@ import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
 import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
-export const updatePageItemAction = createMutationAction({
+export const updatePageItemAction = createMutationAction<
+	typeof UpdatePageItemActionInputSchema,
+	{ localeSearch: string }
+>({
 	schema: UpdatePageItemActionInputSchema,
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "pages" },
 	revalidate: "/[locale]/dashboard/website/pages",
-	redirect: ({ result }) => `/dashboard/website/pages/${getResultSlug(result)}/details`,
+	redirect: ({ result }) =>
+		`/dashboard/website/pages/${getResultSlug(result)}/details${result.successData?.localeSearch ?? ""}`,
 
 	async mutate(tx, input, { formData }) {
-		const draftVersionId = await ensureDraftVersion(tx, input.documentId, pagesLifecycleAdapter);
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
+			tx,
+			input.documentId,
+			pagesLifecycleAdapter,
+			input.localeId,
+		);
 
 		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
 		// re-checks that server-side, so a forged submission cannot rename a published page.
 		const requestedSlug = getRequestedSlug(input.slug);
 		if (requestedSlug != null) {
-			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug, input.localeId);
 		}
 
 		let imageId: string | null = null;
@@ -78,12 +88,13 @@ export const updatePageItemAction = createMutationAction({
 		await touchVersion(tx, draftVersionId);
 
 		if (shouldSaveAndPublish(formData)) {
-			await publishVersion(tx, input.documentId, pagesLifecycleAdapter);
+			await publishVersion(tx, input.documentId, pagesLifecycleAdapter, input.localeId);
 		}
 
 		return {
 			subjectId: input.documentId,
-			subjectSlug: await getDocumentSlug(tx, input.documentId),
+			subjectSlug: await getDocumentSlug(tx, input.documentId, input.localeId),
+			successData: { localeSearch: await getLocaleSearch(tx, input.localeId) },
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},

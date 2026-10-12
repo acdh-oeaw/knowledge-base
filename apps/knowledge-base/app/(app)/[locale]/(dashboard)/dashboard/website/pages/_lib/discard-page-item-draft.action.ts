@@ -10,8 +10,8 @@ export const discardPageItemDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/pages",
 	redirect: "/dashboard/website/pages",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, pagesLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, pagesLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

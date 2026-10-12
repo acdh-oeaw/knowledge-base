@@ -10,8 +10,8 @@ export const discardInstitutionDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/institutions",
 	redirect: "/dashboard/administrator/institutions",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

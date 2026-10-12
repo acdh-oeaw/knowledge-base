@@ -175,6 +175,7 @@ export default async function DashboardWebsiteEditNewsItemPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			newsItem={{
 				...newsItem,
 				entityVersion: { ...newsItem.entityVersion, slug: entityVersionSlug },

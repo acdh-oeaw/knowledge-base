@@ -12,8 +12,8 @@ export const publishNewsItemAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/news",
 	redirect: "/dashboard/website/news",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, newsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, newsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

@@ -8,6 +8,7 @@ import { FeaturedImageInputSchema } from "@/lib/featured-image-input";
 export const UpdateOpportunityActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(OpportunityUpdateSchema, ["title", "summary", "sourceId", "website"]).entries,
 	...FeaturedImageInputSchema,
 	relatedEntityIds: v.optional(v.array(v.pipe(v.string(), v.uuid())), []),

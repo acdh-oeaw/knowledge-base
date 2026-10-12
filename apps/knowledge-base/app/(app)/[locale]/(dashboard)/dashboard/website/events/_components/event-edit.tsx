@@ -24,6 +24,7 @@ interface EventEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	event: Pick<
 		schema.Event,
 		"id" | "duration" | "isFullDay" | "location" | "title" | "summary" | "website"
@@ -58,6 +59,7 @@ export function EventEditForm(props: Readonly<EventEditFormProps>): ReactNode {
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		event,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -80,8 +82,8 @@ export function EventEditForm(props: Readonly<EventEditFormProps>): ReactNode {
 					documentId,
 					hasDraft: hasDraftChanges,
 					isPublished,
-					publishAction: publishEventAction,
-					discardDraftAction: discardEventDraftAction,
+					publishAction: (id) => publishEventAction(id, selectedLocaleId),
+					discardDraftAction: (id) => discardEventDraftAction(id, selectedLocaleId),
 				}}
 				localeSelector={
 					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
@@ -95,6 +97,7 @@ export function EventEditForm(props: Readonly<EventEditFormProps>): ReactNode {
 				formAction={updateEventAction}
 				formId={formId}
 				isDefaultLocale={isDefaultLocale}
+				localeId={selectedLocaleId}
 				initialAssets={initialAssets}
 				initialRelatedEntityIds={initialRelatedEntityIds}
 				initialRelatedEntityItems={initialRelatedEntityItems}

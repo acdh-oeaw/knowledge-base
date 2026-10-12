@@ -21,6 +21,7 @@ interface OpportunityEditFormProps {
 	hasDraftChanges: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	initialRelatedEntityIds: Array<string>;
 	initialRelatedEntityItems: Array<{ id: string; name: string; description?: string }>;
@@ -56,6 +57,7 @@ export function OpportunityEditForm(props: Readonly<OpportunityEditFormProps>): 
 		hasDraftChanges,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		initialAssets,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -80,8 +82,8 @@ export function OpportunityEditForm(props: Readonly<OpportunityEditFormProps>): 
 					documentId,
 					hasDraft: hasDraftChanges,
 					isPublished,
-					publishAction: publishOpportunityAction,
-					discardDraftAction: discardOpportunityDraftAction,
+					publishAction: (id) => publishOpportunityAction(id, selectedLocaleId),
+					discardDraftAction: (id) => discardOpportunityDraftAction(id, selectedLocaleId),
 				}}
 				localeSelector={
 					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
@@ -89,6 +91,7 @@ export function OpportunityEditForm(props: Readonly<OpportunityEditFormProps>): 
 			/>
 
 			<OpportunityForm
+				localeId={selectedLocaleId}
 				contentBlocks={contentBlocks}
 				initialAssets={initialAssets}
 				initialRelatedEntityIds={initialRelatedEntityIds}

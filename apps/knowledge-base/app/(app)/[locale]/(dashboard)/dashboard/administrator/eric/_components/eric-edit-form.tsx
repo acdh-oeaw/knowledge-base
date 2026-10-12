@@ -30,6 +30,7 @@ interface EricEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	eric: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
@@ -61,6 +62,7 @@ export function EricEditForm(props: Readonly<EricEditFormProps>): ReactNode {
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		eric,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -101,15 +103,16 @@ export function EricEditForm(props: Readonly<EricEditFormProps>): ReactNode {
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardEricDraftAction}
+							discardDraftAction={(id) => discardEricDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishEricAction}
+							publishAction={(id) => publishEricAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<EricForm
+						localeId={selectedLocaleId}
 						key={eric.id}
 						eric={eric}
 						formAction={updateEricAction}

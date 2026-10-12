@@ -172,6 +172,7 @@ export default async function DashboardAdministratorEditInstitutionPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			personRelationRoleOptions={personRelationRoleOptions}
 			personRelations={personRelations}
 			projectRoles={projectRoles}

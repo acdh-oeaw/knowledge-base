@@ -48,6 +48,11 @@ interface EventFormProps {
 	 * (the create form has no locale concept, and always starts in the default locale).
 	 */
 	isDefaultLocale?: boolean;
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	event?: Pick<
 		schema.Event,
 		"id" | "duration" | "isFullDay" | "location" | "title" | "summary" | "website"
@@ -97,6 +102,7 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 		formAction,
 		formId,
 		isDefaultLocale = true,
+		localeId,
 		event,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -311,6 +317,7 @@ export function EventForm(props: Readonly<EventFormProps>): ReactNode {
 					<Fragment>
 						<input name="id" type="hidden" value={event.id} />
 						<input name="documentId" type="hidden" value={event.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

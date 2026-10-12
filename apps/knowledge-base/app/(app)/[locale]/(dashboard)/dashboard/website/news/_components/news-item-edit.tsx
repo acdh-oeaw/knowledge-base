@@ -23,6 +23,7 @@ interface NewsItemEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	newsItem: Pick<schema.NewsItem, "id" | "publicationDate" | "title" | "summary"> & {
 		entityVersion: {
 			entity: { id: string };
@@ -53,6 +54,7 @@ export function NewsItemEditForm(props: Readonly<NewsItemEditFormProps>): ReactN
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		newsItem,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -75,8 +77,8 @@ export function NewsItemEditForm(props: Readonly<NewsItemEditFormProps>): ReactN
 					documentId,
 					hasDraft: hasDraftChanges,
 					isPublished,
-					publishAction: publishNewsItemAction,
-					discardDraftAction: discardNewsItemDraftAction,
+					publishAction: (id) => publishNewsItemAction(id, selectedLocaleId),
+					discardDraftAction: (id) => discardNewsItemDraftAction(id, selectedLocaleId),
 				}}
 				localeSelector={
 					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
@@ -84,6 +86,7 @@ export function NewsItemEditForm(props: Readonly<NewsItemEditFormProps>): ReactN
 			/>
 
 			<NewsItemForm
+				localeId={selectedLocaleId}
 				key={newsItem.id}
 				contentBlocks={contentBlocks}
 				formAction={updateNewsItemAction}

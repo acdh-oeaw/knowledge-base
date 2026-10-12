@@ -8,6 +8,7 @@ import { FeaturedImageCaptionInputSchema } from "@/lib/featured-image-input";
 export const UpdatePageItemActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(PageUpdateSchema, ["title"]).entries,
 	...v.pick(PageUpdateSchema, ["summary"]).entries,
 	publicationDate: v.pipe(v.string(), v.isoDate(), v.toDate()),

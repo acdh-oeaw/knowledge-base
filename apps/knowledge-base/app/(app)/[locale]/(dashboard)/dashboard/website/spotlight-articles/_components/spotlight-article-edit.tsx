@@ -33,6 +33,7 @@ interface SpotlightArticleEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	spotlightArticle: Pick<
 		schema.SpotlightArticle,
 		"id" | "publicationDate" | "title" | "summary"
@@ -67,6 +68,7 @@ export function SpotlightArticleEditForm(
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		spotlightArticle,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -102,15 +104,16 @@ export function SpotlightArticleEditForm(
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardSpotlightArticleDraftAction}
+							discardDraftAction={(id) => discardSpotlightArticleDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishSpotlightArticleAction}
+							publishAction={(id) => publishSpotlightArticleAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<SpotlightArticleForm
+						localeId={selectedLocaleId}
 						contentBlocks={contentBlocks}
 						isPublished={isPublished}
 						formAction={updateSpotlightArticleAction}

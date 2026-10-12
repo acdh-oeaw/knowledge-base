@@ -33,6 +33,11 @@ import {
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface SpotlightArticleFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	contentBlocks?: Array<ContentBlock>;
 	spotlightArticle?: Pick<
@@ -62,6 +67,7 @@ interface SpotlightArticleFormProps {
 
 export function SpotlightArticleForm(props: Readonly<SpotlightArticleFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		contentBlocks,
 		formAction,
@@ -189,6 +195,7 @@ export function SpotlightArticleForm(props: Readonly<SpotlightArticleFormProps>)
 							type="hidden"
 							value={spotlightArticle.entityVersion.entity.id}
 						/>
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

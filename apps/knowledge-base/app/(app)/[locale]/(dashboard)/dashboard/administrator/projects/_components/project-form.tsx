@@ -132,6 +132,11 @@ function renderSelectedAssetOption(item: AsyncOption): ReactNode {
 }
 
 interface ProjectFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	/**
 	 * Facts (funding/duration/scope) aren't translatable — the DB keeps them synced from the default
@@ -179,6 +184,7 @@ interface ProjectFormProps {
 
 export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		formAction,
 		isDefaultLocale = true,
@@ -654,6 +660,7 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 					<Fragment>
 						<input name="id" type="hidden" value={project.id} />
 						<input name="documentId" type="hidden" value={project.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

@@ -33,6 +33,11 @@ import {
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface ImpactCaseStudyFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	contentBlocks?: Array<ContentBlock>;
 	impactCaseStudy?: Pick<schema.ImpactCaseStudy, "id" | "publicationDate" | "title" | "summary"> & {
@@ -58,6 +63,7 @@ interface ImpactCaseStudyFormProps {
 
 export function ImpactCaseStudyForm(props: Readonly<ImpactCaseStudyFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		contentBlocks,
 		formAction,
@@ -186,6 +192,7 @@ export function ImpactCaseStudyForm(props: Readonly<ImpactCaseStudyFormProps>): 
 							type="hidden"
 							value={impactCaseStudy.entityVersion.entity.id}
 						/>
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

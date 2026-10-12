@@ -12,8 +12,8 @@ export const publishProjectAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/projects",
 	redirect: "/dashboard/administrator/projects",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, projectsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, projectsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

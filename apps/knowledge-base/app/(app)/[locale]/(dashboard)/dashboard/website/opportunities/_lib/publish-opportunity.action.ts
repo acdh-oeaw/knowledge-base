@@ -12,8 +12,8 @@ export const publishOpportunityAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/opportunities",
 	redirect: "/dashboard/website/opportunities",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, opportunitiesLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, opportunitiesLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

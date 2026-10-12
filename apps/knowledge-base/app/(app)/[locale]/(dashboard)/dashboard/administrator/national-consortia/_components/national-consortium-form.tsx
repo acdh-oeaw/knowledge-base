@@ -27,6 +27,11 @@ import { SocialMediaRelationsFields } from "@/app/(app)/[locale]/(dashboard)/das
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface NationalConsortiumFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	/**
 	 * Acronym/ROR/SSHOC actor ID aren't translatable — the DB keeps them synced from the default
@@ -56,6 +61,7 @@ interface NationalConsortiumFormProps {
 
 export function NationalConsortiumForm(props: Readonly<NationalConsortiumFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		formAction,
 		formId,
@@ -221,6 +227,7 @@ export function NationalConsortiumForm(props: Readonly<NationalConsortiumFormPro
 							type="hidden"
 							value={nationalConsortium.entityVersion.entity.id}
 						/>
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

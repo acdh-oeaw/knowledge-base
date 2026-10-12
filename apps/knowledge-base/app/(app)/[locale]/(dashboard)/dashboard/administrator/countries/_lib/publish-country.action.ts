@@ -12,8 +12,8 @@ export const publishCountryAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/countries",
 	redirect: "/dashboard/administrator/countries",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

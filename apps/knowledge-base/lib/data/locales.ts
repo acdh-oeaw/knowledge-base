@@ -1,4 +1,6 @@
-import { db } from "@/lib/db";
+import { assert } from "@acdh-oeaw/lib";
+
+import { type Transaction, db } from "@/lib/db";
 
 export interface LocaleOption {
 	id: string;
@@ -10,6 +12,24 @@ export interface LocaleOption {
 
 function formatLocaleCode(languageCode: string, regionCode: string | null): string {
 	return regionCode == null ? languageCode : `${languageCode}-${regionCode.toUpperCase()}`;
+}
+
+/**
+ * The `?locale=…` query a redirect after saving needs to land back on the locale version just
+ * edited. Empty for the default locale, which is what the pages show without one.
+ */
+export async function getLocaleSearch(tx: Transaction, localeId: string): Promise<string> {
+	const locale = await tx.query.locales.findFirst({
+		where: { id: localeId },
+		columns: { languageCode: true, regionCode: true, isDefault: true },
+	});
+	assert(locale, `Locale "${localeId}" not found.`);
+
+	if (locale.isDefault) {
+		return "";
+	}
+
+	return `?locale=${encodeURIComponent(formatLocaleCode(locale.languageCode, locale.regionCode))}`;
 }
 
 export async function getLocales(): Promise<Array<LocaleOption>> {

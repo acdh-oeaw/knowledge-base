@@ -17,6 +17,7 @@ export const UpdateEricActionInputSchema = v.object({
 		null,
 	),
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	imageKey: v.nullish(v.pipe(v.string(), v.nonEmpty()), null),
 	descriptionContentBlocks: v.optional(
 		v.array(v.pipe(v.string(), v.parseJson(), ContentBlockInputSchema)),

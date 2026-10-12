@@ -33,6 +33,7 @@ interface ImpactCaseStudyEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	impactCaseStudy: Pick<schema.ImpactCaseStudy, "id" | "publicationDate" | "title" | "summary"> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & {
@@ -62,6 +63,7 @@ export function ImpactCaseStudyEditForm(props: Readonly<ImpactCaseStudyEditFormP
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		impactCaseStudy,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -97,15 +99,16 @@ export function ImpactCaseStudyEditForm(props: Readonly<ImpactCaseStudyEditFormP
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardImpactCaseStudyDraftAction}
+							discardDraftAction={(id) => discardImpactCaseStudyDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishImpactCaseStudyAction}
+							publishAction={(id) => publishImpactCaseStudyAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<ImpactCaseStudyForm
+						localeId={selectedLocaleId}
 						contentBlocks={contentBlocks}
 						isPublished={isPublished}
 						formAction={updateImpactCaseStudyAction}

@@ -23,6 +23,7 @@ interface PageItemEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	pageItem: Pick<schema.Page, "id" | "publicationDate" | "title" | "summary"> & {
 		entityVersion: { entity: { id: string }; slug: { value: string } };
 	} & {
@@ -49,6 +50,7 @@ export function PageItemEditForm(props: Readonly<PageItemEditFormProps>): ReactN
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		pageItem,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -71,8 +73,8 @@ export function PageItemEditForm(props: Readonly<PageItemEditFormProps>): ReactN
 					documentId,
 					hasDraft: hasDraftChanges,
 					isPublished,
-					publishAction: publishPageItemAction,
-					discardDraftAction: discardPageItemDraftAction,
+					publishAction: (id) => publishPageItemAction(id, selectedLocaleId),
+					discardDraftAction: (id) => discardPageItemDraftAction(id, selectedLocaleId),
 				}}
 				localeSelector={
 					<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
@@ -80,6 +82,7 @@ export function PageItemEditForm(props: Readonly<PageItemEditFormProps>): ReactN
 			/>
 
 			<PageItemForm
+				localeId={selectedLocaleId}
 				key={pageItem.id}
 				contentBlocks={contentBlocks}
 				isPublished={isPublished}

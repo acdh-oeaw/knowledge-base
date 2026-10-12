@@ -34,6 +34,7 @@ interface WorkingGroupEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	workingGroup: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "email" | "id" | "mailingList" | "name" | "sshocMarketplaceActorId" | "summary"
@@ -70,6 +71,7 @@ export function WorkingGroupEditForm(props: Readonly<WorkingGroupEditFormProps>)
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		workingGroup,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -113,15 +115,16 @@ export function WorkingGroupEditForm(props: Readonly<WorkingGroupEditFormProps>)
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardWorkingGroupDraftAction}
+							discardDraftAction={(id) => discardWorkingGroupDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishWorkingGroupAction}
+							publishAction={(id) => publishWorkingGroupAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<WorkingGroupForm
+						localeId={selectedLocaleId}
 						key={workingGroup.id}
 						formAction={updateWorkingGroupAction}
 						formId={formId}

@@ -166,6 +166,7 @@ export default async function DashboardAdministratorEditPersonPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			person={{
 				...person,
 				entityVersion: { ...person.entityVersion, slug: entityVersionSlug },

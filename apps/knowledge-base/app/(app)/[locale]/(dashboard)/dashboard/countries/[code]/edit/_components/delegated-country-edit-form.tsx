@@ -34,6 +34,7 @@ interface DelegatedCountryEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	nationalConsortium: ComponentProps<typeof NationalConsortiumForm>["nationalConsortium"];
 	initialSocialMediaIds: Array<string>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
@@ -66,6 +67,7 @@ export function DelegatedCountryEditForm(
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		nationalConsortium,
 		initialSocialMediaIds,
 		initialSocialMediaItems,
@@ -104,6 +106,7 @@ export function DelegatedCountryEditForm(
 					</div>
 
 					<NationalConsortiumForm
+						localeId={selectedLocaleId}
 						formAction={updateDelegatedNationalConsortiumAction}
 						formId="delegated-national-consortium-edit-form"
 						initialAssets={initialAssets}

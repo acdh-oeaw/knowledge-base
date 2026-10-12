@@ -28,6 +28,11 @@ import { SocialMediaRelationsFields } from "@/app/(app)/[locale]/(dashboard)/das
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface CountryFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	/**
 	 * The acronym isn't translatable — the DB keeps it synced from the default locale's version
@@ -64,6 +69,7 @@ interface CountryFormProps {
 
 export function CountryForm(props: Readonly<CountryFormProps>): ReactNode {
 	const {
+		localeId,
 		initialAssets,
 		formAction,
 		formId,
@@ -190,6 +196,7 @@ export function CountryForm(props: Readonly<CountryFormProps>): ReactNode {
 					<Fragment>
 						<input name="id" type="hidden" value={country.id} />
 						<input name="documentId" type="hidden" value={country.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

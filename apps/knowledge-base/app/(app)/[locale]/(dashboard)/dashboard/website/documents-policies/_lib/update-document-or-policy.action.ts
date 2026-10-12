@@ -6,7 +6,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { UpdateDocumentOrPolicyActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_lib/update-document-or-policy.schema";
 import { documentsPoliciesLifecycleAdapter } from "@/lib/data/documents-policies.lifecycle-adapter";
 import {
-	ensureDraftVersion,
+	ensureLocalizedDraftVersion,
 	getDocumentSlug,
 	publishVersion,
 	touchVersion,
@@ -17,6 +17,7 @@ import {
 	ensureEntityVersionField,
 	insertContentBlockTree,
 } from "@/lib/data/entity-version-fields";
+import { getLocaleSearch } from "@/lib/data/locales";
 import { eq, isNull } from "@/lib/db/sql";
 import { getRequestedSlug } from "@/lib/entity-slug-input";
 import { shouldSaveAndPublish } from "@/lib/form-intent";
@@ -26,27 +27,28 @@ import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
 export const updateDocumentOrPolicyAction = createMutationAction<
 	typeof UpdateDocumentOrPolicyActionInputSchema,
-	{ published: boolean }
+	{ published: boolean; localeSearch: string }
 >({
 	schema: UpdateDocumentOrPolicyActionInputSchema,
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "documents_policies" },
 	revalidate: "/[locale]/dashboard/website/documents-policies",
 	redirect: ({ result }) =>
-		`/dashboard/website/documents-policies/${getResultSlug(result)}/details`,
+		`/dashboard/website/documents-policies/${getResultSlug(result)}/details${result.successData?.localeSearch ?? ""}`,
 
 	async mutate(tx, input, { formData }) {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			input.documentId,
 			documentsPoliciesLifecycleAdapter,
+			input.localeId,
 		);
 
 		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
 		// re-checks that server-side, so a forged submission cannot rename a published page.
 		const requestedSlug = getRequestedSlug(input.slug);
 		if (requestedSlug != null) {
-			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug, input.localeId);
 		}
 
 		const asset = await tx.query.assets.findFirst({
@@ -99,14 +101,14 @@ export const updateDocumentOrPolicyAction = createMutationAction<
 
 		const published = shouldSaveAndPublish(formData);
 		if (published) {
-			await publishVersion(tx, input.documentId, documentsPoliciesLifecycleAdapter);
+			await publishVersion(tx, input.documentId, documentsPoliciesLifecycleAdapter, input.localeId);
 		}
 
 		return {
 			subjectId: input.documentId,
-			subjectSlug: await getDocumentSlug(tx, input.documentId),
+			subjectSlug: await getDocumentSlug(tx, input.documentId, input.localeId),
 			auditSummary: { lifecycle: published ? "published" : "draft" },
-			successData: { published },
+			successData: { published, localeSearch: await getLocaleSearch(tx, input.localeId) },
 		};
 	},
 

@@ -32,6 +32,7 @@ interface PersonEditFormProps {
 	isDefaultLocale: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	person: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
 		biographyContentBlocks?: Array<ContentBlock>;
 		entityVersion: { entity: { id: string }; slug: { value: string } };
@@ -54,6 +55,7 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 		isDefaultLocale,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		person,
 		contributions,
 		contributionRoleOptions,
@@ -79,15 +81,16 @@ export function PersonEditForm(props: Readonly<PersonEditFormProps>): ReactNode 
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardPersonDraftAction}
+							discardDraftAction={(id) => discardPersonDraftAction(id, selectedLocaleId)}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishPersonAction}
+							publishAction={(id) => publishPersonAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<PersonForm
+						localeId={selectedLocaleId}
 						key={person.id}
 						formAction={updatePersonAction}
 						initialAssets={initialAssets}

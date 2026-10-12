@@ -151,6 +151,7 @@ export default async function DashboardAdministratorEditEricPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			reverseRelationGroups={reverseRelationGroups}
 			selectedRelatedEntities={selectedRelatedEntities}
 			selectedRelatedResources={selectedRelatedResources}

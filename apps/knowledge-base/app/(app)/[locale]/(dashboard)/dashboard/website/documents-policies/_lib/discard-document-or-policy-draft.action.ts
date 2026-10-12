@@ -10,11 +10,14 @@ import { discardDraftVersion } from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
 import { redirect } from "@/lib/navigation/navigation";
 
-export async function discardDocumentOrPolicyDraftAction(documentId: string): Promise<void> {
+export async function discardDocumentOrPolicyDraftAction(
+	documentId: string,
+	localeId?: string,
+): Promise<void> {
 	const auditSession = await assertAdmin();
 
 	await db.transaction(async (tx) => {
-		await discardDraftVersion(tx, documentId, documentsPoliciesLifecycleAdapter);
+		await discardDraftVersion(tx, documentId, documentsPoliciesLifecycleAdapter, localeId);
 	});
 
 	await recordAuditEvent(db, {

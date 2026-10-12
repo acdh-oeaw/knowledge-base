@@ -10,8 +10,8 @@ export const discardNewsItemDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/website/news",
 	redirect: "/dashboard/website/news",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, newsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, newsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

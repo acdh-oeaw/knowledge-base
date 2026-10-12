@@ -37,6 +37,7 @@ interface NationalConsortiumEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	nationalConsortium: Pick<
 		schema.OrganisationalUnit,
 		"acronym" | "id" | "name" | "ror" | "sshocMarketplaceActorId" | "summary"
@@ -74,6 +75,7 @@ export function NationalConsortiumEditForm(
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		nationalConsortium,
 		initialRelatedEntityIds,
 		initialRelatedEntityItems,
@@ -122,15 +124,18 @@ export function NationalConsortiumEditForm(
 					<div className="flex items-center justify-end gap-x-4">
 						<LocaleSelector locales={locales} selectedLocaleCode={selectedLocaleCode} />
 						<EntityLifecycleBar
-							discardDraftAction={discardNationalConsortiumDraftAction}
+							discardDraftAction={(id) =>
+								discardNationalConsortiumDraftAction(id, selectedLocaleId)
+							}
 							documentId={documentId}
 							hasDraft={hasDraftChanges}
 							isPublished={isPublished}
-							publishAction={publishNationalConsortiumAction}
+							publishAction={(id) => publishNationalConsortiumAction(id, selectedLocaleId)}
 						/>
 					</div>
 
 					<NationalConsortiumForm
+						localeId={selectedLocaleId}
 						key={nationalConsortium.id}
 						formAction={updateNationalConsortiumAction}
 						formId={formId}

@@ -303,6 +303,7 @@ export default async function DashboardAdministratorEditProjectPage(
 			isDefaultLocale={selectedLocale.isDefault}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			project={{
 				...project,
 				entityVersion: { ...project.entityVersion, slug: entityVersionSlug },

@@ -192,6 +192,7 @@ export default async function DashboardAdministratorEditCountryPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			initialPersonItems={initialPersonItems}
 			initialPersonTotal={initialPersonTotal}
 			personRelationRoleOptions={personRelationRoleOptions}

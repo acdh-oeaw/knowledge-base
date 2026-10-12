@@ -12,8 +12,8 @@ export const publishNationalConsortiumAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/national-consortia",
 	redirect: "/dashboard/administrator/national-consortia",
 
-	async mutate(tx, [documentId]: [string]) {
-		await publishVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await publishVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 

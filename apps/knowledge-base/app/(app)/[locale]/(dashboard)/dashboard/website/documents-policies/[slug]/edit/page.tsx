@@ -158,6 +158,7 @@ export default async function DashboardWebsiteEditDocumentOrPolicyPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 		/>
 	);
 }

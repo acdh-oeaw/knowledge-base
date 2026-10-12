@@ -29,6 +29,11 @@ import type { PersonSocialMediaEntry } from "@/lib/data/person-social-media";
 import type { ServerAction } from "@/lib/server/create-server-action";
 
 interface PersonFormProps {
+	/**
+	 * The locale version being edited, so the save lands on that locale's draft. Unused when
+	 * creating.
+	 */
+	localeId?: string;
 	initialAssets: Array<{ key: string; label: string; url: string }>;
 	isDefaultLocale?: boolean;
 	person?: Pick<schema.Person, "email" | "id" | "name" | "orcid" | "sortName"> & {
@@ -46,7 +51,7 @@ interface PersonFormProps {
 }
 
 export function PersonForm(props: Readonly<PersonFormProps>): ReactNode {
-	const { initialAssets, formAction, isDefaultLocale, isPublished, person } = props;
+	const { initialAssets, formAction, isDefaultLocale, isPublished, localeId, person } = props;
 
 	const t = useExtracted();
 
@@ -148,6 +153,7 @@ export function PersonForm(props: Readonly<PersonFormProps>): ReactNode {
 					<Fragment>
 						<input name="id" type="hidden" value={person.id} />
 						<input name="documentId" type="hidden" value={person.entityVersion.entity.id} />
+						{localeId != null ? <input name="localeId" type="hidden" value={localeId} /> : null}
 					</Fragment>
 				) : null}
 

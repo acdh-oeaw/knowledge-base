@@ -10,8 +10,8 @@ export const discardNationalConsortiumDraftAction = createCommandAction({
 	revalidate: "/[locale]/dashboard/administrator/national-consortia",
 	redirect: "/dashboard/administrator/national-consortia",
 
-	async mutate(tx, [documentId]: [string]) {
-		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter);
+	async mutate(tx, [documentId, localeId]: [string, string?]) {
+		await discardDraftVersion(tx, documentId, organisationalUnitsLifecycleAdapter, localeId);
 		return { subjectId: documentId };
 	},
 });

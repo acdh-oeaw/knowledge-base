@@ -8,6 +8,7 @@ import { FeaturedImageInputSchema } from "@/lib/featured-image-input";
 export const UpdateSpotlightArticleActionInputSchema = v.object({
 	slug: EntitySlugInputSchema,
 	documentId: v.pipe(v.string(), v.uuid()),
+	localeId: v.pipe(v.string(), v.uuid()),
 	...v.pick(SpotlightArticleUpdateSchema, ["title"]).entries,
 	...v.pick(SpotlightArticleUpdateSchema, ["summary"]).entries,
 	publicationDate: v.pipe(v.string(), v.isoDate(), v.toDate()),

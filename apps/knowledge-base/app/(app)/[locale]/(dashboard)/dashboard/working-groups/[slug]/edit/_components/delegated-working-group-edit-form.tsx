@@ -30,6 +30,7 @@ interface DelegatedWorkingGroupEditFormProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	initialSocialMediaIds: Array<string>;
 	initialSocialMediaItems: Array<{ id: string; name: string; description?: string }>;
 	initialSocialMediaTotal: number;
@@ -57,6 +58,7 @@ export function DelegatedWorkingGroupEditForm(
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		initialSocialMediaIds,
 		initialSocialMediaItems,
 		initialSocialMediaTotal,
@@ -94,6 +96,7 @@ export function DelegatedWorkingGroupEditForm(
 					</div>
 
 					<WorkingGroupForm
+						localeId={selectedLocaleId}
 						formAction={updateDelegatedWorkingGroupAction}
 						formId="delegated-working-group-edit-form"
 						initialAssets={initialAssets}

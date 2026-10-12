@@ -5,7 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { UpdateImpactCaseStudyActionInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_lib/update-impact-case-study.schema";
 import {
-	ensureDraftVersion,
+	ensureLocalizedDraftVersion,
 	getDocumentSlug,
 	publishVersion,
 	touchVersion,
@@ -17,6 +17,7 @@ import {
 	insertContentBlockTree,
 } from "@/lib/data/entity-version-fields";
 import { impactCaseStudiesLifecycleAdapter } from "@/lib/data/impact-case-studies.lifecycle-adapter";
+import { getLocaleSearch } from "@/lib/data/locales";
 import { syncEntityRelations } from "@/lib/data/relations";
 import { eq } from "@/lib/db/sql";
 import { getRequestedSlug } from "@/lib/entity-slug-input";
@@ -25,26 +26,30 @@ import { syncWebsiteDocumentForEntity } from "@/lib/search/website-index";
 import { createMutationAction, getResultSlug } from "@/lib/server/create-mutation-action";
 import { dispatchWebhook } from "@/lib/webhook/dispatch-webhook";
 
-export const updateImpactCaseStudyAction = createMutationAction({
+export const updateImpactCaseStudyAction = createMutationAction<
+	typeof UpdateImpactCaseStudyActionInputSchema,
+	{ localeSearch: string }
+>({
 	schema: UpdateImpactCaseStudyActionInputSchema,
 	requireAdmin: true,
 	audit: { action: "update", subjectType: "impact_case_studies" },
 	revalidate: "/[locale]/dashboard/website/impact-case-studies",
 	redirect: ({ result }) =>
-		`/dashboard/website/impact-case-studies/${getResultSlug(result)}/details`,
+		`/dashboard/website/impact-case-studies/${getResultSlug(result)}/details${result.successData?.localeSearch ?? ""}`,
 
 	async mutate(tx, input, { formData }) {
-		const draftVersionId = await ensureDraftVersion(
+		const { versionId: draftVersionId } = await ensureLocalizedDraftVersion(
 			tx,
 			input.documentId,
 			impactCaseStudiesLifecycleAdapter,
+			input.localeId,
 		);
 
 		// The form only offers the slug while the document is draft-only; `updateDraftDocumentSlug`
 		// re-checks that server-side, so a forged submission cannot rename a published page.
 		const requestedSlug = getRequestedSlug(input.slug);
 		if (requestedSlug != null) {
-			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug);
+			await updateDraftDocumentSlug(tx, input.documentId, requestedSlug, input.localeId);
 		}
 
 		const asset = await tx.query.assets.findFirst({
@@ -79,12 +84,13 @@ export const updateImpactCaseStudyAction = createMutationAction({
 		await touchVersion(tx, draftVersionId);
 
 		if (shouldSaveAndPublish(formData)) {
-			await publishVersion(tx, input.documentId, impactCaseStudiesLifecycleAdapter);
+			await publishVersion(tx, input.documentId, impactCaseStudiesLifecycleAdapter, input.localeId);
 		}
 
 		return {
 			subjectId: input.documentId,
-			subjectSlug: await getDocumentSlug(tx, input.documentId),
+			subjectSlug: await getDocumentSlug(tx, input.documentId, input.localeId),
+			successData: { localeSearch: await getLocaleSearch(tx, input.localeId) },
 			auditSummary: {
 				lifecycle: shouldSaveAndPublish(formData) ? "published" : "draft",
 			},
