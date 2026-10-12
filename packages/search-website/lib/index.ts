@@ -143,6 +143,7 @@ function createWebsiteEntityDocument(params: {
 	label: string;
 	link: string;
 	locale: string;
+	projectCall?: string;
 	sourceId: string;
 	sourceUpdatedAt: Date;
 	summary?: string;
@@ -157,6 +158,7 @@ function createWebsiteEntityDocument(params: {
 		label,
 		link,
 		locale,
+		projectCall,
 		sourceId,
 		documentId = sourceId,
 		sourceUpdatedAt,
@@ -179,6 +181,7 @@ function createWebsiteEntityDocument(params: {
 		image_key: imageKey,
 		link,
 		locale,
+		project_call: projectCall,
 		start_date: duration?.start.getTime(),
 		summary,
 	};
@@ -423,7 +426,7 @@ async function getPublishedProjects(
 	params?: {
 		entityId?: string;
 	},
-): Promise<Array<ViewBackedWebsiteEntity>> {
+): Promise<Array<ViewBackedWebsiteEntity & { call: schema.ProjectCall["call"] | null }>> {
 	const conditions = [eq(schema.entityStatus.type, "published")];
 
 	if (params?.entityId != null) {
@@ -439,6 +442,7 @@ async function getPublishedProjects(
 			summary: schema.projects.summary,
 			updatedAt: schema.projects.updatedAt,
 			imageKey: schema.assets.key,
+			call: schema.projectCalls.call,
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -451,6 +455,7 @@ async function getPublishedProjects(
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
 		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
 		.leftJoin(schema.assets, eq(schema.assets.id, schema.projects.imageId))
+		.leftJoin(schema.projectCalls, eq(schema.projectCalls.id, schema.projects.callId))
 		.where(and(...conditions));
 }
 
@@ -1583,6 +1588,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
 						imageKey: item.imageKey ?? undefined,
+						projectCall: item.call ?? undefined,
 					}),
 				);
 			}
@@ -2426,6 +2432,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
 					imageKey: item.imageKey ?? undefined,
+					projectCall: item.call ?? undefined,
 				}),
 			),
 		);
