@@ -22,6 +22,8 @@ export const imageAssetColumns = {
 		width: true,
 		height: true,
 		aspectRatio: true,
+		focalPointX: true,
+		focalPointY: true,
 	},
 	with: {
 		license: {
@@ -41,7 +43,18 @@ export interface ImageAsset {
 	width: number | null;
 	height: number | null;
 	aspectRatio?: number | null;
+	focalPointX: number | null;
+	focalPointY: number | null;
 	license: { name: string | null; url: string | null } | null;
+}
+
+/**
+ * Where to keep the image in view when cropping it, as fractions of the source width and height
+ * from the top left. Maps directly onto CSS `object-position` as percentages.
+ */
+export interface FocalPoint {
+	x: number;
+	y: number;
 }
 
 export interface Image {
@@ -67,6 +80,8 @@ export interface Image {
 	height: number | null;
 	/** Intrinsic width/height ratio, including for vectors whose raster dimensions are null. */
 	aspectRatio: number | null;
+	/** The point to keep in view when a placement crops the image; null means the centre. */
+	focalPoint: FocalPoint | null;
 	mimeType: string;
 	alt: string | null;
 	caption: JSONContent | null;
@@ -86,6 +101,8 @@ interface FlatImageAsset {
 	width: number | null;
 	height: number | null;
 	aspectRatio: number | null;
+	focalPointX: number | null;
+	focalPointY: number | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
 }
@@ -111,6 +128,8 @@ export function toImageAsset(
 		aspectRatio:
 			image.aspectRatio ??
 			(image.width != null && image.height != null ? image.width / image.height : null),
+		focalPointX: image.focalPointX,
+		focalPointY: image.focalPointY,
 		license: { name: image.licenseName, url: image.licenseUrl },
 	};
 }
@@ -181,9 +200,22 @@ export function generateImageUrl(
 		aspectRatio:
 			image.aspectRatio ??
 			(image.width != null && image.height != null ? image.width / image.height : null),
+		focalPoint: toFocalPoint(image),
 		mimeType: image.mimeType,
 		alt: image.alt,
 		caption: image.caption,
 		license,
 	};
+}
+
+/** Both coordinates or neither: the database constraint guarantees it, this keeps the type honest. */
+export function toFocalPoint(image: {
+	focalPointX: number | null;
+	focalPointY: number | null;
+}): FocalPoint | null {
+	if (image.focalPointX == null || image.focalPointY == null) {
+		return null;
+	}
+
+	return { x: image.focalPointX, y: image.focalPointY };
 }

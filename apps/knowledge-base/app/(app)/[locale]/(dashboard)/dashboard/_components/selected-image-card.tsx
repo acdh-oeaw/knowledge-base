@@ -80,6 +80,7 @@ export function SelectedImageCard(props: Readonly<SelectedImageCardProps>): Reac
 							mimeType: image.mimeType ?? "",
 							width: image.width,
 							height: image.height,
+							focalPoint: image.focalPoint,
 							url: image.url,
 						}}
 						onSuccess={handleSaved}

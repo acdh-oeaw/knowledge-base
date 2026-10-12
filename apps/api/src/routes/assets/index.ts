@@ -1,7 +1,6 @@
 import { Readable } from "node:stream";
 
 import { assert } from "@acdh-oeaw/lib";
-import type { ImageUrlOptions } from "@dariah-eric/images";
 import { rateLimiter } from "hono-rate-limiter";
 
 import { getContentDispositionHeader } from "@/lib/asset-download";
@@ -9,47 +8,11 @@ import { createRouter } from "@/lib/factory";
 import { describeRoute } from "@/lib/openapi/describe-route";
 import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validator } from "@/lib/openapi/validator";
+import { getImageOptions } from "@/routes/assets/image-options";
 import { GetAssetDownload, GetAssetImage } from "@/routes/assets/schemas";
-import { getAssetByKey } from "@/routes/assets/service";
+import { getAssetByKey, getAssetFocalPoint } from "@/routes/assets/service";
 import { images } from "@/services/images";
-import { type ImageVariantAspectRatio, imageVariantAspectRatios } from "~/config/api.config";
 import { assetConfig } from "~/config/rate-limiter.config";
-
-/**
- * The imgproxy processing options for one rendition request.
- *
- * Cropping is opt-in. Without a ratio the image is scaled to width and keeps its own shape, which
- * is what a letterboxed slot and a full-size link need; with one, imgproxy does the crop that the
- * consumer would otherwise be asking a browser to do with `object-cover` after downloading the
- * pixels it then throws away.
- *
- * No width at all means no processing options, so imgproxy serves the source as it is stored. That
- * is the only rendition a vector has: imgproxy skips processing for an svg source, so every rung on
- * the ladder returns the same bytes under a different url and a different cache entry. It is also
- * what makes the `srcUrl` this api hands out fetchable on its own, which a consumer needs wherever
- * it has no width to ask for — `next/image` with `unoptimized`, or a "view full size" link.
- */
-function getImageOptions(params: {
-	ar?: ImageVariantAspectRatio;
-	width?: number;
-}): ImageUrlOptions {
-	const { ar, width } = params;
-
-	if (width == null) {
-		return {};
-	}
-
-	if (ar == null) {
-		return { width };
-	}
-
-	return {
-		width,
-		height: Math.round(width / imageVariantAspectRatios[ar]),
-		resizing_type: "fill",
-		gravity: { type: "ce" },
-	};
-}
 
 /**
  * Serving an asset by its storage key, for the rich-text link targets that reference one (see
@@ -84,13 +47,29 @@ export const router = createRouter()
 		}),
 		validator("param", GetAssetImage.ParamsSchema),
 		validator("query", GetAssetImage.QuerySchema),
-		(c) => {
+		async (c) => {
 			const { prefix, name } = c.req.valid("param");
 			const { w: width, ar } = c.req.valid("query");
+			const key = `${prefix}/${name}`;
+
+			/**
+			 * Only a crop has a use for the point, so only a crop pays for the lookup — every `srcset`
+			 * rung without a ratio still signs and redirects without touching the database. The `fp` the
+			 * caller sent is deliberately not read: it is there to give a moved point a url of its own
+			 * (see `GetAssetImage`), and rendering it would let any caller mint a crop per position.
+			 */
+			let focalPoint = null;
+
+			if (ar != null) {
+				const db = c.get("db");
+				assert(db, "Database must be provided via middleware.");
+
+				focalPoint = await getAssetFocalPoint(db, { key });
+			}
 
 			const { url } = images.generateSignedImageUrl({
-				key: `${prefix}/${name}`,
-				options: getImageOptions({ ar, width }),
+				key,
+				options: getImageOptions({ ar, focalPoint, width }),
 			});
 
 			/**

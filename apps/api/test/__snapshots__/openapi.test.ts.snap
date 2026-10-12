@@ -364,6 +364,33 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "focalPoint": {
+            "anyOf": [
+              {
+                "properties": {
+                  "x": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number",
+                  },
+                  "y": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number",
+                  },
+                },
+                "required": [
+                  "x",
+                  "y",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "Point to keep in view when cropping, as fractions of the source width and height from the top left; null means the centre",
+          },
           "height": {
             "anyOf": [
               {
@@ -402,7 +429,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "type": "string",
           },
           "srcUrl": {
-            "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` to request a rendition",
+            "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` (and \`&fp=\` with the focal point) to request a rendition",
             "type": "string",
           },
           "url": {
@@ -427,6 +454,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "width",
           "height",
           "aspectRatio",
+          "focalPoint",
           "mimeType",
           "alt",
           "license",
@@ -9568,6 +9596,33 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
               },
             ],
           },
+          "focalPoint": {
+            "anyOf": [
+              {
+                "properties": {
+                  "x": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number",
+                  },
+                  "y": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number",
+                  },
+                },
+                "required": [
+                  "x",
+                  "y",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "Point to keep in view when cropping, as fractions of the source width and height from the top left; null means the centre",
+          },
           "height": {
             "anyOf": [
               {
@@ -9606,7 +9661,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "type": "string",
           },
           "srcUrl": {
-            "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` to request a rendition",
+            "description": "Base url of the image-variant endpoint for this asset; append \`?w=\` and optionally \`&ar=\` (and \`&fp=\` with the focal point) to request a rendition",
             "type": "string",
           },
           "url": {
@@ -9631,6 +9686,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "width",
           "height",
           "aspectRatio",
+          "focalPoint",
           "mimeType",
           "alt",
           "caption",
@@ -23049,6 +23105,15 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 "16x9",
                 "21x9",
               ],
+              "type": "string",
+            },
+          },
+          {
+            "description": "The image's \`focalPoint\` as \`x,y\`, to give a crop around a moved point a url of its own. The crop always follows the point stored for the asset; this value only keys the cache. Requires an aspect ratio",
+            "in": "query",
+            "name": "fp",
+            "schema": {
+              "pattern": "^(?:0(?:\\.\\d{1,2})?|1(?:\\.0{1,2})?),(?:0(?:\\.\\d{1,2})?|1(?:\\.0{1,2})?)$",
               "type": "string",
             },
           },

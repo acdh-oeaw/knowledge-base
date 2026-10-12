@@ -1,0 +1,155 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "14d21459-3af9-4746-8986-0cf5962383d5",
+  "prevIds": [
+    "6211c783-955f-471d-9552-bc1dc6bde745"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "assets",
+        "focal_point_x"
+      ],
+      "writes": [
+        "s|col|public.assets.focal_point_x",
+        "n|col|public.assets.focal_point_x",
+        "e|col|public.assets.focal_point_x"
+      ],
+      "reads": [
+        "n|tbl|public.assets",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "assets",
+        "focal_point_y"
+      ],
+      "writes": [
+        "s|col|public.assets.focal_point_y",
+        "n|col|public.assets.focal_point_y",
+        "e|col|public.assets.focal_point_y"
+      ],
+      "reads": [
+        "n|tbl|public.assets",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "assets",
+        "assets_key_idx"
+      ],
+      "writes": [
+        "s|idx|public.assets_key_idx",
+        "n|idx|public.assets_key_idx",
+        "e|idx|public.assets_key_idx",
+        "n|rel|public.assets_key_idx"
+      ],
+      "reads": [
+        "n|tbl|public.assets",
+        "n|sch|public",
+        "n|col|public.assets.key"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "assets"
+      ],
+      "writes": [
+        "s|ck|public.assets.assets_focal_point_check",
+        "n|ck|public.assets.assets_focal_point_check",
+        "e|ck|public.assets.assets_focal_point_check",
+        "n|con|public.assets.assets_focal_point_check"
+      ],
+      "reads": [
+        "n|tbl|public.assets",
+        "n|sch|public",
+        "n|col|public.assets.focal_point_x",
+        "n|col|public.assets.focal_point_y"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "assets",
+        "name": "focal_point_x",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "assets",
+        "name": "focal_point_y",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "assets",
+        "name": "assets_key_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "key",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "assets",
+        "name": "assets_focal_point_check",
+        "value": "(\"focal_point_x\" IS NULL AND \"focal_point_y\" IS NULL) OR (\"focal_point_x\" IS NOT NULL AND \"focal_point_y\" IS NOT NULL AND \"focal_point_x\" BETWEEN 0 AND 1 AND \"focal_point_y\" BETWEEN 0 AND 1)",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

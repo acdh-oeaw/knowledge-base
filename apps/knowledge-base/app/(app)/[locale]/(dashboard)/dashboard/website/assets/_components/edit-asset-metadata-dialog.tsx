@@ -25,8 +25,10 @@ import * as v from "valibot";
 
 import { AssetPreview } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-preview";
 import { CaptionField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/caption-field";
+import { FocalPointField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field";
 import { updateAssetMetadataAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.action";
 import { UpdateAssetMetadataInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.schema";
+import type { FocalPoint } from "@/lib/focal-point";
 import { formatDimensions } from "@/lib/format-dimensions";
 
 interface AssetMetadataItem {
@@ -44,6 +46,11 @@ interface AssetMetadataItem {
 	 */
 	width?: number | null;
 	height?: number | null;
+	/**
+	 * Absent where the caller did not load it. The dialog then shows no picker and submits no point,
+	 * so saving leaves the stored one alone instead of resetting it to the centre.
+	 */
+	focalPoint?: FocalPoint | null;
 	url: string;
 }
 
@@ -54,6 +61,8 @@ export interface SavedAssetMetadata {
 	caption: JSONContent | null;
 	licenseId: string | null;
 	license: { code: string; name: string } | null;
+	/** Absent when the dialog showed no picker, so the asset's point did not change. */
+	focalPoint?: FocalPoint | null;
 }
 
 interface LicenseOption {
@@ -90,6 +99,7 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 
 	const licenseOptions = licenses ?? fetchedLicenses;
 	const dimensions = formatDimensions(asset.width, asset.height);
+	const canPickFocalPoint = asset.mimeType.startsWith("image/") && asset.focalPoint !== undefined;
 
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: ActionState, formData: FormData) => {
@@ -152,7 +162,7 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 			<ModalContent isOpen={isOpen} onOpenChange={setIsOpen} size="lg">
 				<Form action={formAction} state={state}>
 					<ModalHeader
-						description={t("Update label, alt text, and caption for this asset.")}
+						description={t("Update label, alt text, caption, and focal point for this asset.")}
 						title={t("Edit asset metadata")}
 					/>
 
@@ -166,17 +176,27 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 						    squashed to a letterbox — in the dialog where you write this image's alt text.
 						    Scrolling the body is the better trade. */}
 						<div className="flex shrink-0 flex-col gap-y-1.5">
-							<div className="aspect-video shrink-0 overflow-hidden rounded-lg bg-muted">
-								<AssetPreview
+							{canPickFocalPoint ? (
+								/* The picker shows the whole image, so it doubles as the preview. */
+								<FocalPointField
 									alt={asset.alt ?? asset.label}
-									className="block-full inline-full"
-									imageClassName="object-contain"
-									kindLabelClassName="bg-background/90 text-xs"
-									mimeType={asset.mimeType}
+									defaultValue={asset.focalPoint ?? null}
+									name="focalPoint"
 									src={asset.url}
-									storageKey={asset.key}
 								/>
-							</div>
+							) : (
+								<div className="aspect-video shrink-0 overflow-hidden rounded-lg bg-muted">
+									<AssetPreview
+										alt={asset.alt ?? asset.label}
+										className="block-full inline-full"
+										imageClassName="object-contain"
+										kindLabelClassName="bg-background/90 text-xs"
+										mimeType={asset.mimeType}
+										src={asset.url}
+										storageKey={asset.key}
+									/>
+								</div>
+							)}
 
 							{dimensions != null ? (
 								<span className="text-xs text-muted-fg">

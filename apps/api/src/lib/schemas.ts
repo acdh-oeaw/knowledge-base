@@ -41,7 +41,7 @@ export const ImageObjectSchema = v.object({
 	srcUrl: v.pipe(
 		v.string(),
 		v.description(
-			"Base url of the image-variant endpoint for this asset; append `?w=` and optionally `&ar=` to request a rendition",
+			"Base url of the image-variant endpoint for this asset; append `?w=` and optionally `&ar=` (and `&fp=` with the focal point) to request a rendition",
 		),
 	),
 	/**
@@ -55,6 +55,23 @@ export const ImageObjectSchema = v.object({
 	),
 	aspectRatio: v.nullable(
 		v.pipe(v.number(), v.description("Intrinsic width/height ratio; null when unavailable")),
+	),
+	/**
+	 * Where to keep the image in view when a placement crops it with `object-fit: cover`: use it as
+	 * `object-position: {x * 100}% {y * 100}%`. A rendition requested with `&ar=` is cropped around
+	 * it already; pass it along as `&fp=x,y` too, so that a moved point gets a url of its own instead
+	 * of the immutably cached crop around the old one.
+	 */
+	focalPoint: v.pipe(
+		v.nullable(
+			v.object({
+				x: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+				y: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+			}),
+		),
+		v.description(
+			"Point to keep in view when cropping, as fractions of the source width and height from the top left; null means the centre",
+		),
 	),
 	mimeType: v.pipe(v.string(), v.description("Image media type")),
 	alt: v.nullable(v.string()),

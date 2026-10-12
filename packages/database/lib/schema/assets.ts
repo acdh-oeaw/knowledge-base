@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
+import { sql } from "drizzle-orm";
 import * as p from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-orm/valibot";
 
@@ -40,12 +41,30 @@ export const assets = p.snakeCase.table(
 		 * before hashes were tracked until `data:backfill:asset-content-hashes` has hashed them.
 		 */
 		contentHash: p.text("content_hash"),
+		/**
+		 * The point of the image to keep in view when a placement crops it (CSS `object-fit: cover`, or
+		 * an imgproxy `fill` rendition), as fractions of the source width and height from the top left:
+		 * `0.5, 0.5` is the centre. Belongs to the asset rather than to a placement, like its alt text:
+		 * what matters in a picture does not change with the page it is shown on.
+		 *
+		 * Both null when no point was chosen, which consumers treat as the centre.
+		 */
+		focalPointX: p.doublePrecision("focal_point_x"),
+		focalPointY: p.doublePrecision("focal_point_y"),
 		caption: p.jsonb("caption").$type<JSONContent>(),
 		alt: p.text("alt"),
 		licenseId: p.uuid("license_id").references(() => licenses.id),
 		...f.timestamps(),
 	},
-	(t) => [p.index("assets_content_hash_idx").on(t.contentHash)],
+	(t) => [
+		p.index("assets_content_hash_idx").on(t.contentHash),
+		/** The api's variant and download routes look assets up by storage key, not by id. */
+		p.index("assets_key_idx").on(t.key),
+		p.check(
+			"assets_focal_point_check",
+			sql`(${t.focalPointX} IS NULL AND ${t.focalPointY} IS NULL) OR (${t.focalPointX} IS NOT NULL AND ${t.focalPointY} IS NOT NULL AND ${t.focalPointX} BETWEEN 0 AND 1 AND ${t.focalPointY} BETWEEN 0 AND 1)`,
+		),
+	],
 );
 
 export type Asset = typeof assets.$inferSelect;

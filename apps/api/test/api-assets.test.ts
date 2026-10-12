@@ -11,6 +11,12 @@ import { v7 as uuidv7 } from "uuid";
 import { describe, expect, it } from "vitest";
 
 import type { Database } from "@/middlewares/db";
+import { eq } from "@/services/db/sql";
+import {
+	type ImageVariantAspectRatio,
+	imageVariantAspectRatios,
+	imageVariantWidths,
+} from "~/config/api.config";
 import { createTestClient } from "~/test/lib/create-test-client";
 import { seedContentBlock } from "~/test/lib/seed-content-block";
 import { withTransaction } from "~/test/lib/with-transaction";
@@ -42,16 +48,25 @@ function createMockStorage(content = "test file content"): StorageService {
 
 async function seedAsset(
 	db: Database,
-	values: { filename?: string | null; label?: string; mimeType?: string; name?: string },
+	values: {
+		filename?: string | null;
+		label?: string;
+		mimeType?: string;
+		name?: string;
+		prefix?: "documents" | "images";
+		focalPoint?: { x: number; y: number };
+	},
 ) {
 	const name = values.name ?? uuidv7();
-	const key = `documents/${name}`;
+	const key = `${values.prefix ?? "documents"}/${name}`;
 
 	await db.insert(schema.assets).values({
 		key,
 		label: values.label ?? "Training series flyer",
 		filename: values.filename === undefined ? "flyer.pdf" : values.filename,
 		mimeType: values.mimeType ?? "application/pdf",
+		focalPointX: values.focalPoint?.x ?? null,
+		focalPointY: values.focalPoint?.y ?? null,
 	});
 
 	return { key, name };
@@ -305,15 +320,19 @@ describe("assets", () => {
 		/** The `Location` of a successful variant request, asserted to be a redirect on the way. */
 		async function getVariantLocation(
 			db: Database,
-			params: { name: string; w?: number; ar?: "1x1" | "3x2" | "16x9" | "21x9" },
+			params: { name: string; w?: number; ar?: ImageVariantAspectRatio; fp?: string },
 		) {
-			const { name, w, ar } = params;
+			const { name, w, ar, fp } = params;
 
 			const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
 				":name"
 			].image[":version"].$get({
 				param: { prefix: "images", name, version: "v1" },
-				query: { ...(w != null ? { w: String(w) } : {}), ...(ar != null ? { ar } : {}) },
+				query: {
+					...(w != null ? { w: String(w) } : {}),
+					...(ar != null ? { ar } : {}),
+					...(fp != null ? { fp } : {}),
+				},
 			});
 
 			expect(response.status).toBe(302);
@@ -366,6 +385,107 @@ describe("assets", () => {
 				const square = await getVariantLocation(db, { name, w: 1280, ar: "1x1" });
 
 				expect(wide.location).not.toBe(square.location);
+			});
+		});
+
+		it("should crop around the focal point stored for the asset", async () => {
+			await withTransaction(async (db) => {
+				const { key, name } = await seedAsset(db, {
+					prefix: "images",
+					mimeType: "image/jpeg",
+					focalPoint: { x: 0.5, y: 0.2 },
+				});
+				const before = await getVariantLocation(db, { name, w: 1280, ar: "16x9" });
+
+				await db
+					.update(schema.assets)
+					.set({ focalPointX: 0.5, focalPointY: 0.8 })
+					.where(eq(schema.assets.key, key));
+
+				const after = await getVariantLocation(db, { name, w: 1280, ar: "16x9" });
+
+				expect(after.location).not.toBe(before.location);
+			});
+		});
+
+		/**
+		 * `fp` only keys the cache. Were it rendered, every position a caller can name would be a
+		 * rendition of its own, and the allowlists would no longer bound imgproxy's work.
+		 */
+		it("should not let the focal point a caller sends change the crop", async () => {
+			await withTransaction(async (db) => {
+				const { name } = await seedAsset(db, {
+					prefix: "images",
+					mimeType: "image/jpeg",
+					focalPoint: { x: 0.5, y: 0.2 },
+				});
+				const stored = await getVariantLocation(db, { name, w: 1280, ar: "16x9", fp: "0.5,0.2" });
+				const other = await getVariantLocation(db, { name, w: 1280, ar: "16x9", fp: "0.9,0.9" });
+
+				expect(other.location).toBe(stored.location);
+			});
+		});
+
+		/**
+		 * The bound the allowlists exist for, checked as a whole rather than one parameter at a time:
+		 * however a caller combines the parameters it is allowed to send, an asset has at most one
+		 * rendition per width and ratio, plus one per width uncropped, plus the source. A parameter
+		 * that reached the rendition without being on a closed list — as a caller-chosen focal point
+		 * would — multiplies this count, and this test is what notices.
+		 */
+		it("should keep the renditions per asset to the allowlisted grid, whatever else is sent", async () => {
+			await withTransaction(async (db) => {
+				const { name } = await seedAsset(db, {
+					prefix: "images",
+					mimeType: "image/jpeg",
+					focalPoint: { x: 0.5, y: 0.2 },
+				});
+				const ratios = Object.keys(imageVariantAspectRatios) as Array<ImageVariantAspectRatio>;
+				const focalPoints = [undefined, "0,0", "0.5,0.2", "1,1"];
+
+				const locations = new Set<string>();
+
+				locations.add((await getVariantLocation(db, { name })).location);
+
+				for (const w of imageVariantWidths) {
+					locations.add((await getVariantLocation(db, { name, w })).location);
+
+					for (const ar of ratios) {
+						for (const fp of focalPoints) {
+							locations.add((await getVariantLocation(db, { name, w, ar, fp })).location);
+						}
+					}
+				}
+
+				expect(locations.size).toBe(1 + imageVariantWidths.length * (1 + ratios.length));
+			});
+		});
+
+		it("should refuse a focal point with no aspect ratio to crop to", async () => {
+			await withTransaction(async (db) => {
+				const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+					":name"
+				].image[":version"].$get({
+					param: { prefix: "images", name: uuidv7(), version: "v1" },
+					query: { w: "1280", fp: "0.5,0.2" },
+				});
+
+				expect(response.status).toBe(400);
+			});
+		});
+
+		it("should refuse a focal point outside the image or finer than two decimals", async () => {
+			await withTransaction(async (db) => {
+				for (const fp of ["1.5,0", "-0.1,0.5", "0.5", "0.123,0.5"]) {
+					const response = await createTestClient(db, createMockStorage()).assets[":prefix"][
+						":name"
+					].image[":version"].$get({
+						param: { prefix: "images", name: uuidv7(), version: "v1" },
+						query: { w: "1280", ar: "16x9", fp },
+					});
+
+					expect(response.status).toBe(400);
+				}
 			});
 		});
 

@@ -215,6 +215,8 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
 			imageAspectRatio: schema.assets.aspectRatio,
+			imageFocalPointX: schema.assets.focalPointX,
+			imageFocalPointY: schema.assets.focalPointY,
 			imageMimeType: schema.assets.mimeType,
 			imageAlt: schema.assets.alt,
 			imageAssetCaption: schema.assets.caption,
@@ -228,6 +230,8 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			heroImageWidth: heroAssets.width,
 			heroImageHeight: heroAssets.height,
 			heroImageAspectRatio: heroAssets.aspectRatio,
+			heroImageFocalPointX: heroAssets.focalPointX,
+			heroImageFocalPointY: heroAssets.focalPointY,
 			heroImageMimeType: heroAssets.mimeType,
 			heroImageAlt: heroAssets.alt,
 			heroImageCaption: heroAssets.caption,
@@ -245,6 +249,8 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 			mediaTextImageWidth: mediaTextAssets.width,
 			mediaTextImageHeight: mediaTextAssets.height,
 			mediaTextImageAspectRatio: mediaTextAssets.aspectRatio,
+			mediaTextImageFocalPointX: mediaTextAssets.focalPointX,
+			mediaTextImageFocalPointY: mediaTextAssets.focalPointY,
 			mediaTextImageMimeType: mediaTextAssets.mimeType,
 			mediaTextImageAlt: mediaTextAssets.alt,
 			mediaTextImageCaption: mediaTextAssets.caption,
@@ -431,6 +437,8 @@ async function getGalleryItems(
 			imageWidth: galleryAssets.width,
 			imageHeight: galleryAssets.height,
 			imageAspectRatio: galleryAssets.aspectRatio,
+			imageFocalPointX: galleryAssets.focalPointX,
+			imageFocalPointY: galleryAssets.focalPointY,
 			imageMimeType: galleryAssets.mimeType,
 			imageAlt: galleryAssets.alt,
 			imageAssetCaption: galleryAssets.caption,
@@ -457,6 +465,8 @@ async function getGalleryItems(
 				width: row.imageWidth,
 				height: row.imageHeight,
 				aspectRatio: row.imageAspectRatio,
+				focalPointX: row.imageFocalPointX,
+				focalPointY: row.imageFocalPointY,
 				mimeType: row.imageMimeType,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
@@ -605,6 +615,8 @@ function normalizeRow(row: {
 	imageWidth: number | null;
 	imageHeight: number | null;
 	imageAspectRatio: number | null;
+	imageFocalPointX: number | null;
+	imageFocalPointY: number | null;
 	imageMimeType: string | null;
 	imageAlt: string | null;
 	imageAssetCaption: JSONContent | null;
@@ -618,6 +630,8 @@ function normalizeRow(row: {
 	heroImageWidth: number | null;
 	heroImageHeight: number | null;
 	heroImageAspectRatio: number | null;
+	heroImageFocalPointX: number | null;
+	heroImageFocalPointY: number | null;
 	heroImageMimeType: string | null;
 	heroImageAlt: string | null;
 	heroImageCaption: JSONContent | null;
@@ -635,6 +649,8 @@ function normalizeRow(row: {
 	mediaTextImageWidth: number | null;
 	mediaTextImageHeight: number | null;
 	mediaTextImageAspectRatio: number | null;
+	mediaTextImageFocalPointX: number | null;
+	mediaTextImageFocalPointY: number | null;
 	mediaTextImageMimeType: string | null;
 	mediaTextImageAlt: string | null;
 	mediaTextImageCaption: JSONContent | null;
@@ -680,6 +696,8 @@ function normalizeRow(row: {
 					width: row.imageWidth,
 					height: row.imageHeight,
 					aspectRatio: row.imageAspectRatio,
+					focalPointX: row.imageFocalPointX,
+					focalPointY: row.imageFocalPointY,
 					mimeType: row.imageMimeType!,
 					licenseName: row.imageLicenseName,
 					licenseUrl: row.imageLicenseUrl,
@@ -719,6 +737,8 @@ function normalizeRow(row: {
 					width: row.heroImageWidth,
 					height: row.heroImageHeight,
 					aspectRatio: row.heroImageAspectRatio,
+					focalPointX: row.heroImageFocalPointX,
+					focalPointY: row.heroImageFocalPointY,
 					mimeType: row.heroImageMimeType!,
 					licenseName: row.heroLicenseName,
 					licenseUrl: row.heroLicenseUrl,
@@ -763,6 +783,8 @@ function normalizeRow(row: {
 					width: row.mediaTextImageWidth,
 					height: row.mediaTextImageHeight,
 					aspectRatio: row.mediaTextImageAspectRatio,
+					focalPointX: row.mediaTextImageFocalPointX,
+					focalPointY: row.mediaTextImageFocalPointY,
 					mimeType: row.mediaTextImageMimeType!,
 					licenseName: row.mediaTextLicenseName,
 					licenseUrl: row.mediaTextLicenseUrl,
