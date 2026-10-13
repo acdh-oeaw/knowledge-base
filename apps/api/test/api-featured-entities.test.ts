@@ -129,6 +129,44 @@ async function seedAnnouncements(db: Database) {
 	return { newsItem, opportunity, fundingCall, event };
 }
 
+async function seedNewsItem(db: Database, title: string, publicationDate: Date) {
+	const [status, asset, newsType, defaultLocale] = await Promise.all([
+		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+		db.query.assets.findFirst({ columns: { id: true } }),
+		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "news" } }),
+		db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+	]);
+
+	assert(status, "No entity status in database.");
+	assert(asset, "No assets in database.");
+	assert(newsType, "No news entity type in database.");
+	assert(defaultLocale, "No default locale in database.");
+
+	const item = createItem(title);
+
+	await db.insert(schema.entities).values({ id: item.entity.id, typeId: newsType.id });
+	await db
+		.insert(schema.entityVersions)
+		.values({ ...item.version, statusId: status.id, localeId: defaultLocale.id });
+	await db.insert(schema.slugs).values({
+		entityVersionId: item.versionId,
+		entityId: item.entity.id,
+		typeId: newsType.id,
+		localeId: defaultLocale.id,
+		isPublished: true,
+		value: item.entity.slug,
+	});
+	await db.insert(schema.news).values({
+		id: item.versionId,
+		title: item.title,
+		summary: item.summary,
+		publicationDate,
+		imageId: asset.id,
+	});
+
+	return item;
+}
+
 async function seedProject(db: Database) {
 	const [status, asset, scope, projectType, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
@@ -222,10 +260,54 @@ describe("featured entities", () => {
 					fundingCall.versionId,
 					newsItem.versionId,
 				]);
-				expect(data.data.events.map((item) => item.type)).toEqual(["events"]);
-				expect(data.data.events.map((item) => item.id)).toEqual([event.versionId]);
-				expect(data.data.projects.map((item) => item.type)).toEqual(["projects"]);
-				expect(data.data.projects.map((item) => item.id)).toEqual([project.versionId]);
+				// One pick each: it comes first, and the rest is topped up from the database.
+				const eventIds = data.data.events.map((item) => item.id);
+				expect(eventIds[0]).toBe(event.versionId);
+				expect(eventIds.length).toBeLessThanOrEqual(3);
+				expect(new Set(eventIds).size).toBe(eventIds.length);
+
+				const projectIds = data.data.projects.map((item) => item.id);
+				expect(projectIds[0]).toBe(project.versionId);
+				expect(projectIds.length).toBeLessThanOrEqual(3);
+				expect(new Set(projectIds).size).toBe(projectIds.length);
+			});
+		});
+
+		it("should top up a category with fewer than 3 picks with the latest published news, skipping picks and future publication dates", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const now = Date.now();
+				// Dated just before "now", so they are the newest news in the database and the top-up
+				// order is deterministic regardless of seeded data.
+				const picked = await seedNewsItem(db, "Featured top-up picked", new Date(now - 1_000));
+				const newest = await seedNewsItem(db, "Featured top-up newest", new Date(now - 2_000));
+				const second = await seedNewsItem(db, "Featured top-up second", new Date(now - 3_000));
+				const scheduled = await seedNewsItem(
+					db,
+					"Featured top-up scheduled",
+					new Date(now + 86_400_000),
+				);
+
+				const featuredItemIds = { news: [picked.versionId], events: [], projects: [] };
+
+				await db
+					.insert(schema.siteMetadata)
+					.values({ id: 1, featuredItemIds })
+					.onConflictDoUpdate({
+						target: schema.siteMetadata.id,
+						set: { featuredItemIds, updatedAt: sql`NOW()` },
+					});
+
+				const response = await client["featured-entities"].$get({ query: {} });
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+				const newsIds = data.data.news.map((item) => item.id);
+
+				expect(newsIds).toEqual([picked.versionId, newest.versionId, second.versionId]);
+				expect(newsIds).not.toContain(scheduled.versionId);
 			});
 		});
 
@@ -297,16 +379,16 @@ describe("featured entities", () => {
 				});
 				expect(translatedResponse.status).toBe(200);
 				const translatedData = await translatedResponse.json();
-				expect(translatedData.data.projects.map((item) => item.id)).toEqual([translatedVersionId]);
-				expect(translatedData.data.projects.map((item) => item.name)).toEqual([translatedName]);
+				expect(translatedData.data.projects[0]?.id).toBe(translatedVersionId);
+				expect(translatedData.data.projects[0]?.name).toBe(translatedName);
 
 				const fallbackResponse = await client["featured-entities"].$get({
 					query: { locale: "yy" },
 				});
 				expect(fallbackResponse.status).toBe(200);
 				const fallbackData = await fallbackResponse.json();
-				expect(fallbackData.data.projects.map((item) => item.id)).toEqual([project.versionId]);
-				expect(fallbackData.data.projects.map((item) => item.name)).toEqual([project.title]);
+				expect(fallbackData.data.projects[0]?.id).toBe(project.versionId);
+				expect(fallbackData.data.projects[0]?.name).toBe(project.title);
 			});
 		});
 	});

@@ -9,7 +9,7 @@ import { generateImageUrl, imageAssetColumns, withResolvedCaption } from "@/lib/
 import { resolveLocaleContext } from "@/lib/locales";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { Announcement } from "@/routes/announcements/schemas";
-import { alias, and, eq, inArray, sql } from "@/services/db/sql";
+import { alias, and, desc, eq, inArray, notInArray, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
 
 const entityVersionColumns = {
@@ -102,6 +102,133 @@ async function resolveFeaturedVersionIds(
 	return resolvedVersionIdByStoredId;
 }
 
+/** The website always shows this many items per category. */
+const featuredItemsPerCategory = 3;
+
+/**
+ * Fallback candidates are picked from default-locale published versions — the same id space admins
+ * pick from — so they go through `resolveFeaturedVersionIds` exactly like stored ids. Entities the
+ * editor already picked are excluded (by entity, since a stored id may be any of its versions).
+ */
+function fallbackCandidateFilter(
+	db: Database | Transaction,
+	localeContext: LocaleContext,
+	statusId: string,
+	excludedIds: Array<string>,
+) {
+	const excludedVersions = alias(schema.entityVersions, "featured_excluded_version");
+
+	return and(
+		eq(schema.entityVersions.localeId, localeContext.defaultLocaleId),
+		eq(schema.entityVersions.statusId, statusId),
+		excludedIds.length > 0
+			? notInArray(
+					schema.entityVersions.entityId,
+					db
+						.select({ entityId: excludedVersions.entityId })
+						.from(excludedVersions)
+						.where(inArray(excludedVersions.id, excludedIds)),
+				)
+			: undefined,
+	);
+}
+
+/** Most recently published news, skipping items scheduled for a future publication date. */
+async function getFallbackNewsIds(
+	db: Database | Transaction,
+	localeContext: LocaleContext,
+	statusId: string,
+	excludedIds: Array<string>,
+	limit: number,
+) {
+	const rows = await db
+		.select({ id: schema.news.id })
+		.from(schema.news)
+		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.news.id))
+		.where(
+			and(
+				fallbackCandidateFilter(db, localeContext, statusId, excludedIds),
+				sql`${schema.news.publicationDate} <= NOW()`,
+			),
+		)
+		.orderBy(desc(schema.news.publicationDate))
+		.limit(limit);
+
+	return rows.map((row) => row.id);
+}
+
+/** Upcoming and ongoing events, soonest first, then the most recent past ones. */
+async function getFallbackEventIds(
+	db: Database | Transaction,
+	localeContext: LocaleContext,
+	statusId: string,
+	excludedIds: Array<string>,
+	limit: number,
+) {
+	const isCurrent = sql`(upper_inf(${schema.events.duration}) OR upper(${schema.events.duration}) >= NOW())`;
+
+	const rows = await db
+		.select({ id: schema.events.id })
+		.from(schema.events)
+		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.events.id))
+		.where(fallbackCandidateFilter(db, localeContext, statusId, excludedIds))
+		.orderBy(
+			sql`${isCurrent} DESC`,
+			sql`CASE WHEN ${isCurrent} THEN lower(${schema.events.duration}) END ASC`,
+			sql`lower(${schema.events.duration}) DESC`,
+		)
+		.limit(limit);
+
+	return rows.map((row) => row.id);
+}
+
+/** Running projects, most recently started first, then the most recently ended ones. */
+async function getFallbackProjectIds(
+	db: Database | Transaction,
+	localeContext: LocaleContext,
+	statusId: string,
+	excludedIds: Array<string>,
+	limit: number,
+) {
+	const isRunning = sql`(${schema.projects.duration} @> NOW()::TIMESTAMPTZ)`;
+
+	const rows = await db
+		.select({ id: schema.projects.id })
+		.from(schema.projects)
+		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.projects.id))
+		.where(fallbackCandidateFilter(db, localeContext, statusId, excludedIds))
+		.orderBy(
+			sql`${isRunning} DESC`,
+			sql`CASE WHEN ${isRunning} THEN lower(${schema.projects.duration}) END DESC NULLS LAST`,
+			sql`upper(${schema.projects.duration}) DESC NULLS LAST`,
+		)
+		.limit(limit);
+
+	return rows.map((row) => row.id);
+}
+
+/**
+ * The editor's picks first, in their order, topped up from the category's fallback until there are
+ * {@link featuredItemsPerCategory}. Picks that no longer resolve (unpublished, deleted) don't count,
+ * so the top-up covers them too.
+ */
+async function withFallback<T>(
+	storedIds: Array<string>,
+	getItems: (ids: Array<string>) => Promise<Array<T>>,
+	getFallbackIds: (excludedIds: Array<string>, limit: number) => Promise<Array<string>>,
+): Promise<Array<T>> {
+	const selected = await getItems(storedIds);
+	const missing = featuredItemsPerCategory - selected.length;
+
+	if (missing <= 0) {
+		return selected;
+	}
+
+	const fallbackIds = await getFallbackIds(storedIds, missing);
+
+	return [...selected, ...(await getItems(fallbackIds))];
+}
+
 export interface GetFeaturedEntitiesParams {
 	localeId?: string;
 }
@@ -127,9 +254,22 @@ export async function getFeaturedEntities(
 	const featuredProjectIds = metadata?.featuredItemIds?.projects ?? [];
 
 	const [news, events, projects] = await Promise.all([
-		getFeaturedAnnouncements(db, featuredNewsIds, localeContext, status.id),
-		getFeaturedEvents(db, featuredEventIds, localeContext, status.id),
-		getFeaturedProjects(db, featuredProjectIds, localeContext, status.id),
+		withFallback(
+			featuredNewsIds,
+			(ids) => getFeaturedAnnouncements(db, ids, localeContext, status.id),
+			(excludedIds, limit) => getFallbackNewsIds(db, localeContext, status.id, excludedIds, limit),
+		),
+		withFallback(
+			featuredEventIds,
+			(ids) => getFeaturedEvents(db, ids, localeContext, status.id),
+			(excludedIds, limit) => getFallbackEventIds(db, localeContext, status.id, excludedIds, limit),
+		),
+		withFallback(
+			featuredProjectIds,
+			(ids) => getFeaturedProjects(db, ids, localeContext, status.id),
+			(excludedIds, limit) =>
+				getFallbackProjectIds(db, localeContext, status.id, excludedIds, limit),
+		),
 	]);
 
 	return { data: { news, events, projects } };
