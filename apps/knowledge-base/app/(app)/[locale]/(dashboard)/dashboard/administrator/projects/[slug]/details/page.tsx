@@ -224,6 +224,7 @@ export default async function DashboardAdministratorProjectDetailsPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			project={{
 				...project,
 				entityVersion: { ...project.entityVersion, slug: entityVersionSlug },

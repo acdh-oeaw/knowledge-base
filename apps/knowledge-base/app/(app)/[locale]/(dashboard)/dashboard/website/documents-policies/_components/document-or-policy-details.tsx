@@ -6,13 +6,13 @@ import {
 	DescriptionList,
 	DescriptionTerm,
 } from "@dariah-eric/ui/description-list";
-import { Note } from "@dariah-eric/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks";
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
+import { LocaleFallbackNote } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-note";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
 
@@ -24,6 +24,7 @@ interface DocumentOrPolicyDetailsProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	selectedVersion: "draft" | "published";
 	documentOrPolicy: Pick<schema.DocumentOrPolicy, "id" | "title" | "summary" | "url"> & {
 		entityVersion: {
@@ -31,8 +32,8 @@ interface DocumentOrPolicyDetailsProps {
 			slug: { value: string };
 		};
 	} & { document: { key: string; label: string; url: string; downloadUrl: string } };
-	publishAction: (documentId: string) => Promise<void>;
-	discardDraftAction?: (documentId: string) => Promise<void>;
+	publishAction: (documentId: string, localeId?: string) => Promise<void>;
+	discardDraftAction?: (documentId: string, localeId?: string) => Promise<void>;
 }
 
 export function DocumentOrPolicyDetails(props: Readonly<DocumentOrPolicyDetailsProps>): ReactNode {
@@ -44,6 +45,7 @@ export function DocumentOrPolicyDetails(props: Readonly<DocumentOrPolicyDetailsP
 		isPublished,
 		locales,
 		selectedLocaleCode,
+		selectedLocaleId,
 		documentOrPolicy,
 		publishAction,
 		discardDraftAction,
@@ -55,9 +57,11 @@ export function DocumentOrPolicyDetails(props: Readonly<DocumentOrPolicyDetailsP
 	return (
 		<Fragment>
 			{isLocaleFallback ? (
-				<Note intent="info">
-					{t("Not yet translated in the selected language — showing the default language.")}
-				</Note>
+				<LocaleFallbackNote
+					editHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.slug.value}/edit`}
+					locales={locales}
+					selectedLocaleCode={selectedLocaleCode}
+				/>
 			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
@@ -69,6 +73,8 @@ export function DocumentOrPolicyDetails(props: Readonly<DocumentOrPolicyDetailsP
 				/>
 				<div className="flex items-center gap-x-4">
 					<EntityLifecycleBar
+						isLocaleFallback={isLocaleFallback}
+						locale={{ id: selectedLocaleId, code: selectedLocaleCode }}
 						discardDraftAction={discardDraftAction}
 						documentId={documentId}
 						editHref={`/dashboard/website/documents-policies/${documentOrPolicy.entityVersion.slug.value}/edit`}

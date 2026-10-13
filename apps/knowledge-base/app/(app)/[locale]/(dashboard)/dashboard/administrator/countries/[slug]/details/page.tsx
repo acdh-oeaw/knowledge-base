@@ -167,6 +167,7 @@ export default async function DashboardAdministratorCountryDetailsPage(
 			locales={locales}
 			nationalConsortia={nationalConsortia}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			personRelations={personRelations}
 			relations={relations}
 			selectedRelatedEntities={selectedRelatedEntities}

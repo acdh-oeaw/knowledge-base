@@ -6,7 +6,6 @@ import {
 	DescriptionList,
 	DescriptionTerm,
 } from "@dariah-eric/ui/description-list";
-import { Note } from "@dariah-eric/ui/note";
 import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -15,6 +14,7 @@ import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_c
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
 import { LocaleFallbackMark } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-mark";
+import { LocaleFallbackNote } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-note";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationLink } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-link";
 import { RelationStatement } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-statement";
@@ -32,6 +32,7 @@ interface WorkingGroupDetailsProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	selectedVersion: "draft" | "published";
 	workingGroup: Pick<
 		schema.OrganisationalUnit,
@@ -58,8 +59,8 @@ interface WorkingGroupDetailsProps {
 	}>;
 	personRelations: Array<PersonRelation>;
 	relations: Array<UnitRelation>;
-	publishAction?: (documentId: string) => Promise<unknown>;
-	discardDraftAction?: (documentId: string) => Promise<unknown>;
+	publishAction?: (documentId: string, localeId?: string) => Promise<unknown>;
+	discardDraftAction?: (documentId: string, localeId?: string) => Promise<unknown>;
 	detailHref?: string;
 	editHref?: string | null;
 	enableAdminEntityLinks?: boolean;
@@ -78,6 +79,7 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 		publishAction,
 		discardDraftAction,
 		selectedLocaleCode,
+		selectedLocaleId,
 		selectedRelatedEntities,
 		selectedRelatedResources,
 		selectedSocialMediaItems,
@@ -93,9 +95,11 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 	return (
 		<Fragment>
 			{isLocaleFallback ? (
-				<Note intent="info">
-					{t("Not yet translated in the selected language — showing the default language.")}
-				</Note>
+				<LocaleFallbackNote
+					editHref={`/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/edit`}
+					locales={locales}
+					selectedLocaleCode={selectedLocaleCode}
+				/>
 			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
@@ -107,6 +111,8 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 				/>
 				<div className="flex items-center gap-x-4">
 					<EntityLifecycleBar
+						isLocaleFallback={isLocaleFallback}
+						locale={{ id: selectedLocaleId, code: selectedLocaleCode }}
 						discardDraftAction={discardDraftAction}
 						documentId={documentId}
 						editHref={`/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/edit`}

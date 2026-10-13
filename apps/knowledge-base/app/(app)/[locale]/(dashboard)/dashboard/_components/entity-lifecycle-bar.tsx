@@ -9,8 +9,11 @@ import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 
-/** Lifecycle command actions return an ActionState on completion; the bar ignores it. */
-type LifecycleAction = (documentId: string) => Promise<unknown>;
+/**
+ * Lifecycle command actions return an ActionState on completion; the bar ignores it. `localeId` is
+ * the locale version to act on; omitted, the action acts on the default locale.
+ */
+type LifecycleAction = (documentId: string, localeId?: string) => Promise<unknown>;
 
 interface EntityLifecycleBarProps {
 	documentId: string;
@@ -19,10 +22,33 @@ interface EntityLifecycleBarProps {
 	editHref?: string;
 	publishAction?: LifecycleAction;
 	discardDraftAction?: LifecycleAction;
+	/** The locale version being viewed: publish/discard act on it, and edit opens it. */
+	locale?: { id: string; code: string };
+	/**
+	 * The selected locale has no version yet and the default locale's is shown instead. Publish and
+	 * discard are hidden — there is nothing in this locale for them to act on.
+	 */
+	isLocaleFallback?: boolean;
 }
 
 export function EntityLifecycleBar(props: Readonly<EntityLifecycleBarProps>): ReactNode {
-	const { documentId, isPublished, hasDraft, editHref, publishAction, discardDraftAction } = props;
+	const {
+		documentId,
+		isPublished,
+		hasDraft,
+		editHref: baseEditHref,
+		publishAction: basePublishAction,
+		discardDraftAction: baseDiscardDraftAction,
+		locale,
+		isLocaleFallback = false,
+	} = props;
+
+	const editHref =
+		baseEditHref != null && locale != null
+			? `${baseEditHref}?locale=${encodeURIComponent(locale.code)}`
+			: baseEditHref;
+	const publishAction = isLocaleFallback ? undefined : basePublishAction;
+	const discardDraftAction = isLocaleFallback ? undefined : baseDiscardDraftAction;
 
 	const t = useExtracted();
 	const [isPublishing, startPublishTransition] = useTransition();
@@ -32,7 +58,10 @@ export function EntityLifecycleBar(props: Readonly<EntityLifecycleBarProps>): Re
 	let badgeIntent: "success" | "info" | "warning";
 	let badgeLabel: string;
 
-	if (isPublished && hasDraft) {
+	if (isLocaleFallback) {
+		badgeIntent = "warning";
+		badgeLabel = t("Not translated");
+	} else if (isPublished && hasDraft) {
 		badgeIntent = "info";
 		badgeLabel = t("Published with draft changes");
 	} else if (isPublished && !hasDraft) {
@@ -62,7 +91,7 @@ export function EntityLifecycleBar(props: Readonly<EntityLifecycleBarProps>): Re
 					isPending={isPublishing}
 					onPress={() => {
 						startPublishTransition(async () => {
-							await publishAction(documentId);
+							await publishAction(documentId, locale?.id);
 						});
 					}}
 					size="sm"
@@ -96,7 +125,7 @@ export function EntityLifecycleBar(props: Readonly<EntityLifecycleBarProps>): Re
 								onPress={() => {
 									setIsConfirmOpen(false);
 									startDiscardTransition(async () => {
-										await discardDraftAction(documentId);
+										await discardDraftAction(documentId, locale?.id);
 									});
 								}}
 							>

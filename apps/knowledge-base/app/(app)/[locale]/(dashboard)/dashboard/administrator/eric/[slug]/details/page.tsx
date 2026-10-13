@@ -155,6 +155,7 @@ export default async function DashboardAdministratorEricDetailsPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			publishAction={publishEricAction}
 			reverseRelationGroups={reverseRelationGroups}
 			selectedRelatedEntities={selectedRelatedEntities}

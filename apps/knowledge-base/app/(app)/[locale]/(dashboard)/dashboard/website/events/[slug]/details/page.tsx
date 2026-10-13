@@ -176,6 +176,7 @@ export default async function DashboardWebsiteEventDetailsPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			publishAction={publishEventAction}
 			selectedVersion={selectedVersion}
 		/>

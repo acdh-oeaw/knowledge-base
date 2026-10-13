@@ -2068,6 +2068,10 @@ msgid "4u35HJ"
 msgstr "Save {entityName}"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar.tsx
+msgid "KfhLPS"
+msgstr "Not translated"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar.tsx
 msgid "9LVq-R"
 msgstr "Published with draft changes"
 
@@ -2291,6 +2295,14 @@ msgstr "Loading"
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-mark.tsx
 msgid "E4lWEv"
 msgstr "default language"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-note.tsx
+msgid "XpY4Ie"
+msgstr "There is no {language} version yet, so this page shows the default language."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-note.tsx
+msgid "h3kGfD"
+msgstr "Create {language} version"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector.tsx
 msgid "RcxFT1"
@@ -3206,25 +3218,6 @@ msgstr "This country will be created in the default locale ({locale}). You can a
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_components/governance-body-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_components/institution-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortia-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/persons/_components/person-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-group-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/documents-policies/_components/document-or-policy-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/events/_components/event-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/funding-calls/_components/funding-call-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/impact-case-studies/_components/impact-case-study-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/news/_components/news-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/opportunities/_components/opportunity-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/pages/_components/page-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/website/spotlight-articles/_components/spotlight-article-details.tsx
-msgid "g9Y-4e"
-msgstr "Not yet translated in the selected language — showing the default language."
-
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/countries/_components/country-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/eric/_components/eric-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_components/governance-body-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/institutions/_components/institution-details.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/national-consortia/_components/national-consortia-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/working-groups/_components/working-group-details.tsx
 msgid "5bGX59"
 msgstr "Social Media"
@@ -3744,6 +3737,10 @@ msgstr "Could not delete governance body. Please try again."
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_components/governance-body-create-form.tsx
 msgid "4F6AI_"
 msgstr "New governance body"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_components/governance-body-details.tsx
+msgid "g9Y-4e"
+msgstr "Not yet translated in the selected language — showing the default language."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/governance-bodies/_components/governance-body-edit-form.tsx
 msgid "HUryC8"

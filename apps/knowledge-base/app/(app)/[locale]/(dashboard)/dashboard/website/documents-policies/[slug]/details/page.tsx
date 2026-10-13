@@ -157,6 +157,7 @@ export default async function DashboardWebsiteDocumentOrPolicyDetailsPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			publishAction={publishDocumentOrPolicyAction}
 			selectedVersion={selectedVersion}
 		/>

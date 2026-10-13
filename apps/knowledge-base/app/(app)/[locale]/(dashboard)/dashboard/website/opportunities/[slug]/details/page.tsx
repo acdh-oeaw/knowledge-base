@@ -175,6 +175,7 @@ export default async function DashboardWebsiteOpportunitiesDetailsPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			opportunity={{
 				...opportunity,
 				image,

@@ -174,6 +174,7 @@ export default async function DashboardWebsiteImpactCaseStudyDetailsPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			publishAction={publishImpactCaseStudyAction}
 			selectedVersion={selectedVersion}
 		/>

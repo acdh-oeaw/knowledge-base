@@ -5,6 +5,17 @@ import { Link } from "@dariah-eric/ui/link";
 import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 
+import { useSearchParams } from "@/lib/navigation/navigation";
+
+/** Keeps the locale being viewed when switching between draft and published. */
+function withLocale(href: string, locale: string | null): string {
+	if (locale == null) {
+		return href;
+	}
+
+	return `${href}${href.includes("?") ? "&" : "?"}locale=${encodeURIComponent(locale)}`;
+}
+
 interface VersionSelectorProps {
 	hasDraft: boolean;
 	isPublished: boolean;
@@ -17,6 +28,7 @@ export function VersionSelector(props: Readonly<VersionSelectorProps>): ReactNod
 	const { hasDraft, isPublished, selectedVersion, draftHref, publishedHref } = props;
 
 	const t = useExtracted();
+	const locale = useSearchParams().get("locale");
 
 	if (!hasDraft || !isPublished) {
 		return null;
@@ -29,7 +41,7 @@ export function VersionSelector(props: Readonly<VersionSelectorProps>): ReactNod
 					intent: selectedVersion === "draft" ? "primary" : "plain",
 					size: "sm",
 				})}
-				href={draftHref}
+				href={withLocale(draftHref, locale)}
 			>
 				{t("Draft")}
 			</Link>
@@ -38,7 +50,7 @@ export function VersionSelector(props: Readonly<VersionSelectorProps>): ReactNod
 					intent: selectedVersion === "published" ? "primary" : "plain",
 					size: "sm",
 				})}
-				href={publishedHref}
+				href={withLocale(publishedHref, locale)}
 			>
 				{t("Published")}
 			</Link>

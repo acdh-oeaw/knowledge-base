@@ -6,7 +6,6 @@ import {
 	DescriptionList,
 	DescriptionTerm,
 } from "@dariah-eric/ui/description-list";
-import { Note } from "@dariah-eric/ui/note";
 import { useExtracted, useFormatter } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
@@ -15,6 +14,7 @@ import type { ContentBlock } from "@/app/(app)/[locale]/(dashboard)/dashboard/_c
 import { ContentBlocksView } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/content-blocks-view";
 import { EntityLifecycleBar } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/entity-lifecycle-bar";
 import { FeaturedImageDetails } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/featured-image-details";
+import { LocaleFallbackNote } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-fallback-note";
 import { LocaleSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/locale-selector";
 import { RelationTypeSuffix } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/relation-type-suffix";
 import { VersionSelector } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/version-selector";
@@ -27,6 +27,7 @@ interface EventDetailsProps {
 	isPublished: boolean;
 	locales: Array<{ code: string; name: string }>;
 	selectedLocaleCode: string;
+	selectedLocaleId: string;
 	selectedVersion: "draft" | "published";
 	event: Pick<
 		schema.Event,
@@ -44,8 +45,8 @@ interface EventDetailsProps {
 	} & { image: SelectedImage };
 	selectedRelatedEntities: Array<{ id: string; name: string; description?: string }>;
 	selectedRelatedResources: Array<{ id: string; name: string; description?: string }>;
-	publishAction: (documentId: string) => Promise<unknown>;
-	discardDraftAction?: (documentId: string) => Promise<unknown>;
+	publishAction: (documentId: string, localeId?: string) => Promise<unknown>;
+	discardDraftAction?: (documentId: string, localeId?: string) => Promise<unknown>;
 }
 
 export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
@@ -60,6 +61,7 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 		publishAction,
 		discardDraftAction,
 		selectedLocaleCode,
+		selectedLocaleId,
 		selectedRelatedEntities,
 		selectedRelatedResources,
 		selectedVersion,
@@ -71,9 +73,11 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 	return (
 		<Fragment>
 			{isLocaleFallback ? (
-				<Note intent="info">
-					{t("Not yet translated in the selected language — showing the default language.")}
-				</Note>
+				<LocaleFallbackNote
+					editHref={`/dashboard/website/events/${event.entityVersion.slug.value}/edit`}
+					locales={locales}
+					selectedLocaleCode={selectedLocaleCode}
+				/>
 			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
@@ -85,6 +89,8 @@ export function EventDetails(props: Readonly<EventDetailsProps>): ReactNode {
 				/>
 				<div className="flex items-center gap-x-4">
 					<EntityLifecycleBar
+						isLocaleFallback={isLocaleFallback}
+						locale={{ id: selectedLocaleId, code: selectedLocaleCode }}
 						discardDraftAction={discardDraftAction}
 						documentId={documentId}
 						editHref={`/dashboard/website/events/${event.entityVersion.slug.value}/edit`}

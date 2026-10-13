@@ -149,6 +149,7 @@ export default async function DashboardAdministratorNationalConsortiumDetailsPag
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			nationalConsortium={{
 				...nationalConsortium,
 				entityVersion: { ...nationalConsortium.entityVersion, slug: entityVersionSlug },

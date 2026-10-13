@@ -176,6 +176,7 @@ export default async function DashboardAdministratorPersonDetailsPage(
 			socialMedia={socialMedia}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			person={{
 				...person,
 				entityVersion: { ...person.entityVersion, slug: entityVersionSlug },
