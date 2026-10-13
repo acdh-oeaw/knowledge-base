@@ -148,6 +148,7 @@ export function NewsPage(props: Readonly<NewsPageProps>): ReactNode {
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("news item")}
 				isPending={isDeletePending}
 				error={deleteError}

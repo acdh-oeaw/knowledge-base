@@ -155,6 +155,7 @@ export function SpotlightArticlesPage(props: Readonly<SpotlightArticlesPageProps
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("spotlight article")}
 				isPending={isDeletePending}
 				error={deleteError}

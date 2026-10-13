@@ -14,19 +14,26 @@ interface DeleteModalProps {
 	 */
 	closeOnAction?: boolean;
 	errorMessage?: string | null;
+	isConfirmDisabled?: boolean;
 	isOpen: boolean;
 	isPending?: boolean;
+	/** The languages the item exists in; named in the description when there is more than one. */
+	languages?: ReadonlyArray<string>;
 	model: string;
 	onAction: () => void;
 	onOpenChange: (isOpen: boolean) => void;
 }
 
+const languageList = new Intl.ListFormat("en", { type: "conjunction" });
+
 export function DeleteModal(props: Readonly<DeleteModalProps>): ReactNode {
 	const {
 		closeOnAction = true,
 		errorMessage,
+		isConfirmDisabled = false,
 		isOpen,
 		isPending = false,
+		languages = [],
 		model,
 		onAction,
 		onOpenChange,
@@ -35,7 +42,10 @@ export function DeleteModal(props: Readonly<DeleteModalProps>): ReactNode {
 	const t = useExtracted();
 
 	const title = `Delete ${model}`;
-	const description = `Are you sure you want to delete this ${model}? This action cannot be undone.`;
+	const description =
+		languages.length > 1
+			? `Are you sure you want to delete this ${model}? It will be deleted in all languages: ${languageList.format(languages)}. This action cannot be undone.`
+			: `Are you sure you want to delete this ${model}? This action cannot be undone.`;
 
 	return (
 		<ModalContent isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -55,6 +65,7 @@ export function DeleteModal(props: Readonly<DeleteModalProps>): ReactNode {
 				<ModalClose isDisabled={isPending}>{t("Cancel")}</ModalClose>
 				<Button
 					intent="danger"
+					isDisabled={isConfirmDisabled}
 					isPending={isPending}
 					onPress={() => {
 						onAction();

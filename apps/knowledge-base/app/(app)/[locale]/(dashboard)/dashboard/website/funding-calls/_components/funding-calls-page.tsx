@@ -157,6 +157,7 @@ export function FundingCallsPage(props: Readonly<FundingCallsPageProps>): ReactN
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("Funding Call")}
 				isPending={isDeletePending}
 				error={deleteError}

@@ -84,6 +84,8 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 		selectedRelatedResources,
 		selectedSocialMediaItems,
 		selectedVersion,
+		detailHref = `/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/details`,
+		editHref = `/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/edit`,
 		enableAdminEntityLinks,
 	} = props;
 
@@ -96,17 +98,17 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 		<Fragment>
 			{isLocaleFallback ? (
 				<LocaleFallbackNote
-					editHref={`/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/edit`}
+					editHref={editHref}
 					locales={locales}
 					selectedLocaleCode={selectedLocaleCode}
 				/>
 			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/details`}
+					draftHref={detailHref}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/details?version=published`}
+					publishedHref={`${detailHref}?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<div className="flex items-center gap-x-4">
@@ -115,7 +117,7 @@ export function WorkingGroupDetails(props: Readonly<WorkingGroupDetailsProps>): 
 						locale={{ id: selectedLocaleId, code: selectedLocaleCode }}
 						discardDraftAction={discardDraftAction}
 						documentId={documentId}
-						editHref={`/dashboard/administrator/working-groups/${workingGroup.entityVersion.slug.value}/edit`}
+						editHref={editHref ?? undefined}
 						hasDraft={hasDraft}
 						isPublished={isPublished}
 						publishAction={publishAction}

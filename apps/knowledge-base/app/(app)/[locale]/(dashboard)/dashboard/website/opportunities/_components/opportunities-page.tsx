@@ -167,6 +167,7 @@ export function OpportunitiesPage(props: Readonly<OpportunitiesPageProps>): Reac
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("opportunity")}
 				isPending={isDeletePending}
 				error={deleteError}

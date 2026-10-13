@@ -83,6 +83,8 @@ export function NationalConsortiumDetails(
 		selectedRelatedResources,
 		selectedSocialMediaItems,
 		selectedVersion,
+		detailHref = `/dashboard/administrator/national-consortia/${nationalConsortium.entityVersion.slug.value}/details`,
+		editHref = `/dashboard/administrator/national-consortia/${nationalConsortium.entityVersion.slug.value}/edit`,
 		enableAdminEntityLinks = true,
 	} = props;
 
@@ -92,17 +94,17 @@ export function NationalConsortiumDetails(
 		<Fragment>
 			{isLocaleFallback ? (
 				<LocaleFallbackNote
-					editHref={`/dashboard/administrator/national-consortia/${nationalConsortium.entityVersion.slug.value}/edit`}
+					editHref={editHref}
 					locales={locales}
 					selectedLocaleCode={selectedLocaleCode}
 				/>
 			) : null}
 			<div className="flex items-center justify-between">
 				<VersionSelector
-					draftHref={`/dashboard/administrator/national-consortia/${nationalConsortium.entityVersion.slug.value}/details`}
+					draftHref={detailHref}
 					hasDraft={hasDraft}
 					isPublished={isPublished}
-					publishedHref={`/dashboard/administrator/national-consortia/${nationalConsortium.entityVersion.slug.value}/details?version=published`}
+					publishedHref={`${detailHref}?version=published`}
 					selectedVersion={selectedVersion}
 				/>
 				<div className="flex items-center gap-x-4">
@@ -111,7 +113,7 @@ export function NationalConsortiumDetails(
 						locale={{ id: selectedLocaleId, code: selectedLocaleCode }}
 						discardDraftAction={discardDraftAction}
 						documentId={documentId}
-						editHref={`/dashboard/administrator/national-consortia/${nationalConsortium.entityVersion.slug.value}/edit`}
+						editHref={editHref ?? undefined}
 						hasDraft={hasDraft}
 						isPublished={isPublished}
 						publishAction={publishAction}

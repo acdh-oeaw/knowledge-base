@@ -8,8 +8,11 @@ import { useExtracted } from "next-intl";
 import type { ReactNode } from "react";
 
 interface LocaleFallbackNoteProps {
-	/** The entity's edit page, without a locale; the selected locale is appended. */
-	editHref: string;
+	/**
+	 * The entity's edit page, without a locale; the selected locale is appended. `null` when the
+	 * viewer cannot edit, which leaves out the button.
+	 */
+	editHref: string | null;
 	locales: ReadonlyArray<{ code: string; name: string }>;
 	selectedLocaleCode: string;
 }
@@ -35,13 +38,15 @@ export function LocaleFallbackNote(props: Readonly<LocaleFallbackNoteProps>): Re
 						language,
 					})}
 				</span>
-				<Link
-					className={buttonStyles({ intent: "secondary", size: "sm" })}
-					href={`${editHref}?locale=${encodeURIComponent(selectedLocaleCode)}`}
-				>
-					<LanguageIcon data-slot="icon" />
-					{t("Create {language} version", { language })}
-				</Link>
+				{editHref != null ? (
+					<Link
+						className={buttonStyles({ intent: "secondary", size: "sm" })}
+						href={`${editHref}?locale=${encodeURIComponent(selectedLocaleCode)}`}
+					>
+						<LanguageIcon data-slot="icon" />
+						{t("Create {language} version", { language })}
+					</Link>
+				) : null}
 			</div>
 		</Note>
 	);

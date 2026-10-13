@@ -9,9 +9,9 @@ import { recordAuditEvent } from "@/lib/audit/audit-log";
 import { assertAdmin } from "@/lib/auth/session";
 import { resolveAuditSubjectLabel } from "@/lib/data/audit-log";
 import { documentsPoliciesLifecycleAdapter } from "@/lib/data/documents-policies.lifecycle-adapter";
-import { getDocumentVersions } from "@/lib/data/entity-lifecycle";
+import { deleteAllDocumentVersions } from "@/lib/data/entity-lifecycle";
 import { db } from "@/lib/db";
-import { eq, inArray, or } from "@/lib/db/sql";
+import { eq } from "@/lib/db/sql";
 import {
 	deleteWebsiteDocument,
 	getWebsiteDocumentDescriptorByEntityId,
@@ -34,45 +34,7 @@ export async function deleteDocumentOrPolicyAction(documentId: string): Promise<
 
 		const documentDescriptor = await getWebsiteDocumentDescriptorByEntityId(documentId);
 
-		const { draftId, publishedId } = await getDocumentVersions(tx, documentId);
-		const versionIds = [draftId, publishedId].filter((id): id is string => id != null);
-
-		for (const versionId of versionIds) {
-			await documentsPoliciesLifecycleAdapter.wipeSubtype(tx, versionId);
-		}
-
-		for (const versionId of versionIds) {
-			const fieldRows = await tx
-				.select({ id: schema.fields.id })
-				.from(schema.fields)
-				.where(eq(schema.fields.entityVersionId, versionId));
-
-			if (fieldRows.length > 0) {
-				const fieldIds = fieldRows.map((f) => f.id);
-				await tx
-					.delete(schema.contentBlocks)
-					.where(inArray(schema.contentBlocks.fieldId, fieldIds));
-				await tx.delete(schema.fields).where(inArray(schema.fields.id, fieldIds));
-			}
-		}
-
-		await tx
-			.delete(schema.entitiesToResources)
-			.where(eq(schema.entitiesToResources.entityId, documentId));
-
-		await tx
-			.delete(schema.entitiesToEntities)
-			.where(
-				or(
-					eq(schema.entitiesToEntities.entityId, documentId),
-					eq(schema.entitiesToEntities.relatedEntityId, documentId),
-				),
-			);
-
-		if (versionIds.length > 0) {
-			await tx.delete(schema.slugs).where(inArray(schema.slugs.entityVersionId, versionIds));
-			await tx.delete(schema.entityVersions).where(inArray(schema.entityVersions.id, versionIds));
-		}
+		await deleteAllDocumentVersions(tx, documentId, documentsPoliciesLifecycleAdapter);
 
 		await tx.delete(schema.entities).where(eq(schema.entities.id, documentId));
 

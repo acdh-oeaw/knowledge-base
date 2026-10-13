@@ -153,6 +153,7 @@ export function NationalConsortiaPage(props: Readonly<NationalConsortiaPageProps
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("national consortium")}
 				isPending={isDeletePending}
 				error={deleteError}

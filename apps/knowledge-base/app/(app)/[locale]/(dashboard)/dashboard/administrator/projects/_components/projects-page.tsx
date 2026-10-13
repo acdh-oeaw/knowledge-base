@@ -179,6 +179,7 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("project")}
 				isPending={isDeletePending}
 				error={deleteError}

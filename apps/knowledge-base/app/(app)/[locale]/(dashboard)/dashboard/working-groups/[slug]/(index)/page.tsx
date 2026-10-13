@@ -134,6 +134,7 @@ export default async function WorkingGroupPage(
 			isPublished={publishedId != null}
 			locales={locales}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			personRelations={personRelations}
 			relations={data.relations}
 			selectedRelatedEntities={data.selectedRelatedEntities}

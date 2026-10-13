@@ -410,6 +410,7 @@ export function DocumentsPoliciesPage(props: Readonly<DocumentsPoliciesPageProps
 
 			<EntityDeleteModal
 				item={documentToDelete != null ? { id: documentToDelete } : null}
+				documentId={documentToDelete}
 				model={t("document or policy")}
 				isPending={isDocumentDeletePending}
 				error={documentDeleteError}

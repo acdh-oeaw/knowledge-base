@@ -7,7 +7,7 @@ import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator } from "@dariah-e
 import { SearchField, SearchInput } from "@dariah-eric/ui/search-field";
 import { EllipsisHorizontalIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { DeleteModal } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/delete-modal";
 import {
@@ -18,6 +18,7 @@ import {
 	HeaderTitle,
 } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/header";
 import { Paginate } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/paginate";
+import { getDocumentLocaleNamesAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/_lib/get-document-locale-names.action";
 
 // ---------------------------------------------------------------------------
 // EntityListTitle — consistent truncation for overview table title columns
@@ -218,18 +219,61 @@ interface EntityDeleteModalProps {
 	onClose: () => void;
 	/** When provided, the modal stays open while pending and shows the error inline on failure. */
 	error?: string | null;
+	/**
+	 * The versioned document being deleted. When provided, the modal names the languages it exists in
+	 * (a delete removes all of them), and holds back the delete button until it knows them.
+	 */
+	documentId?: string | null;
 }
 
 export function EntityDeleteModal(props: Readonly<EntityDeleteModalProps>): ReactNode {
-	const { item, model, isPending, onConfirm, onClose, error } = props;
+	const { item, model, isPending, onConfirm, onClose, error, documentId } = props;
 	const supportsInlineError = error !== undefined;
+
+	const isOpen = item != null;
+	const [languages, setLanguages] = useState<{
+		documentId: string;
+		names: Array<string>;
+	} | null>(null);
+
+	useEffect(() => {
+		if (!isOpen || documentId == null) {
+			return;
+		}
+
+		let isCurrent = true;
+
+		async function loadLanguages(id: string) {
+			let names: Array<string> = [];
+			try {
+				names = await getDocumentLocaleNamesAction(id);
+			} catch {
+				// Without the language list the modal falls back to the plain warning.
+			}
+			if (isCurrent) {
+				setLanguages({ documentId: id, names });
+			}
+		}
+
+		void loadLanguages(documentId);
+
+		return () => {
+			isCurrent = false;
+		};
+	}, [isOpen, documentId]);
+
+	const languageNames =
+		documentId != null && languages?.documentId === documentId ? languages.names : undefined;
+	const isLoadingLanguages = isOpen && documentId != null && languageNames == null;
 
 	return (
 		<DeleteModal
 			closeOnAction={!supportsInlineError}
 			errorMessage={error}
-			isOpen={item != null}
+			isConfirmDisabled={isLoadingLanguages}
+			isOpen={isOpen}
 			isPending={isPending}
+			languages={languageNames}
 			model={model}
 			onAction={onConfirm}
 			onOpenChange={(open) => {

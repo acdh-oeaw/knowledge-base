@@ -145,6 +145,7 @@ export function PersonsPage(props: Readonly<PersonsPageProps>): ReactNode {
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("person")}
 				isPending={isDeletePending}
 				error={deleteError}

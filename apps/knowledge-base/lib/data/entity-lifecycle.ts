@@ -1220,3 +1220,63 @@ export async function deleteDocumentVersionTail(
 	await tx.delete(schema.entityVersions).where(eq(schema.entityVersions.id, versionId));
 	await tx.delete(schema.entities).where(eq(schema.entities.id, documentId));
 }
+
+/**
+ * Delete every version of `documentId` in every locale — deleting a document removes it in all its
+ * languages — with each version's subtype row, fields, content blocks and slugs, plus the
+ * document's resource/entity links and slug redirects (old addresses of a deleted document have
+ * nothing left to point to).
+ *
+ * Queries `entity_versions` directly: `document_lifecycle` only resolves the default locale's
+ * versions, which left translations behind and failed the final `entities` delete on their foreign
+ * key. Leaves `entities` and document-level relations to the caller, which runs its own guards and
+ * type-specific cleanup around this.
+ */
+export async function deleteAllDocumentVersions(
+	tx: Transaction,
+	documentId: string,
+	adapter: EntityLifecycleAdapter,
+): Promise<void> {
+	const versions = await tx
+		.select({ id: schema.entityVersions.id })
+		.from(schema.entityVersions)
+		.where(eq(schema.entityVersions.entityId, documentId));
+	const versionIds = versions.map((version) => version.id);
+
+	for (const versionId of versionIds) {
+		await adapter.wipeSubtype(tx, versionId);
+	}
+
+	for (const versionId of versionIds) {
+		const fieldRows = await tx
+			.select({ id: schema.fields.id })
+			.from(schema.fields)
+			.where(eq(schema.fields.entityVersionId, versionId));
+
+		if (fieldRows.length > 0) {
+			const fieldIds = fieldRows.map((field) => field.id);
+			await tx.delete(schema.contentBlocks).where(inArray(schema.contentBlocks.fieldId, fieldIds));
+			await tx.delete(schema.fields).where(inArray(schema.fields.id, fieldIds));
+		}
+	}
+
+	await tx
+		.delete(schema.entitiesToResources)
+		.where(eq(schema.entitiesToResources.entityId, documentId));
+
+	await tx
+		.delete(schema.entitiesToEntities)
+		.where(
+			or(
+				eq(schema.entitiesToEntities.entityId, documentId),
+				eq(schema.entitiesToEntities.relatedEntityId, documentId),
+			),
+		);
+
+	await tx.delete(schema.slugRedirects).where(eq(schema.slugRedirects.entityId, documentId));
+
+	if (versionIds.length > 0) {
+		await tx.delete(schema.slugs).where(inArray(schema.slugs.entityVersionId, versionIds));
+		await tx.delete(schema.entityVersions).where(inArray(schema.entityVersions.id, versionIds));
+	}
+}

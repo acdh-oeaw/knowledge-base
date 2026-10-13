@@ -155,6 +155,7 @@ export function ImpactCaseStudiesPage(props: Readonly<ImpactCaseStudiesPageProps
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("impact case study")}
 				isPending={isDeletePending}
 				error={deleteError}

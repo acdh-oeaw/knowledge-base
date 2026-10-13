@@ -165,6 +165,7 @@ export function EventsPage(props: Readonly<EventsPageProps>): ReactNode {
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("event")}
 				isPending={isDeletePending}
 				error={deleteError}

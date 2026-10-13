@@ -164,6 +164,7 @@ export function WorkingGroupsPage(props: Readonly<WorkingGroupsPageProps>): Reac
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("working group")}
 				isPending={isDeletePending}
 				error={deleteError}

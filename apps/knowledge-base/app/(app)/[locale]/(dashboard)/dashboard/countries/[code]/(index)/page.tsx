@@ -131,6 +131,7 @@ export default async function CountryPage(props: Readonly<CountryPageProps>): Pr
 			}}
 			relations={data.relations}
 			selectedLocaleCode={selectedLocale.code}
+			selectedLocaleId={selectedLocale.id}
 			selectedRelatedEntities={data.selectedRelatedEntities}
 			selectedRelatedResources={data.selectedRelatedResources}
 			selectedSocialMediaItems={data.selectedSocialMediaItems}

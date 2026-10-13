@@ -175,6 +175,7 @@ export function CountriesPage(props: Readonly<CountriesPageProps>): ReactNode {
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("country")}
 				isPending={isDeletePending}
 				error={deleteError}

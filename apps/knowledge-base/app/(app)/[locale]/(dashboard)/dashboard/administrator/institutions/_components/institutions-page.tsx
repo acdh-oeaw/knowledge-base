@@ -152,6 +152,7 @@ export function InstitutionsPage(props: Readonly<InstitutionsPageProps>): ReactN
 
 			<EntityDeleteModal
 				item={itemToDelete}
+				documentId={itemToDelete?.documentId}
 				model={t("institution")}
 				isPending={isDeletePending}
 				error={deleteError}
