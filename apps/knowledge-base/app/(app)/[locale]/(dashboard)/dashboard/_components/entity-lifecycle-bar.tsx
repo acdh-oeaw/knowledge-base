@@ -9,6 +9,8 @@ import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useExtracted } from "next-intl";
 import { type ReactNode, useState, useTransition } from "react";
 
+import { useSearchParams } from "@/lib/navigation/navigation";
+
 /**
  * Lifecycle command actions return an ActionState on completion; the bar ignores it. `localeId` is
  * the locale version to act on; omitted, the action acts on the default locale.
@@ -22,7 +24,10 @@ interface EntityLifecycleBarProps {
 	editHref?: string;
 	publishAction?: LifecycleAction;
 	discardDraftAction?: LifecycleAction;
-	/** The locale version being viewed: publish/discard act on it, and edit opens it. */
+	/**
+	 * The locale version being viewed: publish/discard act on it, and edit opens it when the viewer
+	 * picked it via `?locale=` (without that param, the default locale is shown and edited).
+	 */
 	locale?: { id: string; code: string };
 	/**
 	 * The selected locale has no version yet and the default locale's is shown instead. Publish and
@@ -43,8 +48,10 @@ export function EntityLifecycleBar(props: Readonly<EntityLifecycleBarProps>): Re
 		isLocaleFallback = false,
 	} = props;
 
+	// Only carried over when it is in the URL, so default-locale links stay exactly as they were.
+	const hasLocaleParam = useSearchParams().has("locale");
 	const editHref =
-		baseEditHref != null && locale != null
+		baseEditHref != null && locale != null && hasLocaleParam
 			? `${baseEditHref}?locale=${encodeURIComponent(locale.code)}`
 			: baseEditHref;
 	const publishAction = isLocaleFallback ? undefined : basePublishAction;
