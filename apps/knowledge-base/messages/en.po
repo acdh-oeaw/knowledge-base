@@ -2269,6 +2269,14 @@ msgstr "Centre (default)"
 msgid "jXwIPj"
 msgstr "Reset to centre"
 
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "XIaDY5"
+msgstr "Crop outlined on the image"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "Aj-8Pj"
+msgstr "All crops"
+
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/image-caption-mode-field.tsx
 msgid "ZPLjxQ"
 msgstr "Caption behavior"
@@ -7342,8 +7350,8 @@ msgid "0nCIOP"
 msgstr "No assets match your filters."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
-msgid "LUrZ38"
-msgstr "Update label, alt text, caption, and focal point for this asset."
+msgid "wiDCsL"
+msgstr "Label, alt text, caption, and focal point belong to this asset, so changes apply wherever it is used."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
 msgid "23lI3e"
@@ -7357,6 +7365,10 @@ msgstr "Dimensions"
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
 msgid "DAQ44c"
 msgstr "Describe the image for accessibility"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
+msgid "mTFle9"
+msgstr "Shown with the image by default. Where the image is placed, the caption can be replaced or hidden for that placement only."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
 msgid "IWtpYt"

@@ -8,7 +8,8 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./dist/index.mjs"
+		".": "./dist/index.mjs",
+		"./crop": "./dist/crop.mjs"
 	},
 	"scripts": {
 		"build": "tsdown",

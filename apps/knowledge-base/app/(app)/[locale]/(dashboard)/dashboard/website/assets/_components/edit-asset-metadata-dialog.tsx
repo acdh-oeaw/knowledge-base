@@ -28,7 +28,7 @@ import { CaptionField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_compon
 import { FocalPointField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field";
 import { updateAssetMetadataAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.action";
 import { UpdateAssetMetadataInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.schema";
-import type { FocalPoint } from "@/lib/focal-point";
+import { type FocalPoint, getPreviewCrops } from "@/lib/focal-point";
 import { formatDimensions } from "@/lib/format-dimensions";
 
 interface AssetMetadataItem {
@@ -99,7 +99,9 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 
 	const licenseOptions = licenses ?? fetchedLicenses;
 	const dimensions = formatDimensions(asset.width, asset.height);
-	const canPickFocalPoint = asset.mimeType.startsWith("image/") && asset.focalPoint !== undefined;
+	/** Without crops, as for a logo, a focal point would change nothing anywhere it is shown. */
+	const focalPointCrops = asset.mimeType.startsWith("image/") ? getPreviewCrops(asset.key) : null;
+	const canPickFocalPoint = focalPointCrops != null && asset.focalPoint !== undefined;
 
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: ActionState, formData: FormData) => {
@@ -161,8 +163,13 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 
 			<ModalContent isOpen={isOpen} onOpenChange={setIsOpen} size="lg">
 				<Form action={formAction} state={state}>
+					{/* Opened from a news item's image, say, this reads like editing that placement — but
+					    every field here belongs to the asset. A placement only has a caption of its own
+					    (see `imageCaptionModesEnum`), which the caption field points to. */}
 					<ModalHeader
-						description={t("Update label, alt text, caption, and focal point for this asset.")}
+						description={t(
+							"Label, alt text, caption, and focal point belong to this asset, so changes apply wherever it is used.",
+						)}
 						title={t("Edit asset metadata")}
 					/>
 
@@ -180,6 +187,7 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 								/* The picker shows the whole image, so it doubles as the preview. */
 								<FocalPointField
 									alt={asset.alt ?? asset.label}
+									crops={focalPointCrops}
 									defaultValue={asset.focalPoint ?? null}
 									name="focalPoint"
 									src={asset.url}
@@ -217,7 +225,17 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 							<FieldError />
 						</TextField>
 
-						<CaptionField defaultValue={asset.caption} name="caption" />
+						<CaptionField
+							defaultValue={asset.caption}
+							description={
+								asset.mimeType.startsWith("image/")
+									? t(
+											"Shown with the image by default. Where the image is placed, the caption can be replaced or hidden for that placement only.",
+										)
+									: undefined
+							}
+							name="caption"
+						/>
 
 						{licenseOptions != null ? (
 							<Select defaultValue={asset.licenseId ?? "none"} name="licenseId">

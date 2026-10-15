@@ -58,9 +58,9 @@ export const ImageObjectSchema = v.object({
 	),
 	/**
 	 * Where to keep the image in view when a placement crops it with `object-fit: cover`: use it as
-	 * `object-position: {x * 100}% {y * 100}%`. A rendition requested with `&ar=` is cropped around
-	 * it already; pass it along as `&fp=x,y` too, so that a moved point gets a url of its own instead
-	 * of the immutably cached crop around the old one.
+	 * `object-position: {x * 100}% {y * 100}%`. A rendition requested with `&ar=` is already cropped
+	 * exactly as that would crop it (see `getImageOptions`); pass it along as `&fp=x,y` too, so that
+	 * a moved point gets a url of its own instead of the immutably cached crop around the old one.
 	 */
 	focalPoint: v.pipe(
 		v.nullable(

@@ -18,6 +18,7 @@ import { RichTextEditorToolbarButton } from "@/lib/rich-text-toolbar-button";
 import { Tooltip, TooltipContent } from "@/lib/tooltip";
 
 interface InlineRichTextEditorProps {
+	"aria-describedby"?: string;
 	"aria-label"?: string;
 	className?: string;
 	content?: JSONContent;
@@ -189,6 +190,7 @@ export function createInlineRichTextExtensions(extensions: Extensions = []): Ext
 
 export function InlineRichTextEditor(props: Readonly<InlineRichTextEditorProps>): ReactNode {
 	const {
+		"aria-describedby": ariaDescribedBy,
 		"aria-label": ariaLabel,
 		className,
 		content,
@@ -234,6 +236,7 @@ export function InlineRichTextEditor(props: Readonly<InlineRichTextEditorProps>)
 				class: "richtext richtext-sm max-inline-none px-3 py-2 focus:outline-none",
 				role: "textbox",
 				...(ariaLabel != null ? { "aria-label": ariaLabel } : {}),
+				...(ariaDescribedBy != null ? { "aria-describedby": ariaDescribedBy } : {}),
 			},
 		},
 	});

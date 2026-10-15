@@ -1,4 +1,5 @@
 import type { ImageUrlOptions } from "@dariah-eric/images";
+import { getCropGravityPoint } from "@dariah-eric/images/crop";
 
 import type { FocalPoint } from "@/lib/images";
 import { type ImageVariantAspectRatio, imageVariantAspectRatios } from "~/config/api.config";
@@ -20,13 +21,20 @@ import { type ImageVariantAspectRatio, imageVariantAspectRatios } from "~/config
  * A crop keeps the centre unless the asset has a focal point. That point is the one stored on the
  * asset, never one a caller sends: a caller-chosen point would multiply the renditions per asset by
  * every position it can name, which is exactly what the allowlists exist to prevent.
+ *
+ * The point is placed the way css `object-position` places it, which is how the website crops every
+ * image it draws itself, so that a crop from here — an `og:image` — shows the same part of the
+ * picture as the page does. imgproxy centres on its point instead, so it is handed the centre of
+ * that frame, which takes the image's shape to work out. An asset whose shape was never measured
+ * falls back to centring on the point itself.
  */
 export function getImageOptions(params: {
 	ar?: ImageVariantAspectRatio;
 	focalPoint?: FocalPoint | null;
+	imageAspectRatio?: number | null;
 	width?: number;
 }): ImageUrlOptions {
-	const { ar, focalPoint, width } = params;
+	const { ar, focalPoint, imageAspectRatio, width } = params;
 
 	if (width == null) {
 		return {};
@@ -36,10 +44,31 @@ export function getImageOptions(params: {
 		return { width };
 	}
 
+	const cropAspectRatio = imageVariantAspectRatios[ar];
+
 	return {
 		width,
-		height: Math.round(width / imageVariantAspectRatios[ar]),
+		height: Math.round(width / cropAspectRatio),
 		resizing_type: "fill",
-		gravity: focalPoint != null ? { type: "fp", x: focalPoint.x, y: focalPoint.y } : { type: "ce" },
+		gravity: getGravity({ cropAspectRatio, focalPoint, imageAspectRatio }),
 	};
+}
+
+function getGravity(params: {
+	cropAspectRatio: number;
+	focalPoint: FocalPoint | null | undefined;
+	imageAspectRatio: number | null | undefined;
+}): NonNullable<ImageUrlOptions["gravity"]> {
+	const { cropAspectRatio, focalPoint, imageAspectRatio } = params;
+
+	if (focalPoint == null) {
+		return { type: "ce" };
+	}
+
+	const point =
+		imageAspectRatio != null && imageAspectRatio > 0
+			? getCropGravityPoint({ cropAspectRatio, focalPoint, imageAspectRatio })
+			: focalPoint;
+
+	return { type: "fp", x: point.x, y: point.y };
 }

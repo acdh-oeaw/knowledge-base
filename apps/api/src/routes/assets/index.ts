@@ -10,7 +10,7 @@ import { BAD_REQUEST, NOT_FOUND } from "@/lib/openapi/responses";
 import { validator } from "@/lib/openapi/validator";
 import { getImageOptions } from "@/routes/assets/image-options";
 import { GetAssetDownload, GetAssetImage } from "@/routes/assets/schemas";
-import { getAssetByKey, getAssetFocalPoint } from "@/routes/assets/service";
+import { getAssetByKey, getAssetCropSource } from "@/routes/assets/service";
 import { images } from "@/services/images";
 import { assetConfig } from "~/config/rate-limiter.config";
 
@@ -58,18 +58,23 @@ export const router = createRouter()
 			 * caller sent is deliberately not read: it is there to give a moved point a url of its own
 			 * (see `GetAssetImage`), and rendering it would let any caller mint a crop per position.
 			 */
-			let focalPoint = null;
+			let crop = null;
 
 			if (ar != null) {
 				const db = c.get("db");
 				assert(db, "Database must be provided via middleware.");
 
-				focalPoint = await getAssetFocalPoint(db, { key });
+				crop = await getAssetCropSource(db, { key });
 			}
 
 			const { url } = images.generateSignedImageUrl({
 				key,
-				options: getImageOptions({ ar, focalPoint, width }),
+				options: getImageOptions({
+					ar,
+					focalPoint: crop?.focalPoint,
+					imageAspectRatio: crop?.aspectRatio,
+					width,
+				}),
 			});
 
 			/**
