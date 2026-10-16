@@ -1,5 +1,3 @@
-// oxlint-disable jsx-a11y/iframe-has-title
-
 "use client";
 
 import { type ImageCaptionMode, resolveImageCaption } from "@dariah-eric/database/image-captions";
