@@ -57,6 +57,12 @@ export function FocalPointField(props: Readonly<FocalPointFieldProps>): ReactNod
 	const [point, setPoint] = useState<FocalPoint | null>(defaultValue);
 	/** Unknown until the image has loaded, and every crop frame depends on it. */
 	const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
+	/**
+	 * A vector that declares only a `viewBox` has a shape but no size, so in this shrink-to-fit box
+	 * it collapses to nothing — no image to see, nothing to click. Once loaded it is given a size of
+	 * its own: as tall as the preview allows, and no wider than the dialog.
+	 */
+	const [isSizeless, setIsSizeless] = useState(false);
 	const hasOverlap = crops.length > 1;
 	/** The safe area first, where there is one: where text and faces stay visible on every page. */
 	const [outlinedCrop, setOutlinedCrop] = useState<string | null>(
@@ -82,11 +88,14 @@ export function FocalPointField(props: Readonly<FocalPointFieldProps>): ReactNod
 
 	function handleImageLoad(event: SyntheticEvent<HTMLImageElement>) {
 		const image = event.currentTarget;
-		/** A vector without intrinsic dimensions reports zero; its rendered box has the same shape. */
-		const width = image.naturalWidth > 0 ? image.naturalWidth : image.clientWidth;
-		const height = image.naturalHeight > 0 ? image.naturalHeight : image.clientHeight;
+		/**
+		 * A vector without intrinsic dimensions reports a default size drawn to its `viewBox` shape, so
+		 * the ratio holds even then — though chromium rounds it to whole pixels of a small box.
+		 */
+		const { naturalWidth: width, naturalHeight: height } = image;
 
 		setImageAspectRatio(width > 0 && height > 0 ? width / height : null);
+		setIsSizeless(image.clientWidth === 0 || image.clientHeight === 0);
 	}
 
 	function setPointFromPointer(event: PointerEvent<HTMLElement>) {
@@ -198,6 +207,14 @@ export function FocalPointField(props: Readonly<FocalPointFieldProps>): ReactNod
 						draggable={false}
 						onLoad={handleImageLoad}
 						src={src}
+						style={
+							isSizeless && imageAspectRatio != null
+								? {
+										aspectRatio: imageAspectRatio,
+										inlineSize: `calc(var(--spacing) * 72 * ${String(imageAspectRatio)})`,
+									}
+								: undefined
+						}
 					/>
 					{highlightedFrame != null ? (
 						/* Everything cut off is dimmed by the highlighted frame's own shadow, clipped to the
