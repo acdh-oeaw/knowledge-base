@@ -96,6 +96,8 @@ function fromMembersAndPartners(db: Database | Transaction, ctx: MembersAndPartn
 			imageAlt: schema.assets.alt,
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
+			imageAspectRatio: schema.assets.aspectRatio,
+			imageMimeType: schema.assets.mimeType,
 			imageCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
@@ -145,6 +147,8 @@ interface MembersAndPartnersRow {
 	imageWidth: number | null;
 	imageHeight: number | null;
 	imageCaption: JSONContent | null;
+	imageAspectRatio: number | null;
+	imageMimeType: string | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
 }
@@ -157,6 +161,8 @@ function rowImage(row: MembersAndPartnersRow, size: number) {
 			caption: row.imageCaption,
 			width: row.imageWidth,
 			height: row.imageHeight,
+			aspectRatio: row.imageAspectRatio,
+			mimeType: row.imageMimeType!,
 			licenseName: row.licenseName,
 			licenseUrl: row.licenseUrl,
 		}),
@@ -642,6 +648,8 @@ async function getNationalConsortium(
 			imageAlt: schema.assets.alt,
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
+			imageAspectRatio: schema.assets.aspectRatio,
+			imageMimeType: schema.assets.mimeType,
 			imageCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
@@ -715,6 +723,8 @@ async function getNationalConsortium(
 				caption: row.imageCaption,
 				width: row.imageWidth,
 				height: row.imageHeight,
+				aspectRatio: row.imageAspectRatio,
+				mimeType: row.imageMimeType,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,
 			}),

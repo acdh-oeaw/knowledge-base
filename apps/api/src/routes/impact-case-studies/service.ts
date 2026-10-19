@@ -87,6 +87,8 @@ export async function getImpactCaseStudies(
 					caption: schema.assets.caption,
 					width: schema.assets.width,
 					height: schema.assets.height,
+					aspectRatio: schema.assets.aspectRatio,
+					mimeType: schema.assets.mimeType,
 					licenseName: schema.licenses.name,
 					licenseUrl: schema.licenses.url,
 				},
