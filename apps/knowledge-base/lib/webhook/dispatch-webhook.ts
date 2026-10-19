@@ -260,6 +260,40 @@ export async function getAssetCacheTags(
 	return [...tags];
 }
 
+/**
+ * Entity (document) ids of every entity whose own image — not an image placed in its content — is
+ * one of the given assets. That is the image the website search index stores with an entity's
+ * documents, so these are the entities to re-sync when the assets' metadata changes. Like
+ * {@link getAssetCacheTags}, references from unpublished versions count too: re-syncing an entity
+ * without a published version is a no-op.
+ */
+export async function getEntityIdsWithAssetsAsImage(
+	db: Database | Transaction,
+	assetIds: ReadonlyArray<string>,
+): Promise<Array<string>> {
+	if (assetIds.length === 0) {
+		return [];
+	}
+
+	const ids = [...assetIds];
+
+	const rows = await db
+		.selectDistinct({ entityId: schema.entityVersions.entityId })
+		.from(schema.entityVersions)
+		.where(
+			or(
+				...assetReferencingVersionColumns.map(({ table, versionId, assetId }) =>
+					inArray(
+						schema.entityVersions.id,
+						db.select({ id: versionId }).from(table).where(inArray(assetId, ids)),
+					),
+				),
+			),
+		);
+
+	return rows.map((row) => row.entityId);
+}
+
 async function send(payload: RevalidationWebhookPayload): Promise<void> {
 	if (env.REVALIDATION_WEBHOOK_URL == null || env.REVALIDATION_WEBHOOK_SECRET == null) {
 		return;

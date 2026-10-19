@@ -29,6 +29,14 @@ export const websiteCollection = defineCollection({
 		{ name: "description", type: "string", index: true },
 		{ name: "summary", type: "string", index: false, optional: true },
 		{ name: "image_key", type: "string", index: false, optional: true },
+		// Stored, not indexed: what a result card needs to render the image without a second request —
+		// alt text, a truthful `srcset` (raster dimensions) and a reserved box (aspect ratio, also set
+		// for svgs, which have no raster dimensions).
+		{ name: "image_alt", type: "string", index: false, optional: true },
+		{ name: "image_width", type: "int32", index: false, optional: true },
+		{ name: "image_height", type: "int32", index: false, optional: true },
+		{ name: "image_aspect_ratio", type: "float", index: false, optional: true },
+		{ name: "image_mime_type", type: "string", index: false, optional: true },
 		{ name: "start_date", type: "int64", index: true, optional: true, sort: true },
 		{ name: "end_date", type: "int64", index: true, optional: true, sort: true },
 		{ name: "project_call", type: "string", index: true, facet: true, optional: true },

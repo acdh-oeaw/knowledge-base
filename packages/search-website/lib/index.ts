@@ -133,12 +133,88 @@ function mergeDescription(...values: Array<string | null | undefined>): string {
 	return [...new Set(parts)].join("\n\n");
 }
 
+/**
+ * What a search result card needs to render an entity's image straight from the index, without a
+ * second request: the key to build the url from, alt text, raster dimensions for a truthful
+ * `srcset`, and an aspect ratio to reserve the image's box (also known for svgs, which have no
+ * raster dimensions).
+ */
+interface IndexedImage {
+	key: string;
+	alt: string | null;
+	width: number | null;
+	height: number | null;
+	aspectRatio: number | null;
+	mimeType: string;
+}
+
+/**
+ * An {@link IndexedImage} as a flat select over a left join returns it: an object whose columns are
+ * all null when the entity has no image, rather than null itself.
+ */
+type JoinedIndexedImage = { [K in keyof IndexedImage]: IndexedImage[K] | null };
+
+/** `columns` of an `image` relation in a relational query, selecting an {@link IndexedImage}. */
+const indexedImageColumns = {
+	key: true,
+	alt: true,
+	width: true,
+	height: true,
+	aspectRatio: true,
+	mimeType: true,
+} as const;
+
+/** The same selection from a left-joined `assets` table (or an alias of it) in a flat select. */
+function indexedImageSelection(assets: typeof itemAssets | typeof schema.assets) {
+	return {
+		key: assets.key,
+		alt: assets.alt,
+		width: assets.width,
+		height: assets.height,
+		aspectRatio: assets.aspectRatio,
+		mimeType: assets.mimeType,
+	};
+}
+
+type ImageFields = Pick<
+	WebsiteEntityDocument,
+	| "image_alt"
+	| "image_aspect_ratio"
+	| "image_height"
+	| "image_key"
+	| "image_mime_type"
+	| "image_width"
+>;
+
+function toImageFields(image: IndexedImage | JoinedIndexedImage | null | undefined): ImageFields {
+	if (image?.key == null) {
+		return {};
+	}
+
+	// Same fallback as the api's image objects: assets measured before the aspect ratio was stored
+	// still have raster dimensions to derive it from.
+	const aspectRatio =
+		image.aspectRatio ??
+		(image.width != null && image.height != null && image.height > 0
+			? image.width / image.height
+			: null);
+
+	return {
+		image_key: image.key,
+		image_alt: image.alt ?? undefined,
+		image_width: image.width ?? undefined,
+		image_height: image.height ?? undefined,
+		image_aspect_ratio: aspectRatio ?? undefined,
+		image_mime_type: image.mimeType ?? undefined,
+	};
+}
+
 function createWebsiteEntityDocument(params: {
 	description: string;
 	documentId?: string;
 	duration?: { start: Date; end?: Date };
 	entityId: string;
-	imageKey?: string;
+	image?: IndexedImage | JoinedIndexedImage | null;
 	importedAt: number;
 	label: string;
 	link: string;
@@ -153,7 +229,7 @@ function createWebsiteEntityDocument(params: {
 		description,
 		duration,
 		entityId,
-		imageKey,
+		image,
 		importedAt,
 		label,
 		link,
@@ -178,7 +254,7 @@ function createWebsiteEntityDocument(params: {
 		label,
 		description,
 		end_date: duration?.end?.getTime(),
-		image_key: imageKey,
+		...toImageFields(image),
 		link,
 		locale,
 		project_call: projectCall,
@@ -319,7 +395,7 @@ interface CountryScopedUnit {
 	countrySlug: string;
 	description: string | null;
 	entityId: string;
-	imageKey: string | null;
+	image: JoinedIndexedImage;
 	itemSlug: string;
 	label: string;
 	locale: { languageCode: string; regionCode: string | null };
@@ -330,7 +406,7 @@ interface CountryScopedUnit {
 interface ViewBackedWebsiteEntity {
 	entityId: string;
 	id: string;
-	imageKey: string | null;
+	image: JoinedIndexedImage;
 	locale: { languageCode: string; regionCode: string | null };
 	name: string;
 	slug: string;
@@ -341,7 +417,7 @@ interface ViewBackedWebsiteEntity {
 interface PublishedOpportunity {
 	entityId: string;
 	id: string;
-	imageKey: string | null;
+	image: JoinedIndexedImage;
 	locale: { languageCode: string; regionCode: string | null };
 	slug: string;
 	summary: string;
@@ -369,7 +445,7 @@ async function getPublishedOpportunities(
 			title: schema.opportunities.title,
 			summary: schema.opportunities.summary,
 			updatedAt: schema.opportunities.updatedAt,
-			imageKey: schema.assets.key,
+			image: indexedImageSelection(schema.assets),
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -405,7 +481,7 @@ async function getPublishedMembersAndPartners(
 			name: schema.membersAndPartners.name,
 			summary: schema.membersAndPartners.summary,
 			updatedAt: schema.membersAndPartners.updatedAt,
-			imageKey: schema.assets.key,
+			image: indexedImageSelection(schema.assets),
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -441,7 +517,7 @@ async function getPublishedProjects(
 			name: schema.projects.name,
 			summary: schema.projects.summary,
 			updatedAt: schema.projects.updatedAt,
-			imageKey: schema.assets.key,
+			image: indexedImageSelection(schema.assets),
 			call: schema.projectCalls.call,
 			locale: {
 				languageCode: schema.locales.languageCode,
@@ -479,7 +555,7 @@ async function getPublishedWorkingGroups(
 			name: schema.workingGroups.name,
 			summary: schema.workingGroups.summary,
 			updatedAt: schema.workingGroups.updatedAt,
-			imageKey: schema.assets.key,
+			image: indexedImageSelection(schema.assets),
 			locale: {
 				languageCode: schema.locales.languageCode,
 				regionCode: schema.locales.regionCode,
@@ -553,7 +629,7 @@ async function getCountryScopedUnits(
 			label: schema.organisationalUnits.name,
 			description: schema.organisationalUnits.summary,
 			sourceUpdatedAt: schema.organisationalUnits.updatedAt,
-			imageKey: itemAssets.key,
+			image: indexedImageSelection(itemAssets),
 			locale: {
 				languageCode: itemLocales.languageCode,
 				regionCode: itemLocales.regionCode,
@@ -1028,7 +1104,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							link: getEntityHref({ type: "country", slug: item.countrySlug }),
 							locale: formatLocaleCode(item.locale),
 							summary: item.description ?? undefined,
-							imageKey: item.imageKey ?? undefined,
+							image: item.image,
 						});
 
 						// A unit can be both a partner and a cooperating partner institution of the ERIC;
@@ -1065,7 +1141,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "country", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
-						imageKey: item.imageKey ?? undefined,
+						image: item.image,
 					}),
 				);
 			}
@@ -1161,9 +1237,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1184,7 +1258,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1223,9 +1297,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1246,7 +1318,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1286,9 +1358,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1312,7 +1382,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1352,9 +1422,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1381,7 +1449,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1411,7 +1479,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "opportunity", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary,
-						imageKey: item.imageKey ?? undefined,
+						image: item.image,
 					}),
 				);
 			}
@@ -1451,9 +1519,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1490,7 +1556,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							link: getEntityHref({ type: "page", path }),
 							locale: formatLocaleCode(item.entityVersion.locale),
 							summary: item.summary,
-							imageKey: item.image?.key,
+							image: item.image,
 						}),
 					];
 				});
@@ -1529,9 +1595,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1557,7 +1621,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						description: biographies.get(item.id) ?? "",
 						link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1587,7 +1651,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "project", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
-						imageKey: item.imageKey ?? undefined,
+						image: item.image,
 						projectCall: item.call ?? undefined,
 					}),
 				);
@@ -1628,9 +1692,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1660,7 +1722,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1690,7 +1752,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "working-group", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
-						imageKey: item.imageKey ?? undefined,
+						image: item.image,
 					}),
 				);
 			}
@@ -1732,9 +1794,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 							},
 						},
 						image: {
-							columns: {
-								key: true,
-							},
+							columns: indexedImageColumns,
 						},
 					},
 				});
@@ -1764,7 +1824,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				);
 			}
@@ -1945,9 +2005,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -1966,7 +2024,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
@@ -2003,9 +2061,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2023,7 +2079,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
@@ -2061,9 +2117,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2081,7 +2135,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "impact-case-study", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
@@ -2101,7 +2155,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "country", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
-					imageKey: item.imageKey ?? undefined,
+					image: item.image,
 				}),
 			),
 		);
@@ -2139,7 +2193,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "country", slug: item.countrySlug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.description ?? undefined,
-					imageKey: item.imageKey ?? undefined,
+					image: item.image,
 				});
 
 				countryScopedDocumentsById.set(document.id, document);
@@ -2248,9 +2302,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2268,7 +2320,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "news-item", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
@@ -2288,7 +2340,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "opportunity", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary,
-					imageKey: item.imageKey ?? undefined,
+					image: item.image,
 				}),
 			),
 		);
@@ -2326,9 +2378,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2355,7 +2405,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						link: getEntityHref({ type: "page", path }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
-						imageKey: item.image?.key,
+						image: item.image,
 					}),
 				];
 			}),
@@ -2392,9 +2442,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2411,7 +2459,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					description: personBiographies.get(item.id) ?? "",
 					link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
@@ -2431,7 +2479,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "project", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
-					imageKey: item.imageKey ?? undefined,
+					image: item.image,
 					projectCall: item.call ?? undefined,
 				}),
 			),
@@ -2470,9 +2518,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2490,7 +2536,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "spotlight-article", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
@@ -2510,7 +2556,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					link: getEntityHref({ type: "working-group", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
-					imageKey: item.imageKey ?? undefined,
+					image: item.image,
 				}),
 			),
 		);
@@ -2550,9 +2596,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					},
 				},
 				image: {
-					columns: {
-						key: true,
-					},
+					columns: indexedImageColumns,
 				},
 			},
 		});
@@ -2576,7 +2620,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					}),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
-					imageKey: item.image?.key,
+					image: item.image,
 				}),
 			),
 		);
