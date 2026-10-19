@@ -21791,7 +21791,6 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "funding-calls",
           "news",
           "opportunities",
-          "site-metadata",
         ],
       },
     },
