@@ -17,7 +17,10 @@ const GERMAN_CONTENT_LOCALE_CODE = "de-AT";
  * listed here fall back to the English label below.
  */
 const germanCallLabels: Partial<Record<ProjectCall["call"], string>> = {
-	clariah_at_project_funding: "CLARIAH-AT Projektförderung",
+	clariah_at_project_funding_2022: "CLARIAH-AT Projektförderung 2022",
+	clariah_at_project_funding_2024: "CLARIAH-AT Projektförderung 2024",
+	clariah_at_project_funding_2025: "CLARIAH-AT Projektförderung 2025",
+	clariah_at_project_funding_2026: "CLARIAH-AT Projektförderung 2026",
 };
 
 /**
@@ -40,8 +43,17 @@ export function useProjectCallLabel(
 		}
 
 		switch (call) {
-			case "clariah_at_project_funding": {
-				return t("CLARIAH-AT Project Funding");
+			case "clariah_at_project_funding_2022": {
+				return t("CLARIAH-AT Project Funding 2022");
+			}
+			case "clariah_at_project_funding_2024": {
+				return t("CLARIAH-AT Project Funding 2024");
+			}
+			case "clariah_at_project_funding_2025": {
+				return t("CLARIAH-AT Project Funding 2025");
+			}
+			case "clariah_at_project_funding_2026": {
+				return t("CLARIAH-AT Project Funding 2026");
 			}
 			case "go_digital_1_0": {
 				return t("Go!Digital 1.0");

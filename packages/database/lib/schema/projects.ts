@@ -44,7 +44,10 @@ export type ProjectRole = typeof projectRoles.$inferSelect;
 export type ProjectRoleInput = typeof projectRoles.$inferInsert;
 
 export const projectCallsEnum = [
-	"clariah_at_project_funding",
+	"clariah_at_project_funding_2022",
+	"clariah_at_project_funding_2024",
+	"clariah_at_project_funding_2025",
+	"clariah_at_project_funding_2026",
 	"go_digital_1_0",
 	"go_digital_2_0",
 	"go_digital_3_0",
