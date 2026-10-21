@@ -127,7 +127,7 @@ export default defineConfig({
 	forbidOnly: isCI,
 	retries: isCI ? 1 : 0,
 	maxFailures: 10,
-	workers: isCI ? 2 : undefined,
+	workers: isCI ? 4 : undefined,
 	reporter: isCI ? [["github"], ["html", { open: "never" }]] : [["html"]],
 	globalSetup: "./lib/global-setup.ts",
 	globalTeardown: "./lib/global-teardown.ts",
