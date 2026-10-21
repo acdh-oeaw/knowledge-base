@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
-import { socialMediaUnsavedNote } from "@/e2e/lib/fixtures/social-media-form";
 import { expect, test } from "@/e2e/lib/test";
 
 test.describe("projects admin", () => {
