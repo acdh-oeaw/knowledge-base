@@ -15,7 +15,6 @@ const config = defineConfig({
 	out: "./db/migrations/",
 	schema: "./lib/schema.ts",
 	schemaFilter: ["!pgbouncer"],
-	strict: true,
 	verbose: true,
 });
 
