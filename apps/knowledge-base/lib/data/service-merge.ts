@@ -80,8 +80,8 @@ async function assertNoKpiConflicts(
 	source: string,
 	target: string,
 ): Promise<void> {
-	const conflicts = await tx.execute(sql`
-		select 1
+	const conflicts = await tx.execute<{ conflict: true }>(sql`
+		select true as conflict
 		from country_report_service_kpis s
 		join country_report_service_kpis t
 			on t.country_report_id = s.country_report_id and t.kpi = s.kpi
