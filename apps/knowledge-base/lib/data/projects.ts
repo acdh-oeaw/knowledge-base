@@ -12,7 +12,7 @@ import { matchesAllTerms } from "@/lib/db/search";
 import { alias, and, count, desc, eq, inArray, sql } from "@/lib/db/sql";
 import { getEntityTypeLabel } from "@/lib/entity-type-label";
 
-export type ProjectsSort = "name" | "acronym" | "funding" | "scope";
+export type ProjectsSort = "name" | "acronym" | "call" | "scope";
 
 interface GetProjectsParams {
 	limit: number;
@@ -24,7 +24,8 @@ interface GetProjectsParams {
 
 export interface ProjectsResult {
 	data: Array<
-		Pick<schema.Project, "acronym" | "duration" | "funding" | "id" | "name"> & {
+		Pick<schema.Project, "acronym" | "duration" | "id" | "name"> & {
+			call: schema.ProjectCall["call"] | null;
 			documentId: string;
 			slug: string;
 			hasDraft: boolean;
@@ -53,10 +54,10 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 			? dir === "asc"
 				? sql`${schema.projects.acronym} ASC NULLS LAST`
 				: sql`${schema.projects.acronym} DESC NULLS LAST`
-			: sort === "funding"
+			: sort === "call"
 				? dir === "asc"
-					? sql`${schema.projects.funding} ASC NULLS LAST`
-					: sql`${schema.projects.funding} DESC NULLS LAST`
+					? sql`${schema.projectCalls.call} ASC NULLS LAST`
+					: sql`${schema.projectCalls.call} DESC NULLS LAST`
 				: sort === "scope"
 					? dir === "asc"
 						? schema.projectScopes.scope
@@ -72,9 +73,9 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 		db
 			.select({
 				acronym: schema.projects.acronym,
+				call: schema.projectCalls.call,
 				documentId: schema.entities.id,
 				duration: schema.projects.duration,
-				funding: schema.projects.funding,
 				updatedAt: schema.entityVersions.updatedAt,
 				id: schema.projects.id,
 				name: schema.projects.name,
@@ -89,6 +90,7 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 			.innerJoin(schema.entityVersions, eq(schema.projects.id, schema.entityVersions.id))
 			.innerJoin(schema.entities, eq(schema.entityVersions.entityId, schema.entities.id))
 			.innerJoin(schema.projectScopes, eq(schema.projects.scopeId, schema.projectScopes.id))
+			.leftJoin(schema.projectCalls, eq(schema.projects.callId, schema.projectCalls.id))
 			.innerJoin(schema.entityStatus, eq(schema.entityVersions.statusId, schema.entityStatus.id))
 			.innerJoin(
 				schema.documentLifecycle,
@@ -114,10 +116,10 @@ export async function getProjects(params: Readonly<GetProjectsParams>): Promise<
 		data: data.map((item) => {
 			return {
 				acronym: item.acronym,
+				call: item.call,
 				documentId: item.documentId,
 				duration: item.duration,
 				slug: item.slug,
-				funding: item.funding,
 				hasDraft: item.hasDraft,
 				id: item.id,
 				isPublished: item.isPublished,

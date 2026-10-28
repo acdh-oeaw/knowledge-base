@@ -19,7 +19,7 @@ interface DashboardAdministratorProjectsPageProps extends PageProps<"/[locale]/d
 
 const pageSize = dashboardPageSize;
 const defaultSort = "name" as const;
-const validSorts = ["name", "acronym", "funding", "scope"] as const;
+const validSorts = ["name", "acronym", "call", "scope"] as const;
 
 function createListHref(
 	q: string,

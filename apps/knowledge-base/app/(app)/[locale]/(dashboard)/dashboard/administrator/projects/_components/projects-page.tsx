@@ -28,6 +28,7 @@ import {
 import { useUrlPaginatedSearch } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/use-url-paginated-search";
 import { deleteProjectAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_lib/delete-project.action";
 import { dashboardPageSize } from "@/config/pagination.config";
+import { useProjectCallLabel } from "@/lib/format-project-call";
 import { useRouter } from "@/lib/navigation/navigation";
 
 interface ProjectsPageProps {
@@ -35,7 +36,8 @@ interface ProjectsPageProps {
 	page: number;
 	projects: {
 		data: Array<
-			Pick<schema.Project, "acronym" | "duration" | "funding" | "id" | "name"> & {
+			Pick<schema.Project, "acronym" | "duration" | "id" | "name"> & {
+				call: schema.ProjectCall["call"] | null;
 				documentId: string;
 				slug: string;
 				hasDraft: boolean;
@@ -46,7 +48,7 @@ interface ProjectsPageProps {
 		total: number;
 	};
 	q: string;
-	sort: "name" | "acronym" | "funding" | "scope";
+	sort: "name" | "acronym" | "call" | "scope";
 }
 
 const pageSize = dashboardPageSize;
@@ -56,6 +58,7 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 
 	const t = useExtracted();
 	const format = useFormatter();
+	const getProjectCallLabel = useProjectCallLabel();
 	const router = useRouter();
 	const [items, optimisticallyRemoveItem] = useOptimistic(projects.data, (state, id: string) =>
 		state.filter((item) => item.id !== id),
@@ -97,8 +100,8 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 						{t("Acronym")}
 					</TableColumn>
 					<TableColumn>{t("Duration")}</TableColumn>
-					<TableColumn allowsSorting={true} id="funding">
-						{t("Funding")}
+					<TableColumn allowsSorting={true} id="call">
+						{t("Call")}
 					</TableColumn>
 					<TableColumn allowsSorting={true} id="scope">
 						{t("Scope")}
@@ -120,11 +123,7 @@ export function ProjectsPage(props: Readonly<ProjectsPageProps>): ReactNode {
 										})
 									: format.dateTime(item.duration.start, { dateStyle: "short" })}
 							</TableCell>
-							<TableCell>
-								{item.funding != null
-									? format.number(item.funding, { style: "currency", currency: "EUR" })
-									: null}
-							</TableCell>
+							<TableCell>{getProjectCallLabel(item.call)}</TableCell>
 							<TableCell>
 								<Badge
 									intent={

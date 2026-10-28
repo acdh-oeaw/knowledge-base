@@ -5527,12 +5527,12 @@ msgstr "Scope"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
-#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/projects-page.tsx
 msgid "fZb224"
 msgstr "Funding"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-details.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/project-form.tsx
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/projects/_components/projects-page.tsx
 msgid "f-GKc4"
 msgstr "Call"
 
