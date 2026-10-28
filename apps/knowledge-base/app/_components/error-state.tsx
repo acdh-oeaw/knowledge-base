@@ -59,7 +59,7 @@ export function ErrorState(props: Readonly<ErrorStateProps>): ReactNode {
 								className="dark:invert"
 								isSquare={true}
 								size="md"
-								src="/assets/images/logo-dariah.svg"
+								src="/assets/images/logo-omnipod.svg"
 							/>
 						</ButtonLink>
 

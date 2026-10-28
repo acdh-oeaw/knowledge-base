@@ -868,8 +868,8 @@ msgid "dVE1PE"
 msgstr "Update two-factor authentication"
 
 #: app/(app)/[locale]/(auth)/auth/sign-in/page.tsx
-msgid "0VMkDa"
-msgstr "Sign in to the DARIAH Knowledge Base with your user account."
+msgid "Z3y7hz"
+msgstr "Sign in to the The Knowledge Base with your user account."
 
 #: app/(app)/[locale]/(auth)/auth/sign-in/page.tsx
 #: app/(app)/[locale]/(auth)/auth/sign-up/page.tsx
@@ -8132,8 +8132,9 @@ msgid "Oeu69m"
 msgstr "Go to dashboard"
 
 #: app/(app)/[locale]/(default)/(index)/page.tsx
-msgid "3umvLQ"
-msgstr "DARIAH Knowledge Base"
+#: app/(app)/[locale]/opengraph-image.tsx
+msgid "m9Jhbc"
+msgstr "The Knowledge Base"
 
 #: app/(app)/[locale]/(default)/(index)/page.tsx
 msgid "yd-0BL"
@@ -8156,8 +8157,8 @@ msgid "hrWbQB"
 msgstr "Successfully sent message."
 
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
-msgid "CbmDsw"
-msgstr "Guides and reference material for working with the DARIAH Knowledge Base."
+msgid "6m3C6V"
+msgstr "Guides and reference material for working with the The Knowledge Base."
 
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
 msgid "JVNy4g"
@@ -8221,10 +8222,6 @@ msgstr "Error 404"
 #: app/global-not-found.tsx
 msgid "yO9r9N"
 msgstr "The page you requested could not be found. It may have been moved, renamed, or never existed in this part of the knowledge base."
-
-#: app/(app)/[locale]/opengraph-image.tsx
-msgid "m9Jhbc"
-msgstr "The Knowledge Base"
 
 #: app/(app)/[locale]/unauthorized.tsx
 msgid "rfioQa"

@@ -71,7 +71,7 @@ export default async function SignUpPage(_props: Readonly<SignUpPageProps>): Pro
 						className="dark:invert"
 						isSquare={true}
 						size="md"
-						src="/assets/images/logo-dariah.svg"
+						src="/assets/images/logo-omnipod.svg"
 					/>
 				</Link>
 

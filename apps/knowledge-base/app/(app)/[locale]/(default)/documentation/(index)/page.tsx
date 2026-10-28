@@ -62,7 +62,7 @@ async function DocumentationIndex(): Promise<ReactNode> {
 					{t("Documentation")}
 				</h1>
 				<p className="text-lg text-text-weak">
-					{t("Guides and reference material for working with the DARIAH Knowledge Base.")}
+					{t("Guides and reference material for working with the The Knowledge Base.")}
 				</p>
 			</div>
 

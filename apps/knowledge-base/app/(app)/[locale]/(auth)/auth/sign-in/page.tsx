@@ -62,14 +62,14 @@ export default async function SignInPage(_props: Readonly<SignInPageProps>): Pro
 						className="dark:invert"
 						isSquare={true}
 						size="md"
-						src="/assets/images/logo-dariah.svg"
+						src="/assets/images/logo-omnipod.svg"
 					/>
 				</Link>
 
 				<div>
 					<h1 className="text-xl/10 font-semibold">{t("Sign in")}</h1>
 
-					<Text>{t("Sign in to the DARIAH Knowledge Base with your user account.")}</Text>
+					<Text>{t("Sign in to the The Knowledge Base with your user account.")}</Text>
 				</div>
 
 				<SignInForm />

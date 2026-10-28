@@ -46,7 +46,7 @@ export function UnauthorizedState(props: Readonly<UnauthorizedStateProps>): Reac
 								className="dark:invert"
 								isSquare={true}
 								size="md"
-								src="/assets/images/logo-dariah.svg"
+								src="/assets/images/logo-omnipod.svg"
 							/>
 						</ButtonLink>
 
