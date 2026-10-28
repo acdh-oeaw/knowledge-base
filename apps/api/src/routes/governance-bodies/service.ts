@@ -412,8 +412,14 @@ export async function getGovernanceBodies(
 					},
 				},
 			},
+			// Correlated subquery: drizzle applies `orderBy` before relations are joined, so the
+			// `entityVersion` relation alias is not in scope here.
 			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
+				return [
+					desc(
+						sql`(select ${schema.entityVersions.updatedAt} from ${schema.entityVersions} where ${schema.entityVersions.id} = ${t.id})`,
+					),
+				];
 			},
 			limit,
 			offset,
@@ -583,8 +589,14 @@ export async function getGovernanceBodySlugs(
 					},
 				},
 			},
+			// Correlated subquery: drizzle applies `orderBy` before relations are joined, so the
+			// `entityVersion` relation alias is not in scope here.
 			orderBy(t, { desc, sql }) {
-				return [desc(sql`"entityVersion"."r" ->> 'updatedAt'`)];
+				return [
+					desc(
+						sql`(select ${schema.entityVersions.updatedAt} from ${schema.entityVersions} where ${schema.entityVersions.id} = ${t.id})`,
+					),
+				];
 			},
 			limit,
 			offset,
