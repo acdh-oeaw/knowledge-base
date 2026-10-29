@@ -52,6 +52,8 @@ export const projectCallsEnum = [
 	"go_digital_2_0",
 	"go_digital_3_0",
 	"go_digital_next_generation",
+	"dh_long_term_projects_cultural_heritage",
+	"other",
 ] as const;
 
 export const projectCalls = p.snakeCase.table(

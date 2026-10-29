@@ -69,7 +69,7 @@ export default async function SignInPage(_props: Readonly<SignInPageProps>): Pro
 				<div>
 					<h1 className="text-xl/10 font-semibold">{t("Sign in")}</h1>
 
-					<Text>{t("Sign in to the The Knowledge Base with your user account.")}</Text>
+					<Text>{t("Sign in to The Knowledge Base with your user account.")}</Text>
 				</div>
 
 				<SignInForm />

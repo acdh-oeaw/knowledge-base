@@ -21,6 +21,8 @@ const germanCallLabels: Partial<Record<ProjectCall["call"], string>> = {
 	clariah_at_project_funding_2024: "CLARIAH-AT Projektförderung 2024",
 	clariah_at_project_funding_2025: "CLARIAH-AT Projektförderung 2025",
 	clariah_at_project_funding_2026: "CLARIAH-AT Projektförderung 2026",
+	dh_long_term_projects_cultural_heritage: "DH Langzeitprojekte zum kulturellen Erbe",
+	other: "Sonstiges",
 };
 
 /**
@@ -66,6 +68,12 @@ export function useProjectCallLabel(
 			}
 			case "go_digital_next_generation": {
 				return t("Go!Digital Next Generation");
+			}
+			case "dh_long_term_projects_cultural_heritage": {
+				return t("DH Long-Term Projects on Cultural Heritage");
+			}
+			case "other": {
+				return t("Other");
 			}
 			case null: {
 				return null;

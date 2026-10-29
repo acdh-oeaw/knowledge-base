@@ -1,0 +1,38 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "6211c783-955f-471d-9552-bc1dc6bde745",
+  "prevIds": [
+    "b6d11e23-79c1-4c4f-b690-141da57ca13f"
+  ],
+  "footprints": [
+    {
+      "statementType": "alter_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "project_calls"
+      ],
+      "writes": [
+        "s|ck|public.project_calls.project_calls_call_enum_check"
+      ],
+      "reads": [
+        "n|tbl|public.project_calls",
+        "n|sch|public",
+        "n|col|public.project_calls.call",
+        "e|col|public.project_calls.call"
+      ],
+      "sqlHash": "273e79abed17fc9f"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "checks\u0000[\"public\",\"project_calls\",\"project_calls_call_enum_check\"]",
+      "set": {
+        "value": "\"call\" in ('clariah_at_project_funding_2022', 'clariah_at_project_funding_2024', 'clariah_at_project_funding_2025', 'clariah_at_project_funding_2026', 'go_digital_1_0', 'go_digital_2_0', 'go_digital_3_0', 'go_digital_next_generation', 'dh_long_term_projects_cultural_heritage', 'other')"
+      }
+    }
+  ]
+}

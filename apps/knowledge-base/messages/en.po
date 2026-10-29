@@ -868,8 +868,8 @@ msgid "dVE1PE"
 msgstr "Update two-factor authentication"
 
 #: app/(app)/[locale]/(auth)/auth/sign-in/page.tsx
-msgid "Z3y7hz"
-msgstr "Sign in to the The Knowledge Base with your user account."
+msgid "A2UYgA"
+msgstr "Sign in to The Knowledge Base with your user account."
 
 #: app/(app)/[locale]/(auth)/auth/sign-in/page.tsx
 #: app/(app)/[locale]/(auth)/auth/sign-up/page.tsx
@@ -5780,6 +5780,7 @@ msgid "c9qPJ-"
 msgstr "Social media amounts"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/reporting-campaigns/_components/campaign-social-media-amounts-form.tsx
+#: lib/format-project-call.ts
 msgid "_VnDMl"
 msgstr "Other"
 
@@ -8270,6 +8271,10 @@ msgstr "Go!Digital 3.0"
 #: lib/format-project-call.ts
 msgid "dcnmOj"
 msgstr "Go!Digital Next Generation"
+
+#: lib/format-project-call.ts
+msgid "vTNcSH"
+msgstr "DH Long-Term Projects on Cultural Heritage"
 
 #: lib/server/create-command-action.ts
 #: lib/server/create-server-action.ts
