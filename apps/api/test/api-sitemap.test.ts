@@ -15,6 +15,8 @@ interface SeedParams {
 	status?: EntityStatus;
 	/** Publish timestamp of the version, i.e. the entry's `lastModified`. */
 	updatedAt?: Date;
+	/** Locale of the version; defaults to the default locale. */
+	localeId?: string;
 }
 
 async function seedDocument(
@@ -36,7 +38,7 @@ async function seedDocument(
 	assert(entityType, "No entity type in database.");
 	assert(asset, "No assets in database.");
 	assert(defaultLocale, "No default locale in database.");
-	const localeId = defaultLocale.id;
+	const localeId = params.localeId ?? defaultLocale.id;
 
 	const entityId = uuidv7();
 	const versionId = uuidv7();
@@ -183,6 +185,7 @@ describe("sitemap", () => {
 							locale: localeCode,
 							type: "news",
 							lastModified: updatedAt.toISOString(),
+							alternates: [{ locale: localeCode, href: `/${localeCode}/news/${slug}` }],
 						},
 						expect.objectContaining({
 							href: `/${localeCode}/network/working-groups/${workingGroupSlug}`,
@@ -242,11 +245,17 @@ describe("sitemap", () => {
 
 				const data = await response.json();
 
+				/** Both entries reference each other and themselves, each with its own locale's slug. */
+				const alternates = [
+					{ locale: defaultLocaleCode, href: `/${defaultLocaleCode}/news/${slug}` },
+					{ locale: "zz", href: `/zz/news/${translatedSlug}` },
+				].toSorted((a, z) => (a.locale < z.locale ? -1 : a.locale > z.locale ? 1 : 0));
+
 				expect(findEntry(data.data, `/${defaultLocaleCode}/news/${slug}`)).toEqual([
-					expect.objectContaining({ locale: defaultLocaleCode, type: "news" }),
+					expect.objectContaining({ locale: defaultLocaleCode, type: "news", alternates }),
 				]);
 				expect(findEntry(data.data, `/zz/news/${translatedSlug}`)).toEqual([
-					expect.objectContaining({ locale: "zz", type: "news" }),
+					expect.objectContaining({ locale: "zz", type: "news", alternates }),
 				]);
 			});
 		});
@@ -295,7 +304,43 @@ describe("sitemap", () => {
 						type: "documents_policies",
 						/** ... which is only as old as its newest document. */
 						lastModified: newer.toISOString(),
+						/** Other published documents may add further locales, so only require this one. */
+						// oxlint-disable-next-line typescript/no-unsafe-assignment
+						alternates: expect.arrayContaining([
+							{ locale: localeCode, href: `/${localeCode}/about/documents` },
+						]),
 					},
+				]);
+			});
+		});
+
+		it("should merge the alternates of documents which share a url", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+				const localeCode = await getDefaultLocaleCode(db);
+				const otherLocale = await insertTestLocale(db);
+
+				/** Two unrelated documents, one per locale, surfaced on the same page. */
+				await seedDocumentOrPolicy(db, `document-${uuidv7()}`);
+				await seedDocumentOrPolicy(db, `document-${uuidv7()}`, { localeId: otherLocale.id });
+
+				const response = await client.sitemap.$get();
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+
+				/** Other published documents may add further locales, so only require these two. */
+				const alternates: unknown = expect.arrayContaining([
+					{ locale: localeCode, href: `/${localeCode}/about/documents` },
+					{ locale: "zz", href: "/zz/about/documents" },
+				]);
+
+				expect(findEntry(data.data, `/${localeCode}/about/documents`)).toEqual([
+					expect.objectContaining({ alternates }),
+				]);
+				expect(findEntry(data.data, "/zz/about/documents")).toEqual([
+					expect.objectContaining({ alternates }),
 				]);
 			});
 		});

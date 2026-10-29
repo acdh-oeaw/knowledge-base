@@ -57,6 +57,25 @@ export const SitemapEntrySchema = v.pipe(
 				"Most recent publish timestamp among the documents behind this url (`publishedAt` elsewhere in this api). Maps to sitemap `lastmod`.",
 			),
 		),
+		alternates: v.pipe(
+			v.array(
+				v.object({
+					locale: v.pipe(
+						v.string(),
+						v.description('BCP 47-style locale code (e.g. "de" or "de-AT")'),
+					),
+					href: v.pipe(
+						v.string(),
+						v.description(
+							"Root-relative website href in that locale, with its locale segment already prepended. Prepend only the origin.",
+						),
+					),
+				}),
+			),
+			v.description(
+				'This url in every locale it is published in, including this entry\'s own locale, sorted by locale. Maps to sitemap `<xhtml:link rel="alternate" hreflang>`; `x-default` is left to the consumer.',
+			),
+		),
 	}),
 	v.description("Sitemap entry"),
 	v.metadata({ ref: "SitemapEntry" }),

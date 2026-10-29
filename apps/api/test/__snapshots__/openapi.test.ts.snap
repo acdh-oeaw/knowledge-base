@@ -18924,6 +18924,27 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
       "SitemapEntry": {
         "description": "Sitemap entry",
         "properties": {
+          "alternates": {
+            "description": "This url in every locale it is published in, including this entry's own locale, sorted by locale. Maps to sitemap \`<xhtml:link rel="alternate" hreflang>\`; \`x-default\` is left to the consumer.",
+            "items": {
+              "properties": {
+                "href": {
+                  "description": "Root-relative website href in that locale, with its locale segment already prepended. Prepend only the origin.",
+                  "type": "string",
+                },
+                "locale": {
+                  "description": "BCP 47-style locale code (e.g. "de" or "de-AT")",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "locale",
+                "href",
+              ],
+              "type": "object",
+            },
+            "type": "array",
+          },
           "href": {
             "description": "Root-relative website href, with its locale segment already prepended (e.g. \`/en/...\`, \`/de/...\`). Prepend only the origin.",
             "type": "string",
@@ -18961,6 +18982,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "locale",
           "type",
           "lastModified",
+          "alternates",
         ],
         "type": "object",
       },

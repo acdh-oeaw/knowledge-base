@@ -41,6 +41,8 @@ function formatLocaleCode(locale: { languageCode: string; regionCode: string | n
 }
 
 interface SitemapSource {
+	/** Document id (`entities.id`), shared by all locale versions of one document. */
+	entityId: string;
 	type: SitemapEntityType;
 	slug: string;
 	locale: string;
@@ -51,6 +53,10 @@ interface SitemapSource {
  * Every website url that can be derived from published content, one entry per (document, locale)
  * pair that has a published version — a document published in both locales contributes two urls,
  * each with its own locale-prefixed href.
+ *
+ * Each entry lists its `alternates`: the same url in every locale it resolves in, itself included,
+ * as hreflang requires each url to reference itself and all of its siblings. Resolved per locale
+ * version, since each version carries its own slug.
  *
  * Deliberately unpaginated: the payload is one href and one timestamp per public document per
  * locale (a few thousand today, far below the 50.000-url sitemap limit), and a sitemap that arrives
@@ -72,6 +78,38 @@ export async function getSitemap(db: Database | Transaction) {
 	const entries = new Map<string, SitemapSource & { href: string }>();
 	let unresolved = 0;
 
+	/**
+	 * Hrefs which are the same page in different locales, as a union-find forest (href → parent
+	 * href). Two kinds of links: the locale versions of one document, each with its own slug; and one
+	 * locale-less path across locales — a shared url like `/about/documents` exists in every locale
+	 * any of its documents is published in, even when no single document is published in all of
+	 * them.
+	 */
+	const parents = new Map<string, string>();
+	const hrefByEntityId = new Map<string, string>();
+	const hrefByPath = new Map<string, string>();
+
+	function find(href: string): string {
+		let root = href;
+		for (let parent = parents.get(root); parent != null && parent !== root;) {
+			root = parent;
+			parent = parents.get(root);
+		}
+		parents.set(href, root);
+		return root;
+	}
+
+	function link(href: string, other: string | undefined) {
+		if (other == null) {
+			return;
+		}
+		const root = find(href);
+		const otherRoot = find(other);
+		if (root !== otherRoot) {
+			parents.set(root, otherRoot);
+		}
+	}
+
 	for (const source of [...documents, ...workingGroups, ...countries]) {
 		const path = getWebsiteHref(source.type, { slug: source.slug });
 
@@ -85,9 +123,28 @@ export async function getSitemap(db: Database | Transaction) {
 
 		if (entry == null) {
 			entries.set(href, { ...source, href });
+			parents.set(href, href);
 		} else if (source.lastModified > entry.lastModified) {
 			entry.lastModified = source.lastModified;
 		}
+
+		link(href, hrefByEntityId.get(source.entityId));
+		link(href, hrefByPath.get(path));
+		hrefByEntityId.set(source.entityId, href);
+		hrefByPath.set(path, href);
+	}
+
+	/** Locale → href per group, keyed by the group's root href. */
+	const alternatesByRoot = new Map<string, Map<string, string>>();
+
+	for (const entry of entries.values()) {
+		const root = find(entry.href);
+		let alternates = alternatesByRoot.get(root);
+		if (alternates == null) {
+			alternates = new Map();
+			alternatesByRoot.set(root, alternates);
+		}
+		alternates.set(entry.locale, entry.href);
 	}
 
 	const data = Array.from(entries.values())
@@ -98,6 +155,9 @@ export async function getSitemap(db: Database | Transaction) {
 				locale: entry.locale,
 				type: entry.type,
 				lastModified: entry.lastModified.toISOString(),
+				alternates: Array.from(alternatesByRoot.get(find(entry.href)) ?? [], ([locale, href]) => {
+					return { locale, href };
+				}).toSorted((a, z) => (a.locale < z.locale ? -1 : a.locale > z.locale ? 1 : 0)),
 			};
 		});
 
@@ -122,6 +182,7 @@ async function getPublishedDocuments(db: Database | Transaction): Promise<Array<
 
 	const rows = await db
 		.select({
+			entityId: schema.entityVersions.entityId,
 			type: schema.entityTypes.type,
 			slug: schema.slugs.value,
 			languageCode: schema.locales.languageCode,
@@ -147,6 +208,7 @@ async function getPublishedDocuments(db: Database | Transaction): Promise<Array<
 
 		return [
 			{
+				entityId: row.entityId,
 				type: row.type,
 				slug: row.slug,
 				locale: formatLocaleCode(row),
@@ -172,7 +234,7 @@ async function getPublishedWorkingGroups(
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { entityId: true, updatedAt: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -192,6 +254,7 @@ async function getPublishedWorkingGroups(
 
 		return [
 			{
+				entityId: item.entityVersion.entityId,
 				type: "working_group" as const,
 				slug: item.entityVersion.slug.value,
 				locale: formatLocaleCode(item.entityVersion.locale),
@@ -220,7 +283,7 @@ async function getPublishedCountries(db: Database | Transaction): Promise<Array<
 		},
 		with: {
 			entityVersion: {
-				columns: { updatedAt: true },
+				columns: { entityId: true, updatedAt: true },
 				with: {
 					slug: {
 						columns: { value: true },
@@ -240,6 +303,7 @@ async function getPublishedCountries(db: Database | Transaction): Promise<Array<
 
 		return [
 			{
+				entityId: item.entityVersion.entityId,
 				type: "country" as const,
 				slug: item.entityVersion.slug.value,
 				locale: formatLocaleCode(item.entityVersion.locale),
