@@ -502,7 +502,14 @@ async function getPublishedProjects(
 	params?: {
 		entityId?: string;
 	},
-): Promise<Array<ViewBackedWebsiteEntity & { call: schema.ProjectCall["call"] | null }>> {
+): Promise<
+	Array<
+		ViewBackedWebsiteEntity & {
+			call: schema.ProjectCall["call"] | null;
+			duration: schema.Project["duration"];
+		}
+	>
+> {
 	const conditions = [eq(schema.entityStatus.type, "published")];
 
 	if (params?.entityId != null) {
@@ -516,6 +523,7 @@ async function getPublishedProjects(
 			slug: schema.slugs.value,
 			name: schema.projects.name,
 			summary: schema.projects.summary,
+			duration: schema.projects.duration,
 			updatedAt: schema.projects.updatedAt,
 			image: indexedImageSelection(schema.assets),
 			call: schema.projectCalls.call,
@@ -1255,6 +1263,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.duration.start,
 						label: item.title,
 						description: item.summary,
+						duration: item.duration,
 						link: getEntityHref({ type: "event", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
@@ -1648,6 +1657,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
+						duration: item.duration,
 						link: getEntityHref({ type: "project", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
