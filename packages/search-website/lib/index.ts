@@ -2486,6 +2486,7 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.name,
 					description: mergeDescription(projectDescriptions.get(item.id), item.summary ?? ""),
+					duration: item.duration,
 					link: getEntityHref({ type: "project", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
