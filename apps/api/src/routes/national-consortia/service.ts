@@ -6,8 +6,9 @@ import type { JSONContent } from "@tiptap/core";
 
 import { generateImageUrl, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
+import { resolveDocumentId } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
-import { alias, and, count, desc, eq, sql } from "@/services/db/sql";
+import { alias, and, asc, count, desc, eq, sql } from "@/services/db/sql";
 import { imageWidth } from "~/config/api.config";
 
 /**
@@ -217,6 +218,83 @@ function mapNationalConsortiumRow(row: NationalConsortiumRow) {
 	};
 }
 
+/**
+ * Institutions with an active `is_member_of` relation to the national consortium whose published
+ * version is `consortiumVersionId` — the members editors add on the consortium's "Relations" tab in
+ * the knowledge base. Each member is resolved to its published version in the requested locale,
+ * falling back to the default locale; unpublished institutions are left out. Membership is towards
+ * the consortium itself, so neither a DARIAH-EU status nor a location in the consortium's country
+ * is required.
+ */
+async function getNationalConsortiumMembers(
+	db: Database | Transaction,
+	ctx: Awaited<ReturnType<typeof resolvePublishedNationalConsortiaLookup>>,
+	consortiumVersionId: string,
+) {
+	// Unit↔unit relations are document-level; resolve the consortium version to its document once.
+	const consortiumDocumentId = await resolveDocumentId(db, consortiumVersionId);
+
+	const memberRelations = alias(schema.organisationalUnitsRelations, "member_relations");
+	const memberRelationStatus = alias(schema.organisationalUnitStatus, "member_relation_status");
+	const memberPreferredVersion = alias(schema.entityVersions, "member_preferred_version");
+	const memberDefaultVersion = alias(schema.entityVersions, "member_default_version");
+	const memberVersion = alias(schema.entityVersions, "member_version");
+	const members = alias(schema.organisationalUnits, "members");
+	const memberTypes = alias(schema.organisationalUnitTypes, "member_types");
+	const memberSlugs = alias(schema.slugs, "member_slugs");
+
+	// `DISTINCT ON` the member's version: an institution may hold more than one active `is_member_of`
+	// row towards the same consortium (e.g. overlapping periods), but is listed once.
+	return db
+		.selectDistinctOn([members.name, memberVersion.id], {
+			id: members.id,
+			name: members.name,
+			acronym: members.acronym,
+			slug: memberSlugs.value,
+		})
+		.from(memberRelations)
+		.innerJoin(
+			memberRelationStatus,
+			and(
+				eq(memberRelationStatus.id, memberRelations.status),
+				eq(memberRelationStatus.status, "is_member_of"),
+			),
+		)
+		.leftJoin(
+			memberPreferredVersion,
+			and(
+				eq(memberPreferredVersion.entityId, memberRelations.unitDocumentId),
+				eq(memberPreferredVersion.localeId, ctx.localeId),
+				eq(memberPreferredVersion.statusId, ctx.statusId),
+			),
+		)
+		.leftJoin(
+			memberDefaultVersion,
+			and(
+				eq(memberDefaultVersion.entityId, memberRelations.unitDocumentId),
+				eq(memberDefaultVersion.localeId, ctx.defaultLocaleId),
+				eq(memberDefaultVersion.statusId, ctx.statusId),
+			),
+		)
+		.innerJoin(
+			memberVersion,
+			sql`${memberVersion.id} = COALESCE(${memberPreferredVersion.id}, ${memberDefaultVersion.id})`,
+		)
+		.innerJoin(members, eq(members.id, memberVersion.id))
+		.innerJoin(
+			memberTypes,
+			and(eq(memberTypes.id, members.typeId), eq(memberTypes.type, "institution")),
+		)
+		.innerJoin(memberSlugs, eq(memberSlugs.entityVersionId, memberVersion.id))
+		.where(
+			and(
+				eq(memberRelations.relatedUnitDocumentId, consortiumDocumentId),
+				sql`${memberRelations.duration} @> NOW()::TIMESTAMPTZ`,
+			),
+		)
+		.orderBy(asc(members.name), asc(memberVersion.id));
+}
+
 interface GetNationalConsortiaParams {
 	/** @default 10 */
 	limit?: number;
@@ -281,7 +359,9 @@ export async function getNationalConsortiumById(
 		return null;
 	}
 
-	return mapNationalConsortiumRow(row);
+	const members = await getNationalConsortiumMembers(db, ctx, row.id);
+
+	return { ...mapNationalConsortiumRow(row), members };
 }
 
 interface GetNationalConsortiumSlugsParams {
@@ -389,5 +469,7 @@ export async function getNationalConsortiumBySlug(
 		return null;
 	}
 
-	return mapNationalConsortiumRow(row);
+	const members = await getNationalConsortiumMembers(db, ctx, row.id);
+
+	return { ...mapNationalConsortiumRow(row), members };
 }

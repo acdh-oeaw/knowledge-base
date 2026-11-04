@@ -26,6 +26,26 @@ export const NationalConsortiumSchema = v.pipe(
 
 export type NationalConsortium = v.InferOutput<typeof NationalConsortiumSchema>;
 
+const NationalConsortiumMemberSchema = v.pipe(
+	v.object({
+		...v.pick(schema.OrganisationalUnitSelectSchema, ["id", "name", "acronym"]).entries,
+		slug: v.string(),
+	}),
+	v.description("Institution which is a member of a national consortium"),
+	v.metadata({ ref: "NationalConsortiumMember" }),
+);
+
+export const NationalConsortiumDetailSchema = v.pipe(
+	v.object({
+		...NationalConsortiumSchema.entries,
+		members: v.array(NationalConsortiumMemberSchema),
+	}),
+	v.description("National consortium, with its member institutions"),
+	v.metadata({ ref: "NationalConsortiumDetail" }),
+);
+
+export type NationalConsortiumDetail = v.InferOutput<typeof NationalConsortiumDetailSchema>;
+
 export const NationalConsortiumListSchema = v.pipe(
 	v.array(NationalConsortiumSchema),
 	v.description("List of national consortia"),
@@ -73,7 +93,7 @@ export const GetNationalConsortiumById = {
 		v.description("Get national consortium by id params"),
 		v.metadata({ ref: "GetNationalConsortiumByIdParams" }),
 	),
-	ResponseSchema: NationalConsortiumSchema,
+	ResponseSchema: NationalConsortiumDetailSchema,
 };
 
 export const GetNationalConsortiumSlugs = {
@@ -97,5 +117,5 @@ export const GetNationalConsortiumBySlug = {
 		v.metadata({ ref: "GetNationalConsortiumBySlugParams" }),
 	),
 	QuerySchema: LocaleQuerySchema,
-	ResponseSchema: NationalConsortiumSchema,
+	ResponseSchema: NationalConsortiumDetailSchema,
 };
