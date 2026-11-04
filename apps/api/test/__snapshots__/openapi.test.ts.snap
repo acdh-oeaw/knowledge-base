@@ -12360,12 +12360,122 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "type": "object",
       },
+      "NationalConsortiumDetail": {
+        "description": "National consortium, with its member institutions",
+        "properties": {
+          "acronym": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "country": {
+            "anyOf": [
+              {
+                "properties": {
+                  "id": {
+                    "format": "uuid",
+                    "type": "string",
+                  },
+                  "name": {
+                    "type": "string",
+                  },
+                  "slug": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "slug",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Image",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/NationalConsortiumMember",
+            },
+            "type": "array",
+          },
+          "name": {
+            "type": "string",
+          },
+          "slug": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "name",
+          "acronym",
+          "slug",
+          "country",
+          "logo",
+          "members",
+        ],
+        "type": "object",
+      },
       "NationalConsortiumList": {
         "description": "List of national consortia",
         "items": {
           "$ref": "#/components/schemas/NationalConsortium",
         },
         "type": "array",
+      },
+      "NationalConsortiumMember": {
+        "description": "Institution which is a member of a national consortium",
+        "properties": {
+          "acronym": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "name": {
+            "type": "string",
+          },
+          "slug": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "name",
+          "acronym",
+          "slug",
+        ],
+        "type": "object",
       },
       "NationalConsortiumSlug": {
         "description": "National consortium slug",
@@ -24347,7 +24457,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NationalConsortium",
+                  "$ref": "#/components/schemas/NationalConsortiumDetail",
                 },
               },
             },
@@ -24397,7 +24507,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NationalConsortium",
+                  "$ref": "#/components/schemas/NationalConsortiumDetail",
                 },
               },
             },
