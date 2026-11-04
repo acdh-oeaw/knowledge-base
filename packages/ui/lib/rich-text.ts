@@ -212,6 +212,14 @@ function headingLevel(node: Record<string, unknown>): number {
 }
 
 /**
+ * TEMPORARY: anchors that old links still point at, keyed by the id the heading gets today.
+ *
+ * The old website linked "Events 2024 and 2025" as `#events-2024--2025`, while it now slugs to
+ * `events-2024-and-2025`. Remove an entry once the old link no longer matters.
+ */
+const legacyHeadingIds = new Map<string, string>([["events-2024-and-2025", "events-2024--2025"]]);
+
+/**
  * Hands out the anchor id for each heading, in the order the headings are walked.
  *
  * Two headings can carry the same text — "Overview" under each of several sections is ordinary —
@@ -236,7 +244,9 @@ function createHeadingIdFactory(): (text: string) => string {
 		const count = (occurrences.get(base) ?? 0) + 1;
 		occurrences.set(base, count);
 
-		return count === 1 ? base : `${base}-${String(count)}`;
+		const id = count === 1 ? base : `${base}-${String(count)}`;
+
+		return legacyHeadingIds.get(id) ?? id;
 	};
 }
 
