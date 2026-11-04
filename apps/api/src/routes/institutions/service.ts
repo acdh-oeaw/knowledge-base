@@ -4,8 +4,10 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
 
+import { getEntityTranslations } from "@/lib/entity-translations";
 import { generateImageUrl, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
+import { resolveDocumentId } from "@/lib/relations";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { InstitutionRelationStatus, InstitutionStatus } from "@/routes/institutions/schemas";
 import {
@@ -430,7 +432,9 @@ export async function getInstitutionById(
 		return null;
 	}
 
-	return mapInstitutionRow(row);
+	const translations = await getEntityTranslations(db, await resolveDocumentId(db, row.id));
+
+	return { ...mapInstitutionRow(row), translations };
 }
 
 interface GetInstitutionSlugsParams {
@@ -539,5 +543,7 @@ export async function getInstitutionBySlug(
 		return null;
 	}
 
-	return mapInstitutionRow(row);
+	const translations = await getEntityTranslations(db, await resolveDocumentId(db, row.id));
+
+	return { ...mapInstitutionRow(row), translations };
 }

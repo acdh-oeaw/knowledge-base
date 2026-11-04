@@ -2,6 +2,7 @@ import * as schema from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
 import {
+	EntityTranslationSchema,
 	ImageSchema,
 	LocaleQuerySchema,
 	PaginatedResponseSchema,
@@ -46,6 +47,17 @@ export const InstitutionSchema = v.pipe(
 );
 
 export type Institution = v.InferOutput<typeof InstitutionSchema>;
+
+export const InstitutionDetailSchema = v.pipe(
+	v.object({
+		...InstitutionSchema.entries,
+		translations: v.array(EntityTranslationSchema),
+	}),
+	v.description("Institution, with the locales it is published in"),
+	v.metadata({ ref: "InstitutionDetail" }),
+);
+
+export type InstitutionDetail = v.InferOutput<typeof InstitutionDetailSchema>;
 
 export const InstitutionListSchema = v.pipe(
 	v.array(InstitutionSchema),
@@ -116,7 +128,7 @@ export const GetInstitutionById = {
 		v.description("Get institution by id params"),
 		v.metadata({ ref: "GetInstitutionByIdParams" }),
 	),
-	ResponseSchema: InstitutionSchema,
+	ResponseSchema: InstitutionDetailSchema,
 };
 
 export const GetInstitutionSlugs = {
@@ -140,5 +152,5 @@ export const GetInstitutionBySlug = {
 		v.metadata({ ref: "GetInstitutionBySlugParams" }),
 	),
 	QuerySchema: LocaleQuerySchema,
-	ResponseSchema: InstitutionSchema,
+	ResponseSchema: InstitutionDetailSchema,
 };

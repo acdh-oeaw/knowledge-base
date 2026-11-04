@@ -10871,6 +10871,104 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "type": "object",
       },
+      "InstitutionDetail": {
+        "description": "Institution, with the locales it is published in",
+        "properties": {
+          "acronym": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "country": {
+            "anyOf": [
+              {
+                "properties": {
+                  "id": {
+                    "format": "uuid",
+                    "type": "string",
+                  },
+                  "name": {
+                    "type": "string",
+                  },
+                  "slug": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "slug",
+                ],
+                "type": "object",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Image",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "name": {
+            "type": "string",
+          },
+          "ror": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+          },
+          "slug": {
+            "type": "string",
+          },
+          "status": {
+            "enum": [
+              "partner_institution",
+              "cooperating_partner",
+              "none",
+            ],
+            "type": "string",
+          },
+          "translations": {
+            "items": {
+              "$ref": "#/components/schemas/EntityTranslation",
+            },
+            "type": "array",
+          },
+        },
+        "required": [
+          "id",
+          "name",
+          "acronym",
+          "ror",
+          "slug",
+          "status",
+          "country",
+          "logo",
+          "translations",
+        ],
+        "type": "object",
+      },
       "InstitutionList": {
         "description": "List of institutions",
         "items": {
@@ -23968,7 +24066,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Institution",
+                  "$ref": "#/components/schemas/InstitutionDetail",
                 },
               },
             },
@@ -24018,7 +24116,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Institution",
+                  "$ref": "#/components/schemas/InstitutionDetail",
                 },
               },
             },
