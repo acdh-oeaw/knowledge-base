@@ -10872,7 +10872,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "type": "object",
       },
       "InstitutionDetail": {
-        "description": "Institution, with the locales it is published in",
+        "description": "Institution, with its description and the locales it is published in",
         "properties": {
           "acronym": {
             "anyOf": [
@@ -10910,6 +10910,850 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 "type": "null",
               },
             ],
+          },
+          "description": {
+            "default": [],
+            "items": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "content": {
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                    },
+                    "type": {
+                      "const": "rich_text",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "content",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "blocks": {
+                      "items": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "content": {
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                              },
+                              "type": {
+                                "const": "rich_text",
+                              },
+                            },
+                            "required": [
+                              "type",
+                              "content",
+                            ],
+                            "type": "object",
+                          },
+                          {
+                            "properties": {
+                              "caption": {
+                                "anyOf": [
+                                  {},
+                                  {
+                                    "type": "null",
+                                  },
+                                ],
+                              },
+                              "captionSource": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "asset",
+                                      "block",
+                                    ],
+                                    "type": "string",
+                                  },
+                                  {
+                                    "type": "null",
+                                  },
+                                ],
+                              },
+                              "image": {
+                                "$ref": "#/components/schemas/BlockImage",
+                              },
+                              "layout": {
+                                "enum": [
+                                  "default",
+                                  "wide",
+                                  "full",
+                                  "float-start",
+                                  "float-end",
+                                ],
+                                "type": "string",
+                              },
+                              "type": {
+                                "const": "image",
+                              },
+                            },
+                            "required": [
+                              "type",
+                              "image",
+                              "caption",
+                              "captionSource",
+                              "layout",
+                            ],
+                            "type": "object",
+                          },
+                          {
+                            "properties": {
+                              "caption": {
+                                "anyOf": [
+                                  {},
+                                  {
+                                    "type": "null",
+                                  },
+                                ],
+                              },
+                              "embedUrl": {
+                                "type": "string",
+                              },
+                              "title": {
+                                "type": "string",
+                              },
+                              "type": {
+                                "const": "embed",
+                              },
+                              "url": {
+                                "type": "string",
+                              },
+                            },
+                            "required": [
+                              "type",
+                              "url",
+                              "embedUrl",
+                              "title",
+                              "caption",
+                            ],
+                            "type": "object",
+                          },
+                          {
+                            "properties": {
+                              "caption": {
+                                "anyOf": [
+                                  {},
+                                  {
+                                    "type": "null",
+                                  },
+                                ],
+                              },
+                              "items": {
+                                "items": {
+                                  "properties": {
+                                    "caption": {
+                                      "anyOf": [
+                                        {},
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "captionSource": {
+                                      "anyOf": [
+                                        {
+                                          "enum": [
+                                            "asset",
+                                            "block",
+                                          ],
+                                          "type": "string",
+                                        },
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "image": {
+                                      "$ref": "#/components/schemas/BlockImage",
+                                    },
+                                  },
+                                  "required": [
+                                    "image",
+                                    "caption",
+                                    "captionSource",
+                                  ],
+                                  "type": "object",
+                                },
+                                "type": "array",
+                              },
+                              "layout": {
+                                "enum": [
+                                  "carousel",
+                                  "grid",
+                                ],
+                                "type": "string",
+                              },
+                              "type": {
+                                "const": "gallery",
+                              },
+                            },
+                            "required": [
+                              "type",
+                              "layout",
+                              "caption",
+                              "items",
+                            ],
+                            "type": "object",
+                          },
+                          {
+                            "properties": {
+                              "caption": {
+                                "anyOf": [
+                                  {},
+                                  {
+                                    "type": "null",
+                                  },
+                                ],
+                              },
+                              "captionSource": {
+                                "anyOf": [
+                                  {
+                                    "enum": [
+                                      "asset",
+                                      "block",
+                                    ],
+                                    "type": "string",
+                                  },
+                                  {
+                                    "type": "null",
+                                  },
+                                ],
+                              },
+                              "content": {},
+                              "image": {
+                                "$ref": "#/components/schemas/BlockImage",
+                              },
+                              "side": {
+                                "enum": [
+                                  "start",
+                                  "end",
+                                ],
+                                "type": "string",
+                              },
+                              "type": {
+                                "const": "media_text",
+                              },
+                            },
+                            "required": [
+                              "type",
+                              "image",
+                              "side",
+                              "content",
+                              "caption",
+                              "captionSource",
+                            ],
+                            "type": "object",
+                          },
+                        ],
+                      },
+                      "type": "array",
+                    },
+                    "intent": {
+                      "enum": [
+                        "neutral",
+                        "info",
+                        "warning",
+                        "danger",
+                        "success",
+                      ],
+                      "type": "string",
+                    },
+                    "title": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "type": {
+                      "const": "callout",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "intent",
+                    "title",
+                    "blocks",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "caption": {
+                      "anyOf": [
+                        {},
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "embedUrl": {
+                      "type": "string",
+                    },
+                    "title": {
+                      "type": "string",
+                    },
+                    "type": {
+                      "const": "embed",
+                    },
+                    "url": {
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "url",
+                    "embedUrl",
+                    "title",
+                    "caption",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "caption": {
+                      "anyOf": [
+                        {},
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "captionSource": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "asset",
+                            "block",
+                          ],
+                          "type": "string",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "image": {
+                      "$ref": "#/components/schemas/BlockImage",
+                    },
+                    "layout": {
+                      "enum": [
+                        "default",
+                        "wide",
+                        "full",
+                        "float-start",
+                        "float-end",
+                      ],
+                      "type": "string",
+                    },
+                    "type": {
+                      "const": "image",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "image",
+                    "caption",
+                    "captionSource",
+                    "layout",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "dataType": {
+                      "enum": [
+                        "events",
+                        "funding_calls",
+                        "impact_case_studies",
+                        "news",
+                        "opportunities",
+                        "pages",
+                        "spotlight_articles",
+                      ],
+                      "type": "string",
+                    },
+                    "limit": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "type": {
+                      "const": "data",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "dataType",
+                    "limit",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "caption": {
+                      "anyOf": [
+                        {},
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "captionSource": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "asset",
+                            "block",
+                          ],
+                          "type": "string",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "ctas": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                              },
+                              "url": {
+                                "type": "string",
+                              },
+                            },
+                            "required": [
+                              "label",
+                              "url",
+                            ],
+                            "type": "object",
+                          },
+                          "type": "array",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "eyebrow": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "image": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/BlockImage",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "title": {
+                      "type": "string",
+                    },
+                    "type": {
+                      "const": "hero",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "eyebrow",
+                    "image",
+                    "caption",
+                    "captionSource",
+                    "ctas",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "properties": {
+                          "blocks": {
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "properties": {
+                                    "content": {
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                    },
+                                    "type": {
+                                      "const": "rich_text",
+                                    },
+                                  },
+                                  "required": [
+                                    "type",
+                                    "content",
+                                  ],
+                                  "type": "object",
+                                },
+                                {
+                                  "properties": {
+                                    "caption": {
+                                      "anyOf": [
+                                        {},
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "captionSource": {
+                                      "anyOf": [
+                                        {
+                                          "enum": [
+                                            "asset",
+                                            "block",
+                                          ],
+                                          "type": "string",
+                                        },
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "image": {
+                                      "$ref": "#/components/schemas/BlockImage",
+                                    },
+                                    "layout": {
+                                      "enum": [
+                                        "default",
+                                        "wide",
+                                        "full",
+                                        "float-start",
+                                        "float-end",
+                                      ],
+                                      "type": "string",
+                                    },
+                                    "type": {
+                                      "const": "image",
+                                    },
+                                  },
+                                  "required": [
+                                    "type",
+                                    "image",
+                                    "caption",
+                                    "captionSource",
+                                    "layout",
+                                  ],
+                                  "type": "object",
+                                },
+                                {
+                                  "properties": {
+                                    "caption": {
+                                      "anyOf": [
+                                        {},
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "embedUrl": {
+                                      "type": "string",
+                                    },
+                                    "title": {
+                                      "type": "string",
+                                    },
+                                    "type": {
+                                      "const": "embed",
+                                    },
+                                    "url": {
+                                      "type": "string",
+                                    },
+                                  },
+                                  "required": [
+                                    "type",
+                                    "url",
+                                    "embedUrl",
+                                    "title",
+                                    "caption",
+                                  ],
+                                  "type": "object",
+                                },
+                                {
+                                  "properties": {
+                                    "caption": {
+                                      "anyOf": [
+                                        {},
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "items": {
+                                      "items": {
+                                        "properties": {
+                                          "caption": {
+                                            "anyOf": [
+                                              {},
+                                              {
+                                                "type": "null",
+                                              },
+                                            ],
+                                          },
+                                          "captionSource": {
+                                            "anyOf": [
+                                              {
+                                                "enum": [
+                                                  "asset",
+                                                  "block",
+                                                ],
+                                                "type": "string",
+                                              },
+                                              {
+                                                "type": "null",
+                                              },
+                                            ],
+                                          },
+                                          "image": {
+                                            "$ref": "#/components/schemas/BlockImage",
+                                          },
+                                        },
+                                        "required": [
+                                          "image",
+                                          "caption",
+                                          "captionSource",
+                                        ],
+                                        "type": "object",
+                                      },
+                                      "type": "array",
+                                    },
+                                    "layout": {
+                                      "enum": [
+                                        "carousel",
+                                        "grid",
+                                      ],
+                                      "type": "string",
+                                    },
+                                    "type": {
+                                      "const": "gallery",
+                                    },
+                                  },
+                                  "required": [
+                                    "type",
+                                    "layout",
+                                    "caption",
+                                    "items",
+                                  ],
+                                  "type": "object",
+                                },
+                                {
+                                  "properties": {
+                                    "caption": {
+                                      "anyOf": [
+                                        {},
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "captionSource": {
+                                      "anyOf": [
+                                        {
+                                          "enum": [
+                                            "asset",
+                                            "block",
+                                          ],
+                                          "type": "string",
+                                        },
+                                        {
+                                          "type": "null",
+                                        },
+                                      ],
+                                    },
+                                    "content": {},
+                                    "image": {
+                                      "$ref": "#/components/schemas/BlockImage",
+                                    },
+                                    "side": {
+                                      "enum": [
+                                        "start",
+                                        "end",
+                                      ],
+                                      "type": "string",
+                                    },
+                                    "type": {
+                                      "const": "media_text",
+                                    },
+                                  },
+                                  "required": [
+                                    "type",
+                                    "image",
+                                    "side",
+                                    "content",
+                                    "caption",
+                                    "captionSource",
+                                  ],
+                                  "type": "object",
+                                },
+                              ],
+                            },
+                            "type": "array",
+                          },
+                          "title": {
+                            "type": "string",
+                          },
+                        },
+                        "required": [
+                          "title",
+                          "blocks",
+                        ],
+                        "type": "object",
+                      },
+                      "type": "array",
+                    },
+                    "type": {
+                      "const": "accordion",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "items",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "caption": {
+                      "anyOf": [
+                        {},
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "captionSource": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "asset",
+                            "block",
+                          ],
+                          "type": "string",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "content": {},
+                    "image": {
+                      "$ref": "#/components/schemas/BlockImage",
+                    },
+                    "side": {
+                      "enum": [
+                        "start",
+                        "end",
+                      ],
+                      "type": "string",
+                    },
+                    "type": {
+                      "const": "media_text",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "image",
+                    "side",
+                    "content",
+                    "caption",
+                    "captionSource",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "properties": {
+                    "caption": {
+                      "anyOf": [
+                        {},
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "items": {
+                      "items": {
+                        "properties": {
+                          "caption": {
+                            "anyOf": [
+                              {},
+                              {
+                                "type": "null",
+                              },
+                            ],
+                          },
+                          "captionSource": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "asset",
+                                  "block",
+                                ],
+                                "type": "string",
+                              },
+                              {
+                                "type": "null",
+                              },
+                            ],
+                          },
+                          "image": {
+                            "$ref": "#/components/schemas/BlockImage",
+                          },
+                        },
+                        "required": [
+                          "image",
+                          "caption",
+                          "captionSource",
+                        ],
+                        "type": "object",
+                      },
+                      "type": "array",
+                    },
+                    "layout": {
+                      "enum": [
+                        "carousel",
+                        "grid",
+                      ],
+                      "type": "string",
+                    },
+                    "type": {
+                      "const": "gallery",
+                    },
+                  },
+                  "required": [
+                    "type",
+                    "layout",
+                    "caption",
+                    "items",
+                  ],
+                  "type": "object",
+                },
+              ],
+            },
+            "type": "array",
           },
           "id": {
             "format": "uuid",

@@ -1,6 +1,7 @@
 import * as schema from "@dariah-eric/database/schema";
 import * as v from "valibot";
 
+import { ContentBlockSchema } from "@/lib/content-blocks";
 import {
 	EntityTranslationSchema,
 	ImageSchema,
@@ -51,9 +52,10 @@ export type Institution = v.InferOutput<typeof InstitutionSchema>;
 export const InstitutionDetailSchema = v.pipe(
 	v.object({
 		...InstitutionSchema.entries,
+		description: v.optional(v.array(ContentBlockSchema), []),
 		translations: v.array(EntityTranslationSchema),
 	}),
-	v.description("Institution, with the locales it is published in"),
+	v.description("Institution, with its description and the locales it is published in"),
 	v.metadata({ ref: "InstitutionDetail" }),
 );
 

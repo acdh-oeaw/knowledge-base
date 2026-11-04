@@ -4,6 +4,7 @@ import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
 
+import { type ContentBlock, getContentBlocks } from "@/lib/content-blocks";
 import { getEntityTranslations } from "@/lib/entity-translations";
 import { generateImageUrl, toImageAsset } from "@/lib/images";
 import { resolveLocaleContext } from "@/lib/locales";
@@ -378,6 +379,22 @@ function mapInstitutionRow(row: InstitutionRow) {
 	};
 }
 
+/**
+ * Fields only the detail endpoints return: the rich-text `description` of the resolved version, and
+ * every locale the institution is published in.
+ */
+async function getInstitutionDetailFields(db: Database | Transaction, versionId: string) {
+	const [fields, translations] = await Promise.all([
+		getContentBlocks(db, versionId),
+		resolveDocumentId(db, versionId).then((documentId) => getEntityTranslations(db, documentId)),
+	]);
+
+	return {
+		description: (fields as { description?: Array<ContentBlock> }).description ?? [],
+		translations,
+	};
+}
+
 interface GetInstitutionsParams {
 	/** @default 10 */
 	limit?: number;
@@ -432,9 +449,7 @@ export async function getInstitutionById(
 		return null;
 	}
 
-	const translations = await getEntityTranslations(db, await resolveDocumentId(db, row.id));
-
-	return { ...mapInstitutionRow(row), translations };
+	return { ...mapInstitutionRow(row), ...(await getInstitutionDetailFields(db, row.id)) };
 }
 
 interface GetInstitutionSlugsParams {
@@ -543,7 +558,5 @@ export async function getInstitutionBySlug(
 		return null;
 	}
 
-	const translations = await getEntityTranslations(db, await resolveDocumentId(db, row.id));
-
-	return { ...mapInstitutionRow(row), translations };
+	return { ...mapInstitutionRow(row), ...(await getInstitutionDetailFields(db, row.id)) };
 }
