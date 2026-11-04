@@ -165,7 +165,9 @@ async function getFallbackEventIds(
 	excludedIds: Array<string>,
 	limit: number,
 ) {
-	const isCurrent = sql`(upper_inf(${schema.events.duration}) OR upper(${schema.events.duration}) >= NOW())`;
+	const start = sql`lower(${schema.events.duration})`;
+	const end = sql`COALESCE(upper(${schema.events.duration}), ${start})`;
+	const isCurrent = sql`(${end} >= NOW())`;
 
 	const rows = await db
 		.select({ id: schema.events.id })
@@ -174,8 +176,10 @@ async function getFallbackEventIds(
 		.where(fallbackCandidateFilter(db, localeContext, statusId, excludedIds))
 		.orderBy(
 			sql`${isCurrent} DESC`,
-			sql`CASE WHEN ${isCurrent} THEN lower(${schema.events.duration}) END ASC`,
-			sql`lower(${schema.events.duration}) DESC`,
+			sql`CASE WHEN ${isCurrent} THEN ${start} END ASC`,
+			sql`${start} DESC`,
+			// Breaks ties between events starting at the same time, so the pick is stable.
+			desc(schema.events.id),
 		)
 		.limit(limit);
 
