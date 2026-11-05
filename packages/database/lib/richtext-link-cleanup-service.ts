@@ -1,8 +1,8 @@
-import { getEntityListHref, resolveInterimPagePath } from "@dariah-eric/website-routes";
 import type { JSONContent } from "@tiptap/core";
 import { and, eq, inArray } from "drizzle-orm";
 
 import type { Database, Transaction } from "./index";
+import { getEntityListHref, resolveInterimPagePath } from "./legacy-dariah-paths";
 import * as schema from "./schema";
 
 const legacyOrigin = "https://www.dariah.eu";

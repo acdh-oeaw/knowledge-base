@@ -5,10 +5,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { resolveLocaleContext } from "@/lib/locales";
 import { type EntityRef, isPublicRelatedEntityType } from "@/lib/schemas";
-import {
-	getCountrySlugsByOrganisationalUnitDocumentId,
-	getWebsiteHref,
-} from "@/lib/website-routes";
+import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, and, asc, eq, isNotNull, isNull, or, sql } from "@/services/db/sql";
 
@@ -155,15 +152,10 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 		)
 		.orderBy(asc(schema.navigationMenus.name), asc(schema.navigationItems.position));
 
-	// Institutions and national consortia have no page of their own — they are surfaced on their
-	// country's members-and-partners page — so their country is resolved in one extra query.
-	const countrySlugs = await getCountrySlugsByOrganisationalUnitDocumentId(
+	const consortiumMemberIds = await getConsortiumMemberDocumentIds(
 		db,
 		rows.flatMap((row) =>
-			row.entityId != null &&
-			(row.entityType === "institution" || row.entityType === "national_consortium")
-				? [row.entityId]
-				: [],
+			row.entityId != null && row.entityType === "institution" ? [row.entityId] : [],
 		),
 	);
 
@@ -189,7 +181,7 @@ export async function getNavigation(db: Database | Transaction, params: GetNavig
 							slug: row.entitySlug,
 							href: getWebsiteHref(row.entityType, {
 								slug: row.entitySlug,
-								countrySlug: countrySlugs.get(row.entityId),
+								isConsortiumMember: consortiumMemberIds.has(row.entityId),
 							}),
 						}
 					: null,

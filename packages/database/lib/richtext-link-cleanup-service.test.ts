@@ -1,12 +1,12 @@
-import {
-	getEntityHref,
-	getEntityListHref,
-	interimPagePathBySlug,
-	listableEntityTypes,
-} from "@dariah-eric/website-routes";
+import { getEntityHref } from "@dariah-eric/website-routes";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
+import {
+	getEntityListHref,
+	interimPagePathBySlug,
+	listableEntityTypes,
+} from "./legacy-dariah-paths";
 import {
 	cleanRichTextLinksInDocument,
 	resolveLegacyDariahHref,
@@ -416,7 +416,7 @@ describe("cleanRichTextLinksInDocument", () => {
  * turns rewrites into 404s and makes already-correct links look unmapped, so assert the two agree:
  * every path the mapper produces must survive a round trip unchanged.
  */
-describe("canonical website paths stay in sync with @dariah-eric/website-routes", () => {
+describe("canonical website paths stay in sync with the routes they rewrite to", () => {
 	const slug = "example-slug";
 
 	const listingPaths = listableEntityTypes.map((type) => getEntityListHref(type));
@@ -425,16 +425,16 @@ describe("canonical website paths stay in sync with @dariah-eric/website-routes"
 	// documents, pages) are covered by their listing or resolve to a query string, so they are
 	// deliberately absent here.
 	const detailPaths = [
-		getEntityHref({ type: "country", slug }),
+		`${getEntityListHref("country")}/${slug}`,
 		getEntityHref({ type: "event", slug }),
-		getEntityHref({ type: "funding-call", slug }),
-		getEntityHref({ type: "impact-case-study", slug }),
+		`${getEntityListHref("funding-call")}/${slug}`,
+		`${getEntityListHref("impact-case-study")}/${slug}`,
 		getEntityHref({ type: "news-item", slug }),
-		getEntityHref({ type: "opportunity", slug }),
-		getEntityHref({ type: "person", slug }),
+		`${getEntityListHref("opportunity")}/${slug}`,
+		`/persons/${slug}`,
 		getEntityHref({ type: "project", slug }),
-		getEntityHref({ type: "spotlight-article", slug }),
-		getEntityHref({ type: "working-group", slug }),
+		`${getEntityListHref("spotlight-article")}/${slug}`,
+		`${getEntityListHref("working-group")}/${slug}`,
 	];
 
 	const canonicalPaths = [

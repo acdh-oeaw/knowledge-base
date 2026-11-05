@@ -3,31 +3,15 @@ import * as v from "valibot";
 import type { PublicRelatedEntityType } from "@/lib/schemas";
 
 /**
- * The entity types a sitemap url can be derived from — a subset of the public entity vocabulary,
- * because not every published document adds a url of its own:
- *
- * - `eric` has no page at all.
- * - `institution` and `national_consortium` live on their country's page, which `country` already
- *   contributes.
- * - `regional_hub` and `governance_body` are surfaced within a single CMS page
- *   (`/network/regional-hubs` and `/about/organisation-and-governance`), which `pages` already
- *   contributes; governance bodies are selected there via a query param, and query-string variants
- *   of one page are not distinct documents.
- * - `documentation_pages` and `internal_pages` are not public at all.
+ * The entity types with a page on the website, which is a subset of the public entity vocabulary.
+ * `institution` is further limited to the members of the national consortium.
  */
 export const sitemapEntityTypesEnum = [
-	"country",
-	"documents_policies",
 	"events",
-	"funding_calls",
-	"impact_case_studies",
+	"institution",
 	"news",
-	"opportunities",
 	"pages",
-	"persons",
 	"projects",
-	"spotlight_articles",
-	"working_group",
 ] as const satisfies ReadonlyArray<PublicRelatedEntityType>;
 
 export type SitemapEntityType = (typeof sitemapEntityTypesEnum)[number];
@@ -99,7 +83,7 @@ export const GetSitemap = {
 			unresolved: v.pipe(
 				v.number(),
 				v.description(
-					"Published documents skipped because no website url could be resolved for them. Currently only pages missing from the interim slug→path map; a non-zero value means the sitemap is incomplete.",
+					"Published documents skipped because no website url could be resolved for them.",
 				),
 			),
 		}),

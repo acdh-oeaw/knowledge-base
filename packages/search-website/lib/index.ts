@@ -9,7 +9,7 @@ import * as schema from "@dariah-eric/database/schema";
 import { alias, and, eq, inArray, sql } from "@dariah-eric/database/sql";
 import type { SearchService, WebsiteDocument, WebsiteEntityDocument } from "@dariah-eric/search";
 import type { SearchAdminService } from "@dariah-eric/search/admin";
-import { getEntityHref, resolveInterimPagePath } from "@dariah-eric/website-routes";
+import { getEntityHref } from "@dariah-eric/website-routes";
 
 import { toPlainText } from "./json-content/to-plain-text";
 
@@ -217,7 +217,8 @@ function createWebsiteEntityDocument(params: {
 	image?: IndexedImage | JoinedIndexedImage | null;
 	importedAt: number;
 	label: string;
-	link: string;
+	/** Left out for entity types with no page on the website. */
+	link?: string;
 	locale: string;
 	projectCall?: string;
 	sourceId: string;
@@ -1109,7 +1110,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 								descriptions.get(item.versionId),
 								item.description ?? "",
 							),
-							link: getEntityHref({ type: "country", slug: item.countrySlug }),
 							locale: formatLocaleCode(item.locale),
 							summary: item.description ?? undefined,
 							image: item.image,
@@ -1146,7 +1146,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
-						link: getEntityHref({ type: "country", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
 						image: item.image,
@@ -1203,7 +1202,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.title,
 						description: item.summary ?? "",
-						link: getEntityHref({ type: "document-or-policy" }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
 					}),
@@ -1324,7 +1322,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.title,
 						description: item.summary ?? "",
-						link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
 						image: item.image,
@@ -1385,10 +1382,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.publicationDate,
 						label: item.title,
 						description: item.summary,
-						link: getEntityHref({
-							type: "impact-case-study",
-							slug: item.entityVersion.slug!.value,
-						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
 						image: item.image,
@@ -1485,7 +1478,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.title,
 						description: mergeDescription(content.get(item.id), item.summary ?? ""),
-						link: getEntityHref({ type: "opportunity", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary,
 						image: item.image,
@@ -1543,32 +1535,21 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					"content",
 				);
 
-				return items.flatMap((item) => {
-					// Interim: a page's real pathname is not yet stored in the CMS. Skip pages with no
-					// mapped website route so we never index a link that would 404. Remove once pages
-					// own a `path` column (docs/website-url-resolution.md).
-					const path = resolveInterimPagePath(item.entityVersion.slug!.value);
-
-					if (path == null) {
-						return [];
-					}
-
-					return [
-						createWebsiteEntityDocument({
-							entityId,
-							importedAt,
-							type: "page",
-							sourceId: item.entityVersion.slug!.value,
-							sourceUpdatedAt: item.publicationDate,
-							label: item.title,
-							description: mergeDescription(content.get(item.id), item.summary),
-							link: getEntityHref({ type: "page", path }),
-							locale: formatLocaleCode(item.entityVersion.locale),
-							summary: item.summary,
-							image: item.image,
-						}),
-					];
-				});
+				return items.map((item) =>
+					createWebsiteEntityDocument({
+						entityId,
+						importedAt,
+						type: "page",
+						sourceId: item.entityVersion.slug!.value,
+						sourceUpdatedAt: item.publicationDate,
+						label: item.title,
+						description: mergeDescription(content.get(item.id), item.summary),
+						link: getEntityHref({ type: "page", slug: item.entityVersion.slug!.value }),
+						locale: formatLocaleCode(item.entityVersion.locale),
+						summary: item.summary,
+						image: item.image,
+					}),
+				);
 			}
 
 			case "person": {
@@ -1628,7 +1609,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.name,
 						description: biographies.get(item.id) ?? "",
-						link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						image: item.image,
 					}),
@@ -1726,10 +1706,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.publicationDate,
 						label: item.title,
 						description: mergeDescription(content.get(item.id), item.summary),
-						link: getEntityHref({
-							type: "spotlight-article",
-							slug: item.entityVersion.slug!.value,
-						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary,
 						image: item.image,
@@ -1759,7 +1735,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
-						link: getEntityHref({ type: "working-group", slug: item.slug }),
 						locale: formatLocaleCode(item.locale),
 						summary: item.summary ?? undefined,
 						image: item.image,
@@ -1828,10 +1803,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						sourceUpdatedAt: item.updatedAt,
 						label: item.name,
 						description: mergeDescription(descriptions.get(item.id), item.summary ?? ""),
-						link: getEntityHref({
-							type: "governance-body",
-							slug: item.entityVersion.slug!.value,
-						}),
 						locale: formatLocaleCode(item.entityVersion.locale),
 						summary: item.summary ?? undefined,
 						image: item.image,
@@ -1975,7 +1946,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.title,
 					description: item.summary ?? "",
-					link: getEntityHref({ type: "document-or-policy" }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
 				}),
@@ -2086,7 +2056,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.title,
 					description: item.summary ?? "",
-					link: getEntityHref({ type: "funding-call", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
 					image: item.image,
@@ -2142,7 +2111,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.publicationDate,
 					label: item.title,
 					description: item.summary,
-					link: getEntityHref({ type: "impact-case-study", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
 					image: item.image,
@@ -2162,7 +2130,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.name,
 					description: mergeDescription(countryDescriptions.get(item.id), item.summary ?? ""),
-					link: getEntityHref({ type: "country", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
 					image: item.image,
@@ -2200,7 +2167,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						organisationalUnitDescriptions.get(item.versionId),
 						item.description ?? "",
 					),
-					link: getEntityHref({ type: "country", slug: item.countrySlug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.description ?? undefined,
 					image: item.image,
@@ -2273,7 +2239,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 				id: ["person", `${item.countrySlug}:${item.itemSlug}`].join(":"),
 				label: item.label,
 				description: personBiographies.get(item.itemId) ?? "",
-				link: `/network/members-and-partners/${item.countrySlug}`,
 			});
 		}
 
@@ -2347,7 +2312,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.title,
 					description: mergeDescription(opportunityContent.get(item.id), item.summary ?? ""),
-					link: getEntityHref({ type: "opportunity", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary,
 					image: item.image,
@@ -2394,31 +2358,21 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 		});
 
 		website.push(
-			// Interim: skip pages whose slug has no mapped website route (they would 404). Remove
-			// once pages own a `path` column (docs/website-url-resolution.md).
-			...pages.flatMap((item) => {
-				const path = resolveInterimPagePath(item.entityVersion.slug!.value);
-
-				if (path == null) {
-					return [];
-				}
-
-				return [
-					createWebsiteEntityDocument({
-						importedAt,
-						entityId: item.entityVersion.entityId,
-						type: "page",
-						sourceId: item.entityVersion.slug!.value,
-						sourceUpdatedAt: item.publicationDate,
-						label: item.title,
-						description: mergeDescription(pageContent.get(item.id), item.summary),
-						link: getEntityHref({ type: "page", path }),
-						locale: formatLocaleCode(item.entityVersion.locale),
-						summary: item.summary,
-						image: item.image,
-					}),
-				];
-			}),
+			...pages.map((item) =>
+				createWebsiteEntityDocument({
+					importedAt,
+					entityId: item.entityVersion.entityId,
+					type: "page",
+					sourceId: item.entityVersion.slug!.value,
+					sourceUpdatedAt: item.publicationDate,
+					label: item.title,
+					description: mergeDescription(pageContent.get(item.id), item.summary),
+					link: getEntityHref({ type: "page", slug: item.entityVersion.slug!.value }),
+					locale: formatLocaleCode(item.entityVersion.locale),
+					summary: item.summary,
+					image: item.image,
+				}),
+			),
 		);
 
 		const persons = await db.query.persons.findMany({
@@ -2467,7 +2421,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.name,
 					description: personBiographies.get(item.id) ?? "",
-					link: getEntityHref({ type: "person", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					image: item.image,
 				}),
@@ -2544,7 +2497,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.publicationDate,
 					label: item.title,
 					description: mergeDescription(spotlightContent.get(item.id), item.summary),
-					link: getEntityHref({ type: "spotlight-article", slug: item.entityVersion.slug!.value }),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary,
 					image: item.image,
@@ -2564,7 +2516,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 					sourceUpdatedAt: item.updatedAt,
 					label: item.name,
 					description: mergeDescription(workingGroupDescriptions.get(item.id), item.summary ?? ""),
-					link: getEntityHref({ type: "working-group", slug: item.slug }),
 					locale: formatLocaleCode(item.locale),
 					summary: item.summary ?? undefined,
 					image: item.image,
@@ -2625,10 +2576,6 @@ export function createWebsiteSearchIndexService(params: CreateWebsiteSearchIndex
 						organisationalUnitDescriptions.get(item.id),
 						item.summary ?? "",
 					),
-					link: getEntityHref({
-						type: "governance-body",
-						slug: item.entityVersion.slug!.value,
-					}),
 					locale: formatLocaleCode(item.entityVersion.locale),
 					summary: item.summary ?? undefined,
 					image: item.image,

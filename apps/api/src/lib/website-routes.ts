@@ -1,5 +1,5 @@
 import * as schema from "@dariah-eric/database/schema";
-import { getEntityHref, resolveInterimPagePath } from "@dariah-eric/website-routes";
+import { getEntityHref } from "@dariah-eric/website-routes";
 
 import type { PublicRelatedEntityType } from "@/lib/schemas";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -7,53 +7,43 @@ import { alias, and, eq, inArray, sql } from "@/services/db/sql";
 
 type OrganisationalUnitType = (typeof schema.organisationalUnitTypesEnum)[number];
 
+interface WebsiteHrefParams {
+	slug: string;
+	/** See {@link getConsortiumMemberDocumentIds}. */
+	isConsortiumMember?: boolean;
+}
+
 /**
  * Adapter between the CMS type vocabulary (`news`, `organisational_units` + subtype) and the
- * website vocabulary spoken by `@dariah-eric/website-routes` (`news-item`, `country`, …).
+ * website vocabulary spoken by `@dariah-eric/website-routes` (`news-item`, …).
  *
- * Returns null when an entity has no website page to link to (rather than emitting a href that
- * would 404 or navigate without informing): institutions and national consortia live on their
- * country's page, so they need {@link getCountrySlugsByOrganisationalUnitDocumentId}; a page's real
- * pathname is not stored in the CMS yet; and the ERIC itself has no page.
+ * Returns null when an entity has no website page to link to, rather than emitting a href that
+ * would 404.
  */
 export function getWebsiteHref(
 	type: PublicRelatedEntityType,
-	params: { slug: string; countrySlug?: string | null },
+	params: WebsiteHrefParams,
 ): string | null {
 	switch (type) {
-		case "documents_policies": {
-			return getEntityHref({ type: "document-or-policy" });
-		}
 		case "events": {
 			return getEntityHref({ type: "event", slug: params.slug });
-		}
-		case "funding_calls": {
-			return getEntityHref({ type: "funding-call", slug: params.slug });
-		}
-		case "impact_case_studies": {
-			return getEntityHref({ type: "impact-case-study", slug: params.slug });
 		}
 		case "news": {
 			return getEntityHref({ type: "news-item", slug: params.slug });
 		}
-		case "opportunities": {
-			return getEntityHref({ type: "opportunity", slug: params.slug });
-		}
 		case "pages": {
-			// Interim: a page's real pathname is not yet stored in the CMS, so it is resolved through a
-			// hardcoded slug→path map; unmapped pages get no href instead of a 404 link. Remove once
-			// pages own a `path` column (docs/website-url-resolution.md).
-			const path = resolveInterimPagePath(params.slug);
-			return path != null ? getEntityHref({ type: "page", path }) : null;
-		}
-		case "persons": {
-			return getEntityHref({ type: "person", slug: params.slug });
+			return getEntityHref({ type: "page", slug: params.slug });
 		}
 		case "projects": {
 			return getEntityHref({ type: "project", slug: params.slug });
 		}
+		case "documents_policies":
+		case "funding_calls":
+		case "impact_case_studies":
+		case "opportunities":
+		case "persons":
 		case "spotlight_articles": {
-			return getEntityHref({ type: "spotlight-article", slug: params.slug });
+			return null;
 		}
 		case "country":
 		case "eric":
@@ -70,101 +60,70 @@ export function getWebsiteHref(
 /** As {@link getWebsiteHref}, for the organisational-unit subtypes. */
 export function getOrganisationalUnitHref(
 	type: OrganisationalUnitType,
-	params: { slug: string; countrySlug?: string | null },
+	params: WebsiteHrefParams,
 ): string | null {
-	switch (type) {
-		case "country": {
-			return getEntityHref({ type: "country", slug: params.slug });
-		}
-		case "eric": {
-			// DARIAH-EU itself is the whole site, not an entity page — better plain text than a link to
-			// the homepage.
-			return null;
-		}
-		case "governance_body": {
-			return getEntityHref({ type: "governance-body", slug: params.slug });
-		}
-		case "regional_hub": {
-			return getEntityHref({ type: "regional-hub" });
-		}
-		case "working_group": {
-			return getEntityHref({ type: "working-group", slug: params.slug });
-		}
-		case "institution":
-		case "national_consortium": {
-			if (params.countrySlug == null) {
-				return null;
-			}
-			return getEntityHref({
-				type: type === "institution" ? "institution" : "national-consortium",
-				countrySlug: params.countrySlug,
-			});
-		}
+	if (type === "institution" && params.isConsortiumMember === true) {
+		return getEntityHref({ type: "institution", slug: params.slug });
 	}
+
+	return null;
 }
 
 /**
- * Relations that put a unit on a country's members-and-partners page: `is_located_in` for
- * institutions, `is_national_consortium_of` for national consortia.
+ * The institutions with a page on the website, by document id: those with an active `is_member_of`
+ * relation to a published national consortium, which is also how `/api/v1/national-consortia` finds
+ * a consortium's members. Without `unitDocumentIds`, all of them.
  */
-const countryRelationStatus = [
-	"is_located_in",
-	"is_national_consortium_of",
-] as const satisfies ReadonlyArray<(typeof schema.organisationalUnitStatusEnum)[number]>;
-
-/**
- * The country slug an institution or national consortium is surfaced under, keyed by unit document
- * id. Institutions reach their country indirectly via `is_located_in` (their DARIAH-EU statuses
- * point at the ERIC, not at a country); consortia via `is_national_consortium_of`. Only currently
- * valid relations count, and only countries that actually have a members-and-partners page.
- */
-export async function getCountrySlugsByOrganisationalUnitDocumentId(
+export async function getConsortiumMemberDocumentIds(
 	db: Database | Transaction,
-	unitDocumentIds: Array<string>,
-): Promise<Map<string, string>> {
-	const countrySlugs = new Map<string, string>();
-
-	if (unitDocumentIds.length === 0) {
-		return countrySlugs;
+	unitDocumentIds?: Array<string>,
+): Promise<Set<string>> {
+	if (unitDocumentIds?.length === 0) {
+		return new Set();
 	}
 
-	const countryEntities = alias(schema.entities, "country_entities");
-	const countryEntityVersions = alias(schema.entityVersions, "country_entity_versions");
-	const countrySlugsAlias = alias(schema.slugs, "country_slugs");
+	const consortiumVersions = alias(schema.entityVersions, "consortium_versions");
+	const consortiumStatus = alias(schema.entityStatus, "consortium_status");
+	const consortia = alias(schema.organisationalUnits, "consortia");
+	const consortiumTypes = alias(schema.organisationalUnitTypes, "consortium_types");
 
 	const rows = await db
-		.select({
-			unitDocumentId: schema.organisationalUnitsRelations.unitDocumentId,
-			countrySlug: countrySlugsAlias.value,
-		})
+		.selectDistinct({ unitDocumentId: schema.organisationalUnitsRelations.unitDocumentId })
 		.from(schema.organisationalUnitsRelations)
 		.innerJoin(
 			schema.organisationalUnitStatus,
-			eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
+			and(
+				eq(schema.organisationalUnitStatus.id, schema.organisationalUnitsRelations.status),
+				eq(schema.organisationalUnitStatus.status, "is_member_of"),
+			),
 		)
 		.innerJoin(
-			countryEntities,
-			eq(countryEntities.id, schema.organisationalUnitsRelations.relatedUnitDocumentId),
+			consortiumVersions,
+			eq(consortiumVersions.entityId, schema.organisationalUnitsRelations.relatedUnitDocumentId),
 		)
-		.innerJoin(countryEntityVersions, eq(countryEntityVersions.entityId, countryEntities.id))
-		// The view holds published member/observer/cooperating-partner countries, i.e. exactly those
-		// with a page on the website.
 		.innerJoin(
-			schema.membersAndPartners,
-			eq(schema.membersAndPartners.id, countryEntityVersions.id),
+			consortiumStatus,
+			and(
+				eq(consortiumStatus.id, consortiumVersions.statusId),
+				eq(consortiumStatus.type, "published"),
+			),
 		)
-		.innerJoin(countrySlugsAlias, eq(countrySlugsAlias.entityVersionId, countryEntityVersions.id))
+		.innerJoin(consortia, eq(consortia.id, consortiumVersions.id))
+		.innerJoin(
+			consortiumTypes,
+			and(
+				eq(consortiumTypes.id, consortia.typeId),
+				eq(consortiumTypes.type, "national_consortium"),
+			),
+		)
 		.where(
 			and(
-				inArray(schema.organisationalUnitsRelations.unitDocumentId, unitDocumentIds),
-				inArray(schema.organisationalUnitStatus.status, countryRelationStatus),
+				unitDocumentIds != null
+					? inArray(schema.organisationalUnitsRelations.unitDocumentId, unitDocumentIds)
+					: undefined,
 				sql`${schema.organisationalUnitsRelations.duration} @> NOW()::TIMESTAMPTZ`,
 			),
 		);
 
-	for (const row of rows) {
-		countrySlugs.set(row.unitDocumentId, row.countrySlug);
-	}
-
-	return countrySlugs;
+	return new Set(rows.map((row) => row.unitDocumentId));
 }

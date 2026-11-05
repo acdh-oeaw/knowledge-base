@@ -489,7 +489,7 @@ describe("persons", () => {
 						type: "spotlight_articles",
 						slug: spotlightArticle.entity.slug,
 						label: spotlightArticle.article.title,
-						href: `/spotlight/${spotlightArticle.entity.slug}`,
+						href: null,
 					},
 					publishedAt: spotlightArticle.article.publicationDate.toISOString(),
 					role: "author",
@@ -505,7 +505,7 @@ describe("persons", () => {
 						type: "impact_case_studies",
 						slug: impactCaseStudy.entity.slug,
 						label: impactCaseStudy.article.title,
-						href: `/about/impact-case-studies/${impactCaseStudy.entity.slug}`,
+						href: null,
 					},
 					role: "editor",
 				});

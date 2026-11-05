@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getEntityHref } from "./index";
-import { interimPagePathBySlug, resolveInterimPagePath } from "./interim-page-paths";
+import {
+	getEntityListHref,
+	interimPagePathBySlug,
+	resolveInterimPagePath,
+} from "./legacy-dariah-paths";
 
 describe("resolveInterimPagePath", () => {
 	it("maps known section-page slugs to their current website pathname (per issue #703)", () => {
@@ -27,15 +30,24 @@ describe("resolveInterimPagePath", () => {
 		expect(resolveInterimPagePath("privacy-notice")).toBeNull();
 	});
 
-	it("feeds getEntityHref verbatim (the interim path is the final page pathname)", () => {
-		const path = resolveInterimPagePath("strategy");
-		expect(path).not.toBeNull();
-		expect(getEntityHref({ type: "page", path: path! })).toBe("/about/strategy");
-	});
-
 	it("every interim path is root-relative", () => {
 		for (const path of Object.values(interimPagePathBySlug)) {
 			expect(path).toMatch(/^\/[^/]/u);
 		}
+	});
+});
+
+describe("getEntityListHref", () => {
+	it("resolves each listable type to its collection pathname", () => {
+		expect(getEntityListHref("news-item")).toBe("/news");
+		expect(getEntityListHref("event")).toBe("/events");
+		expect(getEntityListHref("project")).toBe("/projects");
+		expect(getEntityListHref("spotlight-article")).toBe("/spotlight");
+		expect(getEntityListHref("impact-case-study")).toBe("/about/impact-case-studies");
+		expect(getEntityListHref("funding-call")).toBe("/get-involved/funding-calls");
+		expect(getEntityListHref("opportunity")).toBe("/get-involved/opportunities");
+		expect(getEntityListHref("working-group")).toBe("/network/working-groups");
+		expect(getEntityListHref("country")).toBe("/network/members-and-partners");
+		expect(getEntityListHref("document-or-policy")).toBe("/about/documents");
 	});
 });
