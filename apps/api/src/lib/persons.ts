@@ -7,7 +7,7 @@ import { type Image, generateImageUrl, toImageAsset, withResolvedCaption } from 
 import { resolveDocumentId } from "@/lib/relations";
 import type { EntityRef, PublicRelatedEntityType } from "@/lib/schemas";
 import {
-	getCountrySlugsByOrganisationalUnitDocumentId,
+	getConsortiumMemberDocumentIds,
 	getOrganisationalUnitHref,
 	getWebsiteHref,
 } from "@/lib/website-routes";
@@ -195,13 +195,9 @@ export async function getPersonPositions(
 		)
 		.where(and(inArray(personEntityVersions.id, personIds), durationFilter));
 
-	// Institutions and national consortia have no page of their own — they are surfaced on their
-	// country's members-and-partners page — so their country is resolved in one extra query.
-	const countrySlugs = await getCountrySlugsByOrganisationalUnitDocumentId(
+	const consortiumMemberIds = await getConsortiumMemberDocumentIds(
 		db,
-		rows
-			.filter((row) => row.type === "institution" || row.type === "national_consortium")
-			.map((row) => row.unitDocumentId),
+		rows.filter((row) => row.type === "institution").map((row) => row.unitDocumentId),
 	);
 
 	const rowsByPerson = new Map<string, Array<PersonPosition>>();
@@ -219,7 +215,7 @@ export async function getPersonPositions(
 				label: row.name,
 				href: getOrganisationalUnitHref(row.type, {
 					slug: row.slug,
-					countrySlug: countrySlugs.get(row.unitDocumentId),
+					isConsortiumMember: consortiumMemberIds.has(row.unitDocumentId),
 				}),
 			},
 		});

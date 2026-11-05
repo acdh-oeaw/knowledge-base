@@ -7726,7 +7726,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "type": "number",
           },
           "unresolved": {
-            "description": "Published documents skipped because no website url could be resolved for them. Currently only pages missing from the interim slug→path map; a non-zero value means the sitemap is incomplete.",
+            "description": "Published documents skipped because no website url could be resolved for them.",
             "type": "number",
           },
         },
@@ -20023,18 +20023,11 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "type": {
             "description": "Entity type this url was derived from",
             "enum": [
-              "country",
-              "documents_policies",
               "events",
-              "funding_calls",
-              "impact_case_studies",
+              "institution",
               "news",
-              "opportunities",
               "pages",
-              "persons",
               "projects",
-              "spotlight_articles",
-              "working_group",
             ],
             "type": "string",
           },

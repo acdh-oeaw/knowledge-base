@@ -3,27 +3,21 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
-import { getWebsiteHref } from "@/lib/website-routes";
+import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { SitemapEntityType } from "@/routes/sitemap/schemas";
 import { and, eq, inArray } from "@/services/db/sql";
 
 /**
  * Sitemap types that live in their own subtype table and are found generically via the entity type,
- * i.e. everything except the organisational-unit subtypes (whose subtype only exists on the version
- * row, and which need their own published-and-has-a-page filters).
+ * i.e. everything except `institution`, whose subtype only exists on the version row, and which
+ * only has a page while it is a member of the national consortium.
  */
 const documentEntityTypes = [
-	"documents_policies",
 	"events",
-	"funding_calls",
-	"impact_case_studies",
 	"news",
-	"opportunities",
 	"pages",
-	"persons",
 	"projects",
-	"spotlight_articles",
 ] as const satisfies ReadonlyArray<SitemapEntityType>;
 
 function isDocumentEntityType(type: string): type is (typeof documentEntityTypes)[number] {
@@ -63,17 +57,16 @@ interface SitemapSource {
  * in pages is a sitemap the consumer can assemble incorrectly.
  */
 export async function getSitemap(db: Database | Transaction) {
-	const [documents, workingGroups, countries] = await Promise.all([
+	const [documents, consortiumMembers] = await Promise.all([
 		getPublishedDocuments(db),
-		getPublishedWorkingGroups(db),
-		getPublishedCountries(db),
+		getPublishedConsortiumMembers(db),
 	]);
 
 	/**
-	 * Keyed by the locale-prefixed href, not by document: several documents can share a url — every
-	 * document and policy is surfaced on `/en/about/documents` — and such a url is only as old as its
-	 * newest document. Two different locales of the same document never collide here, since each
-	 * carries its own locale segment.
+	 * Keyed by the locale-prefixed href, not by document: several documents can share a url — the
+	 * pages backing a listing page all resolve to it — and such a url is only as old as its newest
+	 * document. Two different locales of the same document never collide here, since each carries its
+	 * own locale segment.
 	 */
 	const entries = new Map<string, SitemapSource & { href: string }>();
 	let unresolved = 0;
@@ -81,9 +74,8 @@ export async function getSitemap(db: Database | Transaction) {
 	/**
 	 * Hrefs which are the same page in different locales, as a union-find forest (href → parent
 	 * href). Two kinds of links: the locale versions of one document, each with its own slug; and one
-	 * locale-less path across locales — a shared url like `/about/documents` exists in every locale
-	 * any of its documents is published in, even when no single document is published in all of
-	 * them.
+	 * locale-less path across locales — a shared url like `/projects` exists in every locale any of
+	 * its documents is published in, even when no single document is published in all of them.
 	 */
 	const parents = new Map<string, string>();
 	const hrefByEntityId = new Map<string, string>();
@@ -110,8 +102,8 @@ export async function getSitemap(db: Database | Transaction) {
 		}
 	}
 
-	for (const source of [...documents, ...workingGroups, ...countries]) {
-		const path = getWebsiteHref(source.type, { slug: source.slug });
+	for (const source of [...documents, ...consortiumMembers]) {
+		const path = getWebsiteHref(source.type, { slug: source.slug, isConsortiumMember: true });
 
 		if (path == null) {
 			unresolved += 1;
@@ -218,97 +210,54 @@ async function getPublishedDocuments(db: Database | Transaction): Promise<Array<
 	});
 }
 
-async function getPublishedWorkingGroups(
+/**
+ * Queries `entityVersions` directly for the same reason as {@link getPublishedDocuments}: a member
+ * contributes a url for every locale it is published in.
+ */
+async function getPublishedConsortiumMembers(
 	db: Database | Transaction,
 ): Promise<Array<SitemapSource>> {
-	const items = await db.query.workingGroups.findMany({
-		where: {
-			entityVersion: {
-				status: {
-					type: "published",
-				},
-			},
-		},
-		columns: {
-			id: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { entityId: true, updatedAt: true },
-				with: {
-					slug: {
-						columns: { value: true },
-					},
-					locale: {
-						columns: { languageCode: true, regionCode: true },
-					},
-				},
-			},
-		},
-	});
+	const memberIds = await getConsortiumMemberDocumentIds(db);
 
-	return items.flatMap((item) => {
-		if (item.entityVersion.slug == null) {
-			return [];
-		}
+	if (memberIds.size === 0) {
+		return [];
+	}
 
-		return [
-			{
-				entityId: item.entityVersion.entityId,
-				type: "working_group" as const,
-				slug: item.entityVersion.slug.value,
-				locale: formatLocaleCode(item.entityVersion.locale),
-				lastModified: item.entityVersion.updatedAt,
-			},
-		];
-	});
-}
+	const rows = await db
+		.select({
+			entityId: schema.entityVersions.entityId,
+			slug: schema.slugs.value,
+			languageCode: schema.locales.languageCode,
+			regionCode: schema.locales.regionCode,
+			lastModified: schema.entityVersions.updatedAt,
+		})
+		.from(schema.organisationalUnits)
+		.innerJoin(schema.entityVersions, eq(schema.entityVersions.id, schema.organisationalUnits.id))
+		.innerJoin(
+			schema.organisationalUnitTypes,
+			and(
+				eq(schema.organisationalUnitTypes.id, schema.organisationalUnits.typeId),
+				eq(schema.organisationalUnitTypes.type, "institution"),
+			),
+		)
+		.innerJoin(
+			schema.entityStatus,
+			and(
+				eq(schema.entityStatus.id, schema.entityVersions.statusId),
+				eq(schema.entityStatus.type, "published"),
+			),
+		)
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, schema.entityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, schema.entityVersions.localeId))
+		.where(inArray(schema.entityVersions.entityId, Array.from(memberIds)));
 
-/**
- * Countries come from the members-and-partners view rather than from all published countries: a
- * country page exists only for members, observers and cooperating partners — exactly what the view
- * holds, and exactly what `/api/v1/members-partners` serves.
- */
-async function getPublishedCountries(db: Database | Transaction): Promise<Array<SitemapSource>> {
-	const items = await db.query.membersAndPartners.findMany({
-		where: {
-			entityVersion: {
-				status: {
-					type: "published",
-				},
-			},
-		},
-		columns: {
-			id: true,
-		},
-		with: {
-			entityVersion: {
-				columns: { entityId: true, updatedAt: true },
-				with: {
-					slug: {
-						columns: { value: true },
-					},
-					locale: {
-						columns: { languageCode: true, regionCode: true },
-					},
-				},
-			},
-		},
-	});
-
-	return items.flatMap((item) => {
-		if (item.entityVersion.slug == null) {
-			return [];
-		}
-
-		return [
-			{
-				entityId: item.entityVersion.entityId,
-				type: "country" as const,
-				slug: item.entityVersion.slug.value,
-				locale: formatLocaleCode(item.entityVersion.locale),
-				lastModified: item.entityVersion.updatedAt,
-			},
-		];
+	return rows.map((row) => {
+		return {
+			entityId: row.entityId,
+			type: "institution" as const,
+			slug: row.slug,
+			locale: formatLocaleCode(row),
+			lastModified: row.lastModified,
+		};
 	});
 }

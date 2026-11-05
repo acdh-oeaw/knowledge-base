@@ -1,10 +1,7 @@
 import * as schema from "@dariah-eric/database/schema";
 
 import type { EntityRef, PublicRelatedEntityType } from "@/lib/schemas";
-import {
-	getCountrySlugsByOrganisationalUnitDocumentId,
-	getWebsiteHref,
-} from "@/lib/website-routes";
+import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, and, asc, eq, inArray, notInArray, sql } from "@/services/db/sql";
 import { search } from "@/services/search";
@@ -109,13 +106,9 @@ export async function getEntityRefsByDocumentId(
 			),
 		);
 
-	// Institutions and national consortia have no page of their own — they are surfaced on their
-	// country's members-and-partners page — so their country is resolved in one extra query.
-	const countrySlugs = await getCountrySlugsByOrganisationalUnitDocumentId(
+	const consortiumMemberIds = await getConsortiumMemberDocumentIds(
 		db,
-		rows
-			.filter((row) => row.type === "institution" || row.type === "national_consortium")
-			.map((row) => row.id),
+		rows.filter((row) => row.type === "institution").map((row) => row.id),
 	);
 
 	return new Map(
@@ -123,7 +116,10 @@ export async function getEntityRefsByDocumentId(
 			row.id,
 			{
 				...row,
-				href: getWebsiteHref(row.type, { slug: row.slug, countrySlug: countrySlugs.get(row.id) }),
+				href: getWebsiteHref(row.type, {
+					slug: row.slug,
+					isConsortiumMember: consortiumMemberIds.has(row.id),
+				}),
 			},
 		]),
 	);

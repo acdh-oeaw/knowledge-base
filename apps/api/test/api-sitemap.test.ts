@@ -82,52 +82,56 @@ async function seedPage(db: Database, slug: string, params: SeedParams = {}) {
 	});
 }
 
-async function seedDocumentOrPolicy(db: Database, slug: string, params: SeedParams = {}) {
-	const { versionId, assetId } = await seedDocument(db, "documents_policies", slug, params);
-
-	await db.insert(schema.documentsPolicies).values({
-		id: versionId,
-		title: f.lorem.sentence(),
-		documentId: assetId,
-	});
-}
-
-async function seedWorkingGroup(db: Database, slug: string, params: SeedParams = {}) {
+async function seedOrganisationalUnit(
+	db: Database,
+	type: "institution" | "national_consortium",
+	slug: string,
+	params: SeedParams = {},
+) {
 	const { entityId, versionId } = await seedDocument(db, "organisational_units", slug, params);
 
-	const [type, unitStatus, umbrella] = await Promise.all([
-		db.query.organisationalUnitTypes.findFirst({
-			columns: { id: true },
-			where: { type: "working_group" },
-		}),
-		db.query.organisationalUnitStatus.findFirst({
-			columns: { id: true },
-			where: { status: "is_part_of" },
-		}),
-		db.query.organisationalUnits.findFirst({
-			columns: { id: true },
-			where: { entityVersion: { slug: { value: "dariah-eu" } }, type: { type: "eric" } },
-			with: { entityVersion: { columns: { entityId: true } } },
-		}),
-	]);
+	const unitType = await db.query.organisationalUnitTypes.findFirst({
+		columns: { id: true },
+		where: { type },
+	});
 
-	assert(type, "No organisational unit type in database.");
-	assert(unitStatus, "No organisational unit status in database.");
-	assert(umbrella, "No DARIAH-EU organisational unit in database.");
+	assert(unitType, "No organisational unit type in database.");
 
 	await db.insert(schema.organisationalUnits).values({
 		id: versionId,
 		name: f.lorem.words(),
-		typeId: type.id,
+		typeId: unitType.id,
 	});
 
-	/** The `working_groups` view — and so the working groups endpoint — only sees related units. */
+	return { entityId };
+}
+
+async function seedConsortiumMember(
+	db: Database,
+	slug: string,
+	params: SeedParams & { membershipEnd?: Date } = {},
+) {
+	const { membershipEnd, ...seedParams } = params;
+
+	const [member, consortium, unitStatus] = await Promise.all([
+		seedOrganisationalUnit(db, "institution", slug, seedParams),
+		seedOrganisationalUnit(db, "national_consortium", `consortium-${uuidv7()}`),
+		db.query.organisationalUnitStatus.findFirst({
+			columns: { id: true },
+			where: { status: "is_member_of" },
+		}),
+	]);
+
+	assert(unitStatus, "No organisational unit status in database.");
+
 	await db.insert(schema.organisationalUnitsRelations).values({
-		unitDocumentId: entityId,
-		relatedUnitDocumentId: umbrella.entityVersion.entityId,
+		unitDocumentId: member.entityId,
+		relatedUnitDocumentId: consortium.entityId,
 		status: unitStatus.id,
-		duration: { start: f.date.past({ years: 5 }) },
+		duration: { start: f.date.past({ years: 5, refDate: "2020-01-01" }), end: membershipEnd },
 	});
+
+	return member;
 }
 
 function findEntry(entries: Array<SitemapEntry>, href: string) {
@@ -169,8 +173,8 @@ describe("sitemap", () => {
 				const updatedAt = new Date("2030-01-02T03:04:05.000Z");
 				await seedNewsItem(db, slug, { updatedAt });
 
-				const workingGroupSlug = `working-group-${uuidv7()}`;
-				await seedWorkingGroup(db, workingGroupSlug);
+				const memberSlug = `institution-${uuidv7()}`;
+				await seedConsortiumMember(db, memberSlug);
 
 				const response = await client.sitemap.$get();
 
@@ -188,9 +192,9 @@ describe("sitemap", () => {
 							alternates: [{ locale: localeCode, href: `/${localeCode}/news/${slug}` }],
 						},
 						expect.objectContaining({
-							href: `/${localeCode}/network/working-groups/${workingGroupSlug}`,
+							href: `/${localeCode}/consortium/${memberSlug}`,
 							locale: localeCode,
-							type: "working_group",
+							type: "institution",
 						}),
 					]),
 				);
@@ -287,8 +291,8 @@ describe("sitemap", () => {
 				const older = new Date("2030-01-01T00:00:00.000Z");
 				const newer = new Date("2031-01-01T00:00:00.000Z");
 
-				await seedDocumentOrPolicy(db, `document-${uuidv7()}`, { updatedAt: older });
-				await seedDocumentOrPolicy(db, `document-${uuidv7()}`, { updatedAt: newer });
+				await seedPage(db, "projects", { updatedAt: older });
+				await seedPage(db, "projekte", { updatedAt: newer });
 
 				const response = await client.sitemap.$get();
 
@@ -296,18 +300,18 @@ describe("sitemap", () => {
 
 				const data = await response.json();
 
-				/** Every document and policy is surfaced on the same page ... */
-				expect(findEntry(data.data, `/${localeCode}/about/documents`)).toEqual([
+				/** Both pages back the same listing page ... */
+				expect(findEntry(data.data, `/${localeCode}/projects`)).toEqual([
 					{
-						href: `/${localeCode}/about/documents`,
+						href: `/${localeCode}/projects`,
 						locale: localeCode,
-						type: "documents_policies",
+						type: "pages",
 						/** ... which is only as old as its newest document. */
 						lastModified: newer.toISOString(),
 						/** Other published documents may add further locales, so only require this one. */
 						// oxlint-disable-next-line typescript/no-unsafe-assignment
 						alternates: expect.arrayContaining([
-							{ locale: localeCode, href: `/${localeCode}/about/documents` },
+							{ locale: localeCode, href: `/${localeCode}/projects` },
 						]),
 					},
 				]);
@@ -320,9 +324,9 @@ describe("sitemap", () => {
 				const localeCode = await getDefaultLocaleCode(db);
 				const otherLocale = await insertTestLocale(db);
 
-				/** Two unrelated documents, one per locale, surfaced on the same page. */
-				await seedDocumentOrPolicy(db, `document-${uuidv7()}`);
-				await seedDocumentOrPolicy(db, `document-${uuidv7()}`, { localeId: otherLocale.id });
+				/** Two unrelated documents, one per locale, backing the same listing page. */
+				await seedPage(db, "projects");
+				await seedPage(db, "projekte", { localeId: otherLocale.id });
 
 				const response = await client.sitemap.$get();
 
@@ -332,45 +336,25 @@ describe("sitemap", () => {
 
 				/** Other published documents may add further locales, so only require these two. */
 				const alternates: unknown = expect.arrayContaining([
-					{ locale: localeCode, href: `/${localeCode}/about/documents` },
-					{ locale: "zz", href: "/zz/about/documents" },
+					{ locale: localeCode, href: `/${localeCode}/projects` },
+					{ locale: "zz", href: "/zz/projects" },
 				]);
 
-				expect(findEntry(data.data, `/${localeCode}/about/documents`)).toEqual([
+				expect(findEntry(data.data, `/${localeCode}/projects`)).toEqual([
 					expect.objectContaining({ alternates }),
 				]);
-				expect(findEntry(data.data, "/zz/about/documents")).toEqual([
+				expect(findEntry(data.data, "/zz/projects")).toEqual([
 					expect.objectContaining({ alternates }),
 				]);
 			});
 		});
 
-		it("should resolve pages through the interim slug to path map", async () => {
+		it("should resolve pages to their own url", async () => {
 			await withTransaction(async (db) => {
 				const client = createTestClient(db);
 				const localeCode = await getDefaultLocaleCode(db);
 
-				await seedPage(db, "strategy");
-
-				const response = await client.sitemap.$get();
-
-				expect(response.status).toBe(200);
-
-				const data = await response.json();
-
-				expect(findEntry(data.data, `/${localeCode}/about/strategy`)).toEqual([
-					expect.objectContaining({ href: `/${localeCode}/about/strategy`, type: "pages" }),
-				]);
-			});
-		});
-
-		it("should count pages with no known website path as unresolved", async () => {
-			await withTransaction(async (db) => {
-				const client = createTestClient(db);
-
-				const before = await (await client.sitemap.$get()).json();
-
-				const slug = `unmapped-page-${uuidv7()}`;
+				const slug = `page-${uuidv7()}`;
 				await seedPage(db, slug);
 
 				const response = await client.sitemap.$get();
@@ -379,8 +363,112 @@ describe("sitemap", () => {
 
 				const data = await response.json();
 
-				expect(data.unresolved).toBe(before.unresolved + 1);
-				expect(data.total).toBe(before.total);
+				expect(findEntry(data.data, `/${localeCode}/pages/${slug}`)).toEqual([
+					expect.objectContaining({ href: `/${localeCode}/pages/${slug}`, type: "pages" }),
+				]);
+				expect(data.unresolved).toBe(0);
+			});
+		});
+
+		it("should link the locale versions of a consortium member", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+				const localeCode = await getDefaultLocaleCode(db);
+				const otherLocale = await insertTestLocale(db);
+
+				const slug = `institution-${uuidv7()}`;
+				const { entityId } = await seedConsortiumMember(db, slug);
+
+				const otherSlug = `institution-${uuidv7()}`;
+				const [status, entityType, unitType] = await Promise.all([
+					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+					db.query.entityTypes.findFirst({
+						columns: { id: true },
+						where: { type: "organisational_units" },
+					}),
+					db.query.organisationalUnitTypes.findFirst({
+						columns: { id: true },
+						where: { type: "institution" },
+					}),
+				]);
+
+				assert(status, "No entity status in database.");
+				assert(entityType, "No entity type in database.");
+				assert(unitType, "No organisational unit type in database.");
+
+				const versionId = uuidv7();
+
+				await db
+					.insert(schema.entityVersions)
+					.values({ id: versionId, entityId, statusId: status.id, localeId: otherLocale.id });
+				await db.insert(schema.slugs).values({
+					entityVersionId: versionId,
+					entityId,
+					typeId: entityType.id,
+					localeId: otherLocale.id,
+					isPublished: true,
+					value: otherSlug,
+				});
+				await db
+					.insert(schema.organisationalUnits)
+					.values({ id: versionId, name: f.lorem.words(), typeId: unitType.id });
+
+				const response = await client.sitemap.$get();
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+
+				expect(findEntry(data.data, `/${localeCode}/consortium/${slug}`)).toEqual([
+					expect.objectContaining({
+						alternates: [
+							{ locale: localeCode, href: `/${localeCode}/consortium/${slug}` },
+							{ locale: "zz", href: `/zz/consortium/${otherSlug}` },
+						].toSorted((a, z) => (a.locale < z.locale ? -1 : 1)),
+					}),
+				]);
+			});
+		});
+
+		it("should not return institutions which are not consortium members", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const unrelatedSlug = `institution-${uuidv7()}`;
+				await seedOrganisationalUnit(db, "institution", unrelatedSlug);
+
+				const formerMemberSlug = `institution-${uuidv7()}`;
+				await seedConsortiumMember(db, formerMemberSlug, {
+					membershipEnd: new Date("2021-01-01T00:00:00.000Z"),
+				});
+
+				const response = await client.sitemap.$get();
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+				const hrefs = data.data.map((entry) => entry.href);
+
+				expect(hrefs.filter((href) => href.endsWith(unrelatedSlug))).toEqual([]);
+				expect(hrefs.filter((href) => href.endsWith(formerMemberSlug))).toEqual([]);
+			});
+		});
+
+		it("should not return types with no page on the website", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const slug = `person-${uuidv7()}`;
+				await seedDocument(db, "persons", slug);
+
+				const response = await client.sitemap.$get();
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+
+				expect(data.data.filter((entry) => entry.href.endsWith(slug))).toEqual([]);
+				expect(data.unresolved).toBe(0);
 			});
 		});
 	});
