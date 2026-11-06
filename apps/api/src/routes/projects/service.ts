@@ -57,7 +57,7 @@ async function getSocialMediaByProjectVersionId(
 ) {
 	const socialMediaByProjectId = new Map<
 		string,
-		Array<{ id: string; url: string; type: string }>
+		Array<{ id: string; url: string; type: string; name: string }>
 	>();
 
 	if (projectVersionIds.length === 0) {
@@ -68,6 +68,7 @@ async function getSocialMediaByProjectVersionId(
 		.select({
 			projectId: schema.projectsToSocialMedia.projectId,
 			id: schema.socialMedia.id,
+			name: schema.socialMedia.name,
 			url: schema.socialMedia.url,
 			type: schema.socialMediaTypes.type,
 		})
@@ -82,7 +83,7 @@ async function getSocialMediaByProjectVersionId(
 
 	for (const row of rows) {
 		const list = socialMediaByProjectId.get(row.projectId) ?? [];
-		list.push({ id: row.id, url: row.url, type: row.type });
+		list.push({ id: row.id, url: row.url, type: row.type, name: row.name });
 		socialMediaByProjectId.set(row.projectId, list);
 	}
 
@@ -317,6 +318,7 @@ export async function getProjectById(db: Database | Transaction, params: GetProj
 					...socialMediaByPosition,
 					columns: {
 						id: true,
+						name: true,
 						url: true,
 					},
 					with: {
@@ -520,6 +522,7 @@ export async function getProjectBySlug(db: Database | Transaction, params: GetPr
 				...socialMediaByPosition,
 				columns: {
 					id: true,
+					name: true,
 					url: true,
 				},
 				with: {

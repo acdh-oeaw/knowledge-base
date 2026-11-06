@@ -41,7 +41,7 @@ export const ProjectPersonSchema = v.pipe(
 
 export const ProjectSocialMediaSchema = v.pipe(
 	v.object({
-		...v.pick(schema.SocialMediaSelectSchema, ["id", "url"]).entries,
+		...v.pick(schema.SocialMediaSelectSchema, ["id", "url", "name"]).entries,
 		type: v.picklist(schema.socialMediaTypesEnum),
 	}),
 	v.description("Project social media"),

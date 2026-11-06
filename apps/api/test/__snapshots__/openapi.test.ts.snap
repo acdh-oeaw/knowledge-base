@@ -19842,6 +19842,9 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
             "format": "uuid",
             "type": "string",
           },
+          "name": {
+            "type": "string",
+          },
           "type": {
             "enum": [
               "bluesky",
@@ -19865,6 +19868,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         "required": [
           "id",
           "url",
+          "name",
           "type",
         ],
         "type": "object",
