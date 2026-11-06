@@ -1507,7 +1507,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -2640,7 +2640,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -5347,7 +5347,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -6757,7 +6757,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -8999,7 +8999,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -10622,7 +10622,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -12810,7 +12810,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -14549,7 +14549,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -15609,7 +15609,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -16813,7 +16813,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -19877,6 +19877,78 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
         ],
         "type": "object",
       },
+      "RelatedEntity": {
+        "description": "Reference to a related entity, with its website href and image",
+        "properties": {
+          "href": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string",
+          },
+          "image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Image",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "Null when the entity has no image, or its type has none",
+          },
+          "label": {
+            "type": "string",
+          },
+          "locale": {
+            "description": "The locale \`slug\` and \`href\` belong to (e.g. "de-AT"), so prepend this locale, not the requested one: an entity without a translation in the requested locale resolves in the default locale. Set on related entities and on rich-text entity links.",
+            "type": "string",
+          },
+          "slug": {
+            "type": "string",
+          },
+          "type": {
+            "enum": [
+              "documents_policies",
+              "events",
+              "funding_calls",
+              "impact_case_studies",
+              "news",
+              "opportunities",
+              "pages",
+              "persons",
+              "projects",
+              "spotlight_articles",
+              "governance_body",
+              "national_consortium",
+              "country",
+              "institution",
+              "regional_hub",
+              "eric",
+              "working_group",
+            ],
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "type",
+          "slug",
+          "label",
+          "href",
+          "image",
+        ],
+        "type": "object",
+      },
       "RelatedNationalConsortium": {
         "description": "National consortium",
         "properties": {
@@ -21152,7 +21224,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },
@@ -22395,7 +22467,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "relatedEntities": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/EntityRef",
+              "$ref": "#/components/schemas/RelatedEntity",
             },
             "type": "array",
           },

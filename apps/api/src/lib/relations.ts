@@ -3,7 +3,7 @@ import * as schema from "@dariah-eric/database/schema";
 
 import { type Image, generateImageUrl, toImageAsset, withResolvedCaption } from "@/lib/images";
 import { formatLocaleCode, getDefaultLocaleId } from "@/lib/locales";
-import type { EntityRef, PublicRelatedEntityType } from "@/lib/schemas";
+import type { EntityRef, PublicRelatedEntityType, RelatedEntity } from "@/lib/schemas";
 import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, and, asc, eq, inArray, notInArray, sql } from "@/services/db/sql";
@@ -303,7 +303,7 @@ export async function getEntityImagesByDocumentId(
 export async function getRelatedEntities(
 	db: Database | Transaction,
 	entityId: string,
-): Promise<Array<EntityRef>> {
+): Promise<Array<RelatedEntity>> {
 	const documentId = await resolveDocumentId(db, entityId);
 
 	const related = await db
@@ -315,15 +315,20 @@ export async function getRelatedEntities(
 			asc(schema.entitiesToEntities.relatedEntityId),
 		);
 
-	const refs = await getEntityRefsByDocumentId(
-		db,
-		related.map((row) => row.relatedEntityId),
-		await getEntityVersionLocaleId(db, entityId),
-	);
+	const relatedEntityIds = related.map((row) => row.relatedEntityId);
+	const localeId = await getEntityVersionLocaleId(db, entityId);
+
+	const [refs, images] = await Promise.all([
+		getEntityRefsByDocumentId(db, relatedEntityIds, localeId),
+		getEntityImagesByDocumentId(db, relatedEntityIds, imageWidth.preview, localeId),
+	]);
 
 	// A relation whose target is unpublished or non-public resolves to nothing and drops out, exactly
 	// as it did when the filter lived in the join.
-	return related.map((row) => refs.get(row.relatedEntityId)).filter((ref) => ref != null);
+	return relatedEntityIds.flatMap((id) => {
+		const ref = refs.get(id);
+		return ref == null ? [] : [{ ...ref, image: images.get(id) ?? null }];
+	});
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

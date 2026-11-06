@@ -119,31 +119,37 @@ export const CalendarDateSchema = v.pipe(
 );
 
 /**
- * A reference to another entity. Positions, related entities and article credits use this exact
- * shape so consumers need a single code path to render a link. Navigation items use a slimmer
- * route-specific shape because their own label is authoritative.
+ * The reference entries on their own, unpiped, so that {@link RelatedEntitySchema} can extend them —
+ * see {@link ImageObjectSchema}.
+ */
+const EntityRefObjectSchema = v.object({
+	/** Document id (stable across versions), not the id of a particular version. */
+	id: v.pipe(v.string(), v.uuid()),
+	type: v.picklist(publicRelatedEntityTypesEnum),
+	slug: v.string(),
+	/** Display name of the entity. */
+	label: v.string(),
+	href: v.pipe(
+		v.nullable(v.string()),
+		v.description(
+			"Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
+		),
+	),
+	locale: v.pipe(
+		v.optional(v.string()),
+		v.description(
+			'The locale `slug` and `href` belong to (e.g. "de-AT"), so prepend this locale, not the requested one: an entity without a translation in the requested locale resolves in the default locale. Set on related entities and on rich-text entity links.',
+		),
+	),
+});
+
+/**
+ * A reference to another entity. Positions and article credits use this exact shape, and related
+ * entities extend it, so consumers need a single code path to render a link. Navigation items use a
+ * slimmer route-specific shape because their own label is authoritative.
  */
 export const EntityRefSchema = v.pipe(
-	v.object({
-		/** Document id (stable across versions), not the id of a particular version. */
-		id: v.pipe(v.string(), v.uuid()),
-		type: v.picklist(publicRelatedEntityTypesEnum),
-		slug: v.string(),
-		/** Display name of the entity. */
-		label: v.string(),
-		href: v.pipe(
-			v.nullable(v.string()),
-			v.description(
-				"Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
-			),
-		),
-		locale: v.pipe(
-			v.optional(v.string()),
-			v.description(
-				'The locale `slug` and `href` belong to (e.g. "de-AT"), so prepend this locale, not the requested one: an entity without a translation in the requested locale resolves in the default locale. Set on related entities and on rich-text entity links.',
-			),
-		),
-	}),
+	EntityRefObjectSchema,
 	v.description("Reference to an entity, with its website href"),
 	v.metadata({ ref: "EntityRef" }),
 );
@@ -193,7 +199,22 @@ export const PersonPositionsSchema = v.nullable(
 	),
 );
 
-export const RelatedEntitiesSchema = v.array(EntityRefSchema);
+/** Related entities are rendered as preview cards, so unlike a plain reference they carry an image. */
+export const RelatedEntitySchema = v.pipe(
+	v.object({
+		...EntityRefObjectSchema.entries,
+		image: v.pipe(
+			v.nullable(ImageSchema),
+			v.description("Null when the entity has no image, or its type has none"),
+		),
+	}),
+	v.description("Reference to a related entity, with its website href and image"),
+	v.metadata({ ref: "RelatedEntity" }),
+);
+
+export type RelatedEntity = v.InferOutput<typeof RelatedEntitySchema>;
+
+export const RelatedEntitiesSchema = v.array(RelatedEntitySchema);
 
 export const RelatedResourcesSchema = v.array(
 	v.object({

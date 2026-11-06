@@ -6,6 +6,7 @@ import { v7 as uuidv7 } from "uuid";
 import { describe, expect, it } from "vitest";
 
 import type { Database } from "@/middlewares/db";
+import { eq } from "@/services/db/sql";
 import { createTestClient } from "~/test/lib/create-test-client";
 import { seedContentBlock } from "~/test/lib/seed-content-block";
 import { withTransaction } from "~/test/lib/with-transaction";
@@ -213,6 +214,112 @@ describe("pages", () => {
 						expect.objectContaining({ slug: item.entity.slug }),
 					]),
 				);
+			});
+		});
+
+		it("should return related entities with their images", async () => {
+			await withTransaction(async (db) => {
+				const client = createTestClient(db);
+
+				const items = createItems(3);
+				await seed(db, items);
+
+				const [item, pageWithImage, pageWithoutImage] = items as [
+					(typeof items)[number],
+					(typeof items)[number],
+					(typeof items)[number],
+				];
+
+				const caption = {
+					type: "doc",
+					content: [{ type: "paragraph", content: [{ type: "text", text: "Override" }] }],
+				};
+
+				await db
+					.update(schema.pages)
+					.set({ imageCaption: caption, imageCaptionMode: "override" })
+					.where(eq(schema.pages.id, pageWithImage.version.id));
+				await db
+					.update(schema.pages)
+					.set({ imageId: null })
+					.where(eq(schema.pages.id, pageWithoutImage.version.id));
+
+				const [status, newsType, asset, defaultLocale] = await Promise.all([
+					db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
+					db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "news" } }),
+					db.query.assets.findFirst({ columns: { id: true, key: true } }),
+					db.query.locales.findFirst({ columns: { id: true }, where: { isDefault: true } }),
+				]);
+
+				assert(status, "No entity status in database.");
+				assert(newsType, "No entity type in database.");
+				assert(asset, "No assets in database.");
+				assert(defaultLocale, "No default locale in database.");
+
+				const newsEntityId = uuidv7();
+				const newsVersionId = uuidv7();
+				const newsTitle = f.lorem.sentence();
+
+				await db.insert(schema.entities).values({ id: newsEntityId, typeId: newsType.id });
+				await db.insert(schema.entityVersions).values({
+					id: newsVersionId,
+					entityId: newsEntityId,
+					statusId: status.id,
+					localeId: defaultLocale.id,
+				});
+				await db.insert(schema.slugs).values({
+					entityVersionId: newsVersionId,
+					entityId: newsEntityId,
+					typeId: newsType.id,
+					localeId: defaultLocale.id,
+					isPublished: true,
+					value: slugify(newsTitle),
+				});
+				await db.insert(schema.news).values({
+					id: newsVersionId,
+					title: newsTitle,
+					summary: f.lorem.paragraph(),
+					publicationDate: f.date.past(),
+					imageId: asset.id,
+					imageCaptionMode: "hidden",
+				});
+
+				await db.insert(schema.entitiesToEntities).values([
+					{ entityId: item.entity.id, relatedEntityId: newsEntityId, position: 0 },
+					{ entityId: item.entity.id, relatedEntityId: pageWithImage.entity.id, position: 1 },
+					{ entityId: item.entity.id, relatedEntityId: pageWithoutImage.entity.id, position: 2 },
+				]);
+
+				const response = await client.pages[":id"].$get({
+					param: {
+						id: item.version.id,
+					},
+				});
+
+				expect(response.status).toBe(200);
+
+				const data = await response.json();
+
+				assert("relatedEntities" in data);
+				/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+				expect(data.relatedEntities).toEqual([
+					expect.objectContaining({
+						id: newsEntityId,
+						type: "news",
+						image: expect.objectContaining({ url: expect.any(String), caption: null }),
+					}),
+					expect.objectContaining({
+						id: pageWithImage.entity.id,
+						type: "pages",
+						image: expect.objectContaining({ url: expect.any(String), caption }),
+					}),
+					expect.objectContaining({
+						id: pageWithoutImage.entity.id,
+						type: "pages",
+						image: null,
+					}),
+				]);
+				/* eslint-enable @typescript-eslint/no-unsafe-assignment */
 			});
 		});
 
