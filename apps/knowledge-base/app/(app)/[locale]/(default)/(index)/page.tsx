@@ -41,7 +41,7 @@ export default async function IndexPage(_props: Readonly<IndexPageProps>): Promi
 						{t("The Knowledge Base")}
 					</h1>
 					<p className="text-center text-2xl font-medium tracking-tight text-text-weak">
-						{t("Your central hub for everything DARIAH-related.")}
+						{t("Your central hub for managing content.")}
 					</p>
 				</div>
 				<div className="flex flex-col gap-3 sm:flex-row">

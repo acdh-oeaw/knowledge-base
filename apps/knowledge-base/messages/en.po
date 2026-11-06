@@ -1893,7 +1893,6 @@ msgstr "SSHOC services"
 #: app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-step-nav.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/reporting/country-reports/_components/country-report-summary.tsx
 #: app/(app)/[locale]/(dashboard)/dashboard/reporting/working-group-reports/_components/working-group-report-summary.tsx
-#: app/(app)/[locale]/(default)/_components/default-footer.tsx
 msgid "ZEEVQX"
 msgstr "Social media"
 
@@ -8138,8 +8137,8 @@ msgid "m9Jhbc"
 msgstr "The Knowledge Base"
 
 #: app/(app)/[locale]/(default)/(index)/page.tsx
-msgid "yd-0BL"
-msgstr "Your central hub for everything DARIAH-related."
+msgid "uzsPnU"
+msgstr "Your central hub for managing content."
 
 #: app/(app)/[locale]/(default)/(index)/page.tsx
 msgid "rsNxxA"
@@ -8158,8 +8157,8 @@ msgid "hrWbQB"
 msgstr "Successfully sent message."
 
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
-msgid "6m3C6V"
-msgstr "Guides and reference material for working with the The Knowledge Base."
+msgid "3jG8Fu"
+msgstr "Guides and reference material for working with The Knowledge Base."
 
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
 msgid "JVNy4g"
