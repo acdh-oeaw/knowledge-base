@@ -9,7 +9,6 @@ import { Logo } from "@/components/logo";
 import { useMetadata } from "@/lib/i18n/metadata";
 import { createHref } from "@/lib/navigation/create-href";
 import type { NavigationLink } from "@/lib/navigation/navigation";
-import { config as socialMediaConfig } from "@/lib/social-media/social-media.config";
 
 interface DefaultFooterProps extends ComponentProps<"footer"> {}
 
@@ -50,35 +49,10 @@ export function DefaultFooter(props: Readonly<DefaultFooterProps>): ReactNode {
 	return (
 		<footer {...rest} className={cn("border-bs border-stroke-weak", className)}>
 			<div className="container flex flex-col gap-y-6 px-8 py-12 sm:px-16">
-				<div className="flex flex-col gap-y-8 sm:flex-row sm:items-center sm:justify-between">
-					<NavLink className="-ms-1 me-auto" href={links.home.href} size="icon">
-						<span className="sr-only">{links.home.label}</span>
-						<Logo className="block-8 inline-auto" />
-					</NavLink>
-
-					<nav aria-label={t("Social media")}>
-						<ul className="flex flex-wrap items-center gap-x-4 gap-y-2">
-							{Object.values(meta.social).map((social) => {
-								const { href, kind, label } = social;
-
-								if (kind === "email" || kind === "website") {
-									return null;
-								}
-
-								const Icon = socialMediaConfig[kind].icon;
-
-								return (
-									<li key={kind} className="inline-flex shrink-0">
-										<NavLink href={href} size="icon">
-											<span className="sr-only">{label}</span>
-											<Icon aria-hidden={true} className="block-6 inline-6" />
-										</NavLink>
-									</li>
-								);
-							})}
-						</ul>
-					</nav>
-				</div>
+				<NavLink className="-ms-1 me-auto" href={links.home.href} size="icon">
+					<span className="sr-only">{links.home.label}</span>
+					<Logo className="block-8 inline-auto" />
+				</NavLink>
 
 				<div className="flex flex-col gap-y-6">
 					<div className="flex flex-col gap-y-4 sm:flex-row sm:items-center sm:justify-between sm:gap-x-6">
