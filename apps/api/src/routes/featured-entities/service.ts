@@ -157,7 +157,13 @@ async function getFallbackNewsIds(
 	return rows.map((row) => row.id);
 }
 
-/** Upcoming and ongoing events, soonest first, then the most recent past ones. */
+/**
+ * Ongoing and upcoming events first, nearest first (ongoing ones, having started already, lead),
+ * then past events, most recent first.
+ *
+ * An event without an end date ends when it starts: treating a missing end as "open-ended" would
+ * keep every old single-date event current forever, and push it to the front.
+ */
 async function getFallbackEventIds(
 	db: Database | Transaction,
 	localeContext: LocaleContext,
@@ -525,7 +531,7 @@ async function getFeaturedProjectSocialMedia(
 ) {
 	const socialMediaByProjectId = new Map<
 		string,
-		Array<{ id: string; url: string; type: string }>
+		Array<{ id: string; url: string; type: string; name: string }>
 	>();
 
 	if (projectVersionIds.length === 0) {
@@ -536,6 +542,7 @@ async function getFeaturedProjectSocialMedia(
 		.select({
 			projectId: schema.projectsToSocialMedia.projectId,
 			id: schema.socialMedia.id,
+			name: schema.socialMedia.name,
 			url: schema.socialMedia.url,
 			type: schema.socialMediaTypes.type,
 		})
@@ -550,7 +557,7 @@ async function getFeaturedProjectSocialMedia(
 
 	for (const row of rows) {
 		const list = socialMediaByProjectId.get(row.projectId) ?? [];
-		list.push({ id: row.id, url: row.url, type: row.type });
+		list.push({ id: row.id, url: row.url, type: row.type, name: row.name });
 		socialMediaByProjectId.set(row.projectId, list);
 	}
 
