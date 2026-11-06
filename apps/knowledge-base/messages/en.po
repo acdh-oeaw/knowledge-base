@@ -8157,8 +8157,8 @@ msgid "hrWbQB"
 msgstr "Successfully sent message."
 
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
-msgid "6m3C6V"
-msgstr "Guides and reference material for working with the The Knowledge Base."
+msgid "3jG8Fu"
+msgstr "Guides and reference material for working with The Knowledge Base."
 
 #: app/(app)/[locale]/(default)/documentation/(index)/page.tsx
 msgid "JVNy4g"
