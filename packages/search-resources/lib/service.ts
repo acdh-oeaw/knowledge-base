@@ -37,12 +37,6 @@ export interface CreateSearchResourcesServiceParams {
 	 * consortia and working groups that own a resource.
 	 */
 	orgUnits: OrgUnitResourceLookups;
-	/**
-	 * DARIAH-Campus has no server-side filter for this, so it is applied client-side after `listAll`
-	 * fetches every page (see `ListAllDariahCampusResourcesParams`). Unset ingests campus resources
-	 * from every national consortium, matching every other source in this service.
-	 */
-	campusNationalConsortiumCode?: string;
 }
 
 export interface FetchSearchResourcesParams {
@@ -82,17 +76,12 @@ function getOrFetch<T, FetchError, CacheError>(
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function createSearchResourcesService(params: CreateSearchResourcesServiceParams) {
-	const {
-		campus,
-		search,
-		searchService,
-		sshoc,
-		sshocMarketplaceBaseUrl,
-		zenodo,
-		orgUnits,
-		campusNationalConsortiumCode,
-	} = params;
+	const { campus, search, searchService, sshoc, sshocMarketplaceBaseUrl, zenodo, orgUnits } =
+		params;
 
+	// DARIAH-Campus has no server-side consortium filter. Its client applies this code to the
+	// `dariah-national-consortia` field after fetching all resource and curriculum pages.
+	const campusNationalConsortiumCode = "at";
 	const externalSourcesFilter = `source:[${resourceSources.join(",")}]`;
 
 	async function fetchSearchIndexResourceSourceData(

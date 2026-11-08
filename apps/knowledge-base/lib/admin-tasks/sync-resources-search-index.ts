@@ -72,10 +72,6 @@ export async function syncResourcesSearchIndex(): Promise<SyncResourcesSearchInd
 		sshocMarketplaceBaseUrl,
 		zenodo,
 		orgUnits,
-		// This instance is Austria-only for now — scope DARIAH-Campus resources to its national
-		// consortium so search doesn't surface training material from other countries. Revisit if this
-		// deployment ever grows to cover more than one consortium.
-		campusNationalConsortiumCode: "at",
 	});
 
 	return searchResources.syncSearchResources();
