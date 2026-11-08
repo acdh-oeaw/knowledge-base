@@ -79,8 +79,7 @@ export function createSearchResourcesService(params: CreateSearchResourcesServic
 	const { campus, search, searchService, sshoc, sshocMarketplaceBaseUrl, zenodo, orgUnits } =
 		params;
 
-	// DARIAH-Campus has no server-side consortium filter. Its client applies this code to the
-	// `dariah-national-consortia` field after fetching all resource and curriculum pages.
+	// Filter both DARIAH-Campus endpoints by the Austrian national consortium.
 	const campusNationalConsortiumCode = "at";
 	const externalSourcesFilter = `source:[${resourceSources.join(",")}]`;
 
