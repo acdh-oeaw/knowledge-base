@@ -72,3 +72,16 @@ export async function resolveLocaleContext(
 	const defaultLocaleId = await getDefaultLocaleId(db);
 	return { localeId: requestedLocaleId ?? defaultLocaleId, defaultLocaleId };
 }
+
+/**
+ * BCP 47-style locale code (e.g. "de" or "de-AT"), matching the `?locale=` query param this api
+ * accepts elsewhere and the locale segment the frontend prefixes every route with.
+ */
+export function formatLocaleCode(locale: {
+	languageCode: string;
+	regionCode: string | null;
+}): string {
+	return locale.regionCode != null
+		? `${locale.languageCode}-${locale.regionCode}`
+		: locale.languageCode;
+}

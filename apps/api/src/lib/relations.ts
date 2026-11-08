@@ -1,5 +1,6 @@
 import * as schema from "@dariah-eric/database/schema";
 
+import { formatLocaleCode, getDefaultLocaleId } from "@/lib/locales";
 import type { EntityRef, PublicRelatedEntityType } from "@/lib/schemas";
 import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -21,9 +22,30 @@ export async function resolveDocumentId(db: Database | Transaction, id: string):
 	return entityVersion?.entityId ?? id;
 }
 
+/** The locale of an entity version, `undefined` when `id` is not a version id. */
+export async function getEntityVersionLocaleId(
+	db: Database | Transaction,
+	id: string,
+): Promise<string | undefined> {
+	const entityVersion = await db.query.entityVersions.findFirst({
+		where: { id },
+		columns: { localeId: true },
+	});
+
+	return entityVersion?.localeId;
+}
+
+export interface LocalizedEntityRef extends EntityRef {
+	/** The locale of the version `slug` and `href` were taken from, see {@link formatLocaleCode}. */
+	locale: string;
+}
+
 /**
  * The public entities with the given document ids, keyed by document id, each with the website href
  * it is reachable at (null when its type has no page of its own).
+ *
+ * Each entity is resolved from its published version in `localeId`, falling back to the default
+ * locale when it has none, since slugs differ per locale.
  *
  * Shared by relation lists and by rich-text entity links, so both agree on which entities are
  * linkable and where they live. Only published entities are returned; documentation and internal
@@ -33,10 +55,14 @@ export async function resolveDocumentId(db: Database | Transaction, id: string):
 export async function getEntityRefsByDocumentId(
 	db: Database | Transaction,
 	documentIds: Array<string>,
-): Promise<Map<string, EntityRef>> {
+	localeId?: string,
+): Promise<Map<string, LocalizedEntityRef>> {
 	if (documentIds.length === 0) {
 		return new Map();
 	}
+
+	const defaultLocaleId = await getDefaultLocaleId(db);
+	const preferredLocaleId = localeId ?? defaultLocaleId;
 
 	const publishedEntityVersions = alias(schema.entityVersions, "published_entity_versions");
 	const publishedEntityStatus = alias(schema.entityStatus, "published_entity_status");
@@ -45,6 +71,9 @@ export async function getEntityRefsByDocumentId(
 		.select({
 			id: schema.entities.id,
 			slug: schema.slugs.value,
+			localeId: publishedEntityVersions.localeId,
+			languageCode: schema.locales.languageCode,
+			regionCode: schema.locales.regionCode,
 			type: sql<PublicRelatedEntityType>`
 				CASE
 					WHEN ${schema.entityTypes.type} = 'organisational_units'
@@ -74,6 +103,7 @@ export async function getEntityRefsByDocumentId(
 		.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
 		.innerJoin(publishedEntityVersions, eq(schema.entities.id, publishedEntityVersions.entityId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, publishedEntityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, publishedEntityVersions.localeId))
 		.innerJoin(
 			publishedEntityStatus,
 			and(
@@ -102,20 +132,30 @@ export async function getEntityRefsByDocumentId(
 		.where(
 			and(
 				inArray(schema.entities.id, documentIds),
+				inArray(publishedEntityVersions.localeId, [preferredLocaleId, defaultLocaleId]),
 				notInArray(schema.entityTypes.type, ["documentation_pages", "internal_pages"]),
 			),
 		);
 
+	const rowsById = new Map<string, (typeof rows)[number]>();
+
+	for (const row of rows) {
+		if (!rowsById.has(row.id) || row.localeId === preferredLocaleId) {
+			rowsById.set(row.id, row);
+		}
+	}
+
 	const consortiumMemberIds = await getConsortiumMemberDocumentIds(
 		db,
-		rows.filter((row) => row.type === "institution").map((row) => row.id),
+		[...rowsById.values()].filter((row) => row.type === "institution").map((row) => row.id),
 	);
 
 	return new Map(
-		rows.map((row) => [
+		[...rowsById.values()].map(({ localeId: _localeId, languageCode, regionCode, ...row }) => [
 			row.id,
 			{
 				...row,
+				locale: formatLocaleCode({ languageCode, regionCode }),
 				href: getWebsiteHref(row.type, {
 					slug: row.slug,
 					isConsortiumMember: consortiumMemberIds.has(row.id),
@@ -144,6 +184,7 @@ export async function getRelatedEntities(
 	const refs = await getEntityRefsByDocumentId(
 		db,
 		related.map((row) => row.relatedEntityId),
+		await getEntityVersionLocaleId(db, entityId),
 	);
 
 	// A relation whose target is unpublished or non-public resolves to nothing and drops out, exactly
