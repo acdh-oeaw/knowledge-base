@@ -12,9 +12,10 @@ import {
 import { env } from "../config/env.config";
 
 /**
- * Finds legacy WordPress links in rich-text content and rewrites deterministic matches to canonical
- * website routes. Dry run by default; pass `--apply` to rewrite only findings marked `rewrite`.
- * Findings marked `review` are reported but never changed automatically.
+ * Finds links to the previous clariah.at website in rich-text content, and rewrites deterministic
+ * matches to entity links or locale-less routes of the current website. Dry run by default; pass
+ * `--apply` to rewrite only findings marked `rewrite`. Findings marked `review` are reported but
+ * never changed automatically. See `richtext-link-cleanup-service` for the rules.
  *
  * @example
  * 	pnpm run data:clean:richtext-links
@@ -62,6 +63,7 @@ async function writeReport(
 		"location",
 		"old_href",
 		"new_href",
+		"new_entity_id",
 	] as const;
 	const rows = findings.map((finding) =>
 		[
@@ -78,6 +80,7 @@ async function writeReport(
 			finding.location,
 			finding.originalHref,
 			finding.replacementHref,
+			finding.replacementEntityId,
 		]
 			.map((value) => toTsvCell(value))
 			.join("\t"),
@@ -96,8 +99,8 @@ async function main(): Promise<void> {
 
 	log.info(
 		apply
-			? "Rewriting deterministic legacy rich-text links..."
-			: "Finding legacy rich-text links (dry run)...",
+			? "Rewriting deterministic legacy clariah.at rich-text links..."
+			: "Finding legacy clariah.at rich-text links (dry run)...",
 	);
 
 	const result = await findRichTextLinksNeedingCleanup(db);

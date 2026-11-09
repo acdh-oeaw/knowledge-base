@@ -193,9 +193,13 @@ protected. Only the database is touched (needs the `DATABASE_*` env vars).
 
 ### `data:clean:richtext-links`
 
-Finds migrated WordPress links in `rich_text` blocks and accordion item rich text. Deterministic
-matches are rewritten to canonical website routes; unresolved internal links are reported for manual
-review and never changed automatically. Writes a combined TSV report to
+Finds links to the previous clariah.at website in `rich_text` blocks: absolute `clariah.at` and
+`www.clariah.at` urls, and root-relative paths which still carry the old `/en` or `/de` prefix.
+Links to an old news item, event, project, consortium member or page become entity links, so the api
+resolves them per locale and they survive slug renames; links to the home page, listings and imprint
+become locale-less paths. Old ids are mapped to entities via the slugs the import gave them
+(`packages/database/lib/legacy-clariah-at-paths.ts`). Unresolved links are reported
+for manual review and never changed automatically. Writes a combined TSV report to
 `.cache/richtext-link-cleanup.tsv` and split reports to `.cache/richtext-link-rewrites.tsv` and
 `.cache/richtext-link-review.tsv`.
 
