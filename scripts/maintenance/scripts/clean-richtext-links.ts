@@ -64,6 +64,7 @@ async function writeReport(
 		"old_href",
 		"new_href",
 		"new_entity_id",
+		"new_asset_key",
 	] as const;
 	const rows = findings.map((finding) =>
 		[
@@ -81,6 +82,7 @@ async function writeReport(
 			finding.originalHref,
 			finding.replacementHref,
 			finding.replacementEntityId,
+			finding.replacementAssetKey,
 		]
 			.map((value) => toTsvCell(value))
 			.join("\t"),
