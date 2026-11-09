@@ -67,9 +67,10 @@ export function AdminTaskCard(props: Readonly<AdminTaskCardProps>): ReactNode {
 									dateStyle: "short",
 									timeStyle: "short",
 								})}
+								{/* Scheduled runs have no triggering user. */}
 								{latestJob.triggeredByName != null
 									? ` ${t("by")} ${latestJob.triggeredByName}`
-									: null}
+									: ` (${t("scheduled")})`}
 							</dd>
 						</div>
 						{latestJob.finishedAt != null ? (

@@ -4,7 +4,6 @@ import {
 	type SyncWebsiteDocumentResult,
 	type WebsiteDocumentDescriptor,
 	createWebsiteSearchIndexService,
-	supportedWebsiteEntityTypes,
 } from "@dariah-eric/search-website";
 
 import { env } from "@/config/env.config";
@@ -28,7 +27,6 @@ const searchService = createSearchService({
 
 const websiteSearchIndex = createWebsiteSearchIndexService({ db, search, searchService });
 
-export { supportedWebsiteEntityTypes };
 export type {
 	SupportedWebsiteEntityType as SupportedEntityType,
 	SyncWebsiteDocumentResult,
@@ -38,12 +36,8 @@ export type {
 export const deleteWebsiteDocument = websiteSearchIndex.deleteWebsiteDocument;
 export const createWebsiteEntityDocuments = websiteSearchIndex.createWebsiteEntityDocuments;
 export const getSyncableWebsiteEntityIds = websiteSearchIndex.getSyncableWebsiteEntityIds;
-export const getSyncableWebsiteEntityIdsByType =
-	websiteSearchIndex.getSyncableWebsiteEntityIdsByType;
 export const getWebsiteDocumentDescriptorByEntityId =
 	websiteSearchIndex.getWebsiteDocumentDescriptorByEntityId;
 export const getWebsiteDocumentsForEntity = websiteSearchIndex.getWebsiteDocumentsForEntity;
 export const syncWebsiteDocumentForEntity = websiteSearchIndex.syncWebsiteDocumentForEntity;
-export const syncWebsiteDocumentForEntityWithResult =
-	websiteSearchIndex.syncWebsiteDocumentForEntityWithResult;
 export const syncWebsiteSearchIndex = websiteSearchIndex.syncWebsiteSearchIndex;
