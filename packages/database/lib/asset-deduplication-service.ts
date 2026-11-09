@@ -40,6 +40,10 @@ interface JsonColumn extends CatalogColumn {
 	dataType: string;
 }
 
+/**
+ * Ordinary tables only. Views (`members_and_partners`, …) have no `ctid` to rewrite by, and they
+ * re-expose a table's `metadata`, so counting them would report the same reference twice.
+ */
 async function getJsonColumns(db: Database | Transaction): Promise<Array<JsonColumn>> {
 	const result = await db.execute<{
 		table_schema: string;
@@ -47,10 +51,18 @@ async function getJsonColumns(db: Database | Transaction): Promise<Array<JsonCol
 		column_name: string;
 		data_type: string;
 	}>(sql`
-		select table_schema, table_name, column_name, data_type
-		from information_schema.columns
-		where table_schema not in ('pg_catalog', 'information_schema')
-			and data_type in ('jsonb', 'json')
+		select
+			columns.table_schema,
+			columns.table_name,
+			columns.column_name,
+			columns.data_type
+		from information_schema.columns as columns
+		join pg_namespace as namespace on namespace.nspname = columns.table_schema
+		join pg_class as relation on relation.relnamespace = namespace.oid
+			and relation.relname = columns.table_name
+		where columns.table_schema not in ('pg_catalog', 'information_schema')
+			and columns.data_type in ('jsonb', 'json')
+			and relation.relkind = 'r'
 	`);
 
 	return result.rows.map((row) => {
