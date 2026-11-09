@@ -1,7 +1,6 @@
-import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
-import { resolveLocaleContext } from "@/lib/locales";
+import { formatLocaleCode, getDefaultLocaleId } from "@/lib/locales";
 import type { EntityRef, PublicRelatedEntityType } from "@/lib/schemas";
 import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -23,67 +22,58 @@ export async function resolveDocumentId(db: Database | Transaction, id: string):
 	return entityVersion?.entityId ?? id;
 }
 
-/**
- * As {@link resolveDocumentId}, plus the locale of the version, which is the locale a reader of that
- * version reads in. `localeId` is undefined when `id` is already a document id.
- */
-export async function resolveDocumentLocale(
+/** The locale of an entity version, `undefined` when `id` is not a version id. */
+export async function getEntityVersionLocaleId(
 	db: Database | Transaction,
 	id: string,
-): Promise<{ documentId: string; localeId: string | undefined }> {
+): Promise<string | undefined> {
 	const entityVersion = await db.query.entityVersions.findFirst({
 		where: { id },
-		columns: { entityId: true, localeId: true },
+		columns: { localeId: true },
 	});
-	return { documentId: entityVersion?.entityId ?? id, localeId: entityVersion?.localeId };
+
+	return entityVersion?.localeId;
 }
 
-interface GetEntityRefsOptions {
-	/**
-	 * The locale to resolve each entity in, usually the locale of the version linking to it. An
-	 * entity with no published version in it falls back to the default locale. Without it, the
-	 * default.
-	 */
-	localeId?: string;
+export interface LocalizedEntityRef extends EntityRef {
+	/** The locale of the version `slug` and `href` were taken from, see {@link formatLocaleCode}. */
+	locale: string;
 }
 
 /**
  * The public entities with the given document ids, keyed by document id, each with the website href
  * it is reachable at (null when its type has no page of its own).
  *
+ * Each entity is resolved from its published version in `localeId`, falling back to the default
+ * locale when it has none, since slugs differ per locale.
+ *
  * Shared by relation lists and by rich-text entity links, so both agree on which entities are
  * linkable and where they live. Only published entities are returned; documentation and internal
  * pages are never public. An id with no row simply has no entry — callers decide what to do with a
  * reference that no longer resolves.
- *
- * Each entity is resolved in one locale (see {@link GetEntityRefsOptions}), which the slug, label
- * and href all come from, and which is returned as `locale`: the slug differs per locale, so a href
- * without the locale it belongs to can only be prefixed with the wrong one.
  */
 export async function getEntityRefsByDocumentId(
 	db: Database | Transaction,
 	documentIds: Array<string>,
-	options: GetEntityRefsOptions = {},
-): Promise<Map<string, EntityRef>> {
+	localeId?: string,
+): Promise<Map<string, LocalizedEntityRef>> {
 	if (documentIds.length === 0) {
 		return new Map();
 	}
 
-	const [{ localeId, defaultLocaleId }, publishedStatus] = await Promise.all([
-		resolveLocaleContext(db, options.localeId),
-		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
-	]);
+	const defaultLocaleId = await getDefaultLocaleId(db);
+	const preferredLocaleId = localeId ?? defaultLocaleId;
 
-	assert(publishedStatus, "No published entity status in database.");
-
-	const preferredVersions = alias(schema.entityVersions, "preferred_entity_versions");
-	const defaultVersions = alias(schema.entityVersions, "default_entity_versions");
 	const publishedEntityVersions = alias(schema.entityVersions, "published_entity_versions");
+	const publishedEntityStatus = alias(schema.entityStatus, "published_entity_status");
 
 	const rows = await db
 		.select({
 			id: schema.entities.id,
 			slug: schema.slugs.value,
+			localeId: publishedEntityVersions.localeId,
+			languageCode: schema.locales.languageCode,
+			regionCode: schema.locales.regionCode,
 			type: sql<PublicRelatedEntityType>`
 				CASE
 					WHEN ${schema.entityTypes.type} = 'organisational_units'
@@ -91,12 +81,6 @@ export async function getEntityRefsByDocumentId(
 					ELSE ${schema.entityTypes.type}
 				END
 			`.as("entity_type"),
-			locale: sql<string>`
-				CASE
-					WHEN ${schema.locales.regionCode} IS NULL THEN ${schema.locales.languageCode}
-					ELSE ${schema.locales.languageCode} || '-' || ${schema.locales.regionCode}
-				END
-			`.as("locale"),
 			label: sql<string>`
 				COALESCE(
 					${schema.news.title},
@@ -117,29 +101,16 @@ export async function getEntityRefsByDocumentId(
 		})
 		.from(schema.entities)
 		.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
-		// The published version in the preferred locale, else the default locale's: one per entity.
-		.leftJoin(
-			preferredVersions,
-			and(
-				eq(preferredVersions.entityId, schema.entities.id),
-				eq(preferredVersions.localeId, localeId),
-				eq(preferredVersions.statusId, publishedStatus.id),
-			),
-		)
-		.leftJoin(
-			defaultVersions,
-			and(
-				eq(defaultVersions.entityId, schema.entities.id),
-				eq(defaultVersions.localeId, defaultLocaleId),
-				eq(defaultVersions.statusId, publishedStatus.id),
-			),
-		)
-		.innerJoin(
-			publishedEntityVersions,
-			sql`${publishedEntityVersions.id} = COALESCE(${preferredVersions.id}, ${defaultVersions.id})`,
-		)
-		.innerJoin(schema.locales, eq(schema.locales.id, publishedEntityVersions.localeId))
+		.innerJoin(publishedEntityVersions, eq(schema.entities.id, publishedEntityVersions.entityId))
 		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, publishedEntityVersions.id))
+		.innerJoin(schema.locales, eq(schema.locales.id, publishedEntityVersions.localeId))
+		.innerJoin(
+			publishedEntityStatus,
+			and(
+				eq(publishedEntityVersions.statusId, publishedEntityStatus.id),
+				eq(publishedEntityStatus.type, "published"),
+			),
+		)
 		.leftJoin(schema.news, eq(publishedEntityVersions.id, schema.news.id))
 		.leftJoin(schema.events, eq(publishedEntityVersions.id, schema.events.id))
 		.leftJoin(schema.pages, eq(publishedEntityVersions.id, schema.pages.id))
@@ -161,20 +132,30 @@ export async function getEntityRefsByDocumentId(
 		.where(
 			and(
 				inArray(schema.entities.id, documentIds),
+				inArray(publishedEntityVersions.localeId, [preferredLocaleId, defaultLocaleId]),
 				notInArray(schema.entityTypes.type, ["documentation_pages", "internal_pages"]),
 			),
 		);
 
+	const rowsById = new Map<string, (typeof rows)[number]>();
+
+	for (const row of rows) {
+		if (!rowsById.has(row.id) || row.localeId === preferredLocaleId) {
+			rowsById.set(row.id, row);
+		}
+	}
+
 	const consortiumMemberIds = await getConsortiumMemberDocumentIds(
 		db,
-		rows.filter((row) => row.type === "institution").map((row) => row.id),
+		[...rowsById.values()].filter((row) => row.type === "institution").map((row) => row.id),
 	);
 
 	return new Map(
-		rows.map((row) => [
+		[...rowsById.values()].map(({ localeId: _localeId, languageCode, regionCode, ...row }) => [
 			row.id,
 			{
 				...row,
+				locale: formatLocaleCode({ languageCode, regionCode }),
 				href: getWebsiteHref(row.type, {
 					slug: row.slug,
 					isConsortiumMember: consortiumMemberIds.has(row.id),
@@ -189,7 +170,7 @@ export async function getRelatedEntities(
 	db: Database | Transaction,
 	entityId: string,
 ): Promise<Array<EntityRef>> {
-	const { documentId, localeId } = await resolveDocumentLocale(db, entityId);
+	const documentId = await resolveDocumentId(db, entityId);
 
 	const related = await db
 		.select({ relatedEntityId: schema.entitiesToEntities.relatedEntityId })
@@ -203,7 +184,7 @@ export async function getRelatedEntities(
 	const refs = await getEntityRefsByDocumentId(
 		db,
 		related.map((row) => row.relatedEntityId),
-		{ localeId },
+		await getEntityVersionLocaleId(db, entityId),
 	);
 
 	// A relation whose target is unpublished or non-public resolves to nothing and drops out, exactly

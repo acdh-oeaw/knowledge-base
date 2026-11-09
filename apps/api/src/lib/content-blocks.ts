@@ -18,7 +18,7 @@ import * as v from "valibot";
 import { getAssetDownloadUrl, getDownloadFilename } from "@/lib/asset-download";
 import { getEmbedUrl } from "@/lib/embed-url";
 import { generateImageUrl, toImageAsset } from "@/lib/images";
-import { getEntityRefsByDocumentId, resolveDocumentLocale } from "@/lib/relations";
+import { getEntityRefsByDocumentId, getEntityVersionLocaleId } from "@/lib/relations";
 import { ImageObjectSchema } from "@/lib/schemas";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, eq, inArray } from "@/services/db/sql";
@@ -481,12 +481,9 @@ async function getGalleryItems(
 }
 
 /**
- * Resolves `entity`-targeted link marks and button links. Unpublished, deleted and page-less
- * entities all resolve to nothing and stay unannotated, so a renderer sees one "no href" case
- * rather than three.
- *
- * Targets resolve in the locale of the version holding the content, `entityVersionId`, falling back
- * to the default locale for a target without a translation; `locale` says which one it got.
+ * Resolves `entity`-targeted link marks and button links, in the locale of the entity version they
+ * appear in. Unpublished, deleted and page-less entities all resolve to nothing and stay
+ * unannotated, so a renderer sees one "no href" case rather than three.
  */
 async function annotateEntityLinks<T>(
 	db: Database | Transaction,
@@ -498,8 +495,8 @@ async function annotateEntityLinks<T>(
 		return value;
 	}
 
-	const { localeId } = await resolveDocumentLocale(db, entityVersionId);
-	const refs = await getEntityRefsByDocumentId(db, [...ids], { localeId });
+	const localeId = await getEntityVersionLocaleId(db, entityVersionId);
+	const refs = await getEntityRefsByDocumentId(db, [...ids], localeId);
 
 	const resolved = new Map(
 		[...refs]

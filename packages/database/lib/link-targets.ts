@@ -239,9 +239,8 @@ export interface ResolvedEntityLinkTarget {
 	/** The public entity type, e.g. `news`, `country`, `working_group`. */
 	type: string;
 	/**
-	 * The locale `href` belongs to, for callers that resolve per locale: a target without a
-	 * translation in the reader's locale resolves in the default one, and its href only works with
-	 * that locale's prefix.
+	 * The locale `href` belongs to, e.g. `de-AT`. Usually the linking document's own, or the default
+	 * locale when the target has no version in it. `href` itself is locale-less.
 	 */
 	locale?: string;
 }

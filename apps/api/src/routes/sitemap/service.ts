@@ -3,6 +3,7 @@
 import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
+import { formatLocaleCode } from "@/lib/locales";
 import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
 import type { SitemapEntityType } from "@/routes/sitemap/schemas";
@@ -22,16 +23,6 @@ const documentEntityTypes = [
 
 function isDocumentEntityType(type: string): type is (typeof documentEntityTypes)[number] {
 	return (documentEntityTypes as ReadonlyArray<string>).includes(type);
-}
-
-/**
- * BCP 47-style locale code (e.g. "de" or "de-AT"), matching the `?locale=` query param this api
- * accepts elsewhere and the locale segment the frontend prefixes every route with.
- */
-function formatLocaleCode(locale: { languageCode: string; regionCode: string | null }): string {
-	return locale.regionCode != null
-		? `${locale.languageCode}-${locale.regionCode}`
-		: locale.languageCode;
 }
 
 interface SitemapSource {
