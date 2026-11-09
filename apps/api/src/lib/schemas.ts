@@ -137,6 +137,12 @@ export const EntityRefSchema = v.pipe(
 				"Root-relative, locale-less website href; null when the entity has no page. Prepend locale and origin.",
 			),
 		),
+		locale: v.pipe(
+			v.optional(v.string()),
+			v.description(
+				'The locale `slug` and `href` belong to (e.g. "de-AT"), so prepend this locale, not the requested one: an entity without a translation in the requested locale resolves in the default locale. Set on related entities and on rich-text entity links.',
+			),
+		),
 	}),
 	v.description("Reference to an entity, with its website href"),
 	v.metadata({ ref: "EntityRef" }),

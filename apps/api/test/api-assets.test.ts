@@ -57,8 +57,19 @@ async function seedAsset(
 	return { key, name };
 }
 
+interface SeedNewsItemOptions {
+	/** Adds a version to this existing document instead of creating a new one, i.e. a translation. */
+	entityId?: string;
+	/** The locale of the version; the default locale when omitted. */
+	localeId?: string;
+}
+
 /** A published news item whose `content` field holds the given rich-text document. */
-async function seedNewsItemWithContent(db: Database, content: JSONContent) {
+async function seedNewsItemWithContent(
+	db: Database,
+	content: JSONContent,
+	options: SeedNewsItemOptions = {},
+) {
 	const [status, type, image, defaultLocale] = await Promise.all([
 		db.query.entityStatus.findFirst({ columns: { id: true }, where: { type: "published" } }),
 		db.query.entityTypes.findFirst({ columns: { id: true }, where: { type: "news" } }),
@@ -71,24 +82,28 @@ async function seedNewsItemWithContent(db: Database, content: JSONContent) {
 	assert(image, "No assets in database.");
 	assert(defaultLocale, "No default locale in database.");
 
-	const entityId = uuidv7();
+	const entityId = options.entityId ?? uuidv7();
+	const localeId = options.localeId ?? defaultLocale.id;
 	const versionId = uuidv7();
 	const title = f.lorem.sentence();
+	const slug = `${slugify(title)}-${versionId}`;
 
-	await db.insert(schema.entities).values({ id: entityId, typeId: type.id });
+	if (options.entityId == null) {
+		await db.insert(schema.entities).values({ id: entityId, typeId: type.id });
+	}
 	await db.insert(schema.entityVersions).values({
 		id: versionId,
 		entityId,
 		statusId: status.id,
-		localeId: defaultLocale.id,
+		localeId,
 	});
 	await db.insert(schema.slugs).values({
 		entityVersionId: versionId,
 		entityId,
 		typeId: type.id,
-		localeId: defaultLocale.id,
+		localeId,
 		isPublished: true,
-		value: slugify(title),
+		value: slug,
 	});
 	await db.insert(schema.news).values({
 		id: versionId,
@@ -100,7 +115,32 @@ async function seedNewsItemWithContent(db: Database, content: JSONContent) {
 
 	await seedContentBlock(db, versionId, type.id, "content", content);
 
-	return { id: versionId };
+	return { id: versionId, entityId, slug };
+}
+
+/** A non-default locale, and the code the api reports for the default one. */
+async function seedTestLocale(db: Database) {
+	const [[testLocale], defaultLocale] = await Promise.all([
+		db
+			.insert(schema.locales)
+			.values({ languageCode: "zz", name: "Test locale", isDefault: false })
+			.returning({ id: schema.locales.id }),
+		db.query.locales.findFirst({
+			columns: { languageCode: true, regionCode: true },
+			where: { isDefault: true },
+		}),
+	]);
+
+	assert(testLocale, "Failed to insert test locale.");
+	assert(defaultLocale, "No default locale in database.");
+
+	return {
+		testLocaleId: testLocale.id,
+		defaultLocaleCode:
+			defaultLocale.regionCode != null
+				? `${defaultLocale.languageCode}-${defaultLocale.regionCode}`
+				: defaultLocale.languageCode,
+	};
 }
 
 /** The marks on the first inline node of the first `rich_text` block in an API response. */
@@ -562,6 +602,182 @@ describe("assets", () => {
 
 				expect(mark!.attrs!.href).toBeNull();
 				expect(mark!.attrs!.asset).toBeUndefined();
+			});
+		});
+	});
+
+	describe("entity references resolved per locale", () => {
+		const emptyDocument: JSONContent = { type: "doc", content: [] };
+
+		function documentWithEntityLink(entityId: string): JSONContent {
+			return {
+				type: "doc",
+				content: [
+					{
+						type: "paragraph",
+						content: [
+							{
+								type: "text",
+								text: "our news item",
+								marks: [{ type: "link", attrs: { href: null, targetKind: "entity", entityId } }],
+							},
+						],
+					},
+				],
+			};
+		}
+
+		/** A target news item published in the default locale and, with another slug, in the test one. */
+		async function seedTranslatedTarget(db: Database, testLocaleId: string) {
+			const original = await seedNewsItemWithContent(db, emptyDocument);
+			const translation = await seedNewsItemWithContent(db, emptyDocument, {
+				entityId: original.entityId,
+				localeId: testLocaleId,
+			});
+			return {
+				entityId: original.entityId,
+				defaultSlug: original.slug,
+				testSlug: translation.slug,
+			};
+		}
+
+		it("should resolve an entity link in the locale of the content holding it", async () => {
+			await withTransaction(async (db) => {
+				const { testLocaleId } = await seedTestLocale(db);
+				const target = await seedTranslatedTarget(db, testLocaleId);
+
+				const { id } = await seedNewsItemWithContent(db, documentWithEntityLink(target.entityId), {
+					localeId: testLocaleId,
+				});
+
+				const response = await createTestClient(db).news[":id"].$get({ param: { id } });
+				const data = await response.json();
+
+				assert("content" in data);
+				const [mark] = firstBlockMarks(data.content);
+
+				expect(mark!.attrs).toMatchObject({
+					href: `/news/${target.testSlug}`,
+					entity: { href: `/news/${target.testSlug}`, locale: "zz", type: "news" },
+				});
+			});
+		});
+
+		it("should resolve an entity link in the default locale for default-locale content", async () => {
+			await withTransaction(async (db) => {
+				const { testLocaleId, defaultLocaleCode } = await seedTestLocale(db);
+				const target = await seedTranslatedTarget(db, testLocaleId);
+
+				const { id } = await seedNewsItemWithContent(db, documentWithEntityLink(target.entityId));
+
+				const response = await createTestClient(db).news[":id"].$get({ param: { id } });
+				const data = await response.json();
+
+				assert("content" in data);
+				const [mark] = firstBlockMarks(data.content);
+
+				expect(mark!.attrs).toMatchObject({
+					href: `/news/${target.defaultSlug}`,
+					entity: { locale: defaultLocaleCode },
+				});
+			});
+		});
+
+		it("should fall back to the default locale for a target without a translation", async () => {
+			await withTransaction(async (db) => {
+				const { testLocaleId, defaultLocaleCode } = await seedTestLocale(db);
+				const target = await seedNewsItemWithContent(db, emptyDocument);
+
+				const { id } = await seedNewsItemWithContent(db, documentWithEntityLink(target.entityId), {
+					localeId: testLocaleId,
+				});
+
+				const response = await createTestClient(db).news[":id"].$get({ param: { id } });
+				const data = await response.json();
+
+				assert("content" in data);
+				const [mark] = firstBlockMarks(data.content);
+
+				// The href only works with the default locale's prefix, which `locale` says.
+				expect(mark!.attrs).toMatchObject({
+					href: `/news/${target.slug}`,
+					entity: { locale: defaultLocaleCode },
+				});
+			});
+		});
+
+		it("should resolve an entity target on a button link", async () => {
+			await withTransaction(async (db) => {
+				const { testLocaleId } = await seedTestLocale(db);
+				const target = await seedTranslatedTarget(db, testLocaleId);
+
+				const { id } = await seedNewsItemWithContent(
+					db,
+					{
+						type: "doc",
+						content: [
+							{
+								type: "paragraph",
+								content: [
+									{
+										type: "buttonLink",
+										attrs: {
+											href: null,
+											label: "Read more",
+											variant: "primary",
+											targetKind: "entity",
+											entityId: target.entityId,
+										},
+									},
+								],
+							},
+						],
+					},
+					{ localeId: testLocaleId },
+				);
+
+				const response = await createTestClient(db).news[":id"].$get({ param: { id } });
+				const data = await response.json();
+
+				assert("content" in data);
+				const [block] = data.content as Array<{ type: string; content?: JSONContent }>;
+				const button = block!.content!.content![0]!.content![0]!;
+
+				expect(button.attrs).toMatchObject({
+					href: `/news/${target.testSlug}`,
+					label: "Read more",
+					entity: { locale: "zz", type: "news" },
+				});
+			});
+		});
+
+		it("should resolve related entities in the locale of the version they are read for", async () => {
+			await withTransaction(async (db) => {
+				const { testLocaleId } = await seedTestLocale(db);
+				const target = await seedTranslatedTarget(db, testLocaleId);
+
+				const carrier = await seedNewsItemWithContent(db, emptyDocument, {
+					localeId: testLocaleId,
+				});
+				await db.insert(schema.entitiesToEntities).values({
+					entityId: carrier.entityId,
+					relatedEntityId: target.entityId,
+				});
+
+				const response = await createTestClient(db).news[":id"].$get({
+					param: { id: carrier.id },
+				});
+				const data = await response.json();
+
+				assert("relatedEntities" in data);
+				expect(data.relatedEntities).toEqual([
+					expect.objectContaining({
+						id: target.entityId,
+						slug: target.testSlug,
+						href: `/news/${target.testSlug}`,
+						locale: "zz",
+					}),
+				]);
 			});
 		});
 	});

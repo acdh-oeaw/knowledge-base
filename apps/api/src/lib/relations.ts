@@ -1,5 +1,7 @@
+import { assert } from "@acdh-oeaw/lib";
 import * as schema from "@dariah-eric/database/schema";
 
+import { resolveLocaleContext } from "@/lib/locales";
 import type { EntityRef, PublicRelatedEntityType } from "@/lib/schemas";
 import { getConsortiumMemberDocumentIds, getWebsiteHref } from "@/lib/website-routes";
 import type { Database, Transaction } from "@/middlewares/db";
@@ -22,6 +24,30 @@ export async function resolveDocumentId(db: Database | Transaction, id: string):
 }
 
 /**
+ * As {@link resolveDocumentId}, plus the locale of the version, which is the locale a reader of that
+ * version reads in. `localeId` is undefined when `id` is already a document id.
+ */
+export async function resolveDocumentLocale(
+	db: Database | Transaction,
+	id: string,
+): Promise<{ documentId: string; localeId: string | undefined }> {
+	const entityVersion = await db.query.entityVersions.findFirst({
+		where: { id },
+		columns: { entityId: true, localeId: true },
+	});
+	return { documentId: entityVersion?.entityId ?? id, localeId: entityVersion?.localeId };
+}
+
+interface GetEntityRefsOptions {
+	/**
+	 * The locale to resolve each entity in, usually the locale of the version linking to it. An
+	 * entity with no published version in it falls back to the default locale. Without it, the
+	 * default.
+	 */
+	localeId?: string;
+}
+
+/**
  * The public entities with the given document ids, keyed by document id, each with the website href
  * it is reachable at (null when its type has no page of its own).
  *
@@ -29,17 +55,30 @@ export async function resolveDocumentId(db: Database | Transaction, id: string):
  * linkable and where they live. Only published entities are returned; documentation and internal
  * pages are never public. An id with no row simply has no entry — callers decide what to do with a
  * reference that no longer resolves.
+ *
+ * Each entity is resolved in one locale (see {@link GetEntityRefsOptions}), which the slug, label
+ * and href all come from, and which is returned as `locale`: the slug differs per locale, so a href
+ * without the locale it belongs to can only be prefixed with the wrong one.
  */
 export async function getEntityRefsByDocumentId(
 	db: Database | Transaction,
 	documentIds: Array<string>,
+	options: GetEntityRefsOptions = {},
 ): Promise<Map<string, EntityRef>> {
 	if (documentIds.length === 0) {
 		return new Map();
 	}
 
+	const [{ localeId, defaultLocaleId }, publishedStatus] = await Promise.all([
+		resolveLocaleContext(db, options.localeId),
+		db.query.entityStatus.findFirst({ where: { type: "published" }, columns: { id: true } }),
+	]);
+
+	assert(publishedStatus, "No published entity status in database.");
+
+	const preferredVersions = alias(schema.entityVersions, "preferred_entity_versions");
+	const defaultVersions = alias(schema.entityVersions, "default_entity_versions");
 	const publishedEntityVersions = alias(schema.entityVersions, "published_entity_versions");
-	const publishedEntityStatus = alias(schema.entityStatus, "published_entity_status");
 
 	const rows = await db
 		.select({
@@ -52,6 +91,12 @@ export async function getEntityRefsByDocumentId(
 					ELSE ${schema.entityTypes.type}
 				END
 			`.as("entity_type"),
+			locale: sql<string>`
+				CASE
+					WHEN ${schema.locales.regionCode} IS NULL THEN ${schema.locales.languageCode}
+					ELSE ${schema.locales.languageCode} || '-' || ${schema.locales.regionCode}
+				END
+			`.as("locale"),
 			label: sql<string>`
 				COALESCE(
 					${schema.news.title},
@@ -72,15 +117,29 @@ export async function getEntityRefsByDocumentId(
 		})
 		.from(schema.entities)
 		.innerJoin(schema.entityTypes, eq(schema.entities.typeId, schema.entityTypes.id))
-		.innerJoin(publishedEntityVersions, eq(schema.entities.id, publishedEntityVersions.entityId))
-		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, publishedEntityVersions.id))
-		.innerJoin(
-			publishedEntityStatus,
+		// The published version in the preferred locale, else the default locale's: one per entity.
+		.leftJoin(
+			preferredVersions,
 			and(
-				eq(publishedEntityVersions.statusId, publishedEntityStatus.id),
-				eq(publishedEntityStatus.type, "published"),
+				eq(preferredVersions.entityId, schema.entities.id),
+				eq(preferredVersions.localeId, localeId),
+				eq(preferredVersions.statusId, publishedStatus.id),
 			),
 		)
+		.leftJoin(
+			defaultVersions,
+			and(
+				eq(defaultVersions.entityId, schema.entities.id),
+				eq(defaultVersions.localeId, defaultLocaleId),
+				eq(defaultVersions.statusId, publishedStatus.id),
+			),
+		)
+		.innerJoin(
+			publishedEntityVersions,
+			sql`${publishedEntityVersions.id} = COALESCE(${preferredVersions.id}, ${defaultVersions.id})`,
+		)
+		.innerJoin(schema.locales, eq(schema.locales.id, publishedEntityVersions.localeId))
+		.innerJoin(schema.slugs, eq(schema.slugs.entityVersionId, publishedEntityVersions.id))
 		.leftJoin(schema.news, eq(publishedEntityVersions.id, schema.news.id))
 		.leftJoin(schema.events, eq(publishedEntityVersions.id, schema.events.id))
 		.leftJoin(schema.pages, eq(publishedEntityVersions.id, schema.pages.id))
@@ -130,7 +189,7 @@ export async function getRelatedEntities(
 	db: Database | Transaction,
 	entityId: string,
 ): Promise<Array<EntityRef>> {
-	const documentId = await resolveDocumentId(db, entityId);
+	const { documentId, localeId } = await resolveDocumentLocale(db, entityId);
 
 	const related = await db
 		.select({ relatedEntityId: schema.entitiesToEntities.relatedEntityId })
@@ -144,6 +203,7 @@ export async function getRelatedEntities(
 	const refs = await getEntityRefsByDocumentId(
 		db,
 		related.map((row) => row.relatedEntityId),
+		{ localeId },
 	);
 
 	// A relation whose target is unpublished or non-public resolves to nothing and drops out, exactly

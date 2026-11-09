@@ -4368,6 +4368,10 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
           "label": {
             "type": "string",
           },
+          "locale": {
+            "description": "The locale \`slug\` and \`href\` belong to (e.g. "de-AT"), so prepend this locale, not the requested one: an entity without a translation in the requested locale resolves in the default locale. Set on related entities and on rich-text entity links.",
+            "type": "string",
+          },
           "slug": {
             "type": "string",
           },
