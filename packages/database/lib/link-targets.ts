@@ -228,6 +228,11 @@ export interface ResolvedEntityLinkTarget {
 	label: string;
 	/** The public entity type, e.g. `news`, `country`, `working_group`. */
 	type: string;
+	/**
+	 * The locale `href` belongs to, e.g. `de-AT`. Usually the linking document's own, or the default
+	 * locale when the target has no version in it. `href` itself is locale-less.
+	 */
+	locale?: string;
 }
 
 export type ResolvedEntityLinkTargets = ReadonlyMap<string, ResolvedEntityLinkTarget>;
