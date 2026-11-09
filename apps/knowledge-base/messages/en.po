@@ -304,11 +304,6 @@ msgstr "Button"
 
 #: ../../packages/ui/lib/rich-text-editor.tsx
 msgctxt "ui"
-msgid "hBrEtp"
-msgstr "Text style"
-
-#: ../../packages/ui/lib/rich-text-editor.tsx
-msgctxt "ui"
 msgid "ZgFjjD"
 msgstr "This link points to a document."
 
@@ -326,6 +321,26 @@ msgstr "Change document"
 msgctxt "ui"
 msgid "KDqj1t"
 msgstr "Change page"
+
+#: ../../packages/ui/lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "J3-5f7"
+msgstr "Use a URL instead"
+
+#: ../../packages/ui/lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "_GpEhj"
+msgstr "Link to page"
+
+#: ../../packages/ui/lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "nxS3sg"
+msgstr "Link to document"
+
+#: ../../packages/ui/lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "hBrEtp"
+msgstr "Text style"
 
 #: ../../packages/ui/lib/rich-text-editor.tsx
 msgctxt "ui"
@@ -371,16 +386,6 @@ msgstr "Delete table"
 msgctxt "ui"
 msgid "freMIM"
 msgstr "Insert"
-
-#: ../../packages/ui/lib/rich-text-editor.tsx
-msgctxt "ui"
-msgid "nxS3sg"
-msgstr "Link to document"
-
-#: ../../packages/ui/lib/rich-text-editor.tsx
-msgctxt "ui"
-msgid "_GpEhj"
-msgstr "Link to page"
 
 #: ../../packages/ui/lib/rich-text-editor.tsx
 msgctxt "ui"

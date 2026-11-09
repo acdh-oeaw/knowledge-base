@@ -1,106 +1,58 @@
 import type { JSONContent } from "@tiptap/core";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import type { Database, Transaction } from "./index";
-import { getEntityListHref, resolveInterimPagePath } from "./legacy-dariah-paths";
+import {
+	type LegacyClariahAtEntity,
+	type LegacyClariahAtEntityType,
+	getLegacyClariahAtEntity,
+	isLegacyClariahAtCollection,
+	legacyClariahAtListingPages,
+} from "./legacy-clariah-at-paths";
 import * as schema from "./schema";
 
-const legacyOrigin = "https://www.dariah.eu";
-const dariahHosts = new Set(["dariah.eu", "www.dariah.eu"]);
-const ignoredSchemes = /^(?:#|mailto:|tel:|urn:|doi:|javascript:)/iu;
-const exactLegacyPathMappings = new Map<string, string>([
-	[
-		"/2018/06/27/dariah-eu-workshop-at-the-gi_forum-2018",
-		"/news/dariah-eu-workshop-at-the-gi-forum-2018",
-	],
-	[
-		"/2020/12/10/dariah-themecall-2020-2021-meet-the-winning-projects",
-		"/news/dariah-theme-call-2020-2021-meet-the-winning-projects",
-	],
-	["/about/dariah-in-nutshell", "/about/dariah-in-a-nutshell"],
-	["/about/dariah-in-a-nutshell.html", "/about/dariah-in-a-nutshell"],
-	["/about/documents-list", getEntityListHref("document-or-policy")],
-	["/about/history-of-dariah", "/about/dariah-in-a-nutshell"],
-	["/about/join-dariah", "/get-involved/join-dariah"],
-	["/about/mission-vision", "/about/dariah-in-a-nutshell"],
-	["/about/organisation/board-of-directors.html", "/about/organisation-and-governance"],
-	["/about/organisation.html", "/about/organisation-and-governance"],
-	["/about/organization-and-governance", "/about/organisation-and-governance"],
-	["/activities/dariah-theme", "/get-involved/funding-calls"],
-	["/activities/open-science", "/about/strategy"],
-	["/activities/open-science/dariah-open", "/about/strategy"],
-	["/activities/open-science/data-re-use", "/about/strategy"],
-	["/activities/open-science/openmethods", "/about/strategy"],
-	["/activities/open-science/transformations", "/resources/transformations"],
-	["/activities/projects-list", getEntityListHref("project")],
-	["/activities/training-and-education", "/about/strategy"],
-	["/activities/working-groups-list", getEntityListHref("working-group")],
-	["/activities/working-groups.html", getEntityListHref("working-group")],
-	["/category/news", getEntityListHref("news-item")],
-	["/contact", "/contact"],
-	["/news-events/annual-events", "https://annualevent.dariah.eu/documents"],
-	["/news-events/dariah-newsletters", "/newsletters"],
-	["/members-and-partners", getEntityListHref("country")],
-	["/privacy-policy", "/privacy-policy"],
-	["/subscribe", "/newsletters"],
-	["/teach", "https://teach.dariah.eu/"],
-	["/terms-of-use", "/terms-of-use"],
-	[
-		"/tools-services/tools-and-services/tools/hypotheses-org-academic-blogs",
-		"https://hypotheses.org/",
-	],
-	["/tools-services/tools-and-services", "/resources/resource-catalogue"],
-]);
+/**
+ * Finds links to the previous clariah.at website in rich text, and rewrites them so they work on
+ * the current CLARIAH-AT website (github.com/acdh-oeaw/clariah-at-platform).
+ *
+ * - A link to an item the old website had a page for (a news item, event, project, consortium member
+ *   or page) becomes an `entity` link to the entity the item was imported as. The old id is not the
+ *   entity's slug, and the slug differs per locale and can be renamed, which an entity link
+ *   survives. The api resolves it to the url of the entity in the locale being read.
+ * - A link to the home page, a listing or the imprint becomes a root-relative, locale-less path. The
+ *   website prefixes those with the locale being read.
+ *
+ * The old website prefixed every path with a locale (`/en/…`, `/de/…`), which the rewrite drops: a
+ * German entry linking to the English page of an item now links to the German one. Root-relative
+ * links which carry such a prefix are cleaned up as well: current website paths are stored without
+ * one, so they are either old website paths, or current ones pinned to a locale
+ * (`/de/pages/{slug}`), which also become entity links.
+ *
+ * Anything which cannot be rewritten deterministically is reported for review, and never changed.
+ */
 
-const legacyDariahThemeSlugMappings = new Map<string, string>([
-	["dariah-theme-2015", "dariah-theme-2015-open-humanities"],
-	["dariah-theme-2016", "dariah-theme-2016-public-humanities"],
-	["dariah-theme-2017", "dariah-theme-2017-cultural-heritage-and-humanities-research"],
-	["dariah-theme-2018", "dariah-theme-2018-sustainability"],
-	["dariah-theme-2020", "dariah-theme-2020-arts-exchanges-and-arts-humanities-and-covid-19"],
-	["dariah-theme-2022", "dariah-theme-2022-workflows"],
-	["dariah-theme-2024", "dariah-theme-2024-mistakes"],
+const clariahAtOrigin = "https://clariah.at";
+const clariahAtHosts = new Set(["clariah.at", "www.clariah.at"]);
+const legacyLocales = new Set(["de", "en"]);
+/** Query parameters which only tracked where a visitor came from, and can be dropped. */
+const trackingSearchParams = new Set(["ref"]);
+const legacyPathMappings = new Map<string, string>([
+	["/", "/"],
+	["/events", "/events"],
+	["/imprint", "/imprint"],
+	["/news", "/news"],
+	["/projects", "/projects"],
+	["/resources", "/resources"],
+	["/search", "/search"],
 ]);
-
-const prefixLegacyPathMappings = new Map<string, string>([
-	["/activities/impact-case-studies", getEntityListHref("impact-case-study")],
-	["/activities/projects", getEntityListHref("project")],
-	["/activities/projects-and-affiliations", getEntityListHref("project")],
-	["/activities/spotlight", getEntityListHref("spotlight-article")],
-	["/activities/working-groups", getEntityListHref("working-group")],
-	["/about/partners-countries", getEntityListHref("country")],
-	["/event", getEntityListHref("event")],
-	["/network/partners-countries", getEntityListHref("country")],
+/** The current website's detail routes, see `@dariah-eric/website-routes`, by path segment. */
+const currentEntityRoutes = new Map<string, LegacyClariahAtEntityType>([
+	["consortium", "organisational_units"],
+	["events", "events"],
+	["news", "news"],
+	["pages", "pages"],
+	["projects", "projects"],
 ]);
-
-const canonicalPathPrefixes = [
-	"/about/dariah-in-a-nutshell",
-	"/about/documents",
-	"/about/impact-case-studies",
-	"/about/organisation-and-governance",
-	"/about/strategy",
-	"/contact",
-	"/events",
-	"/get-involved/funding-calls",
-	"/get-involved/join-dariah",
-	"/get-involved/opportunities",
-	"/network/members-and-partners",
-	"/network/regional-hubs",
-	"/network/working-groups",
-	"/news",
-	"/newsletters",
-	"/persons",
-	"/privacy-policy",
-	"/privacy-and-legal/accessibility-declaration",
-	"/privacy-and-legal/legal-notice",
-	"/projects",
-	"/resources/dariah-campus",
-	"/resources/resource-catalogue",
-	"/resources/ssh-open-marketplace",
-	"/resources/transformations",
-	"/spotlight",
-	"/terms-of-use",
-];
 
 type LinkCleanupAction = "review" | "rewrite";
 
@@ -116,7 +68,10 @@ export interface RichTextLinkCleanupFinding {
 	position: number;
 	location: string;
 	originalHref: string;
+	/** The new href, for a link rewritten to a path. */
 	replacementHref: string | null;
+	/** The document id the link now targets, for a link rewritten to an entity link. */
+	replacementEntityId: string | null;
 	action: LinkCleanupAction;
 	reason: string;
 }
@@ -128,10 +83,12 @@ export interface RichTextLinkCleanupResult {
 	reviewTotal: number;
 }
 
+type LinkReplacement = { kind: "entity"; entityId: string } | { kind: "href"; href: string };
+
 interface LinkRewrite {
 	location: string;
 	originalHref: string;
-	replacementHref: string;
+	replacement: LinkReplacement;
 	reason: string;
 }
 
@@ -148,16 +105,17 @@ interface LinkCleanupDocument {
 }
 
 export interface RichTextLinkCleanupContext {
-	eventSlugs?: ReadonlySet<string>;
-	fundingCallSlugs?: ReadonlySet<string>;
-	newsSlugs?: ReadonlySet<string>;
-	projectSlugs?: ReadonlySet<string>;
+	/**
+	 * Document ids by `{type}::{slug}`, for every slug an entity has or had (see `slug_redirects`),
+	 * in any locale. Without it, no link is rewritten to an entity link.
+	 */
+	entityIdsBySlug?: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 interface BlockCleanup {
 	block: Omit<
 		RichTextLinkCleanupFinding,
-		"action" | "location" | "originalHref" | "reason" | "replacementHref"
+		"action" | "location" | "originalHref" | "reason" | "replacementEntityId" | "replacementHref"
 	>;
 	rewrites: Array<LinkRewrite>;
 	reviews: Array<LinkReview>;
@@ -165,239 +123,211 @@ interface BlockCleanup {
 	richText?: JSONContent;
 }
 
+export function getEntitySlugKey(type: LegacyClariahAtEntityType, slug: string): string {
+	return `${type}::${slug}`;
+}
+
 function normalizePathname(pathname: string): string {
 	const normalized = pathname.replaceAll(/\/{2,}/gu, "/").replace(/\/+$/u, "");
 	return normalized.length > 0 ? normalized : "/";
 }
 
-function startsWithPathPrefix(pathname: string, prefix: string): boolean {
-	return pathname === prefix || pathname.startsWith(`${prefix}/`);
-}
-
-function replacePathPrefix(pathname: string, from: string, to: string): string {
-	if (pathname === from) {
-		return to;
+/**
+ * Strips the locale prefix, and reports whether there was one. Strips it repeatedly, since some
+ * links have it twice (`/en/en/…`).
+ */
+function stripLegacyLocalePrefix(pathname: string): { pathname: string; hasLocale: boolean } {
+	let segments = pathname.split("/").slice(1);
+	let hasLocale = false;
+	while (segments[0] != null && legacyLocales.has(segments[0])) {
+		segments = segments.slice(1);
+		hasLocale = true;
 	}
-	return `${to}${pathname.slice(from.length)}`;
+	return { pathname: `/${segments.join("/")}`, hasLocale };
 }
 
-function stripLocalePrefix(pathname: string): string {
-	for (const locale of ["en", "en-GB"]) {
-		const prefix = `/${locale}`;
-		if (pathname === prefix) {
-			return "/";
-		}
-		if (pathname.startsWith(`${prefix}/`)) {
-			return pathname.slice(prefix.length);
-		}
+interface ParsedHref {
+	url: URL;
+	isAbsolute: boolean;
+}
+
+/** The url of a link to the old website, or null for any other link. */
+function parseLegacyHref(href: string): ParsedHref | null {
+	const trimmed = href.trim();
+
+	if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+		const url = new URL(trimmed, clariahAtOrigin);
+		// Current website paths are stored without a locale, see `@dariah-eric/website-routes`.
+		return stripLegacyLocalePrefix(url.pathname).hasLocale ? { url, isAbsolute: false } : null;
 	}
-	return pathname;
-}
 
-function isCanonicalPath(pathname: string): boolean {
-	return canonicalPathPrefixes.some((prefix) => startsWithPathPrefix(pathname, prefix));
-}
-
-function getSinglePathSegmentAfter(pathname: string, prefix: string): string | null {
-	if (!pathname.startsWith(`${prefix}/`)) {
+	try {
+		const url = new URL(trimmed);
+		if (!["http:", "https:"].includes(url.protocol)) {
+			return null;
+		}
+		return clariahAtHosts.has(url.hostname.toLowerCase()) ? { url, isAbsolute: true } : null;
+	} catch {
 		return null;
 	}
-
-	const suffix = pathname.slice(prefix.length + 1);
-	return suffix.length > 0 && !suffix.includes("/") ? suffix : null;
 }
 
-function mapLegacyPathname(
-	pathname: string,
-	context: RichTextLinkCleanupContext = {},
-): string | null {
-	const normalized = normalizePathname(stripLocalePrefix(pathname));
+type LegacyTarget =
+	| { kind: "asset" }
+	| { kind: "entity"; legacyEntity: LegacyClariahAtEntity }
+	| { kind: "path"; pathname: string };
 
-	if (normalized === "/") {
-		return "/";
-	}
-
-	if (normalized.startsWith("/wp-content/uploads/")) {
-		return null;
-	}
-
-	const exactMatch = exactLegacyPathMappings.get(normalized);
-	if (exactMatch != null) {
-		return exactMatch;
-	}
-
-	for (const [from, to] of prefixLegacyPathMappings) {
-		if (startsWithPathPrefix(normalized, from)) {
-			return replacePathPrefix(normalized, from, to);
-		}
-	}
-
-	const datedNewsMatch = /^\/\d{4}\/\d{2}\/\d{2}\/([^/]+)$/u.exec(normalized);
-	if (datedNewsMatch != null) {
-		const slug = datedNewsMatch[1]!;
-		if (context.newsSlugs?.has(slug) === true) {
-			return `/news/${slug}`;
-		}
-	}
-
-	const eventSlug = getSinglePathSegmentAfter(normalized, "/event");
-	if (eventSlug != null && context.eventSlugs?.has(eventSlug) === true) {
-		return `/events/${eventSlug}`;
-	}
-
-	const dariahThemeSlug = getSinglePathSegmentAfter(normalized, "/activities/dariah-theme");
-	if (dariahThemeSlug != null) {
-		const mappedSlug = legacyDariahThemeSlugMappings.get(dariahThemeSlug) ?? dariahThemeSlug;
-		if (context.fundingCallSlugs == null || context.fundingCallSlugs.has(mappedSlug)) {
-			return `/get-involved/funding-calls/${mappedSlug}`;
-		}
-	}
-
-	const projectSlug = getSinglePathSegmentAfter(
-		normalized,
-		"/activities/projects-and-affiliations",
+function mapLegacyPathname(pathname: string): LegacyTarget | null {
+	const normalized = normalizePathname(
+		stripLegacyLocalePrefix(normalizePathname(pathname)).pathname,
 	);
-	if (projectSlug != null && context.projectSlugs?.has(projectSlug) === true) {
-		return `/projects/${projectSlug}`;
+
+	const mapped = legacyPathMappings.get(normalized);
+	if (mapped != null) {
+		return { kind: "path", pathname: mapped };
 	}
 
-	const slug = normalized.split("/").findLast((part) => part.length > 0);
-	if (slug != null) {
-		const pagePath = resolveInterimPagePath(slug);
-		if (pagePath != null) {
-			return pagePath;
+	if (normalized.startsWith("/assets/")) {
+		return { kind: "asset" };
+	}
+
+	const segments = normalized.split("/").slice(1);
+
+	if (segments.length === 2) {
+		const [collection, id] = segments as [string, string];
+		const legacyEntity = isLegacyClariahAtCollection(collection)
+			? getLegacyClariahAtEntity(collection, id)
+			: null;
+		if (legacyEntity != null) {
+			return { kind: "entity", legacyEntity };
 		}
+		// A current website path with a locale prefix, which pins the link to that locale.
+		const type = currentEntityRoutes.get(collection);
+		return type != null ? { kind: "entity", legacyEntity: { type, slugs: [id] } } : null;
 	}
 
-	if (isCanonicalPath(normalized)) {
-		return normalized;
+	if (segments.length === 1) {
+		const id = segments[0]!;
+		const listing = legacyClariahAtListingPages[id];
+		if (listing != null) {
+			return { kind: "path", pathname: listing };
+		}
+		const legacyEntity = getLegacyClariahAtEntity("pages", id);
+		return legacyEntity != null ? { kind: "entity", legacyEntity } : null;
 	}
 
 	return null;
 }
 
-interface ParsedHref {
-	url: URL;
-	isInternal: boolean;
-	isDariahAbsolute: boolean;
-}
-
-function parseHref(href: string): ParsedHref | null {
-	const trimmed = href.trim();
-
-	if (trimmed.length === 0 || ignoredSchemes.test(trimmed) || trimmed.startsWith("//")) {
-		return null;
+function resolveLegacyEntityId(
+	legacyEntity: LegacyClariahAtEntity,
+	context: RichTextLinkCleanupContext,
+): { entityId: string } | { reason: string } {
+	if (context.entityIdsBySlug == null) {
+		return { reason: "legacy_clariah_at_entity_unresolved" };
 	}
 
-	try {
-		const url = new URL(trimmed);
-		const isDariahAbsolute = dariahHosts.has(url.hostname.toLowerCase());
-		return {
-			url,
-			isInternal: isDariahAbsolute,
-			isDariahAbsolute,
-		};
-	} catch {
-		// Continue below: no scheme means a WordPress relative/root-relative link candidate.
+	const ids = new Set<string>();
+	for (const slug of legacyEntity.slugs) {
+		for (const id of context.entityIdsBySlug.get(getEntitySlugKey(legacyEntity.type, slug)) ?? []) {
+			ids.add(id);
+		}
 	}
 
-	try {
-		const url = new URL(trimmed, legacyOrigin);
-		return {
-			url,
-			isInternal: true,
-			isDariahAbsolute: false,
-		};
-	} catch {
-		return null;
+	if (ids.size === 0) {
+		return { reason: "legacy_clariah_at_entity_not_found" };
 	}
+	if (ids.size > 1) {
+		return { reason: "legacy_clariah_at_entity_ambiguous" };
+	}
+	return { entityId: [...ids][0]! };
 }
 
 type ResolveHrefResult =
 	| { action: "ignore" }
 	| { action: "review"; reason: string }
-	| { action: "rewrite"; href: string; reason: string };
+	| { action: "rewrite"; replacement: LinkReplacement; reason: string };
 
-export function resolveLegacyDariahHref(href: string): ResolveHrefResult {
-	return resolveLegacyDariahHrefWithContext(href);
-}
-
-function resolveLegacyDariahHrefWithContext(
+export function resolveLegacyClariahAtHref(
 	href: string,
 	context: RichTextLinkCleanupContext = {},
 ): ResolveHrefResult {
-	const parsed = parseHref(href);
+	const parsed = parseLegacyHref(href);
 
-	if (parsed == null || !parsed.isInternal) {
+	if (parsed == null) {
 		return { action: "ignore" };
 	}
 
-	const normalizedPathname = normalizePathname(stripLocalePrefix(parsed.url.pathname));
-	if (normalizedPathname === "/" && parsed.url.search !== "") {
-		if (parsed.url.searchParams.get("s")?.toLowerCase() === "training") {
-			return {
-				action: "rewrite",
-				href: "/search?dariah-website[query]=trainingtuesday&dariah-website[menu][type]=news-item",
-				reason: parsed.isDariahAbsolute ? "legacy_dariah_search" : "legacy_relative_search",
-			};
-		}
+	const reason = parsed.isAbsolute ? "legacy_clariah_at_url" : "legacy_clariah_at_relative_url";
+	const target = mapLegacyPathname(parsed.url.pathname);
 
+	if (target?.kind === "asset") {
+		// A file of the old website has to be matched to an asset, or re-uploaded, by hand.
+		return { action: "review", reason: "legacy_clariah_at_asset" };
+	}
+
+	if (target == null) {
 		return {
 			action: "review",
-			reason: parsed.isDariahAbsolute
-				? "internal_dariah_search_unmapped"
-				: "relative_search_unmapped",
+			reason: parsed.isAbsolute
+				? "legacy_clariah_at_url_unmapped"
+				: "legacy_clariah_at_relative_url_unmapped",
 		};
 	}
 
-	const mappedPathname = mapLegacyPathname(parsed.url.pathname, context);
+	const searchParams = new URLSearchParams(parsed.url.searchParams);
+	for (const name of trackingSearchParams) {
+		searchParams.delete(name);
+	}
+	const search = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
 
-	if (mappedPathname == null) {
-		if (parsed.url.pathname.startsWith("/wp-content/uploads/")) {
-			return { action: "ignore" };
-		}
+	if (target.kind === "path") {
 		return {
-			action: "review",
-			reason: parsed.isDariahAbsolute ? "internal_dariah_url_unmapped" : "relative_url_unmapped",
+			action: "rewrite",
+			replacement: { kind: "href", href: `${target.pathname}${search}${parsed.url.hash}` },
+			reason,
 		};
 	}
 
-	const replacementHref = `${mappedPathname}${parsed.url.search}${parsed.url.hash}`;
-	if (replacementHref === href) {
-		return { action: "ignore" };
+	// An entity link has no room for a query or fragment, and dropping one may change the target.
+	if (search !== "" || parsed.url.hash !== "") {
+		return { action: "review", reason: "legacy_clariah_at_entity_with_query_or_hash" };
+	}
+
+	const resolved = resolveLegacyEntityId(target.legacyEntity, context);
+	if ("reason" in resolved) {
+		return { action: "review", reason: resolved.reason };
 	}
 
 	return {
 		action: "rewrite",
-		href: replacementHref,
-		reason: parsed.isDariahAbsolute ? "legacy_dariah_url" : "legacy_relative_url",
+		replacement: { kind: "entity", entityId: resolved.entityId },
+		reason,
 	};
 }
 
-function cleanHref(
-	href: string,
-	location: string,
-	rewrites: Array<LinkRewrite>,
-	reviews: Array<LinkReview>,
-	context: RichTextLinkCleanupContext,
-): string {
-	const resolved = resolveLegacyDariahHrefWithContext(href, context);
-
-	if (resolved.action === "rewrite") {
-		rewrites.push({
-			location,
-			originalHref: href,
-			replacementHref: resolved.href,
-			reason: resolved.reason,
-		});
-		return resolved.href;
+/**
+ * The link mark or button link attributes for a replacement, see `linkTarget` in the rich text
+ * editor.
+ */
+function applyReplacement(
+	attrs: Record<string, unknown>,
+	replacement: LinkReplacement,
+): Record<string, unknown> {
+	if (replacement.kind === "href") {
+		return { ...attrs, href: replacement.href };
 	}
 
-	if (resolved.action === "review") {
-		reviews.push({ location, originalHref: href, reason: resolved.reason });
-	}
-
-	return href;
+	// Every target attribute is spelled out, as the editor does, so no stale target survives.
+	return {
+		...attrs,
+		href: null,
+		targetKind: "entity",
+		assetKey: null,
+		entityId: replacement.entityId,
+		asset: null,
+		entity: null,
+	};
 }
 
 export function cleanRichTextLinksInDocument(
@@ -412,33 +342,50 @@ export function cleanRichTextLinksInDocument(
 
 		if (node.attrs != null) {
 			next.attrs = { ...node.attrs };
+			// A button link carries the same target attributes as a link mark.
 			if (node.type === "buttonLink" && typeof node.attrs.href === "string") {
-				next.attrs.href = cleanHref(
-					node.attrs.href,
-					`${path}.attrs.href`,
-					rewrites,
-					reviews,
-					context,
-				);
+				const href = node.attrs.href;
+				const location = `${path}.attrs.href`;
+				const resolved = resolveLegacyClariahAtHref(href, context);
+				if (resolved.action === "review") {
+					reviews.push({ location, originalHref: href, reason: resolved.reason });
+				} else if (resolved.action === "rewrite") {
+					rewrites.push({
+						location,
+						originalHref: href,
+						replacement: resolved.replacement,
+						reason: resolved.reason,
+					});
+					next.attrs = applyReplacement(node.attrs, resolved.replacement);
+				}
 			}
 		}
 
 		if (node.marks != null) {
 			next.marks = node.marks.map((mark, index) => {
-				const nextMark = { ...mark };
-				if (mark.attrs != null) {
-					nextMark.attrs = { ...mark.attrs };
-					if (mark.type === "link" && typeof mark.attrs.href === "string") {
-						nextMark.attrs.href = cleanHref(
-							mark.attrs.href,
-							`${path}.marks[${String(index)}].attrs.href`,
-							rewrites,
-							reviews,
-							context,
-						);
-					}
+				if (mark.type !== "link" || typeof mark.attrs?.href !== "string") {
+					return mark;
 				}
-				return nextMark;
+
+				const href = mark.attrs.href;
+				const location = `${path}.marks[${String(index)}].attrs.href`;
+				const resolved = resolveLegacyClariahAtHref(href, context);
+
+				if (resolved.action === "review") {
+					reviews.push({ location, originalHref: href, reason: resolved.reason });
+				}
+
+				if (resolved.action !== "rewrite") {
+					return mark;
+				}
+
+				rewrites.push({
+					location,
+					originalHref: href,
+					replacement: resolved.replacement,
+					reason: resolved.reason,
+				});
+				return { ...mark, attrs: applyReplacement(mark.attrs, resolved.replacement) };
 			});
 		}
 
@@ -454,26 +401,49 @@ export function cleanRichTextLinksInDocument(
 	return { content: visitNode(content, "$"), rewrites, reviews };
 }
 
+const legacyEntityTypes: Array<LegacyClariahAtEntityType> = [
+	"events",
+	"news",
+	"organisational_units",
+	"pages",
+	"projects",
+];
+
+async function getEntityIdsBySlug(db: Database | Transaction): Promise<Map<string, Set<string>>> {
+	const [slugRows, redirectRows] = await Promise.all([
+		db
+			.select({
+				entityId: schema.slugs.entityId,
+				slug: schema.slugs.value,
+				type: schema.entityTypes.type,
+			})
+			.from(schema.slugs)
+			.innerJoin(schema.entityTypes, eq(schema.entityTypes.id, schema.slugs.typeId))
+			.where(inArray(schema.entityTypes.type, legacyEntityTypes)),
+		db
+			.select({
+				entityId: schema.slugRedirects.entityId,
+				slug: schema.slugRedirects.oldValue,
+				type: schema.entityTypes.type,
+			})
+			.from(schema.slugRedirects)
+			.innerJoin(schema.entityTypes, eq(schema.entityTypes.id, schema.slugRedirects.typeId))
+			.where(inArray(schema.entityTypes.type, legacyEntityTypes)),
+	]);
+
+	const entityIdsBySlug = new Map<string, Set<string>>();
+	for (const row of [...slugRows, ...redirectRows]) {
+		const key = getEntitySlugKey(row.type as LegacyClariahAtEntityType, row.slug);
+		const ids = entityIdsBySlug.get(key) ?? new Set();
+		ids.add(row.entityId);
+		entityIdsBySlug.set(key, ids);
+	}
+	return entityIdsBySlug;
+}
+
 async function computeCleanups(db: Database | Transaction): Promise<Array<BlockCleanup>> {
-	const slugRows = await db
-		.select({
-			slug: schema.slugs.value,
-			type: schema.entityTypes.type,
-		})
-		.from(schema.entities)
-		.innerJoin(schema.entityTypes, eq(schema.entityTypes.id, schema.entities.typeId))
-		.innerJoin(
-			schema.slugs,
-			and(eq(schema.slugs.entityId, schema.entities.id), eq(schema.slugs.isPublished, true)),
-		)
-		.where(inArray(schema.entityTypes.type, ["events", "funding_calls", "news", "projects"]));
 	const context: RichTextLinkCleanupContext = {
-		eventSlugs: new Set(slugRows.filter((row) => row.type === "events").map((row) => row.slug)),
-		fundingCallSlugs: new Set(
-			slugRows.filter((row) => row.type === "funding_calls").map((row) => row.slug),
-		),
-		newsSlugs: new Set(slugRows.filter((row) => row.type === "news").map((row) => row.slug)),
-		projectSlugs: new Set(slugRows.filter((row) => row.type === "projects").map((row) => row.slug)),
+		entityIdsBySlug: await getEntityIdsBySlug(db),
 	};
 
 	const rows = await db
@@ -539,7 +509,9 @@ function findingsFromCleanup(cleanup: BlockCleanup): Array<RichTextLinkCleanupFi
 				action: "rewrite" as const,
 				location: rewrite.location,
 				originalHref: rewrite.originalHref,
-				replacementHref: rewrite.replacementHref,
+				replacementHref: rewrite.replacement.kind === "href" ? rewrite.replacement.href : null,
+				replacementEntityId:
+					rewrite.replacement.kind === "entity" ? rewrite.replacement.entityId : null,
 				reason: rewrite.reason,
 			};
 		}),
@@ -550,6 +522,7 @@ function findingsFromCleanup(cleanup: BlockCleanup): Array<RichTextLinkCleanupFi
 				location: review.location,
 				originalHref: review.originalHref,
 				replacementHref: null,
+				replacementEntityId: null,
 				reason: review.reason,
 			};
 		}),
@@ -633,7 +606,7 @@ export async function cleanRichTextLinks(
 					subjectType: "content_block",
 					subjectId: cleanup.block.contentBlockId,
 					summary: {
-						cleanup: "rewrite_legacy_rich_text_links",
+						cleanup: "rewrite_legacy_clariah_at_rich_text_links",
 						blockType: cleanup.block.blockType,
 						entityId: cleanup.block.entityId,
 						entityType: cleanup.block.entityType,

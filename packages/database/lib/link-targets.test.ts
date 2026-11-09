@@ -172,3 +172,51 @@ describe("entity targets", () => {
 		expect(annotateEntityLinkTargets(input, new Map([["019f-aaa", resolvedEntity]]))).toBe(input);
 	});
 });
+
+describe("button links", () => {
+	const button = (attrs: Record<string, unknown>) => {
+		return {
+			type: "doc",
+			content: [{ type: "paragraph", content: [{ type: "buttonLink", attrs }] }],
+		};
+	};
+
+	it("collects and resolves entity targets on button links, like on link marks", () => {
+		const content = button({ href: null, label: "Read", targetKind: "entity", entityId: "doc-1" });
+
+		expect(collectLinkTargetEntityIds(content)).toStrictEqual(new Set(["doc-1"]));
+		expect(
+			annotateEntityLinkTargets(
+				content,
+				new Map([["doc-1", { href: "/news/item", label: "Item", type: "news" }]]),
+			).content[0]!.content[0]!.attrs,
+		).toStrictEqual({
+			href: "/news/item",
+			label: "Read",
+			targetKind: "entity",
+			entityId: "doc-1",
+			entity: { href: "/news/item", label: "Item", type: "news" },
+		});
+	});
+
+	it("collects and resolves asset targets on button links", () => {
+		const content = button({ href: null, label: "Flyer", targetKind: "asset", assetKey: "a.pdf" });
+		const asset: ResolvedAssetLinkTarget = {
+			url: "https://example.org/a.pdf",
+			filename: "a.pdf",
+			mimeType: "application/pdf",
+			size: 1,
+		};
+
+		expect(collectLinkTargetAssetKeys(content)).toStrictEqual(new Set(["a.pdf"]));
+		expect(
+			annotateLinkTargets(content, new Map([["a.pdf", asset]])).content[0]!.content[0]!.attrs,
+		).toMatchObject({ href: "https://example.org/a.pdf", asset });
+	});
+
+	it("ignores button links with a plain href", () => {
+		expect(collectLinkTargetEntityIds(button({ href: "/news", label: "News" }))).toStrictEqual(
+			new Set(),
+		);
+	});
+});

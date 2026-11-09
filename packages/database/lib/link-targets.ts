@@ -21,6 +21,15 @@ export type LinkTargetKind = (typeof linkTargetKindsEnum)[number];
 /** Tiptap's built-in link mark, which carries the target attributes. */
 export const linkMarkType = "link";
 
+/** The inline call-to-action node, which carries the same target attributes as the link mark. */
+export const buttonLinkNodeType = "buttonLink";
+
+/**
+ * What can carry a link target: the link mark, and the button link node. Marks and nodes share the
+ * `{ type, attrs }` shape, so one predicate serves both.
+ */
+const linkTargetCarrierTypes: ReadonlySet<unknown> = new Set([linkMarkType, buttonLinkNodeType]);
+
 export function isLinkTargetKind(value: unknown): value is LinkTargetKind {
 	return (linkTargetKindsEnum as ReadonlyArray<unknown>).includes(value);
 }
@@ -30,14 +39,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * The asset key an `asset`-targeted link mark references, or `null` for anything else — an ordinary
- * `href` link, a non-link mark, a node.
+ * The asset key an `asset`-targeted link mark or button link references, or `null` for anything
+ * else — an ordinary `href` link, a non-link mark, any other node.
  *
  * Marks and nodes share the `{ type, attrs }` shape, so this doubles as the predicate for both and
  * the generic walkers below need no special case for `marks` arrays.
  */
 function getLinkTargetAssetKey(value: unknown): string | null {
-	if (!isRecord(value) || value.type !== linkMarkType) {
+	if (!isRecord(value) || !linkTargetCarrierTypes.has(value.type)) {
 		return null;
 	}
 
@@ -165,14 +174,15 @@ export function annotateLinkTargets<T>(value: T, assets: ResolvedAssetLinkTarget
 }
 
 /**
- * The document id an `entity`-targeted link mark references, or `null` for anything else.
+ * The document id an `entity`-targeted link mark or button link references, or `null` for anything
+ * else.
  *
  * The reference is the entity's document id, never its slug: a slug is renamed freely by editors,
  * and the whole point of storing a reference is that the link survives that. The url is derived at
  * read time from whatever slug the entity has then.
  */
 function getLinkTargetEntityId(value: unknown): string | null {
-	if (!isRecord(value) || value.type !== linkMarkType) {
+	if (!isRecord(value) || !linkTargetCarrierTypes.has(value.type)) {
 		return null;
 	}
 

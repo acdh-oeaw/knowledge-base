@@ -481,9 +481,9 @@ async function getGalleryItems(
 }
 
 /**
- * Resolves `entity`-targeted link marks, in the locale of the entity version they appear in.
- * Unpublished, deleted and page-less entities all resolve to nothing and stay unannotated, so a
- * renderer sees one "no href" case rather than three.
+ * Resolves `entity`-targeted link marks and button links, in the locale of the entity version they
+ * appear in. Unpublished, deleted and page-less entities all resolve to nothing and stay
+ * unannotated, so a renderer sees one "no href" case rather than three.
  */
 async function annotateEntityLinks<T>(
 	db: Database | Transaction,

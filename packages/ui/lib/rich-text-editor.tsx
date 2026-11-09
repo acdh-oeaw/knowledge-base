@@ -39,7 +39,9 @@ import { useExtracted } from "next-intl";
 import {
 	type ReactNode,
 	type RefObject,
+	createContext,
 	useCallback,
+	useContext,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -1067,9 +1069,42 @@ export const LeadInNode = Node.create({
 });
 
 /**
+ * What a button link's node view needs from the host to point a button at one of our own documents
+ * or pages, the same pickers and summary the link popover uses. Handed down through context rather
+ * than the extension: the host passes these as fresh closures on every render, while extensions are
+ * read once, when the editor is created. Node views render inside `EditorContent`, so they see it.
+ */
+interface ButtonLinkTargetRenderers {
+	renderDocumentPicker?: RichTextEditorProps["renderDocumentPicker"];
+	renderEntityPicker?: RichTextEditorProps["renderEntityPicker"];
+	renderLinkTargetSummary?: RichTextEditorProps["renderLinkTargetSummary"];
+}
+
+const ButtonLinkTargetsContext = createContext<ButtonLinkTargetRenderers>({});
+
+/** A button's stored reference, when it points at one of our own documents or pages. */
+type ButtonLinkTargetRef =
+	| { kind: "asset"; assetKey: string }
+	| { kind: "entity"; entityId: string };
+
+function getButtonLinkTargetRef(attrs: Record<string, unknown>): ButtonLinkTargetRef | null {
+	if (attrs.targetKind === "asset" && typeof attrs.assetKey === "string") {
+		return { kind: "asset", assetKey: attrs.assetKey };
+	}
+	if (attrs.targetKind === "entity" && typeof attrs.entityId === "string") {
+		return { kind: "entity", entityId: attrs.entityId };
+	}
+	return null;
+}
+
+/**
  * Inline call-to-action node: a link rendered to look like a button. Stored as structured
  * `href`/`label`/`variant` attributes (not styled text) and edited through a popover anchored to
  * the button itself, mirroring the `EmbedNode`/`CalloutNode` pattern but at the inline level.
+ *
+ * Like the link mark, a button can point at one of our own documents or pages instead of a typed
+ * url, and then stores a reference (`targetKind` plus `assetKey`/`entityId`) and no `href`. See
+ * `link-targets.ts` in `@dariah-eric/database` for the model and the read-time resolution.
  */
 function ButtonLinkNodeView({
 	editor,
@@ -1079,14 +1114,22 @@ function ButtonLinkNodeView({
 	updateAttributes,
 	deleteNode,
 }: Readonly<NodeViewProps>): ReactNode {
+	const t = useExtracted("ui");
+	const { renderDocumentPicker, renderEntityPicker, renderLinkTargetSummary } =
+		useContext(ButtonLinkTargetsContext);
+
 	const href = node.attrs.href as string | null;
 	const label = node.attrs.label as string | null;
 	const variant = normalizeButtonLinkVariant(node.attrs.variant);
+	const targetRef = getButtonLinkTargetRef(node.attrs);
+	const isConfigured = href != null || targetRef != null;
 
-	const [isOpen, setIsOpen] = useState(href == null && editor.isEditable);
+	const [isOpen, setIsOpen] = useState(!isConfigured && editor.isEditable);
 	const [hrefInput, setHrefInput] = useState(href ?? "");
+	const [targetRefInput, setTargetRefInput] = useState<ButtonLinkTargetRef | null>(targetRef);
 	const [labelInput, setLabelInput] = useState(label ?? "");
 	const [variantInput, setVariantInput] = useState<ButtonLinkVariant>(variant);
+	const [openPicker, setOpenPicker] = useState<"document" | "entity" | null>(null);
 
 	const hrefInputId = useId();
 	const labelInputId = useId();
@@ -1112,17 +1155,31 @@ function ButtonLinkNodeView({
 
 	function resetInputs() {
 		setHrefInput(href ?? "");
+		setTargetRefInput(targetRef);
 		setLabelInput(label ?? "");
 		setVariantInput(variant);
 	}
 
+	const canApply = labelInput.trim() !== "" && (targetRefInput != null || hrefInput.trim() !== "");
+
 	function handleApply() {
 		const nextHref = hrefInput.trim();
 		const nextLabel = labelInput.trim();
-		if (!nextHref || !nextLabel) {
+		if (!canApply) {
 			return;
 		}
-		updateAttributes({ href: nextHref, label: nextLabel, variant: variantInput });
+		// Every target attribute is spelled out, as `linkTarget` does for the link mark, so switching
+		// between a url and a reference leaves no stale half of the other behind.
+		updateAttributes({
+			href: targetRefInput == null ? nextHref : null,
+			label: nextLabel,
+			variant: variantInput,
+			targetKind: targetRefInput?.kind ?? null,
+			assetKey: targetRefInput?.kind === "asset" ? targetRefInput.assetKey : null,
+			entityId: targetRefInput?.kind === "entity" ? targetRefInput.entityId : null,
+			asset: null,
+			entity: null,
+		});
 		setIsOpen(false);
 	}
 
@@ -1134,12 +1191,42 @@ function ButtonLinkNodeView({
 			return;
 		}
 		// Dismissing a button that was never configured removes the placeholder node.
-		if (href == null) {
+		if (!isConfigured) {
 			deleteNode();
 			return;
 		}
 		setIsOpen(false);
 	}
+
+	/**
+	 * The pickers are modal dialogs, which cannot open on top of the popover, so the popover steps
+	 * aside while one is open and comes back, with what was typed so far, once it closes.
+	 */
+	function showPicker(kind: "document" | "entity") {
+		setIsOpen(false);
+		setOpenPicker(kind);
+	}
+
+	function handlePickerOpenChange(open: boolean) {
+		if (!open) {
+			setOpenPicker(null);
+			setIsOpen(true);
+		}
+	}
+
+	function selectTarget(ref: ButtonLinkTargetRef, targetLabel: string) {
+		setTargetRefInput(ref);
+		if (labelInput.trim() === "") {
+			setLabelInput(targetLabel);
+		}
+	}
+
+	const currentTarget =
+		targetRefInput?.kind === "asset"
+			? targetRefInput.assetKey
+			: targetRefInput?.kind === "entity"
+				? targetRefInput.entityId
+				: null;
 
 	return (
 		<NodeViewWrapper as="span" className="inline-block align-baseline" contentEditable={false}>
@@ -1177,20 +1264,87 @@ function ButtonLinkNodeView({
 								value={labelInput}
 							/>
 						</div>
-						<div className="flex flex-col gap-y-1">
-							<label className="text-sm/6 font-medium" htmlFor={hrefInputId}>
-								{"URL"}
-							</label>
-							<Input
-								id={hrefInputId}
-								onChange={(e) => {
-									setHrefInput(e.target.value);
-								}}
-								placeholder="https://example.com"
-								type="text"
-								value={hrefInput}
-							/>
-						</div>
+						{targetRefInput != null ? (
+							<div className="flex flex-col gap-y-1">
+								{renderLinkTargetSummary?.(targetRefInput) ?? (
+									<Note intent="info">
+										{targetRefInput.kind === "asset"
+											? t("This link points to a document.")
+											: t("This link points to another page.")}
+									</Note>
+								)}
+								<div className="flex flex-wrap gap-2">
+									{(targetRefInput.kind === "asset" ? renderDocumentPicker : renderEntityPicker) !=
+									null ? (
+										<Button
+											intent="outline"
+											onPress={() => {
+												showPicker(targetRefInput.kind === "asset" ? "document" : "entity");
+											}}
+											size="sm"
+											type="button"
+										>
+											{targetRefInput.kind === "asset" ? t("Change document") : t("Change page")}
+										</Button>
+									) : null}
+									<Button
+										intent="outline"
+										onPress={() => {
+											setTargetRefInput(null);
+										}}
+										size="sm"
+										type="button"
+									>
+										{t("Use a URL instead")}
+									</Button>
+								</div>
+							</div>
+						) : (
+							<div className="flex flex-col gap-y-1">
+								<label className="text-sm/6 font-medium" htmlFor={hrefInputId}>
+									{"URL"}
+								</label>
+								<Input
+									id={hrefInputId}
+									onChange={(e) => {
+										setHrefInput(e.target.value);
+									}}
+									placeholder="https://example.com"
+									type="text"
+									value={hrefInput}
+								/>
+								{renderEntityPicker != null || renderDocumentPicker != null ? (
+									<div className="flex flex-wrap gap-2">
+										{renderEntityPicker != null ? (
+											<Button
+												intent="plain"
+												onPress={() => {
+													showPicker("entity");
+												}}
+												size="sm"
+												type="button"
+											>
+												<LinkIcon data-slot="icon" />
+												{t("Link to page")}
+											</Button>
+										) : null}
+										{renderDocumentPicker != null ? (
+											<Button
+												intent="plain"
+												onPress={() => {
+													showPicker("document");
+												}}
+												size="sm"
+												type="button"
+											>
+												<PaperclipIcon data-slot="icon" />
+												{t("Link to document")}
+											</Button>
+										) : null}
+									</div>
+								) : null}
+							</div>
+						)}
 						<div className="flex flex-col gap-y-1">
 							<span className="text-sm/6 font-medium">{"Style"}</span>
 							<ToggleGroup
@@ -1214,7 +1368,7 @@ function ButtonLinkNodeView({
 							<Button
 								className="flex-1"
 								intent="primary"
-								isDisabled={!hrefInput.trim() || !labelInput.trim()}
+								isDisabled={!canApply}
 								size="sm"
 								type="submit"
 							>
@@ -1227,6 +1381,23 @@ function ButtonLinkNodeView({
 					</form>
 				</PopoverContent>
 			</Popover>
+			{/* Mounted outside the popover, which closes while a picker is open. */}
+			{renderDocumentPicker?.({
+				isOpen: openPicker === "document",
+				onOpenChange: handlePickerOpenChange,
+				select: (assetKey, targetLabel) => {
+					selectTarget({ kind: "asset", assetKey }, targetLabel);
+				},
+				current: targetRefInput?.kind === "asset" ? currentTarget : null,
+			})}
+			{renderEntityPicker?.({
+				isOpen: openPicker === "entity",
+				onOpenChange: handlePickerOpenChange,
+				select: (entityId, targetLabel) => {
+					selectTarget({ kind: "entity", entityId }, targetLabel);
+				},
+				current: targetRefInput?.kind === "entity" ? currentTarget : null,
+			})}
 		</NodeViewWrapper>
 	);
 }
@@ -1244,6 +1415,13 @@ export const ButtonLinkNode = Node.create({
 			href: { default: null },
 			label: { default: null },
 			variant: { default: "primary" },
+			// The target attributes, as on the link mark (`LinkWithTargets`). `asset`/`entity` are attached
+			// by read paths, and never parsed or rendered, so a resolved url cannot end up stored.
+			targetKind: { default: null },
+			assetKey: { default: null },
+			entityId: { default: null },
+			asset: { default: null },
+			entity: { default: null },
 		};
 	},
 
@@ -1256,6 +1434,9 @@ export const ButtonLinkNode = Node.create({
 						href: dom.getAttribute("href"),
 						label: dom.textContent,
 						variant: normalizeButtonLinkVariant(dom.dataset.variant),
+						targetKind: dom.dataset.targetKind ?? null,
+						assetKey: dom.dataset.assetKey ?? null,
+						entityId: dom.dataset.entityId ?? null,
 					};
 				},
 			},
@@ -1263,12 +1444,16 @@ export const ButtonLinkNode = Node.create({
 	},
 
 	renderHTML({ node }) {
+		const { targetKind, assetKey, entityId } = node.attrs as Record<string, string | null>;
 		return [
 			"a",
 			mergeAttributes({
 				"data-button-link": "",
 				href: node.attrs.href as string | null,
 				"data-variant": node.attrs.variant as string,
+				...(targetKind != null ? { "data-target-kind": targetKind } : {}),
+				...(assetKey != null ? { "data-asset-key": assetKey } : {}),
+				...(entityId != null ? { "data-entity-id": entityId } : {}),
 			}),
 			(node.attrs.label as string | null) ?? "",
 		];
@@ -3068,6 +3253,10 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>): ReactNode 
 				? renderLinkTargetSummary?.({ kind: "entity", entityId: activeState.linkEntityId })
 				: null;
 
+	const buttonLinkTargetRenderers = useMemo<ButtonLinkTargetRenderers>(() => {
+		return { renderDocumentPicker, renderEntityPicker, renderLinkTargetSummary };
+	}, [renderDocumentPicker, renderEntityPicker, renderLinkTargetSummary]);
+
 	const [editorJson, setEditorJson] = useState<JSONContent | undefined>(initialContent);
 
 	/**
@@ -3606,7 +3795,9 @@ export function RichTextEditor(props: Readonly<RichTextEditorProps>): ReactNode 
 					value={JSON.stringify(editorJson ?? { type: "doc", content: [] })}
 				/>
 			)}
-			<EditorContent editor={editor} />
+			<ButtonLinkTargetsContext value={buttonLinkTargetRenderers}>
+				<EditorContent editor={editor} />
+			</ButtonLinkTargetsContext>
 			{footnotes.length > 0 ? (
 				<div className="border-bs border-border bg-muted/40 px-4 py-3">
 					<h3 className="text-xs font-medium tracking-wide text-muted-fg uppercase">

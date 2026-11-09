@@ -2,6 +2,7 @@
 
 import { type ImageCaptionMode, resolveImageCaption } from "@dariah-eric/database/image-captions";
 import { ButtonLink } from "@dariah-eric/ui/button-link";
+import { buttonStyles } from "@dariah-eric/ui/button-styles";
 import { InlineRichTextRenderer } from "@dariah-eric/ui/inline-rich-text-renderer";
 import { Note } from "@dariah-eric/ui/note";
 import {
@@ -26,15 +27,47 @@ const richTextExtensions = createRichTextExtensions();
  * The static renderer serialises each node via its extension `renderHTML`, which for the inline
  * `buttonLink` node is a bare `<a data-button-link>` — indistinguishable from a normal link. Render
  * it as the styled `ButtonLink` instead, mirroring the editor's read-only node view.
+ *
+ * A button can point at a document or page instead of a url, and is then previewed like such a link
+ * mark (see `renderLinkMark`): a document links to the dashboard's download route, a page is named
+ * but not clickable, and a page which resolved to nothing is called out.
  */
 function renderButtonLinkNode({
 	node,
 }: Readonly<{ node: { attrs?: Record<string, unknown> | null } }>): ReactNode {
 	const attrs = node.attrs ?? {};
-	const href = typeof attrs.href === "string" ? attrs.href : "#";
 	const label = typeof attrs.label === "string" ? attrs.label : "Button";
 	const intent =
 		attrs.variant === "secondary" || attrs.variant === "outline" ? attrs.variant : "primary";
+
+	if (attrs.targetKind === "entity") {
+		const entity = attrs.entity as { label?: unknown } | null | undefined;
+		const entityLabel = typeof entity?.label === "string" ? entity.label : null;
+
+		return (
+			<span
+				className={twMerge(
+					buttonStyles({ intent, size: "sm" }),
+					"cursor-default",
+					entityLabel == null && "outline-2 outline-danger outline-dashed",
+				)}
+				title={
+					entityLabel != null
+						? `Links to “${entityLabel}” on the website. Its address is resolved when the site renders it.`
+						: "This button points to a page that is no longer published, so it will not be rendered."
+				}
+			>
+				{label}
+			</span>
+		);
+	}
+
+	const href =
+		attrs.targetKind === "asset" && typeof attrs.assetKey === "string"
+			? `/api/assets/download?key=${encodeURIComponent(attrs.assetKey)}`
+			: typeof attrs.href === "string"
+				? attrs.href
+				: "#";
 
 	return (
 		<ButtonLink href={href} intent={intent} size="sm">
