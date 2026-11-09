@@ -2874,6 +2874,10 @@ msgid "wTNySU"
 msgstr "by"
 
 #: app/(app)/[locale]/(dashboard)/dashboard/administrator/_components/admin-task-card.tsx
+msgid "DPJjsI"
+msgstr "scheduled"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/administrator/_components/admin-task-card.tsx
 msgid "EQpfkS"
 msgstr "Finished"
 

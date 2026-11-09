@@ -1,0 +1,53 @@
+name: Scheduled sync
+
+# Starts the admin tasks as background jobs in the knowledge-base app via
+# `POST /api/admin-tasks/[kind]`. A green run only means the job was started; its outcome is shown
+# on the admin tasks page. Schedules are in UTC, off the full hour, because GitHub delays scheduled
+# runs when load is high at the top of the hour.
+
+on:
+  schedule:
+    - cron: "26 3 * * *"
+    - cron: "26 4 * * *"
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "Admin task to start"
+        required: true
+        type: choice
+        options:
+          - sync_resources_search_index
+          - sync_website_search_index
+
+jobs:
+  trigger:
+    name: Start admin task
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Start admin task
+        env:
+          BASE_URL: "${{ vars.NEXT_PUBLIC_APP_BASE_URL }}"
+          SECRET: "${{ secrets.K8S_SECRET_BACKGROUND_JOBS_API_SECRET }}"
+          KIND: ${{ github.event_name == 'workflow_dispatch' && inputs.kind ||
+            github.event.schedule == '26 3 * * *' && 'sync_resources_search_index' ||
+            github.event.schedule == '26 4 * * *' && 'sync_website_search_index' || '' }}
+        run: |
+          set -eu
+          test -n "$KIND"
+          status=$(
+            curl --silent --show-error --output response.json --write-out "%{http_code}" \
+              --retry 3 --retry-all-errors --retry-delay 10 \
+              --request POST \
+              --header "Authorization: Bearer ${SECRET}" \
+              --header "Origin: ${BASE_URL}" \
+              "${BASE_URL}/api/admin-tasks/${KIND}"
+          )
+          cat response.json
+          echo
+          case "$status" in
+            202) echo "Started ${KIND}." ;;
+            409) echo "::warning::${KIND} is already running." ;;
+            *) echo "::error::Failed to start ${KIND} (HTTP ${status})."; exit 1 ;;
+          esac

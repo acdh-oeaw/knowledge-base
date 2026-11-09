@@ -38,6 +38,7 @@ const validate = define({
 	envVars: v.object({
 		AUTH_ENCRYPTION_KEY: v.pipe(v.string(), v.length(32)),
 		AUTH_SIGN_UP: v.optional(v.picklist(["disabled", "enabled"]), "disabled"),
+		BACKGROUND_JOBS_API_SECRET: v.optional(v.pipe(v.string(), v.nonEmpty())),
 		BUILD_MODE: v.optional(v.picklist(["export", "standalone"])),
 		CAMPUS_API_BASE_URL: v.optional(v.pipe(v.string(), v.url())),
 		CI: v.optional(v.pipe(v.unknown(), v.toBoolean())),
@@ -67,7 +68,6 @@ const validate = define({
 		S3_PORT: v.pipe(v.string(), v.toNumber(), v.integer(), v.minValue(1)),
 		S3_PROTOCOL: v.optional(v.picklist(["http", "https"]), "https"),
 		S3_SECRET_KEY: v.pipe(v.string(), v.nonEmpty()),
-		SEARCH_SYNC_API_SECRET: v.optional(v.pipe(v.string(), v.nonEmpty())),
 		SSHOC_MARKETPLACE_API_BASE_URL: v.optional(v.pipe(v.string(), v.url())),
 		SSHOC_MARKETPLACE_BASE_URL: v.optional(v.pipe(v.string(), v.url())),
 		TYPESENSE_ADMIN_API_KEY: v.pipe(v.string(), v.nonEmpty()),
@@ -83,6 +83,7 @@ export const env = validate({
 	environment: {
 		AUTH_ENCRYPTION_KEY: process.env.AUTH_ENCRYPTION_KEY,
 		AUTH_SIGN_UP: process.env.AUTH_SIGN_UP,
+		BACKGROUND_JOBS_API_SECRET: process.env.BACKGROUND_JOBS_API_SECRET,
 		BUILD_MODE: process.env.BUILD_MODE,
 		CAMPUS_API_BASE_URL: process.env.CAMPUS_API_BASE_URL,
 		CI: process.env.CI,
@@ -128,7 +129,6 @@ export const env = validate({
 		S3_PORT: process.env.S3_PORT,
 		S3_PROTOCOL: process.env.S3_PROTOCOL,
 		S3_SECRET_KEY: process.env.S3_SECRET_KEY,
-		SEARCH_SYNC_API_SECRET: process.env.SEARCH_SYNC_API_SECRET,
 		SSHOC_MARKETPLACE_API_BASE_URL: process.env.SSHOC_MARKETPLACE_API_BASE_URL,
 		SSHOC_MARKETPLACE_BASE_URL: process.env.SSHOC_MARKETPLACE_BASE_URL,
 		TYPESENSE_ADMIN_API_KEY: process.env.TYPESENSE_ADMIN_API_KEY,

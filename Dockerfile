@@ -185,6 +185,7 @@ COPY --from=app-prune /app/out/full/ .
 RUN --mount=type=secret,id=API_ACCESS_TOKEN,env=API_ACCESS_TOKEN \
     --mount=type=secret,id=AUTH_ENCRYPTION_KEY,env=AUTH_ENCRYPTION_KEY \
     --mount=type=secret,id=AUTH_SIGN_UP,env=AUTH_SIGN_UP \
+    --mount=type=secret,id=BACKGROUND_JOBS_API_SECRET,env=BACKGROUND_JOBS_API_SECRET \
     --mount=type=secret,id=DATABASE_HOST,env=DATABASE_HOST \
     --mount=type=secret,id=DATABASE_NAME,env=DATABASE_NAME \
     --mount=type=secret,id=DATABASE_PASSWORD,env=DATABASE_PASSWORD \

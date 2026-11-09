@@ -161,6 +161,7 @@ jobs:
             "APP_TASKS_SECRET=${{ secrets.K8S_SECRET_APP_TASKS_SECRET }}"
             "AUTH_ENCRYPTION_KEY=${{ secrets.TEST_AUTH_ENCRYPTION_KEY }}"
             "AUTH_SIGN_UP=${{ vars.K8S_SECRET_AUTH_SIGN_UP }}"
+            "BACKGROUND_JOBS_API_SECRET=${{ secrets.K8S_SECRET_BACKGROUND_JOBS_API_SECRET }}"
             "DATABASE_HOST=${{ secrets.K8S_SECRET_DATABASE_HOST }}"
             "DATABASE_NAME=${{ secrets.K8S_SECRET_DATABASE_NAME }}"
             "DATABASE_PASSWORD=${{ secrets.TEST_DATABASE_PASSWORD }}"
