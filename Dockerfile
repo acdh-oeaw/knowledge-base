@@ -198,6 +198,7 @@ RUN --mount=type=secret,id=API_ACCESS_TOKEN,env=API_ACCESS_TOKEN \
     --mount=type=secret,id=IMGPROXY_KEY,env=IMGPROXY_KEY \
     --mount=type=secret,id=IMGPROXY_PORT,env=IMGPROXY_PORT \
     --mount=type=secret,id=IMGPROXY_SALT,env=IMGPROXY_SALT \
+    --mount=type=secret,id=NEXT_SERVER_ACTIONS_ENCRYPTION_KEY,env=NEXT_SERVER_ACTIONS_ENCRYPTION_KEY \
     --mount=type=secret,id=REVALIDATION_WEBHOOK_SECRET,env=REVALIDATION_WEBHOOK_SECRET \
     --mount=type=secret,id=REVALIDATION_WEBHOOK_URL,env=REVALIDATION_WEBHOOK_URL \
     --mount=type=secret,id=S3_ACCESS_KEY,env=S3_ACCESS_KEY \
