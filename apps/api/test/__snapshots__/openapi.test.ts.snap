@@ -23022,6 +23022,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 320,
                 480,
                 640,
+                800,
                 960,
                 1280,
                 1600,

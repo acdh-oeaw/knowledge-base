@@ -28,8 +28,13 @@ export const imageVariantVersion = "v1";
  * The top rung is set by the landing-page hero, which is laid out at 1920 css pixels and wants
  * twice that on a 2x display. Higher-density displays are not chased: the big slots are on
  * desktops, which are 1x or 2x, while 3x devices are phones whose slots the lower rungs cover.
+ *
+ * 800 splits the step from 640 to 960, where full-width phone slots land: a ~380 css pixel slot at
+ * 1.75–2x wants 665–760 pixels, which would otherwise snap up to 960.
  */
-export const imageVariantWidths = [320, 480, 640, 960, 1280, 1600, 2048, 2560, 3200, 3840] as const;
+export const imageVariantWidths = [
+	320, 480, 640, 800, 960, 1280, 1600, 2048, 2560, 3200, 3840,
+] as const;
 
 /**
  * The aspect ratios the variant endpoint will crop to, as `width / height`.
