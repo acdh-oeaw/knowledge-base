@@ -628,6 +628,11 @@ const legacyClariahAtEntities: Readonly<Record<string, LegacyClariahAtEntity>> =
 		],
 	},
 	"events/release-musil-online": { type: "events", slugs: ["release-musil-online"] },
+	/** Added by hand: another id of `events/digital-humanities-lecture-circuit-23-24`. */
+	"events/ringvorlesung-digital-humanities-23-24": {
+		type: "events",
+		slugs: ["digital-humanities-lecture-circuit", "ringvorlesung-digital-humanities"],
+	},
 	"events/ssh-open-marketplace-online-workshop-for-phd-students": {
 		type: "events",
 		slugs: [
@@ -1114,6 +1119,11 @@ const legacyClariahAtEntities: Readonly<Record<string, LegacyClariahAtEntity>> =
 		],
 	},
 	"projects/grotefend-digital": { type: "projects", slugs: ["grotefend-digital"] },
+	/** Added by hand: linked to, but not among the generated entries. */
+	"projects/hack-the-pool-2025": {
+		type: "projects",
+		slugs: ["institutionsuebergreifender-kulturdaten-hackathon-hack-the-pool-2025"],
+	},
 	"projects/hackathon-digital-escape-rooms": {
 		type: "projects",
 		slugs: [
@@ -1745,17 +1755,22 @@ const legacyClariahAtEntities: Readonly<Record<string, LegacyClariahAtEntity>> =
 	},
 	"pages/about-clariah-at": { type: "pages", slugs: ["about-clariah-at", "ueber-clariah-at"] },
 	"pages/events": { type: "pages", slugs: ["upcoming-events", "aktuelle-veranstaltungen"] },
+	/** Not imported as a page: links to it now go to the event announcing the salon. */
 	"pages/exploresalon2023": {
-		type: "pages",
-		slugs: ["explore-salon-2023-unveil-hidden-stories-from-the-past"],
+		type: "events",
+		slugs: ["explore-salon-2023-registrations-are-open", "explore-salon-2023-anmeldung-ist-offen"],
 	},
 	"pages/funding-opportunities": {
 		type: "pages",
 		slugs: ["funding-opportunities", "foerdermoeglichkeiten"],
 	},
+	/**
+	 * Not imported as its own page: its content is now a section of the "Förderung" page. An entity
+	 * link cannot carry the section's (per-locale) fragment, so this links to the page itself.
+	 */
 	"pages/funding-opportunities-for-junior-researcher": {
 		type: "pages",
-		slugs: ["early-career-scholarships", "early-career-stipendien"],
+		slugs: ["funding", "foerderung"],
 	},
 	"pages/in-honor-of-thierry-declerck": {
 		type: "pages",
@@ -1766,17 +1781,58 @@ const legacyClariahAtEntities: Readonly<Record<string, LegacyClariahAtEntity>> =
 		type: "pages",
 		slugs: ["privacy-declaration", "datenschutzerklaerung"],
 	},
-	"pages/project-funding": { type: "pages", slugs: ["project-funding", "projektfoerderungen"] },
+	/** Not imported as its own page: its content now lives on the "Förderung" page. */
+	"pages/project-funding": { type: "pages", slugs: ["funding", "foerderung"] },
 	"pages/projects": { type: "pages", slugs: ["projects", "projekte"] },
+	/** Not imported as a page: links to it now go to the event announcing the summer school. */
 	"pages/summerschool2024": {
-		type: "pages",
-		slugs: ["vom-archiv-zum-algorithmus-digital-humanities-in-der-praxis"],
+		type: "events",
+		slugs: [
+			"summer-school-vom-archiv-zum-algorithmus-digital-humanities-in-der-praxis-registrations-are-open",
+			"summer-school-vom-archiv-zum-algorithmus-digital-humanities-in-der-praxis-anmeldung-ist-geoeffnet",
+		],
 	},
+	/** Not imported as a page: links to it now go to the event announcing the summer school. */
 	"pages/summerschool2025": {
-		type: "pages",
-		slugs: ["machine-learning-for-digital-scholarly-editions"],
+		type: "events",
+		slugs: [
+			"summer-school-machine-learning-for-digital-scholarly-editions-registration-open",
+			"summer-school-machine-learning-for-digital-scholarly-editions-anmeldung-offen",
+		],
 	},
 };
+
+/**
+ * Root-level paths which content links to instead of the old website's own path for an item (e.g.
+ * `/ladderweb/` for `/en/projects/ladderweb-…`), by path segment, and the item they stand for.
+ * Matched by hand, by the title in the link text.
+ */
+export const legacyClariahAtAliases: Readonly<Record<string, string>> = {
+	"computer-vision-for-digital-humanists": "projects/computer-vision-digital-humanists",
+	"developing-hubert":
+		"projects/developing-hubert-nlp-algorithm-extending-seshat-global-history-databank",
+	digedtnt: "projects/digital-edition-creation-pipelines-tools-and-transitions",
+	"digitizing-the-premodern-book": "projects/digitizing-materiality-premodern-book",
+	"esperanto-newspaper-excerpts": "projects/esperanto-newspaper-excerpts",
+	"iiif-suite": "projects/machine-learning-suite-iiif-resources",
+	ladderweb:
+		"projects/ladderweb-pragmatically-annotated-web-based-corpus-query-interface-requests-and-cancellations",
+	"online-edition-baernreither":
+		"projects/prototype-historical-critical-online-edition-based-estate-materials-josef-maria-baernreither",
+	"relaunch-of-the-mhdbdb": "projects/digital-sustainability-relaunch-mhdbdb",
+	"semantickraus-connecting-kraus-scholarship-to-the-semantic-web":
+		"projects/semantickraus-connecting-kraus-scholarship-semantic-web",
+	"sharing-the-crown":
+		"projects/sharing-crown-establishing-workflow-collection-data-linked-research-data",
+	// The "KONDE Weißbuch" is the "Weißbuch Digitale Edition".
+	"updating-the-konde-weisbuch": "projects/digital-edition-white-paper-update",
+};
+
+/** The entity a root-level alias path segment stands for, or null for any other segment. */
+export function getLegacyClariahAtAliasEntity(id: string): LegacyClariahAtEntity | null {
+	const key = Object.hasOwn(legacyClariahAtAliases, id) ? legacyClariahAtAliases[id] : undefined;
+	return key != null ? (legacyClariahAtEntities[key] ?? null) : null;
+}
 
 /** The entity an old website item became, or null for an id the old website did not have. */
 export function getLegacyClariahAtEntity(

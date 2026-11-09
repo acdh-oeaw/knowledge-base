@@ -5,10 +5,12 @@ import type { Database, Transaction } from "./index";
 import {
 	type LegacyClariahAtEntity,
 	type LegacyClariahAtEntityType,
+	getLegacyClariahAtAliasEntity,
 	getLegacyClariahAtEntity,
 	isLegacyClariahAtCollection,
 	legacyClariahAtListingPages,
 } from "./legacy-clariah-at-paths";
+import { isLinkTargetKind } from "./link-targets";
 import * as schema from "./schema";
 
 /**
@@ -21,6 +23,14 @@ import * as schema from "./schema";
  *   survives. The api resolves it to the url of the entity in the locale being read.
  * - A link to the home page, a listing or the imprint becomes a root-relative, locale-less path. The
  *   website prefixes those with the locale being read.
+ * - A link to a file of the old website (`/assets/…`) becomes an `asset` link to the asset uploaded
+ *   with the same file name, see `getAssetKeysByFilename`.
+ * - A link which already targets an asset or entity keeps its target, but loses an `href` to the old
+ *   website it still carries. Read paths resolve the target, and leave the link alone when the
+ *   target is gone (unpublished, deleted): it should then render as plain text, not as a link to
+ *   the old website.
+ * - An href which is not a url but was meant to be one (a pasted markdown link, a scheme-less path)
+ *   is repaired first, see `repairMalformedHref`.
  *
  * The old website prefixed every path with a locale (`/en/…`, `/de/…`), which the rewrite drops: a
  * German entry linking to the English page of an item now links to the German one. Root-relative
@@ -72,6 +82,8 @@ export interface RichTextLinkCleanupFinding {
 	replacementHref: string | null;
 	/** The document id the link now targets, for a link rewritten to an entity link. */
 	replacementEntityId: string | null;
+	/** The storage key of the asset the link now targets, for a link rewritten to an asset link. */
+	replacementAssetKey: string | null;
 	action: LinkCleanupAction;
 	reason: string;
 }
@@ -83,7 +95,12 @@ export interface RichTextLinkCleanupResult {
 	reviewTotal: number;
 }
 
-type LinkReplacement = { kind: "entity"; entityId: string } | { kind: "href"; href: string };
+type LinkReplacement =
+	/** Drops the stale `href` of a link which already targets an asset or entity. */
+	| { kind: "clear_href" }
+	| { kind: "asset"; assetKey: string }
+	| { kind: "entity"; entityId: string }
+	| { kind: "href"; href: string };
 
 interface LinkRewrite {
 	location: string;
@@ -110,12 +127,23 @@ export interface RichTextLinkCleanupContext {
 	 * in any locale. Without it, no link is rewritten to an entity link.
 	 */
 	entityIdsBySlug?: ReadonlyMap<string, ReadonlySet<string>>;
+	/**
+	 * Storage keys by file name, one per distinct file uploaded under that name (see
+	 * `getAssetKeysByFilename`). Without it, no link is rewritten to an asset link.
+	 */
+	assetKeysByFilename?: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 interface BlockCleanup {
 	block: Omit<
 		RichTextLinkCleanupFinding,
-		"action" | "location" | "originalHref" | "reason" | "replacementEntityId" | "replacementHref"
+		| "action"
+		| "location"
+		| "originalHref"
+		| "reason"
+		| "replacementAssetKey"
+		| "replacementEntityId"
+		| "replacementHref"
 	>;
 	rewrites: Array<LinkRewrite>;
 	reviews: Array<LinkReview>;
@@ -148,17 +176,70 @@ function stripLegacyLocalePrefix(pathname: string): { pathname: string; hasLocal
 
 interface ParsedHref {
 	url: URL;
-	isAbsolute: boolean;
+	/**
+	 * `malformed`: an href which only becomes a url to the old website once repaired, see
+	 * {@link repairMalformedHref}.
+	 */
+	kind: "absolute" | "malformed" | "relative";
+}
+
+/** A markdown link (`[text](url)`) pasted as an href, as it was, or percent-encoded. */
+const markdownLinkHref = /^(?:\[|%5B).*?(?:\]|%5D)\((?<url>[^()\s]+)\)$/iu;
+/** An href with a scheme (`https:`, `mailto:`, …). */
+const hrefWithScheme = /^[a-z][\d+.a-z-]*:/iu;
+/**
+ * An old website url cut off after `https://clariah.a`, leaving `t/{locale}/…`. Seen as
+ * `t/de/projects/{slug}`, where the rest is a current slug of the project the link text names.
+ */
+const truncatedClariahAtHref = /^t(?<path>\/(?:de|en)\/.*)$/u;
+
+/**
+ * The url an href which is not one was meant to be, or null for any other href:
+ *
+ * - A markdown link pasted as an href: its url;
+ * - A scheme-less href to the old website (`clariah.at/en/…`), or one cut off in the middle of its
+ *   host name (`t/en/…`);
+ * - A scheme-less path (`about-clariah-at`, `projects/{id}/`), which a browser resolves against the
+ *   page it is on, so it only ever worked by accident: the old website's root is the best guess,
+ *   and its path still has to map to something to be rewritten. A first segment with a dot is a
+ *   host name (`example.org/…`), not a path, and is left alone.
+ */
+function repairMalformedHref(href: string): string | null {
+	const markdownUrl = markdownLinkHref.exec(href)?.groups?.url;
+	if (markdownUrl != null) {
+		return markdownUrl;
+	}
+
+	if (href === "" || hrefWithScheme.test(href) || /^[#/?]/u.test(href)) {
+		return null;
+	}
+
+	const truncatedPath = truncatedClariahAtHref.exec(href)?.groups?.path;
+	if (truncatedPath != null) {
+		return `${clariahAtOrigin}${truncatedPath}`;
+	}
+
+	const firstSegment = href.split(/[#/?]/u)[0]!;
+	if (clariahAtHosts.has(firstSegment.toLowerCase())) {
+		return `https://${href}`;
+	}
+	return firstSegment.includes(".") ? null : `${clariahAtOrigin}/${href}`;
 }
 
 /** The url of a link to the old website, or null for any other link. */
 function parseLegacyHref(href: string): ParsedHref | null {
 	const trimmed = href.trim();
 
+	const repaired = repairMalformedHref(trimmed);
+	if (repaired != null) {
+		const parsed = parseLegacyHref(repaired);
+		return parsed != null ? { url: parsed.url, kind: "malformed" } : null;
+	}
+
 	if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
 		const url = new URL(trimmed, clariahAtOrigin);
 		// Current website paths are stored without a locale, see `@dariah-eric/website-routes`.
-		return stripLegacyLocalePrefix(url.pathname).hasLocale ? { url, isAbsolute: false } : null;
+		return stripLegacyLocalePrefix(url.pathname).hasLocale ? { url, kind: "relative" } : null;
 	}
 
 	try {
@@ -166,14 +247,29 @@ function parseLegacyHref(href: string): ParsedHref | null {
 		if (!["http:", "https:"].includes(url.protocol)) {
 			return null;
 		}
-		return clariahAtHosts.has(url.hostname.toLowerCase()) ? { url, isAbsolute: true } : null;
+		return clariahAtHosts.has(url.hostname.toLowerCase()) ? { url, kind: "absolute" } : null;
 	} catch {
 		return null;
 	}
 }
 
+const reasonsByHrefKind: Record<ParsedHref["kind"], string> = {
+	absolute: "legacy_clariah_at_url",
+	malformed: "legacy_clariah_at_malformed_url",
+	relative: "legacy_clariah_at_relative_url",
+};
+
+function getFilename(pathname: string): string {
+	const segment = pathname.split("/").at(-1) ?? "";
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return segment;
+	}
+}
+
 type LegacyTarget =
-	| { kind: "asset" }
+	| { kind: "asset"; filename: string }
 	| { kind: "entity"; legacyEntity: LegacyClariahAtEntity }
 	| { kind: "path"; pathname: string };
 
@@ -188,7 +284,7 @@ function mapLegacyPathname(pathname: string): LegacyTarget | null {
 	}
 
 	if (normalized.startsWith("/assets/")) {
-		return { kind: "asset" };
+		return { kind: "asset", filename: getFilename(normalized) };
 	}
 
 	const segments = normalized.split("/").slice(1);
@@ -212,7 +308,7 @@ function mapLegacyPathname(pathname: string): LegacyTarget | null {
 		if (listing != null) {
 			return { kind: "path", pathname: listing };
 		}
-		const legacyEntity = getLegacyClariahAtEntity("pages", id);
+		const legacyEntity = getLegacyClariahAtEntity("pages", id) ?? getLegacyClariahAtAliasEntity(id);
 		return legacyEntity != null ? { kind: "entity", legacyEntity } : null;
 	}
 
@@ -243,6 +339,26 @@ function resolveLegacyEntityId(
 	return { entityId: [...ids][0]! };
 }
 
+function resolveLegacyAssetKey(
+	filename: string,
+	context: RichTextLinkCleanupContext,
+): { assetKey: string } | { reason: string } {
+	if (context.assetKeysByFilename == null) {
+		return { reason: "legacy_clariah_at_asset_unresolved" };
+	}
+
+	const keys = context.assetKeysByFilename.get(filename);
+
+	if (keys == null || keys.size === 0) {
+		// The file has to be uploaded, or matched to an asset under another name, by hand.
+		return { reason: "legacy_clariah_at_asset_not_found" };
+	}
+	if (keys.size > 1) {
+		return { reason: "legacy_clariah_at_asset_ambiguous" };
+	}
+	return { assetKey: [...keys][0]! };
+}
+
 type ResolveHrefResult =
 	| { action: "ignore" }
 	| { action: "review"; reason: string }
@@ -258,21 +374,24 @@ export function resolveLegacyClariahAtHref(
 		return { action: "ignore" };
 	}
 
-	const reason = parsed.isAbsolute ? "legacy_clariah_at_url" : "legacy_clariah_at_relative_url";
+	const reason = reasonsByHrefKind[parsed.kind];
 	const target = mapLegacyPathname(parsed.url.pathname);
 
 	if (target?.kind === "asset") {
-		// A file of the old website has to be matched to an asset, or re-uploaded, by hand.
-		return { action: "review", reason: "legacy_clariah_at_asset" };
+		const resolved = resolveLegacyAssetKey(target.filename, context);
+		if ("reason" in resolved) {
+			return { action: "review", reason: resolved.reason };
+		}
+		// An asset link has no room for a query or fragment either, but neither changes a file.
+		return {
+			action: "rewrite",
+			replacement: { kind: "asset", assetKey: resolved.assetKey },
+			reason,
+		};
 	}
 
 	if (target == null) {
-		return {
-			action: "review",
-			reason: parsed.isAbsolute
-				? "legacy_clariah_at_url_unmapped"
-				: "legacy_clariah_at_relative_url_unmapped",
-		};
+		return { action: "review", reason: `${reason}_unmapped` };
 	}
 
 	const searchParams = new URLSearchParams(parsed.url.searchParams);
@@ -307,6 +426,29 @@ export function resolveLegacyClariahAtHref(
 }
 
 /**
+ * Whether a link targets an asset or entity, by reference. A `targetKind` without its reference
+ * targets nothing, and its `href` is all the link has, so it is treated as a plain link.
+ */
+function hasLinkTarget(attrs: Record<string, unknown>): boolean {
+	if (!isLinkTargetKind(attrs.targetKind)) {
+		return false;
+	}
+	const reference = attrs.targetKind === "asset" ? attrs.assetKey : attrs.entityId;
+	return typeof reference === "string" && reference !== "";
+}
+
+/** Drops an `href` to the old website from a link which targets an asset or entity. */
+function resolveStaleHref(href: string): ResolveHrefResult {
+	return parseLegacyHref(href) != null
+		? {
+				action: "rewrite",
+				replacement: { kind: "clear_href" },
+				reason: "legacy_clariah_at_stale_href",
+			}
+		: { action: "ignore" };
+}
+
+/**
  * The link mark or button link attributes for a replacement, see `linkTarget` in the rich text
  * editor.
  */
@@ -318,7 +460,23 @@ function applyReplacement(
 		return { ...attrs, href: replacement.href };
 	}
 
+	if (replacement.kind === "clear_href") {
+		return { ...attrs, href: null };
+	}
+
 	// Every target attribute is spelled out, as the editor does, so no stale target survives.
+	if (replacement.kind === "asset") {
+		return {
+			...attrs,
+			href: null,
+			targetKind: "asset",
+			assetKey: replacement.assetKey,
+			entityId: null,
+			asset: null,
+			entity: null,
+		};
+	}
+
 	return {
 		...attrs,
 		href: null,
@@ -337,55 +495,54 @@ export function cleanRichTextLinksInDocument(
 	const rewrites: Array<LinkRewrite> = [];
 	const reviews: Array<LinkReview> = [];
 
+	/** The cleaned attributes of a link mark or button link, or the same object when unchanged. */
+	function cleanLinkAttrs(
+		attrs: Record<string, unknown>,
+		location: string,
+	): Record<string, unknown> {
+		const href = attrs.href;
+		if (typeof href !== "string") {
+			return attrs;
+		}
+
+		const resolved = hasLinkTarget(attrs)
+			? resolveStaleHref(href)
+			: resolveLegacyClariahAtHref(href, context);
+
+		if (resolved.action === "review") {
+			reviews.push({ location, originalHref: href, reason: resolved.reason });
+		}
+		if (resolved.action !== "rewrite") {
+			return attrs;
+		}
+
+		rewrites.push({
+			location,
+			originalHref: href,
+			replacement: resolved.replacement,
+			reason: resolved.reason,
+		});
+		return applyReplacement(attrs, resolved.replacement);
+	}
+
 	function visitNode(node: JSONContent, path: string): JSONContent {
 		const next: JSONContent = { ...node };
 
 		if (node.attrs != null) {
 			next.attrs = { ...node.attrs };
 			// A button link carries the same target attributes as a link mark.
-			if (node.type === "buttonLink" && typeof node.attrs.href === "string") {
-				const href = node.attrs.href;
-				const location = `${path}.attrs.href`;
-				const resolved = resolveLegacyClariahAtHref(href, context);
-				if (resolved.action === "review") {
-					reviews.push({ location, originalHref: href, reason: resolved.reason });
-				} else if (resolved.action === "rewrite") {
-					rewrites.push({
-						location,
-						originalHref: href,
-						replacement: resolved.replacement,
-						reason: resolved.reason,
-					});
-					next.attrs = applyReplacement(node.attrs, resolved.replacement);
-				}
+			if (node.type === "buttonLink") {
+				next.attrs = cleanLinkAttrs(node.attrs, `${path}.attrs.href`);
 			}
 		}
 
 		if (node.marks != null) {
 			next.marks = node.marks.map((mark, index) => {
-				if (mark.type !== "link" || typeof mark.attrs?.href !== "string") {
+				if (mark.type !== "link" || mark.attrs == null) {
 					return mark;
 				}
-
-				const href = mark.attrs.href;
-				const location = `${path}.marks[${String(index)}].attrs.href`;
-				const resolved = resolveLegacyClariahAtHref(href, context);
-
-				if (resolved.action === "review") {
-					reviews.push({ location, originalHref: href, reason: resolved.reason });
-				}
-
-				if (resolved.action !== "rewrite") {
-					return mark;
-				}
-
-				rewrites.push({
-					location,
-					originalHref: href,
-					replacement: resolved.replacement,
-					reason: resolved.reason,
-				});
-				return { ...mark, attrs: applyReplacement(mark.attrs, resolved.replacement) };
+				const attrs = cleanLinkAttrs(mark.attrs, `${path}.marks[${String(index)}].attrs.href`);
+				return attrs === mark.attrs ? mark : { ...mark, attrs };
 			});
 		}
 
@@ -441,10 +598,91 @@ async function getEntityIdsBySlug(db: Database | Transaction): Promise<Map<strin
 	return entityIdsBySlug;
 }
 
+export interface AssetCandidate {
+	key: string;
+	label: string;
+	filename: string | null;
+	mimeType: string;
+	size: number | null;
+	contentHash: string | null;
+}
+
+/**
+ * Storage keys by file name, for matching files of the old website to the assets they were uploaded
+ * as. The upload kept the file name as the label (or `filename`), but nothing else about where a
+ * file came from.
+ *
+ * Some files were uploaded more than once, once per locale. Assets with the same name, mime type
+ * and size, whose content hashes do not disagree, are taken to be copies of one file, and the
+ * oldest (assets.id is a uuidv7) stands for all of them. Copies which differ in any of those keep a
+ * key each, so a link to that name is reported as ambiguous instead of being guessed at.
+ *
+ * Candidates are expected to be sorted oldest first.
+ */
+export function groupAssetKeysByFilename(
+	candidates: ReadonlyArray<AssetCandidate>,
+): Map<string, Set<string>> {
+	const byFilename = new Map<string, Array<AssetCandidate>>();
+	for (const candidate of candidates) {
+		for (const name of new Set([candidate.label, candidate.filename])) {
+			if (name == null || name === "") {
+				continue;
+			}
+			const group = byFilename.get(name) ?? [];
+			group.push(candidate);
+			byFilename.set(name, group);
+		}
+	}
+
+	const assetKeysByFilename = new Map<string, Set<string>>();
+	for (const [name, group] of byFilename) {
+		const representatives: Array<AssetCandidate> = [];
+		for (const candidate of group) {
+			const copyOf = representatives.find(
+				(representative) =>
+					representative.mimeType === candidate.mimeType &&
+					representative.size != null &&
+					representative.size === candidate.size &&
+					(representative.contentHash == null ||
+						candidate.contentHash == null ||
+						representative.contentHash === candidate.contentHash),
+			);
+			if (copyOf == null) {
+				representatives.push(candidate);
+			}
+		}
+		assetKeysByFilename.set(
+			name,
+			new Set(representatives.map((representative) => representative.key)),
+		);
+	}
+	return assetKeysByFilename;
+}
+
+async function getAssetKeysByFilename(
+	db: Database | Transaction,
+): Promise<Map<string, Set<string>>> {
+	const rows = await db
+		.select({
+			key: schema.assets.key,
+			label: schema.assets.label,
+			filename: schema.assets.filename,
+			mimeType: schema.assets.mimeType,
+			size: schema.assets.size,
+			contentHash: schema.assets.contentHash,
+		})
+		.from(schema.assets)
+		.orderBy(schema.assets.id);
+
+	return groupAssetKeysByFilename(rows);
+}
+
 async function computeCleanups(db: Database | Transaction): Promise<Array<BlockCleanup>> {
-	const context: RichTextLinkCleanupContext = {
-		entityIdsBySlug: await getEntityIdsBySlug(db),
-	};
+	const [entityIdsBySlug, assetKeysByFilename] = await Promise.all([
+		getEntityIdsBySlug(db),
+		getAssetKeysByFilename(db),
+	]);
+	const context: RichTextLinkCleanupContext = { entityIdsBySlug, assetKeysByFilename };
 
 	const rows = await db
 		.select({
@@ -512,6 +750,8 @@ function findingsFromCleanup(cleanup: BlockCleanup): Array<RichTextLinkCleanupFi
 				replacementHref: rewrite.replacement.kind === "href" ? rewrite.replacement.href : null,
 				replacementEntityId:
 					rewrite.replacement.kind === "entity" ? rewrite.replacement.entityId : null,
+				replacementAssetKey:
+					rewrite.replacement.kind === "asset" ? rewrite.replacement.assetKey : null,
 				reason: rewrite.reason,
 			};
 		}),
@@ -523,6 +763,7 @@ function findingsFromCleanup(cleanup: BlockCleanup): Array<RichTextLinkCleanupFi
 				originalHref: review.originalHref,
 				replacementHref: null,
 				replacementEntityId: null,
+				replacementAssetKey: null,
 				reason: review.reason,
 			};
 		}),
