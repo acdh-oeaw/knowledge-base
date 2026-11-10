@@ -476,7 +476,7 @@ export function ProjectForm(props: Readonly<ProjectFormProps>): ReactNode {
 						defaultPrefix="logos"
 						initialAssets={initialAssets}
 						onChange={setSelectedImage}
-						prefixes={["logos"]}
+						prefixes={["logos", "images"]}
 						selectedImage={selectedImage}
 					/>
 				</FormSection>
