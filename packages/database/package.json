@@ -23,6 +23,7 @@
 		"./integrity-service": "./dist/integrity-service.mjs",
 		"./link-targets": "./dist/link-targets.mjs",
 		"./link-targets-service": "./dist/link-targets-service.mjs",
+		"./quote-authors": "./dist/quote-authors.mjs",
 		"./relations": "./dist/relations.mjs",
 		"./rich-text": "./dist/rich-text.mjs",
 		"./rich-text-normalize": "./dist/rich-text-normalize.mjs",

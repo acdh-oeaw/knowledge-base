@@ -8,6 +8,7 @@ import {
 	collectPlaceholderValueKinds,
 } from "@dariah-eric/database/placeholder-values";
 import { getPlaceholderValues } from "@dariah-eric/database/placeholder-values-service";
+import { mapQuoteAuthors } from "@dariah-eric/database/quote-authors";
 import { isEmptyRichTextDocument, withoutBlankParagraphs } from "@dariah-eric/database/rich-text";
 import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
@@ -835,7 +836,7 @@ export async function getEntityContentBlocks(
 	return nestContentBlocks([
 		...calloutContentBlocks,
 		...richTextContentBlocks.map((row) => {
-			return { ...row, type: "rich_text" as const };
+			return { ...row, content: withQuoteAuthorImageUrls(row.content), type: "rich_text" as const };
 		}),
 		...imageContentBlocks,
 		...embedContentBlocks,
@@ -846,6 +847,24 @@ export async function getEntityContentBlocks(
 		...accordionItemContentBlocks,
 		...mediaTextContentBlocks,
 	]);
+}
+
+/**
+ * Signs a display url onto every typed-in quote author who has a picture, the way an image block's
+ * `imageUrl` is signed on load. Only the key is stored; `splitDocumentToBlocks` drops the url again
+ * on save.
+ */
+function withQuoteAuthorImageUrls<T extends JSONContent | undefined>(content: T): T {
+	return mapQuoteAuthors(content, (author) => {
+		if (author.kind !== "text" || author.imageKey == null) {
+			return author;
+		}
+		const { url } = images.generateSignedImageUrl({
+			key: author.imageKey,
+			options: imageGridOptions,
+		});
+		return { ...author, imageUrl: url };
+	});
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { JSONContent } from "@tiptap/core";
-import { expect, fn } from "storybook/test";
+import { expect, fn, within } from "storybook/test";
 
 import { RichTextEditor, RichTextRenderer } from "./rich-text-editor";
 
@@ -212,6 +212,26 @@ const draggableBlocksContent: JSONContent = {
 			content: [{ type: "paragraph", content: [{ type: "text", text: "A callout body." }] }],
 		},
 		{
+			type: "quoteBlock",
+			attrs: {
+				authors: [
+					{
+						kind: "person",
+						entityId: "00000000-0000-0000-0000-000000000001",
+						name: "Ada Lovelace",
+					},
+					{ kind: "text", name: "Charles Babbage" },
+				],
+				description: {
+					type: "doc",
+					content: [
+						{ type: "paragraph", content: [{ type: "text", text: "Analytical Engine team" }] },
+					],
+				},
+			},
+			content: [{ type: "paragraph", content: [{ type: "text", text: "A quotation." }] }],
+		},
+		{
 			type: "mediaTextBlock",
 			attrs: {
 				imageKey: "images/ada.jpg",
@@ -267,7 +287,7 @@ export const WithContent: Story = {
 export const WithOptionalBlocks: Story = {
 	args: {
 		content: sampleContent,
-		blocks: ["embed", "callout", "leadIn", "mediaText", "buttonLink"],
+		blocks: ["embed", "callout", "quote", "leadIn", "mediaText", "buttonLink"],
 	},
 	render(props) {
 		return (
@@ -287,6 +307,65 @@ export const WithFootnotes: Story = {
 	args: {
 		content: footnoteContent,
 		blocks: ["footnote"],
+	},
+	render(props) {
+		return (
+			<div className="inline-160">
+				<RichTextEditor {...props} />
+			</div>
+		);
+	},
+};
+
+/**
+ * A quote with attribution: the quoted text is typed in place, and the byline — authors in order,
+ * and a description of who they are — is set from the quote's panel. A host that supplies a person
+ * picker also offers "Add person", which credits an entry in the knowledge base by reference.
+ */
+const onQuoteChange = fn<(content: JSONContent) => void>();
+
+export const WithQuote: Story = {
+	args: {
+		blocks: ["quote"],
+		content: {
+			type: "doc",
+			content: [
+				{
+					type: "quoteBlock",
+					attrs: { authors: [], description: null },
+					content: [
+						{ type: "paragraph", content: [{ type: "text", text: "Collaboration is key." }] },
+					],
+				},
+			],
+		},
+		onChange: onQuoteChange,
+	},
+	async play({ canvas, userEvent }) {
+		const quote = canvas.getByRole("group", { name: "Quote block" });
+
+		await userEvent.click(within(quote).getByRole("button", { name: "Add attribution" }));
+
+		const nameInput = within(quote).getByLabelText("Add a name");
+		await userEvent.type(nameInput, "Ada Lovelace{Enter}");
+		await userEvent.type(nameInput, "Charles Babbage");
+		await userEvent.click(within(quote).getByRole("button", { name: "Add" }));
+
+		// Order is the author's to set: the second name moves ahead of the first.
+		await userEvent.click(within(quote).getByRole("button", { name: "Move Charles Babbage up" }));
+		await userEvent.click(within(quote).getByRole("button", { name: "Apply" }));
+
+		await expect(quote.querySelector("figcaption")).toHaveTextContent(
+			"Charles Babbage and Ada Lovelace",
+		);
+		const [lastDocument] = onQuoteChange.mock.lastCall!;
+		await expect(lastDocument.content?.[0]?.attrs).toEqual({
+			authors: [
+				{ kind: "text", name: "Charles Babbage" },
+				{ kind: "text", name: "Ada Lovelace" },
+			],
+			description: null,
+		});
 	},
 	render(props) {
 		return (
@@ -379,7 +458,7 @@ export const DraggableBlocks: Story = {
 	 */
 	parameters: { a11y: { test: "todo" } },
 	args: {
-		blocks: ["accordion", "callout", "embed", "gallery", "mediaText"],
+		blocks: ["accordion", "callout", "embed", "gallery", "mediaText", "quote"],
 		content: draggableBlocksContent,
 	},
 	async play({ canvas }) {
@@ -393,6 +472,7 @@ export const DraggableBlocks: Story = {
 			"Embed block",
 			"Gallery block",
 			"Callout block",
+			"Quote block",
 			"Accordion block",
 			"Media with text block",
 		];

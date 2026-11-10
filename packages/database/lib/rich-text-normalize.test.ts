@@ -206,6 +206,45 @@ describe("normalizeRichTextDocument", () => {
 		expect(normalizeRichTextDocument(input)).toStrictEqual(doc());
 	});
 
+	it("drops a quote whose text was cleaned away, byline and all", () => {
+		const input = doc({
+			type: "quoteBlock",
+			attrs: { authors: [{ kind: "text", name: "Ada Lovelace" }], description: null },
+			content: [{ type: "paragraph", content: [{ type: "text", text: " " }] }],
+		});
+		expect(normalizeRichTextDocument(input)).toStrictEqual(doc());
+	});
+
+	it("normalises a quote's byline description like a caption", () => {
+		const input = doc({
+			type: "quoteBlock",
+			attrs: {
+				authors: [{ kind: "text", name: "Ada Lovelace" }],
+				description: doc(
+					{ type: "paragraph" },
+					{
+						type: "paragraph",
+						content: [{ type: "text", marks: [{ type: "bold" }], text: "Mathematician" }],
+					},
+				),
+			},
+			content: [{ type: "paragraph", content: [{ type: "text", text: "A quotation." }] }],
+		});
+		expect(normalizeRichTextDocument(input)).toStrictEqual(
+			doc({
+				type: "quoteBlock",
+				attrs: {
+					authors: [{ kind: "text", name: "Ada Lovelace" }],
+					description: doc({
+						type: "paragraph",
+						content: [{ type: "text", marks: [{ type: "bold" }], text: "Mathematician" }],
+					}),
+				},
+				content: [{ type: "paragraph", content: [{ type: "text", text: "A quotation." }] }],
+			}),
+		);
+	});
+
 	it("keeps non-empty list items", () => {
 		const input = doc({
 			type: "bulletList",
