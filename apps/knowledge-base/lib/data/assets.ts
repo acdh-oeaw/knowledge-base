@@ -343,7 +343,11 @@ export async function uploadAsset(params: UploadAssetParams) {
 				aspectRatio: null,
 			};
 	const contentHash = getContentHash(input);
-	const metadata = { "content-type": file.type, name: file.name };
+	/**
+	 * Object metadata is sent as `x-amz-meta-*` headers, which must be ASCII: a filename like
+	 * "Müller.jpg" otherwise breaks the request signature (`SignatureDoesNotMatch`).
+	 */
+	const metadata = { "content-type": file.type, name: encodeURIComponent(file.name) };
 
 	const { key } = (await s3.upload({ input, prefix, metadata, size })).unwrap();
 
