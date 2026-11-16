@@ -172,3 +172,69 @@ export function resolveImageCaption(
 	}
 	return captionMode === "override" ? caption : assetCaption;
 }
+
+/**
+ * Who a quote is attributed to. Either a person in the knowledge base — stored by document id, so
+ * the read path can resolve their current name, portrait and page — or a name typed in for someone
+ * who has no entry of their own.
+ *
+ * A person keeps the name they had when picked beside the id. It is a fallback, not the source of
+ * truth: it lets the editor and a preview name the author without a lookup, and keeps the byline
+ * readable should the entry later be unpublished. Their portrait is the one on their entry.
+ *
+ * A typed-in author may have a picture of their own, stored by asset key like every other image.
+ * `imageUrl` is only for display in the editor: urls are signed when the document is loaded, and
+ * dropped again when it is saved, so a stored document never holds one that could go stale.
+ */
+export type QuoteAuthor =
+	| { kind: "person"; entityId: string; name: string }
+	| { kind: "text"; name: string; imageKey?: string; imageUrl?: string };
+
+export function toQuoteAuthor(value: unknown): QuoteAuthor | null {
+	if (value === null || typeof value !== "object") {
+		return null;
+	}
+	const { kind, entityId, name, imageKey, imageUrl } = value as Record<string, unknown>;
+	const trimmedName = typeof name === "string" ? name.trim() : "";
+
+	if (kind === "person" && typeof entityId === "string" && entityId !== "") {
+		return { kind: "person", entityId, name: trimmedName };
+	}
+	if (kind === "text" && trimmedName !== "") {
+		return {
+			kind: "text",
+			name: trimmedName,
+			...(typeof imageKey === "string" && imageKey !== "" ? { imageKey } : {}),
+			...(typeof imageKey === "string" && imageKey !== "" && typeof imageUrl === "string"
+				? { imageUrl }
+				: {}),
+		};
+	}
+
+	return null;
+}
+
+export function normalizeQuoteAuthors(value: unknown): Array<QuoteAuthor> {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	return value.flatMap((item) => {
+		const author = toQuoteAuthor(item);
+		return author != null ? [author] : [];
+	});
+}
+
+export function serializeQuoteAuthorsAttr(authors: Array<QuoteAuthor>): string | null {
+	return authors.length > 0 ? JSON.stringify(authors) : null;
+}
+
+export function parseQuoteAuthorsAttr(value: string | null | undefined): Array<QuoteAuthor> {
+	if (value == null || value === "") {
+		return [];
+	}
+	try {
+		return normalizeQuoteAuthors(JSON.parse(value));
+	} catch {
+		return [];
+	}
+}

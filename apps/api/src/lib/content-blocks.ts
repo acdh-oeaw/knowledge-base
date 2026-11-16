@@ -11,14 +11,19 @@ import {
 	collectPlaceholderValueKinds,
 } from "@dariah-eric/database/placeholder-values";
 import { getPlaceholderValues } from "@dariah-eric/database/placeholder-values-service";
+import { collectQuoteAuthorReferences, mapQuoteAuthors } from "@dariah-eric/database/quote-authors";
 import * as schema from "@dariah-eric/database/schema";
 import type { JSONContent } from "@tiptap/core";
 import * as v from "valibot";
 
 import { getAssetDownloadUrl, getDownloadFilename } from "@/lib/asset-download";
 import { getEmbedUrl } from "@/lib/embed-url";
-import { generateImageUrl, toImageAsset } from "@/lib/images";
-import { getEntityRefsByDocumentId, getEntityVersionLocaleId } from "@/lib/relations";
+import { type Image, generateImageUrl, toImageAsset } from "@/lib/images";
+import {
+	getEntityImagesByDocumentId,
+	getEntityRefsByDocumentId,
+	getEntityVersionLocaleId,
+} from "@/lib/relations";
 import { ImageObjectSchema } from "@/lib/schemas";
 import type { Database, Transaction } from "@/middlewares/db";
 import { alias, eq, inArray } from "@/services/db/sql";
@@ -52,7 +57,7 @@ export const RichTextContentBlockSchema = v.object({
 		// Every other node maps onto one element, so it needs no explanation here. A footnote does not:
 		// rendering it takes assembling something the payload does not spell out.
 		v.description(
-			"Richtext as Tiptap JSON. The inline `footnote` node is a marker carrying its own note in `attrs.content` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+			'Richtext as Tiptap JSON. The inline `footnote` node is a marker carrying its own note in `attrs.content` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item\'s content blocks and lists the notes, in that order, at the end of the item. The block `quoteBlock` node is a quotation (its content: paragraphs) with a byline in its attributes: `attrs.authors`, in order, each either `{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }` or `{ kind: "text", name, image: Image | null }`, images at avatar width, and `attrs.description`, richtext of the caption shape saying who they are (may be null).',
 		),
 	),
 });
@@ -415,7 +420,11 @@ export async function getContentBlocks(db: Database | Transaction, entityId: str
 
 	// Entity-targeted links store only a document id; attach the page it currently lives at, so a
 	// renamed slug moves every link to it.
-	return annotateEntityLinks(db, withAssetLinks, entityId);
+	const withEntityLinks = await annotateEntityLinks(db, withAssetLinks, entityId);
+
+	// Quote authors store a person's document id or a picture's asset key; attach the person's current
+	// name, page and portrait, and the picture itself.
+	return annotateQuoteAuthors(db, withEntityLinks, entityId);
 }
 
 /**
@@ -518,6 +527,86 @@ async function annotateEntityLinks<T>(
 	);
 
 	return annotateEntityLinkTargets(value, resolved);
+}
+
+/**
+ * Resolves the authors of every `quoteBlock` node. Each comes out as
+ *
+ * - `{ kind: "person", entityId, name, entity, image }` — `entity` is the person's `EntityRef` (null
+ *   once they are no longer published, in which case `name` falls back to the one stored when they
+ *   were credited), `image` their portrait.
+ * - `{ kind: "text", name, image }` — `image` is the picture the editor gave them, if any.
+ *
+ * Images are signed at avatar width: a byline shows faces, not illustrations.
+ */
+async function annotateQuoteAuthors<T>(
+	db: Database | Transaction,
+	value: T,
+	entityVersionId: string,
+): Promise<T> {
+	const { entityIds, imageKeys } = collectQuoteAuthorReferences(value);
+	if (entityIds.size === 0 && imageKeys.size === 0) {
+		return value;
+	}
+
+	const ids = [...entityIds];
+	// Names and portraits come from the person's version in the locale being read, like entity links.
+	const localeId =
+		entityIds.size > 0 ? await getEntityVersionLocaleId(db, entityVersionId) : undefined;
+	const [refs, portraits, pictures] = await Promise.all([
+		getEntityRefsByDocumentId(db, ids, localeId),
+		getEntityImagesByDocumentId(db, ids, imageWidth.avatar, localeId),
+		getImagesByAssetKey(db, [...imageKeys], imageWidth.avatar),
+	]);
+
+	return mapQuoteAuthors(value, (author) => {
+		if (author.kind === "person") {
+			const entity = refs.get(author.entityId) ?? null;
+
+			return {
+				kind: "person",
+				entityId: author.entityId,
+				name: entity?.label ?? author.name,
+				entity,
+				image: entity != null ? (portraits.get(author.entityId) ?? null) : null,
+			};
+		}
+
+		return {
+			kind: "text",
+			name: author.name,
+			image: author.imageKey != null ? (pictures.get(author.imageKey) ?? null) : null,
+		};
+	});
+}
+
+/** Images for the given asset keys, keyed by asset key. A key whose asset is gone has no entry. */
+async function getImagesByAssetKey(
+	db: Database | Transaction,
+	keys: Array<string>,
+	width: number,
+): Promise<Map<string, Image>> {
+	if (keys.length === 0) {
+		return new Map();
+	}
+
+	const rows = await db
+		.select({
+			key: schema.assets.key,
+			alt: schema.assets.alt,
+			caption: schema.assets.caption,
+			mimeType: schema.assets.mimeType,
+			width: schema.assets.width,
+			height: schema.assets.height,
+			aspectRatio: schema.assets.aspectRatio,
+			licenseName: schema.licenses.name,
+			licenseUrl: schema.licenses.url,
+		})
+		.from(schema.assets)
+		.leftJoin(schema.licenses, eq(schema.licenses.id, schema.assets.licenseId))
+		.where(inArray(schema.assets.key, keys));
+
+	return new Map(rows.map((row) => [row.key, generateImageUrl(toImageAsset(row), width)]));
 }
 
 /**

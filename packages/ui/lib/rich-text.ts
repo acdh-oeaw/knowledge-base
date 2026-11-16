@@ -49,6 +49,28 @@ function visit(node: unknown, parts: Array<string>) {
 		return;
 	}
 
+	if (node.type === "quoteBlock") {
+		// The byline lives in attributes, which the content walk below never reaches. It follows the
+		// quoted text as blocks of its own — the authors, then who they are — so the people a quote is
+		// credited to are searchable with it.
+		visit(node.content, parts);
+		appendBlockSeparator(parts);
+		if (isRecord(node.attrs)) {
+			const authors = Array.isArray(node.attrs.authors) ? node.attrs.authors : [];
+			const names = authors.flatMap((author) =>
+				isRecord(author) && typeof author.name === "string" && author.name.trim() !== ""
+					? [author.name.trim()]
+					: [],
+			);
+			if (names.length > 0) {
+				parts.push(names.join(", "));
+				appendBlockSeparator(parts);
+			}
+			visit(node.attrs.description, parts);
+		}
+		return;
+	}
+
 	if (node.type === "placeholderValue" && isRecord(node.attrs)) {
 		// Annotated nodes flatten to their resolved value; raw references fall back to the display
 		// label so search/alt text stays meaningful.

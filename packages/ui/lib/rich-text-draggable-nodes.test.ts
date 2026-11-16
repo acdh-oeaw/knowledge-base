@@ -36,6 +36,7 @@ describe("draggable node classification", () => {
 			"accordionItem",
 			"calloutBlock",
 			"mediaTextBlock",
+			"quoteBlock",
 		]);
 	});
 

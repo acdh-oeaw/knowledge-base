@@ -7,7 +7,8 @@ import * as v from "valibot";
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function validator<
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+	/** Generic so the returned middleware is typed for this target only (feeds `c.req.valid()`). */
+	// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 	TValidationTargets extends keyof ValidationTargets,
 	TSchema extends v.GenericSchema | v.GenericSchemaAsync,
 >(target: TValidationTargets, schema: TSchema) {

@@ -13,6 +13,10 @@ import {
 	toPlainText,
 } from "@dariah-eric/ui/rich-text";
 import { createRichTextExtensions } from "@dariah-eric/ui/rich-text-editor";
+import {
+	formatQuoteAuthorNames,
+	normalizeQuoteAuthors,
+} from "@dariah-eric/ui/rich-text-quote-node";
 import type { JSONContent } from "@tiptap/core";
 import { renderToReactElement } from "@tiptap/static-renderer/pm/react";
 import { type ReactNode, useId } from "react";
@@ -250,12 +254,48 @@ function renderTableNode({
 	);
 }
 
+/**
+ * A quote, with its byline. The node's own `renderHTML` can only flatten the byline to text, so the
+ * description's formatting and links are lost there; it is assembled here from the attributes
+ * instead, the same way a table's caption is.
+ *
+ * Authors are named by the name stored beside each reference. The website resolves a person's
+ * current name, portrait and page through the public API; the preview only has to say who is
+ * credited.
+ */
+function renderQuoteNode({
+	node,
+	children,
+}: Readonly<{
+	node: { attrs?: Record<string, unknown> | null };
+	children?: ReactNode | Array<ReactNode>;
+}>): ReactNode {
+	const authorNames = formatQuoteAuthorNames(normalizeQuoteAuthors(node.attrs?.authors));
+	const description = node.attrs?.description as JSONContent | null | undefined;
+	const hasDescription = !isEmptyRichTextDocument(description);
+
+	return (
+		<figure>
+			<blockquote>{children}</blockquote>
+			{authorNames !== "" || hasDescription ? (
+				<figcaption className="mbs-2 ps-5 text-sm text-muted-fg">
+					{authorNames !== "" ? <span className="font-medium text-fg">{authorNames}</span> : null}
+					{hasDescription ? (
+						<InlineRichTextRenderer className="text-sm text-muted-fg" content={description!} />
+					) : null}
+				</figcaption>
+			) : null}
+		</figure>
+	);
+}
+
 const richTextRenderOptions = {
 	markMapping: { link: renderLinkMark },
 	nodeMapping: {
 		buttonLink: renderButtonLinkNode,
 		footnote: renderFootnoteNode,
 		heading: renderHeadingNode,
+		quoteBlock: renderQuoteNode,
 		table: renderTableNode,
 	},
 };

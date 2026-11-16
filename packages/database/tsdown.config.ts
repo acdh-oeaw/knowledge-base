@@ -16,6 +16,7 @@ export default defineConfig({
 		"./lib/image-captions.ts",
 		"./lib/integrity-service.ts",
 		"./lib/link-targets.ts",
+		"./lib/quote-authors.ts",
 		"./lib/link-targets-service.ts",
 		"./lib/relations.ts",
 		"./lib/rich-text.ts",

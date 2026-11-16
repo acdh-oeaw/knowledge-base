@@ -382,3 +382,49 @@ describe("blocks that cannot be stored", () => {
 		expect(doc.content![0]!.content).toEqual([{ type: "paragraph" }]);
 	});
 });
+
+describe("quote authors", () => {
+	function quoteWith(author: Record<string, unknown>): JSONContent {
+		return {
+			type: "quoteBlock",
+			attrs: { authors: [author], description: null },
+			content: [paragraph("A quotation.")],
+		};
+	}
+
+	it("stores a typed-in author's picture by key, without the url signed for the editor", () => {
+		const blocks = splitDocumentToBlocks({
+			type: "doc",
+			content: [
+				{
+					type: "calloutBlock",
+					attrs: { intent: "info", title: null },
+					content: [
+						quoteWith({
+							kind: "text",
+							name: "Ada Lovelace",
+							imageKey: "avatars/ada.jpg",
+							imageUrl: "https://images.example.org/signed",
+						}),
+					],
+				},
+			],
+		});
+
+		const [callout] = blocks;
+		assertType(callout, "callout");
+		const [richText] = callout.children ?? [];
+		assertType(richText, "rich_text");
+
+		expect(richText.content?.content?.[0]?.attrs?.authors).toStrictEqual([
+			{ kind: "text", name: "Ada Lovelace", imageKey: "avatars/ada.jpg" },
+		]);
+	});
+});
+
+function assertType<T extends ContentBlockInput["type"]>(
+	block: ContentBlockInput | undefined,
+	type: T,
+): asserts block is Extract<ContentBlockInput, { type: T }> {
+	expect(block?.type).toBe(type);
+}

@@ -211,6 +211,23 @@ pnpm --filter @dariah-eric/maintenance run data:clean:richtext-links -- --apply 
 The link set is recomputed at mutation time, so a block edited since the report is protected. Only
 the database is touched (needs the `DATABASE_*` env vars).
 
+### `data:convert:legacy-blockquotes`
+
+Converts WordPress-era blockquotes whose attribution was typed in as prose into quotes with a
+structured byline. Two shapes are recognised: a last paragraph inside the quote reading `— Name,
+description`, and a paragraph right after the quote reading `Name (Affiliation): …`. Every other
+blockquote is left as it is. Writes a TSV report of conversions and skipped quotes to
+`.cache/legacy-blockquotes.tsv`.
+
+```bash
+pnpm --filter @dariah-eric/maintenance run data:convert:legacy-blockquotes            # dry run
+pnpm --filter @dariah-eric/maintenance run data:convert:legacy-blockquotes -- --apply # convert
+```
+
+Draft and published versions are both converted, and each block is converted again at write time, so
+a block edited since the report is protected. Re-running is a no-op. Only the database is touched
+(needs the `DATABASE_*` env vars).
+
 ### `data:clean:unused-social-media`
 
 Finds social-media entries not referenced by any project, organisational unit, service, or report
