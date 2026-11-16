@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
+import { selectTab } from "@/e2e/lib/fixtures/hydration";
 import { expect, test } from "@/e2e/lib/test";
 
 /**
@@ -57,7 +58,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		const sortName = `${prefix}, Country Person`;
 
 		await gotoEdit(page);
-		await page.getByRole("tab", { name: "People" }).click();
+		await selectTab(page.getByRole("tab", { name: "People" }));
 
 		await page.getByRole("button", { name: "Add new person" }).click();
 		const dialog = page.getByRole("dialog", { name: "Add new person" });
@@ -112,7 +113,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		const sortName = `0000 ${prefix} Reload Person`;
 
 		await gotoEdit(page);
-		await page.getByRole("tab", { name: "People" }).click();
+		await selectTab(page.getByRole("tab", { name: "People" }));
 
 		await page.getByRole("button", { name: "Add new person" }).click();
 		const dialog = page.getByRole("dialog", { name: "Add new person" });
@@ -129,7 +130,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		// Regression: the page server-fetched published persons only, so after a refresh the picker
 		// dropped the just-created draft even though the (draft-aware) options api would still find it.
 		await gotoEdit(page);
-		await page.getByRole("tab", { name: "People" }).click();
+		await selectTab(page.getByRole("tab", { name: "People" }));
 
 		// Open the picker WITHOUT typing: searching would hit the draft-aware api and mask the bug,
 		// which only affects the initial, server-provided option list.
@@ -150,7 +151,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		const name = `${prefix} Partner Institution ${randomUUID()}`;
 
 		await gotoEdit(page);
-		await page.getByRole("tab", { name: "Institutions" }).click();
+		await selectTab(page.getByRole("tab", { name: "Institutions" }));
 
 		// Create a new (draft) institution; the create action also adds the `is_located_in` edge and
 		// selects it in the picker.
@@ -219,7 +220,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		const name = `${prefix} Reload Institution ${randomUUID()}`;
 
 		await gotoEdit(page);
-		await page.getByRole("tab", { name: "Institutions" }).click();
+		await selectTab(page.getByRole("tab", { name: "Institutions" }));
 
 		// Creating the draft institution also adds its `is_located_in` edge to the country, so it is in
 		// scope for the country-scoped picker even without completing a partner relation.
@@ -237,7 +238,7 @@ test.describe("country people and institutions (delegated national coordinator)"
 		// from the options api, so the regression here is the api filtering to published-only — a draft
 		// institution the coordinator just created would vanish from the picker after a refresh.
 		await gotoEdit(page);
-		await page.getByRole("tab", { name: "Institutions" }).click();
+		await selectTab(page.getByRole("tab", { name: "Institutions" }));
 
 		const institutionControl = page
 			.locator('[data-slot="control"]')

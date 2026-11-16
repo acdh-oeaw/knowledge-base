@@ -2,6 +2,7 @@ import { type Locator, type Page, expect } from "@playwright/test";
 
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { clearDateSegments } from "@/e2e/lib/fixtures/date-picker";
+import { clickHydrated } from "@/e2e/lib/fixtures/hydration";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
 const BASE_PATH = "/en/dashboard/website/documents-policies";
@@ -101,7 +102,7 @@ export class WebsiteDocumentsPoliciesPage {
 		await this.page.getByRole("button", { name: /^(Select|Change) document$/ }).click();
 		const dialog = this.page.getByRole("dialog", { name: "Media library" });
 		await dialog.waitFor({ state: "visible" });
-		await dialog.getByRole("tab", { name: "Upload" }).click();
+		await clickHydrated(dialog.getByRole("tab", { name: "Upload" }));
 		const fileInput = dialog.locator('input[type="file"]');
 		await expect(fileInput).toHaveAttribute("accept", /application\/pdf/);
 		await fileInput.setInputFiles(file);

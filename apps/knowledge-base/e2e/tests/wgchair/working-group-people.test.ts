@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
 import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { AdminPersonsPage } from "@/e2e/lib/fixtures/admin-persons-page";
+import { selectTab } from "@/e2e/lib/fixtures/hydration";
 import { expect, test } from "@/e2e/lib/test";
 
 /**
@@ -57,7 +58,7 @@ test.describe("working group people (delegated chair)", () => {
 		input: Readonly<{ name: string; sortName: string; roleName: string }>,
 	): Promise<void> {
 		await page.goto(`/en/dashboard/working-groups/${slug}/edit`);
-		await page.getByRole("tab", { name: "People" }).click();
+		await selectTab(page.getByRole("tab", { name: "People" }));
 
 		// Create a brand-new (draft) person; on success the dialog closes and the person is auto-selected
 		// in the "Add person" form's picker.
@@ -158,7 +159,7 @@ test.describe("working group people (delegated chair)", () => {
 		const sortName = `${prefix}, Findable`;
 
 		await page.goto(`/en/dashboard/working-groups/${slug}/edit`);
-		await page.getByRole("tab", { name: "People" }).click();
+		await selectTab(page.getByRole("tab", { name: "People" }));
 
 		// Create the draft person but do NOT link them — the create alone persists the draft document.
 		await page.getByRole("button", { name: "Add new person" }).click();
@@ -176,7 +177,7 @@ test.describe("working group people (delegated chair)", () => {
 		// Reload to drop the in-memory selection, then confirm the picker (which opts into draft persons
 		// on delegated dashboards) finds the draft by search — exactly what a published-only picker hides.
 		await page.reload();
-		await page.getByRole("tab", { name: "People" }).click();
+		await selectTab(page.getByRole("tab", { name: "People" }));
 		const form = page
 			.locator("form")
 			.filter({ has: page.getByRole("button", { name: "Add person" }) });

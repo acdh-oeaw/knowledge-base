@@ -4,6 +4,7 @@ import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
 import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
 import { E2E_TEST_ASSET_KEY } from "@/e2e/lib/fixtures/database-service";
+import { selectTab } from "@/e2e/lib/fixtures/hydration";
 import { SEEDED_PERSON_SEARCH_TERM, firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 import { createSocialMediaInForm } from "@/e2e/lib/fixtures/social-media-form";
@@ -126,7 +127,7 @@ export class AdminGovernanceBodiesPage {
 	// ---------------------------------------------------------------------------
 
 	async goToDetailsTab(): Promise<void> {
-		await this.page.getByRole("tab", { name: "Details" }).click();
+		await selectTab(this.page.getByRole("tab", { name: "Details" }));
 	}
 
 	async publishItem(): Promise<void> {
@@ -146,7 +147,7 @@ export class AdminGovernanceBodiesPage {
 	// ---------------------------------------------------------------------------
 
 	async goToRelationsTab(): Promise<void> {
-		await this.page.getByRole("tab", { name: "Relations" }).click();
+		await selectTab(this.page.getByRole("tab", { name: "Relations" }));
 	}
 
 	relationsTable(): Locator {
@@ -271,7 +272,7 @@ export class AdminGovernanceBodiesPage {
 	// ---------------------------------------------------------------------------
 
 	async goToPeopleTab(): Promise<void> {
-		await this.page.getByRole("tab", { name: "People" }).click();
+		await selectTab(this.page.getByRole("tab", { name: "People" }));
 	}
 
 	peopleTable(): Locator {
