@@ -97,6 +97,8 @@ function fromMembersAndPartners(db: Database | Transaction, ctx: MembersAndPartn
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
 			imageAspectRatio: schema.assets.aspectRatio,
+			imageFocalPointX: schema.assets.focalPointX,
+			imageFocalPointY: schema.assets.focalPointY,
 			imageMimeType: schema.assets.mimeType,
 			imageCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
@@ -148,6 +150,8 @@ interface MembersAndPartnersRow {
 	imageHeight: number | null;
 	imageCaption: JSONContent | null;
 	imageAspectRatio: number | null;
+	imageFocalPointX: number | null;
+	imageFocalPointY: number | null;
 	imageMimeType: string | null;
 	licenseName: string | null;
 	licenseUrl: string | null;
@@ -162,6 +166,8 @@ function rowImage(row: MembersAndPartnersRow, size: number) {
 			width: row.imageWidth,
 			height: row.imageHeight,
 			aspectRatio: row.imageAspectRatio,
+			focalPointX: row.imageFocalPointX,
+			focalPointY: row.imageFocalPointY,
 			mimeType: row.imageMimeType!,
 			licenseName: row.licenseName,
 			licenseUrl: row.licenseUrl,
@@ -655,6 +661,8 @@ async function getNationalConsortium(
 			imageWidth: schema.assets.width,
 			imageHeight: schema.assets.height,
 			imageAspectRatio: schema.assets.aspectRatio,
+			imageFocalPointX: schema.assets.focalPointX,
+			imageFocalPointY: schema.assets.focalPointY,
 			imageMimeType: schema.assets.mimeType,
 			imageCaption: schema.assets.caption,
 			licenseName: schema.licenses.name,
@@ -730,6 +738,8 @@ async function getNationalConsortium(
 				width: row.imageWidth,
 				height: row.imageHeight,
 				aspectRatio: row.imageAspectRatio,
+				focalPointX: row.imageFocalPointX,
+				focalPointY: row.imageFocalPointY,
 				mimeType: row.imageMimeType,
 				licenseName: row.licenseName,
 				licenseUrl: row.licenseUrl,

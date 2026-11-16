@@ -109,6 +109,8 @@ export async function getFundingCalls(db: Database | Transaction, params: GetFun
 					width: schema.assets.width,
 					height: schema.assets.height,
 					aspectRatio: schema.assets.aspectRatio,
+					focalPointX: schema.assets.focalPointX,
+					focalPointY: schema.assets.focalPointY,
 					mimeType: schema.assets.mimeType,
 					licenseName: schema.licenses.name,
 					licenseUrl: schema.licenses.url,

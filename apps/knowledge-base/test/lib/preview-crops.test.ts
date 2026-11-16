@@ -6,7 +6,7 @@ describe("getPreviewCrops", () => {
 	it("previews a photo at the range of shapes it is cropped to, never square", () => {
 		const crops = getPreviewCrops("images/0192a0c0-photo.jpg");
 
-		expect(crops?.map((crop) => crop.id)).toStrictEqual(["4:3", "16:9", "8:3"]);
+		expect(crops?.map((crop) => crop.id)).toStrictEqual(["4:3", "2:1", "3:1"]);
 	});
 
 	it("previews a portrait square only", () => {

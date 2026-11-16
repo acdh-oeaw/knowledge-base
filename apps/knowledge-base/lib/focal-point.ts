@@ -62,19 +62,21 @@ export interface PreviewCrop {
 }
 
 /**
- * Generic shapes spanning the range the website crops a photo to — not one per slot, which would
- * tie this to its layouts. The extremes matter most, since they cut the most and so bound what
- * stays visible everywhere: 4:3, the mobile page header and narrowest card, and 8:3, close to the
- * desktop page header (1652:620). 16:9 is the link preview the api crops for `og:image`. Never a
- * square: no photo is shown as one.
+ * Generic shapes spanning the range the CLARIAH-AT website crops a photo to — not one per slot,
+ * which would tie this to its layouts. The extremes matter most, since they cut the most and so
+ * bound what stays visible everywhere: 4:3, an event card (and a news or project card on the
+ * narrowest phones), and 3:1, a detail page header on wide screens (`aspect-2/1`, capped at
+ * `max-h-100`) and a single-column card just below two columns. 2:1 is the detail page header
+ * itself, the most prominent crop. Never a square: no photo is shown as one. Link previews show the
+ * whole image, so they need no shape of their own.
  */
 const imageCrops: ReadonlyArray<PreviewCrop> = [
 	{ id: "4:3", aspectRatio: 4 / 3 },
-	{ id: "16:9", aspectRatio: 16 / 9 },
-	{ id: "8:3", aspectRatio: 8 / 3 },
+	{ id: "2:1", aspectRatio: 2 },
+	{ id: "3:1", aspectRatio: 3 },
 ];
 
-/** A portrait is only ever cropped square, on a person's page and card. */
+/** A portrait is only ever cropped square, as in a quote's byline. */
 const avatarCrops: ReadonlyArray<PreviewCrop> = [{ id: "1:1", aspectRatio: 1 }];
 
 /**
