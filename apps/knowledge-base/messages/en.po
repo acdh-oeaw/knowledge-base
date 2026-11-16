@@ -2251,6 +2251,38 @@ msgstr "Used to build this entity's public web address once it is published — 
 msgid "Mm9SyV"
 msgstr "Used to build this entity's public web address once it is published — a short name like history-of-dariah. It isn't public yet, so you can still change it freely."
 
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "UazSOn"
+msgstr "{x}% from the left, {y}% from the top"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "D7qt10"
+msgstr "Focal point"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "c1gkaZ"
+msgstr "Click the part of the image that must stay visible when it is cropped. Use the arrow keys to move it."
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "PHxaYb"
+msgstr "focal point picker"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "UoHqjT"
+msgstr "Centre (default)"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "jXwIPj"
+msgstr "Reset to centre"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "XIaDY5"
+msgstr "Crop outlined on the image"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field.tsx
+msgid "Aj-8Pj"
+msgstr "All crops"
+
 #: app/(app)/[locale]/(dashboard)/dashboard/_components/image-caption-mode-field.tsx
 msgid "ZPLjxQ"
 msgstr "Caption behavior"
@@ -7338,8 +7370,8 @@ msgid "0nCIOP"
 msgstr "No assets match your filters."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
-msgid "hXURkq"
-msgstr "Update label, alt text, and caption for this asset."
+msgid "wiDCsL"
+msgstr "Label, alt text, caption, and focal point belong to this asset, so changes apply wherever it is used."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
 msgid "23lI3e"
@@ -7353,6 +7385,10 @@ msgstr "Dimensions"
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
 msgid "DAQ44c"
 msgstr "Describe the image for accessibility"
+
+#: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/edit-asset-metadata-dialog.tsx
+msgid "mTFle9"
+msgstr "Shown with the image by default. Where the image is placed, the caption can be replaced or hidden for that placement only."
 
 #: app/(app)/[locale]/(dashboard)/dashboard/website/assets/_components/upload-image-dialog.tsx
 msgid "IWtpYt"

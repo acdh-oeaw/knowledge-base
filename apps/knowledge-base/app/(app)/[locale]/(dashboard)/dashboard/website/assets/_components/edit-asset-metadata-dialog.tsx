@@ -25,8 +25,10 @@ import * as v from "valibot";
 
 import { AssetPreview } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-preview";
 import { CaptionField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/caption-field";
+import { FocalPointField } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/focal-point-field";
 import { updateAssetMetadataAction } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.action";
 import { UpdateAssetMetadataInputSchema } from "@/app/(app)/[locale]/(dashboard)/dashboard/website/assets/_lib/update-asset-metadata.schema";
+import { type FocalPoint, getPreviewCrops } from "@/lib/focal-point";
 import { formatDimensions } from "@/lib/format-dimensions";
 
 interface AssetMetadataItem {
@@ -44,6 +46,11 @@ interface AssetMetadataItem {
 	 */
 	width?: number | null;
 	height?: number | null;
+	/**
+	 * Absent where the caller did not load it. The dialog then shows no picker and submits no point,
+	 * so saving leaves the stored one alone instead of resetting it to the centre.
+	 */
+	focalPoint?: FocalPoint | null;
 	url: string;
 }
 
@@ -54,6 +61,8 @@ export interface SavedAssetMetadata {
 	caption: JSONContent | null;
 	licenseId: string | null;
 	license: { code: string; name: string } | null;
+	/** Absent when the dialog showed no picker, so the asset's point did not change. */
+	focalPoint?: FocalPoint | null;
 }
 
 interface LicenseOption {
@@ -90,6 +99,9 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 
 	const licenseOptions = licenses ?? fetchedLicenses;
 	const dimensions = formatDimensions(asset.width, asset.height);
+	/** Without crops, as for a logo, a focal point would change nothing anywhere it is shown. */
+	const focalPointCrops = asset.mimeType.startsWith("image/") ? getPreviewCrops(asset.key) : null;
+	const canPickFocalPoint = focalPointCrops != null && asset.focalPoint !== undefined;
 
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: ActionState, formData: FormData) => {
@@ -151,8 +163,13 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 
 			<ModalContent isOpen={isOpen} onOpenChange={setIsOpen} size="lg">
 				<Form action={formAction} state={state}>
+					{/* Opened from a news item's image, say, this reads like editing that placement — but
+					    every field here belongs to the asset. A placement only has a caption of its own
+					    (see `imageCaptionModesEnum`), which the caption field points to. */}
 					<ModalHeader
-						description={t("Update label, alt text, and caption for this asset.")}
+						description={t(
+							"Label, alt text, caption, and focal point belong to this asset, so changes apply wherever it is used.",
+						)}
 						title={t("Edit asset metadata")}
 					/>
 
@@ -166,17 +183,28 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 						    squashed to a letterbox — in the dialog where you write this image's alt text.
 						    Scrolling the body is the better trade. */}
 						<div className="flex shrink-0 flex-col gap-y-1.5">
-							<div className="aspect-video shrink-0 overflow-hidden rounded-lg bg-muted">
-								<AssetPreview
+							{canPickFocalPoint ? (
+								/* The picker shows the whole image, so it doubles as the preview. */
+								<FocalPointField
 									alt={asset.alt ?? asset.label}
-									className="block-full inline-full"
-									imageClassName="object-contain"
-									kindLabelClassName="bg-background/90 text-xs"
-									mimeType={asset.mimeType}
+									crops={focalPointCrops}
+									defaultValue={asset.focalPoint ?? null}
+									name="focalPoint"
 									src={asset.url}
-									storageKey={asset.key}
 								/>
-							</div>
+							) : (
+								<div className="aspect-video shrink-0 overflow-hidden rounded-lg bg-muted">
+									<AssetPreview
+										alt={asset.alt ?? asset.label}
+										className="block-full inline-full"
+										imageClassName="object-contain"
+										kindLabelClassName="bg-background/90 text-xs"
+										mimeType={asset.mimeType}
+										src={asset.url}
+										storageKey={asset.key}
+									/>
+								</div>
+							)}
 
 							{dimensions != null ? (
 								<span className="text-xs text-muted-fg">
@@ -197,7 +225,17 @@ export function EditAssetMetadataDialog(props: Readonly<EditAssetMetadataDialogP
 							<FieldError />
 						</TextField>
 
-						<CaptionField defaultValue={asset.caption} name="caption" />
+						<CaptionField
+							defaultValue={asset.caption}
+							description={
+								asset.mimeType.startsWith("image/")
+									? t(
+											"Shown with the image by default. Where the image is placed, the caption can be replaced or hidden for that placement only.",
+										)
+									: undefined
+							}
+							name="caption"
+						/>
 
 						{licenseOptions != null ? (
 							<Select defaultValue={asset.licenseId ?? "none"} name="licenseId">

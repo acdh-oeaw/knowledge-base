@@ -1,6 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 
 import type { SelectedImage } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/image-select-field";
+import { toFocalPoint } from "@/lib/focal-point";
 import { type ImageUrlOptions, images } from "@/lib/images";
 
 /**
@@ -19,6 +20,8 @@ export const selectedImageColumns = {
 	size: true,
 	width: true,
 	height: true,
+	focalPointX: true,
+	focalPointY: true,
 } as const;
 
 /** Companion to {@link selectedImageColumns}, for labelling the license in the same card. */
@@ -42,6 +45,8 @@ interface SelectedImageRow {
 	size: number | null;
 	width: number | null;
 	height: number | null;
+	focalPointX: number | null;
+	focalPointY: number | null;
 	license?: { code: string; name: string } | null;
 }
 
@@ -63,6 +68,7 @@ export function toSelectedImage(
 		size: asset.size,
 		width: asset.width,
 		height: asset.height,
+		focalPoint: toFocalPoint(asset),
 		url,
 	};
 }

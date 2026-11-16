@@ -1,5 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 
+import type { FocalPoint } from "@/lib/focal-point";
+
 /** What `uploadImageAction` reports back about the asset it just created. */
 export interface UploadedAsset {
 	id: string;
@@ -27,6 +29,8 @@ export interface MediaLibraryAsset {
 	/** Null for vectors, and for assets whose dimensions have not been measured yet. */
 	width?: number | null;
 	height?: number | null;
+	/** Absent where the caller did not load it; the edit dialog then leaves the stored point alone. */
+	focalPoint?: FocalPoint | null;
 	/**
 	 * Resolved from {@link MediaLibraryAsset.licenseId} when the media library hands an asset to a
 	 * caller, so consumers can label the license without loading the license list themselves.

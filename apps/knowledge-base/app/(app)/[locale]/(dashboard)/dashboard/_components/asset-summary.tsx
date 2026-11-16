@@ -5,6 +5,7 @@ import { useExtracted } from "next-intl";
 import { Fragment, type ReactNode } from "react";
 
 import { AssetPreview } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/asset-preview";
+import type { FocalPoint } from "@/lib/focal-point";
 import { formatDimensions } from "@/lib/format-dimensions";
 import { formatFileSize } from "@/lib/format-file-size";
 
@@ -27,6 +28,8 @@ export interface SelectedImage {
 	/** Absent for vectors and for assets whose dimensions have not been measured yet. */
 	width?: number | null;
 	height?: number | null;
+	/** Absent where the caller did not load it; the edit dialog then leaves the stored point alone. */
+	focalPoint?: FocalPoint | null;
 }
 
 interface AssetSummaryProps {

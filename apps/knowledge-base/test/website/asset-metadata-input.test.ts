@@ -48,6 +48,30 @@ describe("asset metadata form input", () => {
 		).toBeNull();
 	});
 
+	it("leaves the focal point alone when the form did not submit one", () => {
+		/* The dialog renders no picker when it was not told the asset's current point; an absent
+		   value must not be read as "reset to the centre". */
+		expect(parseForm({ id: "asset-id", label: "Portrait" })).not.toHaveProperty("focalPoint");
+	});
+
+	it("reads a submitted focal point", () => {
+		expect(
+			parseForm({ id: "asset-id", label: "Portrait", focalPoint: "0.25,1" }).focalPoint,
+		).toStrictEqual({ x: 0.25, y: 1 });
+	});
+
+	it("reads the reset value as no focal point", () => {
+		expect(
+			parseForm({ id: "asset-id", label: "Portrait", focalPoint: "none" }).focalPoint,
+		).toBeNull();
+	});
+
+	it("rejects a focal point outside the image", () => {
+		expect(() => parseForm({ id: "asset-id", label: "Portrait", focalPoint: "1.5,0" })).toThrow();
+		expect(() => parseForm({ id: "asset-id", label: "Portrait", focalPoint: "-0.1,0" })).toThrow();
+		expect(() => parseForm({ id: "asset-id", label: "Portrait", focalPoint: "0.5" })).toThrow();
+	});
+
 	it("requires a label", () => {
 		expect(() => parseForm({ id: "asset-id", label: "   " })).toThrow();
 	});

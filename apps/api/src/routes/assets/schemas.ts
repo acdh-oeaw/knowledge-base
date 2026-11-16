@@ -63,6 +63,24 @@ export const GetAssetImage = {
 					),
 				),
 			),
+			/**
+			 * Part of the url, never of the rendition: the crop follows the point stored on the asset.
+			 * The variant is cached as immutable, so without this a moved point would keep serving the
+			 * old crop under the old url; with it, the consumer's url changes along with the point. Still
+			 * validated, so the set of urls that reach the handler stays a closed one.
+			 */
+			fp: v.optional(
+				v.pipe(
+					v.string(),
+					v.regex(
+						/^(?:0(?:\.\d{1,2})?|1(?:\.0{1,2})?),(?:0(?:\.\d{1,2})?|1(?:\.0{1,2})?)$/,
+						"Must be two fractions between 0 and 1, with at most two decimals, separated by a comma.",
+					),
+					v.description(
+						"The image's `focalPoint` as `x,y`, to give a crop around a moved point a url of its own. The crop always follows the point stored for the asset; this value only keys the cache. Requires an aspect ratio",
+					),
+				),
+			),
 		}),
 		/**
 		 * A crop needs a target height, and the only thing to derive one from is the width. Refused
@@ -72,6 +90,11 @@ export const GetAssetImage = {
 		v.check(
 			(query) => query.ar == null || query.w != null,
 			"An aspect ratio needs a width to crop against.",
+		),
+		/** Refused for the same reason: without a crop there is nothing for the point to steer. */
+		v.check(
+			(query) => query.fp == null || query.ar != null,
+			"A focal point needs an aspect ratio to crop to.",
 		),
 	),
 };

@@ -50,6 +50,15 @@ export class AssetsPage {
 		await this.page.getByRole("option", { name: prefix, exact: true }).click();
 	}
 
+	/** Uploads a file under the dialog's default `images` prefix, through the upload dialog. */
+	async uploadAsset(file: Parameters<Locator["setInputFiles"]>[0], label: string): Promise<void> {
+		const dialog = await this.openUploadAssetDialog();
+		await dialog.locator('input[type="file"]').setInputFiles(file);
+		await dialog.getByLabel("Label").fill(label);
+		await dialog.getByRole("button", { name: "Upload", exact: true }).click();
+		await dialog.waitFor({ state: "hidden" });
+	}
+
 	// ---------------------------------------------------------------------------
 	// Media library dialog (embedded in forms, backed by `/api/assets`)
 	// ---------------------------------------------------------------------------

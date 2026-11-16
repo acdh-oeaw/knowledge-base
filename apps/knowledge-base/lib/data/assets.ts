@@ -21,6 +21,7 @@ import {
 import { db } from "@/lib/db";
 import { matchesAllTerms } from "@/lib/db/search";
 import { and, count, desc, eq, inArray, like } from "@/lib/db/sql";
+import { type FocalPoint, toFocalPoint } from "@/lib/focal-point";
 import { type ImageUrlOptions, images } from "@/lib/images";
 import { type AssetPrefix, assetPrefixes, storage as s3 } from "@/lib/storage";
 
@@ -113,6 +114,8 @@ export async function getMediaLibraryAssets(params: GetMediaLibraryAssetsParams)
 				size: schema.assets.size,
 				width: schema.assets.width,
 				height: schema.assets.height,
+				focalPointX: schema.assets.focalPointX,
+				focalPointY: schema.assets.focalPointY,
 			})
 			.from(schema.assets)
 			.where(where)
@@ -139,6 +142,7 @@ export async function getMediaLibraryAssets(params: GetMediaLibraryAssetsParams)
 			size: asset.size,
 			width: asset.width,
 			height: asset.height,
+			focalPoint: toFocalPoint(asset),
 			url,
 		};
 	});
@@ -382,10 +386,12 @@ interface UpdateAssetMetadataParams {
 	alt?: string | null;
 	caption?: schema.AssetInput["caption"];
 	licenseId?: schema.AssetInput["licenseId"] | null;
+	/** `null` resets to the centre; omitted leaves the stored point as it is. */
+	focalPoint?: FocalPoint | null;
 }
 
 export async function updateAssetMetadata(params: UpdateAssetMetadataParams) {
-	const { id, label, alt, caption, licenseId } = params;
+	const { id, label, alt, caption, licenseId, focalPoint } = params;
 
 	await db
 		.update(schema.assets)
@@ -394,6 +400,9 @@ export async function updateAssetMetadata(params: UpdateAssetMetadataParams) {
 			alt,
 			caption,
 			licenseId,
+			...(focalPoint !== undefined
+				? { focalPointX: focalPoint?.x ?? null, focalPointY: focalPoint?.y ?? null }
+				: {}),
 		})
 		.where(eq(schema.assets.id, id));
 }
@@ -428,6 +437,8 @@ export async function getAssetsForDashboard(params: GetAssetsForDashboardParams)
 				size: schema.assets.size,
 				width: schema.assets.width,
 				height: schema.assets.height,
+				focalPointX: schema.assets.focalPointX,
+				focalPointY: schema.assets.focalPointY,
 			})
 			.from(schema.assets)
 			.where(where)
@@ -454,6 +465,7 @@ export async function getAssetsForDashboard(params: GetAssetsForDashboardParams)
 			size: asset.size,
 			width: asset.width,
 			height: asset.height,
+			focalPoint: toFocalPoint(asset),
 			url,
 		};
 	});

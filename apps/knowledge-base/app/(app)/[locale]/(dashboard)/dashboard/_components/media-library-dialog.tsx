@@ -729,6 +729,7 @@ export function MediaLibraryDialog<T extends AssetPrefix>(
 										mimeType: selectedAsset.mimeType ?? "",
 										width: selectedAsset.width,
 										height: selectedAsset.height,
+										focalPoint: selectedAsset.focalPoint,
 										url: selectedAsset.url,
 									}}
 									licenses={licenseOptions}

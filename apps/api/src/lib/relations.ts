@@ -221,6 +221,8 @@ export async function getEntityImagesByDocumentId(
 			width: schema.assets.width,
 			height: schema.assets.height,
 			aspectRatio: schema.assets.aspectRatio,
+			focalPointX: schema.assets.focalPointX,
+			focalPointY: schema.assets.focalPointY,
 			licenseName: schema.licenses.name,
 			licenseUrl: schema.licenses.url,
 			imageCaption: sql`

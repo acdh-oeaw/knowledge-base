@@ -341,12 +341,16 @@ export class DatabaseService {
 		return row ?? null;
 	}
 
-	async getAssetByLabel(
-		label: string,
-	): Promise<{ id: string; key: string; mimeType: string } | null> {
+	async getAssetByLabel(label: string): Promise<{
+		id: string;
+		key: string;
+		mimeType: string;
+		focalPointX: number | null;
+		focalPointY: number | null;
+	} | null> {
 		const asset = await this.db.query.assets.findFirst({
 			where: { label },
-			columns: { id: true, key: true, mimeType: true },
+			columns: { id: true, key: true, mimeType: true, focalPointX: true, focalPointY: true },
 		});
 
 		return asset ?? null;

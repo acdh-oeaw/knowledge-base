@@ -96,6 +96,8 @@ export default async function DashboardWebsiteDocumentsPoliciesPage(
 					size: schema.assets.size,
 					width: schema.assets.width,
 					height: schema.assets.height,
+					focalPointX: schema.assets.focalPointX,
+					focalPointY: schema.assets.focalPointY,
 				},
 			})
 			.from(schema.documentsPolicies)
