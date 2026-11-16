@@ -284,6 +284,11 @@ msgstr "Callout"
 
 #: lib/rich-text-actions.tsx
 msgctxt "ui"
+msgid "eJXiLH"
+msgstr "Quote with attribution"
+
+#: lib/rich-text-actions.tsx
+msgctxt "ui"
 msgid "ryK3qR"
 msgstr "Accordion"
 
@@ -304,11 +309,6 @@ msgstr "Button"
 
 #: lib/rich-text-editor.tsx
 msgctxt "ui"
-msgid "hBrEtp"
-msgstr "Text style"
-
-#: lib/rich-text-editor.tsx
-msgctxt "ui"
 msgid "ZgFjjD"
 msgstr "This link points to a document."
 
@@ -326,6 +326,26 @@ msgstr "Change document"
 msgctxt "ui"
 msgid "KDqj1t"
 msgstr "Change page"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "J3-5f7"
+msgstr "Use a URL instead"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "_GpEhj"
+msgstr "Link to page"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "nxS3sg"
+msgstr "Link to document"
+
+#: lib/rich-text-editor.tsx
+msgctxt "ui"
+msgid "hBrEtp"
+msgstr "Text style"
 
 #: lib/rich-text-editor.tsx
 msgctxt "ui"
@@ -371,16 +391,6 @@ msgstr "Delete table"
 msgctxt "ui"
 msgid "freMIM"
 msgstr "Insert"
-
-#: lib/rich-text-editor.tsx
-msgctxt "ui"
-msgid "nxS3sg"
-msgstr "Link to document"
-
-#: lib/rich-text-editor.tsx
-msgctxt "ui"
-msgid "_GpEhj"
-msgstr "Link to page"
 
 #: lib/rich-text-editor.tsx
 msgctxt "ui"

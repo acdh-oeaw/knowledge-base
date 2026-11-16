@@ -14,8 +14,10 @@ export interface EntityOption extends AsyncOption {
 async function fetchOptionsPage(
 	endpoint: string,
 	params: Readonly<AsyncOptionsFetchPageParams>,
+	extraSearchParams?: Readonly<Record<string, string>>,
 ): Promise<{ items: Array<EntityOption>; total: number }> {
 	const searchParams = new URLSearchParams({
+		...extraSearchParams,
 		limit: String(params.limit),
 		offset: String(params.offset),
 	});
@@ -43,6 +45,13 @@ export async function fetchEntityOptionsPage(
 	params: Readonly<AsyncOptionsFetchPageParams>,
 ): Promise<{ items: Array<EntityOption>; total: number }> {
 	return fetchOptionsPage("/api/relations/entities", params);
+}
+
+/** Same as {@link fetchEntityOptionsPage}, restricted to published persons. */
+export async function fetchPersonOptionsPage(
+	params: Readonly<AsyncOptionsFetchPageParams>,
+): Promise<{ items: Array<EntityOption>; total: number }> {
+	return fetchOptionsPage("/api/relations/entities", params, { type: "persons" });
 }
 
 /**

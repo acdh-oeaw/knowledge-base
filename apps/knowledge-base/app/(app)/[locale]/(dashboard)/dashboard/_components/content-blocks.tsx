@@ -63,6 +63,7 @@ import { ImageCaptionModeField } from "@/app/(app)/[locale]/(dashboard)/dashboar
 import { LinkTargetSummary } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/link-target-summary";
 import type { MediaLibraryAsset } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-asset";
 import { MediaLibraryDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/media-library-dialog";
+import { PersonPickerDialog } from "@/app/(app)/[locale]/(dashboard)/dashboard/_components/person-picker-dialog";
 import {
 	type SelectedImage,
 	SelectedImageCard,
@@ -687,6 +688,7 @@ function ContentBlockPanel({
 					blocks={[
 						"embed",
 						"callout",
+						"quote",
 						"leadIn",
 						"accordion",
 						"mediaText",
@@ -762,6 +764,9 @@ function ContentBlockPanel({
 						/>
 					)}
 					renderLinkTargetSummary={(target) => <LinkTargetSummary target={target} />}
+					renderPersonPicker={({ isOpen, onOpenChange, select }) => (
+						<PersonPickerDialog isOpen={isOpen} onOpenChange={onOpenChange} onSelect={select} />
+					)}
 				/>
 			);
 		}

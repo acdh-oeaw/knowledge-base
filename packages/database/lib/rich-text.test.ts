@@ -1,7 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
-import { withoutBlankParagraphs } from "./rich-text";
+import { isEmptyRichTextDocument, withoutBlankParagraphs } from "./rich-text";
 
 function doc(...content: Array<JSONContent>): JSONContent {
 	return { type: "doc", content };
@@ -96,5 +96,25 @@ describe("withoutBlankParagraphs", () => {
 	it("is idempotent", () => {
 		const once = withoutBlankParagraphs(doc(paragraph("a"), paragraph(), paragraph("b")));
 		expect(withoutBlankParagraphs(once)).toStrictEqual(once);
+	});
+});
+
+describe("isEmptyRichTextDocument", () => {
+	const authors = [{ kind: "text", name: "Ada Lovelace" }];
+
+	it("treats a quote with no text as empty, whatever its byline says", () => {
+		expect(
+			isEmptyRichTextDocument(
+				doc({ type: "quoteBlock", attrs: { authors }, content: [paragraph()] }),
+			),
+		).toBe(true);
+	});
+
+	it("treats a quote with text as content", () => {
+		expect(
+			isEmptyRichTextDocument(
+				doc({ type: "quoteBlock", attrs: { authors }, content: [paragraph("A quotation.")] }),
+			),
+		).toBe(false);
 	});
 });

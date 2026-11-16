@@ -37,11 +37,18 @@ interface GetRelationOptionsParams {
 	q?: string;
 }
 
+type EntityType = typeof schema.entityTypes.$inferSelect.type;
+
+interface GetEntityRelationOptionsParams extends GetRelationOptionsParams {
+	/** Restricts the options to these entity types, e.g. only `persons` for a quote's author. */
+	entityTypes?: ReadonlyArray<EntityType>;
+}
+
 export async function getEntityRelationOptions(
-	params: GetRelationOptionsParams = {},
+	params: GetEntityRelationOptionsParams = {},
 	executor: Database | Transaction = db,
 ): Promise<{ items: Array<RelationOptionItem>; total: number }> {
-	const { limit = relationOptionsPageSize, offset = 0, q } = params;
+	const { limit = relationOptionsPageSize, offset = 0, q, entityTypes } = params;
 	const query = q?.trim();
 	// Search the document slug and its denormalized published title/name (`entities.label`, including
 	// a project or organisational-unit acronym when present), plus the human-readable type labels:
@@ -77,7 +84,16 @@ export async function getEntityRelationOptions(
 	);
 	const searchWhere =
 		query != null && query !== "" ? or(allTermsMatchSlugOrLabel, matchesType) : undefined;
-	const where = and(publishedEntityVersionWhere(), defaultLocaleEntityVersionWhere(), searchWhere);
+	const typeWhere =
+		entityTypes != null && entityTypes.length > 0
+			? inArray(schema.entityTypes.type, [...entityTypes])
+			: undefined;
+	const where = and(
+		publishedEntityVersionWhere(),
+		defaultLocaleEntityVersionWhere(),
+		searchWhere,
+		typeWhere,
+	);
 
 	const [rows, aggregate] = await Promise.all([
 		executor

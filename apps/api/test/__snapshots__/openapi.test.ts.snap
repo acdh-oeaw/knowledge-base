@@ -591,7 +591,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -611,7 +611,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -1072,7 +1072,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -1734,7 +1734,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -1754,7 +1754,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -2215,7 +2215,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -3097,7 +3097,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -3117,7 +3117,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -3578,7 +3578,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -4434,7 +4434,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -4454,7 +4454,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -4915,7 +4915,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -5879,7 +5879,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -5899,7 +5899,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -6360,7 +6360,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -7909,7 +7909,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -7929,7 +7929,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -8390,7 +8390,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -9648,7 +9648,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -9668,7 +9668,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -10129,7 +10129,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -10922,7 +10922,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -10942,7 +10942,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -11403,7 +11403,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -11864,7 +11864,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -11884,7 +11884,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -12345,7 +12345,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -13687,7 +13687,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -13707,7 +13707,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -14168,7 +14168,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -14731,7 +14731,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -14751,7 +14751,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -15212,7 +15212,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -15944,7 +15944,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -15964,7 +15964,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -16425,7 +16425,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -17035,7 +17035,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -17055,7 +17055,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -17516,7 +17516,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -18436,7 +18436,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -18456,7 +18456,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -18917,7 +18917,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -20178,7 +20178,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -20198,7 +20198,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -20659,7 +20659,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",
@@ -21465,7 +21465,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                 {
                   "properties": {
                     "content": {
-                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                     },
                     "type": {
                       "const": "rich_text",
@@ -21485,7 +21485,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                           {
                             "properties": {
                               "content": {
-                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                               },
                               "type": {
                                 "const": "rich_text",
@@ -21946,7 +21946,7 @@ exports[`openapi > GET /docs/openapi.json > should match the api contract snapsh
                                 {
                                   "properties": {
                                     "content": {
-                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item.",
+                                      "description": "Richtext as Tiptap JSON. The inline \`footnote\` node is a marker carrying its own note in \`attrs.content\` (richtext of the same shape): it holds no number, so a renderer numbers the markers by their order across all of an item's content blocks and lists the notes, in that order, at the end of the item. The block \`quoteBlock\` node is a quotation (its content: paragraphs) with a byline in its attributes: \`attrs.authors\`, in order, each either \`{ kind: "person", entityId, name, entity: EntityRef | null, image: Image | null }\` or \`{ kind: "text", name, image: Image | null }\`, images at avatar width, and \`attrs.description\`, richtext of the caption shape saying who they are (may be null).",
                                     },
                                     "type": {
                                       "const": "rich_text",

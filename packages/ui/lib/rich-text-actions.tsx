@@ -14,6 +14,7 @@ import {
 	ItalicIcon,
 	ListIcon,
 	ListOrderedIcon,
+	MessageSquareQuoteIcon,
 	MousePointerClickIcon,
 	PilcrowIcon,
 	QuoteIcon,
@@ -50,7 +51,8 @@ export type RichTextInsertableBlock =
 	| "gallery"
 	| "leadIn"
 	| "mediaText"
-	| "placeholderValue";
+	| "placeholderValue"
+	| "quote";
 
 /**
  * Where an action belongs in the toolbar, and whether the slash menu offers it.
@@ -373,6 +375,31 @@ export function useRichTextActions({
 							attrs: { intent: "info", title: null },
 							// A callout is a container now, so it is inserted with a body to type into rather
 							// than as an empty atom whose panel opens on mount.
+							content: [{ type: "paragraph" }],
+						})
+						.run();
+				},
+			});
+		}
+
+		if (blocks.includes("quote")) {
+			actions.push({
+				id: "quote",
+				group: "insert",
+				label: t("Quote with attribution"),
+				keywords: ["quote", "quotation", "testimonial", "byline", "citation", "pull"],
+				icon: MessageSquareQuoteIcon,
+				isAvailable() {
+					return canInsertBlock(editor, "quoteBlock");
+				},
+				run() {
+					editor
+						.chain()
+						.focus()
+						.insertContent({
+							type: "quoteBlock",
+							attrs: { authors: [], description: null },
+							// The content expression requires at least one paragraph to type the quote into.
 							content: [{ type: "paragraph" }],
 						})
 						.run();

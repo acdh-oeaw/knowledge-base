@@ -13,6 +13,7 @@
 		"data:clean:empty-content-blocks": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:clean:empty-content-blocks",
 		"data:clean:richtext-links": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"maintenance\" run data:clean:richtext-links",
 		"data:clean:wordpress": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"migrate\" run data:clean:wordpress",
+		"data:convert:legacy-blockquotes": "dotenvx run -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"maintenance\" run data:convert:legacy-blockquotes",
 		"data:ingest:search": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"ingest\" run data:ingest:search",
 		"data:ingest:search:entities": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"ingest\" run data:ingest:search:entities",
 		"data:ingest:search:resources": "dotenvx run -q -f ./.devcontainer/.env --ignore MISSING_ENV_FILE -- pnpm --filter \"ingest\" run data:ingest:search:resources",

@@ -1,3 +1,4 @@
+import { entityTypesEnum } from "@dariah-eric/database/schema";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/session";
@@ -50,8 +51,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	);
 	const offset = Math.max(Number(searchParams.get("offset") ?? 0), 0);
 	const q = searchParams.get("q") ?? undefined;
+	/** Optional comma-separated entity types; unknown tokens are ignored rather than rejected. */
+	const entityTypes = (searchParams.get("type") ?? "")
+		.split(",")
+		.map((type) => type.trim())
+		.filter((type): type is (typeof entityTypesEnum)[number] =>
+			(entityTypesEnum as ReadonlyArray<string>).includes(type),
+		);
 
-	const result = await getEntityRelationOptions({ limit, offset, q });
+	const result = await getEntityRelationOptions({ limit, offset, q, entityTypes });
 
 	return NextResponse.json(result);
 }

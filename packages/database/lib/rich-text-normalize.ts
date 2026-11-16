@@ -219,7 +219,14 @@ function normalizeInlineChildren(
 	return mergeAdjacentText(nodes);
 }
 
-const DROP_WHEN_EMPTY = new Set(["listItem", "bulletList", "orderedList", "blockquote"]);
+const DROP_WHEN_EMPTY = new Set([
+	"listItem",
+	"bulletList",
+	"orderedList",
+	"blockquote",
+	// A quote whose text was cleaned away credits nobody with nothing; its byline goes with it.
+	"quoteBlock",
+]);
 
 /**
  * Table cells are `block+` in the schema and cannot be dropped when cleaning empties them: a cell

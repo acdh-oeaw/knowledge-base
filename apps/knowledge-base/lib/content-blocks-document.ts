@@ -1,4 +1,5 @@
 import type { ImageCaptionMode } from "@dariah-eric/database/image-captions";
+import { stripQuoteAuthorImageUrls } from "@dariah-eric/database/quote-authors";
 import type { JSONContent } from "@tiptap/core";
 
 import type { ContentBlockInput } from "@/lib/content-block-input";
@@ -273,7 +274,9 @@ function splitNodesToBlocks(nodes: Array<JSONContent>): Array<ContentBlockInput>
 		blocks.push({
 			id: crypto.randomUUID(),
 			type: "rich_text",
-			content: { type: "doc", content: richTextRun },
+			// A quote author's picture url was signed for this session (see `getEntityContentBlocks`);
+			// only its key is stored.
+			content: stripQuoteAuthorImageUrls({ type: "doc", content: richTextRun }),
 		});
 		richTextRun = [];
 	}

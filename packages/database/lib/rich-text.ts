@@ -10,6 +10,7 @@ const STRUCTURAL_NODE_TYPES = new Set([
 	"listItem",
 	"orderedList",
 	"paragraph",
+	"quoteBlock",
 	"table",
 	"tableCell",
 	"tableHeader",
