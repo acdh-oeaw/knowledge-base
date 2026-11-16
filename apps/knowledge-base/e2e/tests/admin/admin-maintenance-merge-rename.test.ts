@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { Page } from "@playwright/test";
 
+import { clickHydrated } from "@/e2e/lib/fixtures/hydration";
 import { expect, test } from "@/e2e/lib/test";
 
 const MAINTENANCE_PATH = "/en/dashboard/administrator/maintenance";
@@ -10,7 +11,7 @@ const WORKER_PREFIX = () => `[e2e-worker-${String(test.info().workerIndex)}]`;
 /** Open the maintenance dashboard and switch to the "Merge, duplicate & rename" top-level tab. */
 async function gotoMergeAndRename(page: Page): Promise<void> {
 	await page.goto(MAINTENANCE_PATH);
-	await page.getByRole("tab", { name: "Merge, duplicate & rename" }).click();
+	await clickHydrated(page.getByRole("tab", { name: "Merge, duplicate & rename" }));
 }
 
 /** Pick an option in one of the maintenance AsyncSelect pickers, identified by its trigger label. */
@@ -105,7 +106,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		});
 
 		await gotoMergeAndRename(page);
-		await page.getByRole("tab", { name: "Merge social media" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Merge social media" }));
 
 		await pickEntity(page, "Search for the duplicate account…", sourceName, sourceName);
 		await pickEntity(page, "Search for the canonical account…", targetName, targetName);
@@ -136,7 +137,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		await db.createService({ name: targetName, status: "live" });
 
 		await gotoMergeAndRename(page);
-		await page.getByRole("tab", { name: "Merge services" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Merge services" }));
 
 		await pickEntity(page, "Search for the duplicate service…", sourceName, sourceName);
 		await pickEntity(page, "Search for the canonical service…", targetName, targetName);
@@ -174,7 +175,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		await db.addEntityToEntityRelation(source.documentId, relationTarget.id);
 
 		await gotoMergeAndRename(page);
-		await page.getByRole("tab", { name: "Duplicate entity" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Duplicate entity" }));
 
 		await pickEntity(page, "Search for the entity to duplicate…", sourceTitle, sourceTitle);
 
@@ -218,7 +219,7 @@ test.describe("admin – maintenance merge & rename", () => {
 		});
 
 		await gotoMergeAndRename(page);
-		await page.getByRole("tab", { name: "Edit slug" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Edit slug" }));
 
 		// Found by title even though `entities.label` is null until first publish, and badged as a draft.
 		await pickEntity(page, "Search for an entity…", draftTitle, draftTitle);
@@ -252,8 +253,8 @@ test.describe("admin – maintenance merge & rename", () => {
 		const subjectTitle = `${WORKER_PREFIX()} Slug Subject ${suffix}`;
 
 		await page.goto(MAINTENANCE_PATH);
-		await page.getByRole("tab", { name: "Merge, duplicate & rename" }).click();
-		await page.getByRole("tab", { name: "Edit slug" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Merge, duplicate & rename" }));
+		await clickHydrated(page.getByRole("tab", { name: "Edit slug" }));
 
 		// Happy path: rename to a fresh, unique slug.
 		const newSlug = `slug-renamed-${suffix}`;

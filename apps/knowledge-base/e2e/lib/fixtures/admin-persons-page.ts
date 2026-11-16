@@ -3,6 +3,7 @@ import { type Locator, type Page, expect } from "@playwright/test";
 import { waitForActionRedirect } from "@/e2e/lib/fixtures/action-redirect";
 import { waitForActionSuccess } from "@/e2e/lib/fixtures/action-success";
 import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
+import { selectTab } from "@/e2e/lib/fixtures/hydration";
 import { firstSeededOption } from "@/e2e/lib/fixtures/options";
 import { fillSearchAndWaitForUrl } from "@/e2e/lib/fixtures/search";
 
@@ -198,7 +199,7 @@ export class AdminPersonsPage {
 	// ---------------------------------------------------------------------------
 
 	async goToContributionsTab(): Promise<void> {
-		await this.page.getByRole("tab", { name: "Contributions" }).click();
+		await selectTab(this.page.getByRole("tab", { name: "Contributions" }));
 	}
 
 	contributionsTable(): Locator {

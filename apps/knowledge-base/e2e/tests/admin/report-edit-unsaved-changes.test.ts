@@ -1,3 +1,4 @@
+import { clickHydrated } from "@/e2e/lib/fixtures/hydration";
 import { expect, test } from "@/e2e/lib/test";
 
 /**
@@ -53,7 +54,7 @@ test.describe("report editor unsaved-changes guard", () => {
 			firstDialog = { message: dialog.message(), type: dialog.type() };
 			await dialog.dismiss();
 		});
-		await page.getByRole("tab", { name: "Institutions" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Institutions" }));
 
 		expect(firstDialog).not.toBeNull();
 		expect(firstDialog!.type).toBe("confirm");
@@ -71,7 +72,7 @@ test.describe("report editor unsaved-changes guard", () => {
 		page.once("dialog", async (dialog) => {
 			await dialog.accept();
 		});
-		await page.getByRole("tab", { name: "Institutions" }).click();
+		await clickHydrated(page.getByRole("tab", { name: "Institutions" }));
 		await expect(page).toHaveURL(new RegExp(`${reportId!}/edit/institutions`));
 	});
 

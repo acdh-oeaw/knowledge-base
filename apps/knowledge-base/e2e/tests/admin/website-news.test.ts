@@ -5,6 +5,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import { imageSizeLimit } from "@/config/assets.config";
 import { openActionsMenu } from "@/e2e/lib/fixtures/actions-menu";
+import { clickHydrated } from "@/e2e/lib/fixtures/hydration";
 import { expect, test } from "@/e2e/lib/test";
 import { formatFileSize } from "@/lib/format-file-size";
 
@@ -189,7 +190,7 @@ test.describe("website news admin", () => {
 		await newsPage.page.getByRole("button", { name: "Select image" }).click();
 
 		const dialog = newsPage.page.getByRole("dialog", { name: "Media library" });
-		await dialog.getByRole("tab", { name: "Upload" }).click();
+		await clickHydrated(dialog.getByRole("tab", { name: "Upload" }));
 		await dialog.locator('input[type="file"]').setInputFiles({
 			name: "oversized.png",
 			mimeType: "image/png",
