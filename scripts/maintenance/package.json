@@ -62,6 +62,6 @@
 		"vitest": "catalog:"
 	},
 	"engines": {
-		"node": "24.x"
+		"node": "26.x"
 	}
 }

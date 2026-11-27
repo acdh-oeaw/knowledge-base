@@ -79,5 +79,17 @@
 		"turbo": "catalog:",
 		"typescript": "catalog:"
 	},
-	"packageManager": "pnpm@11.21.0"
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.23.0",
+			"onFail": "download"
+		},
+		"runtime": {
+			"name": "node",
+			"version": "26.x",
+			"onFail": "download"
+		}
+	},
+	"packageManager": "pnpm@12.23.0"
 }

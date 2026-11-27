@@ -176,7 +176,7 @@
 		"extends": "@dariah-eric/configs/stylelint/base"
 	},
 	"engines": {
-		"node": "24.x"
+		"node": "26.x"
 	},
 	"postcss": {
 		"plugins": {
