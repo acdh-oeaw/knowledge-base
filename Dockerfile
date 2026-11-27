@@ -3,15 +3,31 @@
 # base
 # -------------------------------------------------------------------------------------------------
 
-FROM node:24-alpine AS base
+FROM node:26-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 ENV CI=true
-# pnpm 11 may run dependency verification before package scripts, which can fail in
+# pnpm may run dependency verification before package scripts, which can fail in
 # turbo-pruned Docker workspaces.
 # @see {@link https://github.com/pnpm/pnpm/issues/11865}
 ENV pnpm_config_verify_deps_before_run=false
-RUN corepack enable
+# Node.js 26 deprecates corepack, so we fetch the standalone pnpm binary directly. The version is
+# supplied as a build arg (read from `devEngines.packageManager` in `package.json` in CI), so it
+# matches the version pinned in the repo.
+ARG PNPM_VERSION
+ARG TARGETARCH
+RUN set -eu; \
+    test -n "${PNPM_VERSION}" || { echo "PNPM_VERSION build arg is required." >&2; exit 1; }; \
+    case "${TARGETARCH}" in \
+      amd64) arch="x64" ;; \
+      arm64) arch="arm64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    mkdir -p /opt/pnpm; \
+    wget -qO- "https://github.com/pnpm/pnpm/releases/download/v${PNPM_VERSION}/pnpm-linux-${arch}-musl.tar.gz" \
+      | tar -xz -C /opt/pnpm; \
+    ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm; \
+    pnpm --version
 # `turbo prune` runs before `pnpm install`, so it needs a turbo binary available up front. The version
 # is supplied as a build arg (resolved from the lockfile in CI) instead of installing the floating
 # latest, so prune is reproducible and matches the repo turbo used via `pnpm exec turbo` in the build
@@ -44,7 +60,7 @@ WORKDIR /app
 COPY --from=migrate-prune /app/out/json/ .
 COPY --from=migrate-prune /app/patches/ ./patches/
 COPY --from=migrate-prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --no-runtime
 
 # build
 # -------------------------------------------------------------------------------------------------
@@ -56,7 +72,7 @@ RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     pnpm exec turbo run build --filter=@dariah-eric/database^...
 # We don't set `injectWorkspacePackages` directly in `pnpm-workspace.yaml` because it currently
 # produces lots of peer dependency warnings.
-RUN pnpm deploy --filter @dariah-eric/database --config.inject-workspace-packages=true /out
+RUN pnpm deploy --filter @dariah-eric/database --config.inject-workspace-packages=true --no-runtime /out
 
 # serve
 # -------------------------------------------------------------------------------------------------
@@ -79,7 +95,7 @@ WORKDIR /app
 COPY --from=seed-prune /app/out/json/ .
 COPY --from=seed-prune /app/patches/ ./patches/
 COPY --from=seed-prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --no-runtime
 
 # build
 # -------------------------------------------------------------------------------------------------
@@ -88,7 +104,7 @@ COPY --from=seed-prune /app/out/full/ .
 RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
     pnpm exec turbo run build --filter=@dariah-eric/seed^...
-RUN pnpm deploy --filter @dariah-eric/seed --config.inject-workspace-packages=true /out
+RUN pnpm deploy --filter @dariah-eric/seed --config.inject-workspace-packages=true --no-runtime /out
 
 # serve
 # -------------------------------------------------------------------------------------------------
@@ -116,7 +132,7 @@ WORKDIR /app
 COPY --from=api-prune /app/out/json/ .
 COPY --from=api-prune /app/patches/ ./patches/
 COPY --from=api-prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --no-runtime
 
 # build
 # -------------------------------------------------------------------------------------------------
@@ -128,7 +144,7 @@ RUN --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     pnpm exec turbo run build --filter=@dariah-eric/api
 # We don't set `injectWorkspacePackages` directly in `pnpm-workspace.yaml` because it currently
 # produces lots of peer dependency warnings.
-RUN pnpm deploy --filter @dariah-eric/api --config.inject-workspace-packages=true --prod /out
+RUN pnpm deploy --filter @dariah-eric/api --config.inject-workspace-packages=true --no-runtime --prod /out
 
 # serve
 # -------------------------------------------------------------------------------------------------
@@ -161,7 +177,7 @@ WORKDIR /app
 COPY --from=app-prune /app/out/json/ .
 COPY --from=app-prune /app/patches/ ./patches/
 COPY --from=app-prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --no-runtime
 
 # build
 # -------------------------------------------------------------------------------------------------
